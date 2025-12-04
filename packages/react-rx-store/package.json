@@ -1,0 +1,26 @@
+{
+  "name": "@arron/react-rx-store",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.ts",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "@arron/rx-store": "workspace:*",
+    "react": "^19",
+    "use-sync-external-store": "^1.6.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.1",
+    "@types/react-dom": "^19.0.2",
+    "@arron/eslint-config": "workspace:*",
+    "@types/use-sync-external-store":"^1.5.0",
+    "@arron/typescript-config": "workspace:*",
+    "eslint": "^8.57.0",
+    "typescript": "^5.5.4"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
