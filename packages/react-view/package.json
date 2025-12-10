@@ -1,0 +1,26 @@
+{
+  "name": "@arron/react-view",
+  "version": "0.0.1",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch"
+  },
+  "dependencies": {
+    "rxjs": "^7.8.2",
+    "react": "^19",
+    "immer": "^11.0.1",
+    "uuid": "^13.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.1",
+    "@types/react-dom": "^19.0.2",
+    "@arron/eslint-config": "workspace:*",
+    "@types/use-sync-external-store": "^1.5.0",
+    "@arron/typescript-config": "workspace:*",
+    "eslint": "^8.57.0",
+    "typescript": "^5.5.4"
+  }
+}

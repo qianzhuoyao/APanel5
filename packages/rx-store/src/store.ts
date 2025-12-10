@@ -92,8 +92,7 @@ export class RxStore {
   selectEvents(id: string): Observable<EventAction[]> {
     return this.selectPath(id).pipe(
       map(
-        () =>
-          this.findNodeById(this.getState().root, id)?.events?.onClick || []
+        () => this.findNodeById(this.getState().root, id)?.events?.onClick || []
       )
     );
   }
@@ -409,8 +408,8 @@ selectedIds.forEach(id => {
 export const store = new RxStore({
   root: {
     id: "root",
-    type: "canvas",
-    props: { background: "#ffffff" },
+    type: "root",
+    props: {},
     children: [],
   },
   selectedIds: [],
