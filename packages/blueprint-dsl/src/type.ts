@@ -1,4 +1,4 @@
-interface IBlueprintDsl {
+export interface IBlueprintDsl {
   source: {
     id: string;
   };
