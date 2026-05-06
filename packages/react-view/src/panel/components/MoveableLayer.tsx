@@ -48,6 +48,8 @@ export function MoveableLayer({
       target={targets as unknown as HTMLElement[]}
       // 父容器做了 transform: scale(zoom) 时，这里传入同样的 zoom 用于坐标换算
       zoom={zoom}
+      // 允许在控制框内部区域拖动（不必必须点到某个节点本体）
+      dragArea
       draggable
       resizable
       rotatable

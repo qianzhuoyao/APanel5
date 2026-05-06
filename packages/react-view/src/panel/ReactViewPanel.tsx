@@ -51,14 +51,8 @@ export function ReactViewPanel({ initialZoom = 1 }: ReactViewPanelProps) {
     return () => el.removeEventListener("scroll", handleScroll as any);
   }, [handleScroll]);
 
-  // 同步 Selecto -> ids
-  const handleSelectedTargetsChange = useCallback((targets: HTMLElement[]) => {
-    setSelectedTargets(targets);
-    setSelectedIds(
-      targets
-        .map((t) => (t as HTMLElement).dataset.elementId)
-        .filter(Boolean) as string[]
-    );
+  const handleSelectedIdsChange = useCallback((ids: string[]) => {
+    setSelectedIds(ids);
   }, []);
 
   // 同步点击选中 -> targets
@@ -146,8 +140,10 @@ export function ReactViewPanel({ initialZoom = 1 }: ReactViewPanelProps) {
 
           <SelectLayer
             container={canvasContainer}
-            selectedTargets={selectedTargets}
-            onSelectedTargetsChange={handleSelectedTargetsChange}
+            dragContainer={scrollRef.current}
+            rootContainer={scrollRef.current}
+            selectedIds={selectedIds}
+            onSelectedIdsChange={handleSelectedIdsChange}
           />
 
           <MoveableLayer

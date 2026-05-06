@@ -1,4 +1,3 @@
-// @ts-expect-error tailwindcss-animate is runtime dependency; types may be missing in-editor
 import tailwindcssAnimate from "tailwindcss-animate"
 
 /**
