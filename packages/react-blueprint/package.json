@@ -1,0 +1,32 @@
+{
+  "name": "@arron/react-blueprint",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.ts",
+  "scripts": {
+    "lint": "eslint \"src/**/*.{ts,tsx}\"",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "build": "pnpm run lint && pnpm run typecheck && vite build",
+    "dev": "vite"
+  },
+  "dependencies": {
+    "react": "^19",
+    "react-dom": "^19",
+    "@arron/react-rx-store": "workspace:*",
+    "@xyflow/react": "^12.9.3"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.1",
+    "@types/react-dom": "^19.0.2",
+    "@vitejs/plugin-react": "^3.1.0",
+    "@arron/eslint-config": "workspace:*",
+    "@types/use-sync-external-store": "^1.5.0",
+    "@arron/typescript-config": "workspace:*",
+    "eslint": "^8.57.0",
+    "typescript": "^5.5.4",
+    "vite": "^5.1.4"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}

@@ -1,0 +1,23 @@
+{
+  "name": "@arron/rx-store",
+  "version": "0.0.1",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "lint": "eslint \"src/**/*.{ts,tsx}\"",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "build": "pnpm run lint && pnpm run typecheck && tsup",
+    "dev": "tsup --watch"
+  },
+  "dependencies": {
+    "rxjs": "^7.8.2",
+    "immer": "^11.0.1"
+  },
+  "devDependencies": {
+    "@arron/eslint-config": "workspace:*",
+    "@arron/typescript-config": "workspace:*",
+    "eslint": "^8.57.0",
+    "typescript": "^5.5.4"
+  }
+}
