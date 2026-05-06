@@ -1,0 +1,22 @@
+{
+  "name": "@arron/tailwind",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/preset.ts"
+  },
+  "bin": {
+    "arron-tailwind": "./bin/arron-tailwind.mjs"
+  },
+  "dependencies": {
+    "tailwindcss": "^3.4.17",
+    "tailwindcss-animate": "^1.0.7",
+    "postcss": "^8.4.49",
+    "autoprefixer": "^10.4.20"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0"
+  }
+}
+
