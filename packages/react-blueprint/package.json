@@ -4,6 +4,9 @@
   "description": "",
   "main": "index.ts",
   "scripts": {
+    "lint": "eslint \"src/**/*.{ts,tsx}\"",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "build": "pnpm run lint && pnpm run typecheck && vite build",
     "dev": "vite"
   },
   "dependencies": {

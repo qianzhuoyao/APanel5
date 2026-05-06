@@ -1,9 +1,9 @@
 import { createRoot } from "react-dom/client";
-import { BluePrintReactRoot } from "@arron/react-blueprint";
 
+import { ReactViewPanel } from "@arron/react-view";
 const App = () => (
   <div>
-    <BluePrintReactRoot></BluePrintReactRoot>
+    <ReactViewPanel />
   </div>
 );
 

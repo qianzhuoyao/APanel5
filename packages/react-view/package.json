@@ -2,13 +2,21 @@
   "name": "@arron/react-view",
   "version": "0.0.1",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./styles.css": "./dist/styles.css"
   },
   "scripts": {
-    "build": "tsup",
+    "lint": "eslint \"src/**/*.{ts,tsx}\"",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "build:css": "arron-tailwind -c tailwind.config.ts -i ./src/tailwind.css -o ./dist/styles.css",
+    "dev:css": "arron-tailwind -c tailwind.config.ts -i ./src/tailwind.css -o ./dist/styles.css --watch",
+    "build": "pnpm run lint && pnpm run typecheck && pnpm run build:css && tsup",
     "dev": "tsup --watch"
   },
   "dependencies": {
+    "@scena/react-ruler": "^0.19.0",
+    "react-moveable": "^0.56.0",
+    "react-selecto": "^1.26.3",
     "rxjs": "^7.8.2",
     "react": "^19",
     "immer": "^11.0.1",
@@ -20,6 +28,7 @@
     "@arron/eslint-config": "workspace:*",
     "@types/use-sync-external-store": "^1.5.0",
     "@arron/typescript-config": "workspace:*",
+    "@arron/tailwind": "workspace:*",
     "eslint": "^8.57.0",
     "typescript": "^5.5.4"
   }

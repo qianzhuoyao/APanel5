@@ -5,7 +5,9 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "build": "tsup",
+    "lint": "eslint \"src/**/*.{ts,tsx}\"",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "build": "pnpm run lint && pnpm run typecheck && tsup",
     "dev": "tsup --watch"
   },
   "dependencies": {

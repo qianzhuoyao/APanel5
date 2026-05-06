@@ -5,15 +5,18 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "lint": "eslint \"src/**/*.{ts,tsx}\"",
+    "typecheck": "tsc --noEmit",
+    "build": "pnpm run lint && pnpm run typecheck && vite build",
     "preview": "vite preview",
-    "lint": "eslint \"src/**/*.ts\""
+    "lint:legacy": "eslint \"src/**/*.ts\""
   },
   "dependencies": {
     "@arron/ui": "workspace:*",
     "@arron/react-blueprint": "workspace:*",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "@arron/react-view": "workspace:*"
   },
   "devDependencies": {
     "@arron/eslint-config": "workspace:*",
