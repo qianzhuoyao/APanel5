@@ -227,6 +227,61 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
     [resolvedContentSize.height, resolvedContentSize.width]
   );
 
+  const hasMaterialPayload = useCallback((types: ArrayLike<string> | null | undefined) => {
+    if (!types) return false;
+    return Array.from(types).includes("application/x-arron-material");
+  }, []);
+
+  const commitDropFromPoint = useCallback(
+    (clientX: number, clientY: number, dataTransfer: DataTransfer | null) => {
+      const raw = dataTransfer?.getData("application/x-arron-material");
+      if (!raw) return;
+      try {
+        const material = JSON.parse(raw) as { id?: string };
+        if (!material?.id) return;
+        const viewportEl = viewportRef.current;
+        if (!viewportEl) return;
+        const rect = viewportEl.getBoundingClientRect();
+        const localX = clientX - rect.left;
+        const localY = clientY - rect.top;
+        const isInsideViewport =
+          localX >= 0 && localY >= 0 && localX <= rect.width && localY <= rect.height;
+        if (!isInsideViewport) return;
+        const currentZoom = Math.max(0.0001, zoomRef.current);
+        const x = (lastScrollRef.current.left + localX) / currentZoom;
+        const y = (lastScrollRef.current.top + localY) / currentZoom;
+        onDropMaterial?.({ materialId: material.id, x, y });
+      } catch {
+        // ignore invalid payload
+      }
+    },
+    [onDropMaterial]
+  );
+
+  useEffect(() => {
+    const el = viewportRef.current;
+    if (!el) return;
+
+    const onDragOver = (e: DragEvent) => {
+      if (!hasMaterialPayload(e.dataTransfer?.types)) return;
+      e.preventDefault();
+      if (e.dataTransfer) e.dataTransfer.dropEffect = "copy";
+    };
+
+    const onDrop = (e: DragEvent) => {
+      if (!hasMaterialPayload(e.dataTransfer?.types)) return;
+      e.preventDefault();
+      commitDropFromPoint(e.clientX, e.clientY, e.dataTransfer ?? null);
+    };
+
+    el.addEventListener("dragover", onDragOver);
+    el.addEventListener("drop", onDrop);
+    return () => {
+      el.removeEventListener("dragover", onDragOver);
+      el.removeEventListener("drop", onDrop);
+    };
+  }, [commitDropFromPoint, hasMaterialPayload]);
+
   return (
     <InfiniteViewer
       ref={viewerRef}
@@ -287,30 +342,6 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
             style={style}
             className=""
             onMouseDownCapture={onCanvasMouseDownCapture}
-            onDragOver={(e) => {
-              if (e.dataTransfer.types.includes("application/x-arron-material")) {
-                e.preventDefault();
-                e.dataTransfer.dropEffect = "copy";
-              }
-            }}
-            onDrop={(e) => {
-              const raw = e.dataTransfer.getData("application/x-arron-material");
-              if (!raw) return;
-              e.preventDefault();
-              try {
-                const material = JSON.parse(raw) as { id?: string };
-                if (!material?.id) return;
-                const rect = e.currentTarget.getBoundingClientRect();
-                const viewportX = e.clientX - rect.left;
-                const viewportY = e.clientY - rect.top;
-                const currentZoom = Math.max(0.0001, zoomRef.current);
-                const x = (lastScrollRef.current.left + viewportX) / currentZoom;
-                const y = (lastScrollRef.current.top + viewportY) / currentZoom;
-                onDropMaterial?.({ materialId: material.id, x, y });
-              } catch {
-                // ignore invalid payload
-              }
-            }}
           >
             {children}
           </div>
