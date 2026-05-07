@@ -100,6 +100,15 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
     [scrollRef]
   );
 
+  const syncCanvasElement = useCallback(
+    (el: HTMLDivElement | null) => {
+      if (!canvasRef) return;
+      if (typeof canvasRef === "function") canvasRef(el);
+      else (canvasRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
+    },
+    [canvasRef]
+  );
+
   useEffect(() => {
     const container = viewerRef.current?.getContainer?.() as HTMLDivElement | undefined;
     syncViewportElement(container ?? null);
@@ -142,7 +151,7 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
     });
 
     return () => cancelAnimationFrame(id);
-  }, [children]);
+  }, []);
 
   const [viewport, setViewport] = useState({ width: 0, height: 0 });
 
@@ -264,15 +273,34 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
         if (!material?.id) return;
         const viewportEl = viewportRef.current;
         if (!viewportEl) return;
-        const rect = viewportEl.getBoundingClientRect();
-        const localX = clientX - rect.left;
-        const localY = clientY - rect.top;
+        const viewportRect = viewportEl.getBoundingClientRect();
+        const localX = clientX - viewportRect.left;
+        const localY = clientY - viewportRect.top;
         const isInsideViewport =
-          localX >= 0 && localY >= 0 && localX <= rect.width && localY <= rect.height;
+          localX >= 0 &&
+          localY >= 0 &&
+          localX <= viewportRect.width &&
+          localY <= viewportRect.height;
         if (!isInsideViewport) return;
         const currentZoom = Math.max(0.0001, zoomRef.current);
-        const x = (lastScrollRef.current.left + localX) / currentZoom;
-        const y = (lastScrollRef.current.top + localY) / currentZoom;
+        const viewer = viewerRef.current as
+          | {
+              getScrollLeft?: () => number;
+              getScrollTop?: () => number;
+            }
+          | null;
+        const viewerScrollLeft = viewer?.getScrollLeft?.();
+        const viewerScrollTop = viewer?.getScrollTop?.();
+        const currentScrollLeft =
+          (typeof viewerScrollLeft === "number" ? viewerScrollLeft : undefined) ??
+          viewportEl.scrollLeft ??
+          lastScrollRef.current.left;
+        const currentScrollTop =
+          (typeof viewerScrollTop === "number" ? viewerScrollTop : undefined) ??
+          viewportEl.scrollTop ??
+          lastScrollRef.current.top;
+        const x = (currentScrollLeft + localX) / currentZoom;
+        const y = (currentScrollTop + localY) / currentZoom;
         onDropMaterial?.({ materialId: material.id, x, y });
       } catch {
         // ignore invalid payload
@@ -360,7 +388,7 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
           contentStyle={{ width: "100%", height: "100%", overflow: "visible" }}
         >
           <div
-            ref={canvasRef}
+            ref={syncCanvasElement}
             data-panel-canvas
             style={style}
             className=""

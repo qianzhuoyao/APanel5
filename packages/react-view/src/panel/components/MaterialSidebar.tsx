@@ -494,7 +494,7 @@ export function MaterialSidebar({
       <Tabs
         value={leftTab}
         onValueChange={(v) => setLeftTab(v as "materials" | "tree")}
-        className="min-h-0"
+        className="flex min-h-0 h-full flex-col"
       >
         <div className="border-b border-border px-2 pb-2 pt-2">
           <TabsList className="grid w-full grid-cols-2">
@@ -502,8 +502,8 @@ export function MaterialSidebar({
             <TabsTrigger value="tree">节点树</TabsTrigger>
           </TabsList>
         </div>
-        <TabsContent value="materials" className="mt-0 min-h-0">
-          <div className="grid min-h-0 grid-cols-[110px_1fr]">
+        <TabsContent value="materials" className="mt-0 min-h-0 flex-1 overflow-hidden">
+          <div className="grid h-full min-h-0 grid-cols-[110px_1fr]">
             <div className={`overflow-auto border-r border-border ${themedScrollbarClass}`}>
               {categories.map((c) => {
                 const active = c.id === activeCategoryId;
@@ -567,7 +567,7 @@ export function MaterialSidebar({
             </div>
           </div>
         </TabsContent>
-        <TabsContent value="tree" className="mt-0 min-h-0">
+        <TabsContent value="tree" className="mt-0 min-h-0 flex-1 overflow-hidden">
           <div className={`h-full overflow-auto px-2 py-2 text-xs ${themedScrollbarClass}`}>
             <div className="mb-2 flex items-center justify-between rounded border border-border bg-card px-2 py-1.5">
               <span className="text-[11px] text-muted-foreground">仅看引用子树</span>
