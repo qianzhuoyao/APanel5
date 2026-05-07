@@ -143,6 +143,42 @@ export function usePanelElements() {
     });
   }, []);
 
+  const deleteElement = useCallback((id: string) => {
+    store.update((draft) => {
+      draft.root.children = (draft.root.children ?? []).filter(
+        (n) => !(n.type === "panel-element" && n.id === id)
+      );
+    });
+  }, []);
+
+  const duplicateElement = useCallback((id: string) => {
+    const current = store.getState();
+    const node = current.root.children?.find((n) => n.type === "panel-element" && n.id === id);
+    if (!node?.props) return;
+    const layerId = node.props.layerId as string | undefined;
+    const currentLayers =
+      (current.variables?.layers as PanelLayer[] | undefined) ?? [DEFAULT_LAYER];
+    const layer = currentLayers.find((l) => l.id === layerId);
+    if (layer?.locked) return;
+
+    const nextId = randomId("el");
+    const nextProps: PanelElement = {
+      ...(node.props as PanelElement),
+      id: nextId,
+      x: Math.round((node.props.x ?? 0) + 20),
+      y: Math.round((node.props.y ?? 0) + 20),
+    };
+    store.update((draft) => {
+      draft.root.children = draft.root.children ?? [];
+      draft.root.children.push({
+        id: nextId,
+        type: "panel-element",
+        props: nextProps,
+        children: [],
+      });
+    });
+  }, []);
+
   const addElementFromMaterial = useCallback((materialType: string, x: number, y: number) => {
     const current = store.getState();
     const currentLayers =
@@ -309,6 +345,8 @@ export function usePanelElements() {
     layers,
     activeLayerId,
     updateElement,
+    deleteElement,
+    duplicateElement,
     addElementFromMaterial,
     setActiveLayer,
     addLayer,

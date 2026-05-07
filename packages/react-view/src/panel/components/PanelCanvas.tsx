@@ -11,6 +11,7 @@ export type PanelCanvasProps = {
   className?: string;
   canvasRef?: React.Ref<HTMLDivElement>;
   onCanvasMouseDownCapture?: React.MouseEventHandler<HTMLDivElement>;
+  onCanvasContextMenuCapture?: React.MouseEventHandler<HTMLDivElement>;
   onDropMaterial?: (payload: { materialId: string; x: number; y: number }) => void;
 };
 
@@ -25,6 +26,7 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
       className,
       canvasRef,
       onCanvasMouseDownCapture,
+      onCanvasContextMenuCapture,
       onDropMaterial,
     },
     scrollRef
@@ -42,11 +44,19 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
   }, [zoom]);
   const panRef = useRef<{
     active: boolean;
+    moved: boolean;
     startClientX: number;
     startClientY: number;
     startLeft: number;
     startTop: number;
-  }>({ active: false, startClientX: 0, startClientY: 0, startLeft: 0, startTop: 0 });
+  }>({
+    active: false,
+    moved: false,
+    startClientX: 0,
+    startClientY: 0,
+    startLeft: 0,
+    startTop: 0,
+  });
   const panHandlersRef = useRef<{
     move: ((ev: MouseEvent) => void) | null;
     up: ((ev: MouseEvent) => void) | null;
@@ -161,7 +171,13 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
     const el = viewportRef.current;
     if (!el) return;
     const onContextMenu = (e: MouseEvent) => {
-      e.preventDefault();
+      // 只有发生了右键平移时，才拦截本次菜单；其余交给 shadcn ContextMenu
+      if (panRef.current.moved) {
+        e.preventDefault();
+        e.stopPropagation();
+        (e as any).stopImmediatePropagation?.();
+        panRef.current.moved = false;
+      }
     };
     const onMouseDown = (e: MouseEvent) => {
       // 右键 或 mac 上 ctrl+左键
@@ -170,27 +186,32 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
       const viewer = viewerRef.current as any;
       if (!viewer) return;
 
-      e.preventDefault();
-      e.stopPropagation();
-
       panRef.current.active = true;
+      panRef.current.moved = false;
       panRef.current.startClientX = e.clientX;
       panRef.current.startClientY = e.clientY;
       panRef.current.startLeft = lastScrollRef.current.left;
       panRef.current.startTop = lastScrollRef.current.top;
-      setIsPanning(true);
 
       const move = (ev: MouseEvent) => {
         if (!panRef.current.active) return;
-        ev.preventDefault();
         const dx = ev.clientX - panRef.current.startClientX;
         const dy = ev.clientY - panRef.current.startClientY;
+        const distance = Math.hypot(dx, dy);
+        if (!panRef.current.moved && distance > 10) {
+          panRef.current.moved = true;
+          setIsPanning(true);
+        }
+        if (!panRef.current.moved) return;
+        ev.preventDefault();
         viewer.scrollTo(panRef.current.startLeft - dx, panRef.current.startTop - dy);
       };
 
       const up = (ev: MouseEvent) => {
         if (!panRef.current.active) return;
-        ev.preventDefault();
+        if (panRef.current.moved) {
+          ev.preventDefault();
+        }
         panRef.current.active = false;
         setIsPanning(false);
         clearWindowPanListeners();
@@ -274,11 +295,11 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
       commitDropFromPoint(e.clientX, e.clientY, e.dataTransfer ?? null);
     };
 
-    el.addEventListener("dragover", onDragOver);
-    el.addEventListener("drop", onDrop);
+    el.addEventListener("dragover", onDragOver, true);
+    el.addEventListener("drop", onDrop, true);
     return () => {
-      el.removeEventListener("dragover", onDragOver);
-      el.removeEventListener("drop", onDrop);
+      el.removeEventListener("dragover", onDragOver, true);
+      el.removeEventListener("drop", onDrop, true);
     };
   }, [commitDropFromPoint, hasMaterialPayload]);
 
@@ -342,6 +363,7 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
             style={style}
             className=""
             onMouseDownCapture={onCanvasMouseDownCapture}
+            onContextMenuCapture={onCanvasContextMenuCapture}
           >
             {children}
           </div>

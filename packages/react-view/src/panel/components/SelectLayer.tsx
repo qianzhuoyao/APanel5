@@ -24,6 +24,8 @@ export function SelectLayer({
 
   const handleSelect = useCallback(
     (e: any) => {
+      const input = e?.inputEvent as MouseEvent | undefined;
+      if (input && input.button !== 0) return;
       const selected = (e?.selected ?? []) as Array<HTMLElement | SVGElement>;
       const idSet = new Set<string>();
       for (const el of selected) {
@@ -62,6 +64,8 @@ export function SelectLayer({
       hitRate={0}
       dragCondition={(e: any) => {
         const input = e?.inputEvent as MouseEvent | undefined;
+        // 只允许左键触发框选，右键不参与选区变更
+        if (input && input.button !== 0) return false;
         const target = (input?.target as HTMLElement | null) ?? null;
         const isShift = !!input?.shiftKey;
         if (isShift) return true;
@@ -83,6 +87,11 @@ export function SelectLayer({
         return true;
       }}
       onDragStart={(e: { inputEvent: { target: unknown }; stop: () => void }) => {
+        const input = e.inputEvent as MouseEvent | undefined;
+        if (input && input.button !== 0) {
+          e.stop();
+          return;
+        }
         // 已有多选时，默认应该是拖动移动；只有按住 shift 才继续框选/追加
         const target = e.inputEvent.target as HTMLElement | null;
         const selectable = target?.closest(".rv-selectable") as HTMLElement | null;

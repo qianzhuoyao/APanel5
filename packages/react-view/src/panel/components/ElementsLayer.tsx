@@ -27,6 +27,7 @@ export function ElementsLayer({
             ].join(" ")}
             data-element-id={el.id}
             onMouseDown={(e) => {
+              if (e.button !== 0) return;
               // 单击选中（与 Selecto 的框选互补）
               if (e.shiftKey) {
                 onSelectIds(

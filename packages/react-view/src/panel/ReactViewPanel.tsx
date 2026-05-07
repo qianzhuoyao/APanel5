@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 
 import { usePanelElements } from "./hooks/usePanelElements";
 import { PanelCanvas } from "./components/PanelCanvas";
@@ -8,6 +9,10 @@ import { SelectLayer } from "./components/SelectLayer";
 import { MoveableLayer } from "./components/MoveableLayer";
 import { MaterialSidebar } from "./components/MaterialSidebar";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   ResizableHandle,
   ResizablePanel,
   ResizablePanelGroup,
@@ -124,6 +129,8 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
     layers,
     activeLayerId,
     updateElement,
+    deleteElement,
+    duplicateElement,
     addElementFromMaterial,
     setActiveLayer,
     addLayer,
@@ -141,6 +148,11 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
 
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [selectedTargets, setSelectedTargets] = useState<HTMLElement[]>([]);
+  const [contextMenuNodeId, setContextMenuNodeId] = useState<string | null>(null);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [dropdownEpoch, setDropdownEpoch] = useState(0);
+  const [dropdownPoint, setDropdownPoint] = useState({ x: 0, y: 0 });
+  const [copiedNodeId, setCopiedNodeId] = useState<string | null>(null);
   const [isDark, setIsDark] = useState(false);
   const [editingLayerId, setEditingLayerId] = useState<string | null>(null);
   const [editingLayerName, setEditingLayerName] = useState("");
@@ -309,53 +321,138 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                   onZoomChange={setZoom}
                 />
 
-                <PanelCanvas
-                  ref={scrollRef}
-                  zoom={zoom}
-                  onZoomChange={setZoom}
-                  onScrollChange={setScroll}
-                  canvasRef={canvasRef}
-                  onCanvasMouseDownCapture={(e) => {
-                    const target = e.target as HTMLElement | null;
-                    if (!target) return;
-                    // 点击在节点或 Moveable 控制框上时，不清空选择
-                    if (
-                      target.closest(".rv-selectable") ||
-                      target.closest(".moveable-control-box") ||
-                      target.closest(".moveable-line") ||
-                      target.closest(".moveable-control") ||
-                      target.closest(".moveable-direction")
-                    ) {
-                      return;
-                    }
-                    clearSelection();
-                  }}
-                  onDropMaterial={({ materialId, x, y }) => {
-                    addElementFromMaterial(materialId, x, y);
-                  }}
+                <div
                   className="h-full w-full"
+                  onContextMenuCapture={(e) => {
+                    e.preventDefault();
+                    const target = e.target as HTMLElement | null;
+                    const nodeEl = target?.closest<HTMLElement>("[data-element-id]");
+                    const nodeIdFromElement = nodeEl?.dataset.elementId ?? null;
+                    const onMoveable =
+                      !!target?.closest(".moveable-control-box") ||
+                      !!target?.closest(".moveable-line") ||
+                      !!target?.closest(".moveable-control") ||
+                      !!target?.closest(".moveable-direction");
+                    const nodeId =
+                      nodeIdFromElement ??
+                      (onMoveable && selectedIds.length > 0 ? selectedIds[0] : null);
+                    flushSync(() => {
+                      setContextMenuNodeId(nodeId);
+                      setDropdownPoint({ x: e.clientX, y: e.clientY });
+                      setDropdownEpoch((v) => v + 1);
+                      // 每次右键先关闭旧菜单，再用最新坐标重开
+                      setDropdownOpen(false);
+                    });
+                    requestAnimationFrame(() => setDropdownOpen(true));
+                  }}
                 >
-                  <ElementsLayer
-                    elements={elements}
-                    selectedIds={selectedIds}
-                    onSelectIds={setSelectedIds}
-                  />
-
-                  <SelectLayer
-                    container={canvasContainer}
-                    dragContainer={scrollRef.current}
-                    rootContainer={scrollRef.current}
-                    selectedIds={selectedIds}
-                    onSelectedIdsChange={handleSelectedIdsChange}
-                  />
-
-                  <MoveableLayer
+                  <PanelCanvas
+                    ref={scrollRef}
                     zoom={zoom}
-                    selectedTargets={selectedTargets}
-                    elementsById={byId}
-                    updateElement={updateElement}
-                  />
-                </PanelCanvas>
+                    onZoomChange={setZoom}
+                    onScrollChange={setScroll}
+                    canvasRef={canvasRef}
+                    onCanvasMouseDownCapture={(e) => {
+                      const target = e.target as HTMLElement | null;
+                      if (!target) return;
+                      // 点击在节点或 Moveable 控制框上时，不清空选择
+                      if (
+                        target.closest(".rv-selectable") ||
+                        target.closest(".moveable-control-box") ||
+                        target.closest(".moveable-line") ||
+                        target.closest(".moveable-control") ||
+                        target.closest(".moveable-direction")
+                      ) {
+                        return;
+                      }
+                      clearSelection();
+                    }}
+                    onDropMaterial={({ materialId, x, y }) => {
+                      addElementFromMaterial(materialId, x, y);
+                    }}
+                    className="h-full w-full"
+                  >
+                    <ElementsLayer
+                      elements={elements}
+                      selectedIds={selectedIds}
+                      onSelectIds={setSelectedIds}
+                    />
+
+                    <SelectLayer
+                      container={canvasContainer}
+                      dragContainer={scrollRef.current}
+                      rootContainer={scrollRef.current}
+                      selectedIds={selectedIds}
+                      onSelectedIdsChange={handleSelectedIdsChange}
+                    />
+
+                    <MoveableLayer
+                      zoom={zoom}
+                      selectedTargets={selectedTargets}
+                      elementsById={byId}
+                      updateElement={updateElement}
+                    />
+                  </PanelCanvas>
+                </div>
+                <DropdownMenu
+                  key={dropdownEpoch}
+                  open={dropdownOpen}
+                  onOpenChange={setDropdownOpen}
+                >
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      type="button"
+                      aria-hidden="true"
+                      tabIndex={-1}
+                      className="pointer-events-none fixed h-0 w-0 opacity-0"
+                      style={{ left: dropdownPoint.x, top: dropdownPoint.y }}
+                    />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" sideOffset={6}>
+                    {contextMenuNodeId ? (
+                      <>
+                        <DropdownMenuItem
+                          onClick={() => {
+                            setCopiedNodeId(contextMenuNodeId);
+                          }}
+                        >
+                          复制节点
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => {
+                            deleteElement(contextMenuNodeId);
+                            setSelectedIds((prev) =>
+                              prev.filter((sid) => sid !== contextMenuNodeId)
+                            );
+                            setContextMenuNodeId(null);
+                          }}
+                        >
+                          删除节点
+                        </DropdownMenuItem>
+                      </>
+                    ) : (
+                      <>
+                        <DropdownMenuItem
+                          disabled={!copiedNodeId}
+                          onClick={() => {
+                            if (!copiedNodeId) return;
+                            duplicateElement(copiedNodeId);
+                          }}
+                        >
+                          粘贴节点
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          disabled={elements.length === 0}
+                          onClick={() => {
+                            setSelectedIds(elements.map((el) => el.id));
+                          }}
+                        >
+                          全选当前图层
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
 
               <div className="border-t border-border bg-background/95 px-2 py-1.5">
