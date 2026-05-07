@@ -11,6 +11,7 @@ export type PanelCanvasProps = {
   className?: string;
   canvasRef?: React.Ref<HTMLDivElement>;
   onCanvasMouseDownCapture?: React.MouseEventHandler<HTMLDivElement>;
+  onCanvasClickCapture?: React.MouseEventHandler<HTMLDivElement>;
   onCanvasContextMenuCapture?: React.MouseEventHandler<HTMLDivElement>;
   onDropMaterial?: (payload: { materialId: string; x: number; y: number }) => void;
 };
@@ -26,6 +27,7 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
       className,
       canvasRef,
       onCanvasMouseDownCapture,
+      onCanvasClickCapture,
       onCanvasContextMenuCapture,
       onDropMaterial,
     },
@@ -363,6 +365,7 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
             style={style}
             className=""
             onMouseDownCapture={onCanvasMouseDownCapture}
+            onClickCapture={onCanvasClickCapture}
             onContextMenuCapture={onCanvasContextMenuCapture}
           >
             {children}

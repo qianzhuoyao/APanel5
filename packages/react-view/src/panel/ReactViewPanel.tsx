@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { flushSync } from "react-dom";
 
 import { usePanelElements } from "./hooks/usePanelElements";
 import { PanelCanvas } from "./components/PanelCanvas";
@@ -152,6 +151,12 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [dropdownEpoch, setDropdownEpoch] = useState(0);
   const [dropdownPoint, setDropdownPoint] = useState({ x: 0, y: 0 });
+  const rightPointerRef = useRef<{
+    active: boolean;
+    moved: boolean;
+    startX: number;
+    startY: number;
+  }>({ active: false, moved: false, startX: 0, startY: 0 });
   const [copiedNodeId, setCopiedNodeId] = useState<string | null>(null);
   const [isDark, setIsDark] = useState(false);
   const [editingLayerId, setEditingLayerId] = useState<string | null>(null);
@@ -207,6 +212,9 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
   const activeLayer = layers.find((l) => l.id === activeLayerId) ?? null;
   const deletingLayer = layers.find((l) => l.id === confirmDeleteLayerId) ?? null;
   const deleteTargetCandidates = layers.filter((l) => l.id !== confirmDeleteLayerId);
+
+  const isRightLikePointer = (e: React.PointerEvent<HTMLElement>) =>
+    e.button === 2 || (e.button === 0 && e.ctrlKey);
 
   return (
     <div className={["h-full w-full bg-background text-foreground", className ?? ""].join(" ")}>
@@ -323,8 +331,27 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
 
                 <div
                   className="h-full w-full"
-                  onContextMenuCapture={(e) => {
-                    e.preventDefault();
+                  onPointerDownCapture={(e) => {
+                    if (!isRightLikePointer(e)) return;
+                    rightPointerRef.current.active = true;
+                    rightPointerRef.current.moved = false;
+                    rightPointerRef.current.startX = e.clientX;
+                    rightPointerRef.current.startY = e.clientY;
+                  }}
+                  onPointerMoveCapture={(e) => {
+                    if (!rightPointerRef.current.active) return;
+                    const dx = e.clientX - rightPointerRef.current.startX;
+                    const dy = e.clientY - rightPointerRef.current.startY;
+                    if (Math.hypot(dx, dy) > 10) {
+                      rightPointerRef.current.moved = true;
+                    }
+                  }}
+                  onPointerUpCapture={(e) => {
+                    if (!rightPointerRef.current.active) return;
+                    const wasMoved = rightPointerRef.current.moved;
+                    rightPointerRef.current.active = false;
+                    if (!isRightLikePointer(e) || wasMoved) return;
+
                     const target = e.target as HTMLElement | null;
                     const nodeEl = target?.closest<HTMLElement>("[data-element-id]");
                     const nodeIdFromElement = nodeEl?.dataset.elementId ?? null;
@@ -336,14 +363,19 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                     const nodeId =
                       nodeIdFromElement ??
                       (onMoveable && selectedIds.length > 0 ? selectedIds[0] : null);
-                    flushSync(() => {
+                    const nextPoint = { x: e.clientX, y: e.clientY };
+
+                    setDropdownOpen(false);
+                    requestAnimationFrame(() => {
                       setContextMenuNodeId(nodeId);
-                      setDropdownPoint({ x: e.clientX, y: e.clientY });
+                      setDropdownPoint(nextPoint);
                       setDropdownEpoch((v) => v + 1);
-                      // 每次右键先关闭旧菜单，再用最新坐标重开
-                      setDropdownOpen(false);
+                      setDropdownOpen(true);
                     });
-                    requestAnimationFrame(() => setDropdownOpen(true));
+                  }}
+                  onContextMenuCapture={(e) => {
+                    // 统一禁用系统菜单；菜单弹出改为在 pointerup 阶段控制
+                    e.preventDefault();
                   }}
                 >
                   <PanelCanvas
@@ -353,6 +385,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                     onScrollChange={setScroll}
                     canvasRef={canvasRef}
                     onCanvasMouseDownCapture={(e) => {
+                      if (e.button !== 0) return;
                       const target = e.target as HTMLElement | null;
                       if (!target) return;
                       // 点击在节点或 Moveable 控制框上时，不清空选择
