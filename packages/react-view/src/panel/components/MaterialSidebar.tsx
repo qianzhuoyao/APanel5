@@ -60,18 +60,18 @@ export function MaterialSidebar({ className }: MaterialSidebarProps) {
   return (
     <aside
       className={[
-        "grid h-full w-full border-r border-black/10 bg-slate-950 text-white/85",
+        "grid h-full w-full border-r border-border bg-background text-foreground",
         className ?? "",
       ].join(" ")}
       style={{ gridTemplateRows: "auto 1fr" }}
     >
-      <div className="border-b border-white/10 px-3 py-2 text-xs font-semibold">
+      <div className="border-b border-border px-3 py-2 text-xs font-semibold">
         物料
       </div>
 
       {/* 2 columns: category + type */}
       <div className="grid min-h-0 grid-cols-[110px_1fr]">
-        <div className="overflow-auto border-r border-white/10">
+        <div className="overflow-auto border-r border-border">
           {categories.map((c) => {
             const active = c.id === activeCategoryId;
             return (
@@ -80,8 +80,10 @@ export function MaterialSidebar({ className }: MaterialSidebarProps) {
                 type="button"
                 onClick={() => setActiveCategoryId(c.id)}
                 className={[
-                  "w-full cursor-pointer border-b border-white/5 px-2.5 py-2.5 text-left text-xs",
-                  active ? "bg-blue-500/20 text-white" : "text-white/75 hover:bg-white/5",
+                  "w-full cursor-pointer border-b border-border/40 px-2.5 py-2.5 text-left text-xs",
+                  active
+                    ? "bg-accent text-accent-foreground"
+                    : "text-muted-foreground hover:bg-accent/60 hover:text-accent-foreground",
                 ].join(" ")}
               >
                 {c.title}
@@ -99,7 +101,7 @@ export function MaterialSidebar({ className }: MaterialSidebarProps) {
               <button
                 key={it.id}
                 type="button"
-                className="cursor-pointer rounded-xl border border-white/10 bg-white/5 px-2.5 py-2.5 text-left text-xs text-white/85 hover:bg-white/10"
+                className="cursor-pointer rounded-xl border border-border bg-card px-2.5 py-2.5 text-left text-xs text-card-foreground hover:bg-accent/60"
                 onClick={() => {
                   // placeholder: later we can emit "add material" events
                 }}

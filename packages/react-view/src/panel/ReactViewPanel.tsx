@@ -30,9 +30,10 @@ function getSelectedTargetsFromIds(
 
 export type ReactViewPanelProps = {
   initialZoom?: number;
+  className?: string;
 };
 
-export function ReactViewPanel({ initialZoom = 1 }: ReactViewPanelProps) {
+export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelProps) {
   const { elements, byId, updateElement } = usePanelElements();
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -64,7 +65,7 @@ export function ReactViewPanel({ initialZoom = 1 }: ReactViewPanelProps) {
   const canvasContainer = canvasRef.current;
 
   return (
-    <div className="h-full w-full bg-slate-50">
+    <div className={["h-full w-full bg-background text-foreground", className ?? ""].join(" ")}>
       <ResizablePanelGroup direction="horizontal" className="h-full w-full">
         <ResizablePanel defaultSize={20} minSize={20}>
           <MaterialSidebar />
@@ -73,9 +74,9 @@ export function ReactViewPanel({ initialZoom = 1 }: ReactViewPanelProps) {
         <ResizablePanel defaultSize={60} minSize={10}>
           {/* Center workspace */}
           <div className="min-w-0 h-full">
-            <div className="relative h-full overflow-hidden border border-black/10 bg-slate-900">
+            <div className="relative h-full overflow-hidden border border-border bg-background">
               {/* Top bar */}
-              <div className="flex items-center gap-2 border-b border-white/10 bg-slate-900/90 px-3 py-2 text-white/85">
+              <div className="flex items-center gap-2 border-b border-border bg-background/90 px-3 py-2 text-foreground">
                 <strong className="text-xs font-semibold">Panel</strong>
                 <div className="flex-1" />
                 <button
@@ -83,7 +84,7 @@ export function ReactViewPanel({ initialZoom = 1 }: ReactViewPanelProps) {
                   onClick={() =>
                     setZoom((z) => Math.max(0.25, Number((z - 0.1).toFixed(2))))
                   }
-                  className="rounded-md border border-white/10 bg-white/5 px-2 py-1 text-xs hover:bg-white/10"
+                  className="rounded-md border border-border bg-secondary px-2 py-1 text-xs text-secondary-foreground hover:bg-secondary/80"
                 >
                   -
                 </button>
@@ -95,7 +96,7 @@ export function ReactViewPanel({ initialZoom = 1 }: ReactViewPanelProps) {
                   onClick={() =>
                     setZoom((z) => Math.min(4, Number((z + 0.1).toFixed(2))))
                   }
-                  className="rounded-md border border-white/10 bg-white/5 px-2 py-1 text-xs hover:bg-white/10"
+                  className="rounded-md border border-border bg-secondary px-2 py-1 text-xs text-secondary-foreground hover:bg-secondary/80"
                 >
                   +
                 </button>
@@ -161,9 +162,9 @@ export function ReactViewPanel({ initialZoom = 1 }: ReactViewPanelProps) {
         <ResizableHandle withHandle />
         <ResizablePanel defaultSize={20} minSize={20}>
           {/* Right config sidebar (placeholder) */}
-          <aside className="h-full border-l border-black/10 bg-slate-950 px-3 py-3 text-white/85">
+          <aside className="h-full border-l border-border bg-background px-3 py-3 text-foreground">
             <div className="mb-2 text-xs font-semibold">配置</div>
-            <div className="text-xs leading-6 text-white/70">
+            <div className="text-xs leading-6 text-muted-foreground">
               这里先留空。后续可放属性编辑、图层树、样式配置等。
             </div>
           </aside>

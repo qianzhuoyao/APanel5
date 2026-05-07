@@ -177,7 +177,8 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
       ].join(" ")}
       margin={0}
       threshold={0}
-      useMouseDrag
+      // 只允许右键平移：禁用 InfiniteViewer 的默认鼠标拖拽（通常是左键）
+      useMouseDrag={false}
       preventWheelClick
       onScroll={(e: any) => {
         const next = { left: e.scrollLeft ?? 0, top: e.scrollTop ?? 0 };
