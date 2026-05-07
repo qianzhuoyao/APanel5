@@ -11,6 +11,11 @@ import {
   ResizableHandle,
   ResizablePanel,
   ResizablePanelGroup,
+  Switch,
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
 } from "@arron/ui";
 
 function getSelectedTargetsFromIds(
@@ -43,6 +48,16 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
 
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [selectedTargets, setSelectedTargets] = useState<HTMLElement[]>([]);
+  const [isDark, setIsDark] = useState(false);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    const update = () => setIsDark(root.classList.contains("dark"));
+    update();
+    const observer = new MutationObserver(update);
+    observer.observe(root, { attributes: true, attributeFilter: ["class"] });
+    return () => observer.disconnect();
+  }, []);
 
   const clearSelection = useCallback(() => {
     setSelectedIds([]);
@@ -79,27 +94,93 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
               <div className="flex items-center gap-2 border-b border-border bg-background/90 px-3 py-2 text-foreground">
                 <strong className="text-xs font-semibold">Panel</strong>
                 <div className="flex-1" />
-                <button
-                  type="button"
-                  onClick={() =>
-                    setZoom((z) => Math.max(0.25, Number((z - 0.1).toFixed(2))))
-                  }
-                  className="rounded-md border border-border bg-secondary px-2 py-1 text-xs text-secondary-foreground hover:bg-secondary/80"
-                >
-                  -
-                </button>
+                <TooltipProvider delayDuration={150}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="relative">
+                        <Switch
+                          checked={isDark}
+                          onCheckedChange={(checked) => {
+                            const root = document.documentElement;
+                            root.classList.toggle("dark", checked);
+                            root.dataset.theme = checked ? "dark" : "light";
+                            try {
+                              localStorage.setItem("theme", checked ? "dark" : "light");
+                            } catch {
+                              // ignore storage errors
+                            }
+                            setIsDark(checked);
+                          }}
+                          aria-label="切换主题"
+                          className="data-[state=checked]:bg-primary/80 data-[state=unchecked]:bg-secondary"
+                        />
+                        <div
+                          className={[
+                            "pointer-events-none absolute left-0.5 top-0.5 flex h-5 w-5 items-center justify-center transition-transform duration-200",
+                            isDark ? "translate-x-5" : "translate-x-0",
+                          ].join(" ")}
+                        >
+                          {isDark ? (
+                            <svg
+                              viewBox="0 0 24 24"
+                              className="h-3 w-3 text-foreground"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="1.8"
+                            >
+                              <path d="M21 12.79A9 9 0 1 1 11.21 3c0 .66.08 1.3.22 1.92A7 7 0 0 0 19.08 12c.62.14 1.26.22 1.92.22Z" />
+                            </svg>
+                          ) : (
+                            <svg
+                              viewBox="0 0 24 24"
+                              className="h-3 w-3 text-foreground"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="1.8"
+                            >
+                              <circle cx="12" cy="12" r="4" />
+                              <path d="M12 2v2.5M12 19.5V22M4.93 4.93l1.77 1.77M17.3 17.3l1.77 1.77M2 12h2.5M19.5 12H22M4.93 19.07 6.7 17.3M17.3 6.7l1.77-1.77" />
+                            </svg>
+                          )}
+                        </div>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>切换深色/浅色主题</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setZoom((z) => Math.max(0.25, Number((z - 0.1).toFixed(2))))
+                        }
+                        className="rounded-md border border-border bg-secondary px-2 py-1 text-xs text-secondary-foreground hover:bg-secondary/80"
+                      >
+                        -
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>缩小画布</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
                 <span className="w-16 text-center text-xs">
                   {(zoom * 100).toFixed(0)}%
                 </span>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setZoom((z) => Math.min(4, Number((z + 0.1).toFixed(2))))
-                  }
-                  className="rounded-md border border-border bg-secondary px-2 py-1 text-xs text-secondary-foreground hover:bg-secondary/80"
-                >
-                  +
-                </button>
+                <TooltipProvider delayDuration={150}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setZoom((z) => Math.min(4, Number((z + 0.1).toFixed(2))))
+                        }
+                        className="rounded-md border border-border bg-secondary px-2 py-1 text-xs text-secondary-foreground hover:bg-secondary/80"
+                      >
+                        +
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>放大画布</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               </div>
 
               {/* Stage */}
