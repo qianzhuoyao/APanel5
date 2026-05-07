@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useSyncExternalStore } from "react";
 import { store } from "../../../../rx-store/src/store";
 import type { Node, State } from "../../../../rx-store/src/types";
-import type { PanelElement } from "../types";
+import type { PanelChartConfig, PanelElement, ReferenceCopyMode } from "../types";
 
 export type PanelLayer = {
   id: string;
@@ -42,9 +42,111 @@ function getDefaultSizeByMaterial(materialType: string) {
       return { width: 260, height: 150 };
     case "audio":
       return { width: 260, height: 90 };
+    case "gauge":
+      return { width: 260, height: 180 };
+    case "reference":
+      return { width: 280, height: 180 };
     default:
       return { width: 220, height: 130 };
   }
+}
+
+function getDefaultChartConfig(materialType: string): PanelChartConfig | undefined {
+  if (!["bar", "line", "pie", "area", "scatter", "radar", "gauge", "funnel"].includes(materialType)) return undefined;
+  const common = {
+    color: "#3b82f6",
+    labels: ["A", "B", "C", "D"],
+    values: [12, 18, 9, 24],
+  };
+  if (materialType === "bar") {
+    return {
+      title: "柱状图",
+      ...common,
+      barWidth: 24,
+    };
+  }
+  if (materialType === "line") {
+    return {
+      title: "折线图",
+      ...common,
+      smooth: true,
+    };
+  }
+  if (materialType === "area") {
+    return {
+      title: "面积图",
+      ...common,
+      smooth: true,
+    };
+  }
+  if (materialType === "scatter") {
+    return {
+      title: "散点图",
+      ...common,
+    };
+  }
+  if (materialType === "radar") {
+    return {
+      title: "雷达图",
+      ...common,
+    };
+  }
+  if (materialType === "gauge") {
+    return {
+      title: "仪表盘",
+      color: "#3b82f6",
+      values: [68],
+    };
+  }
+  if (materialType === "funnel") {
+    return {
+      title: "漏斗图",
+      ...common,
+    };
+  }
+  return {
+    title: "饼图",
+    ...common,
+    pieInnerRadius: 30,
+    pieOuterRadius: 65,
+  };
+}
+
+function isPanelElementNode(node: Node): boolean {
+  const props = node.props as Partial<PanelElement> | undefined;
+  return (
+    !!props &&
+    typeof props.id === "string" &&
+    typeof props.layerId === "string"
+  );
+}
+
+function clonePanelElement(el: PanelElement): PanelElement {
+  return {
+    ...el,
+    chart: el.chart ? { ...el.chart, option: el.chart.option ? { ...el.chart.option } : undefined } : undefined,
+    style: el.style ? { ...el.style } : undefined,
+    refSnapshot: el.refSnapshot ? el.refSnapshot.map(clonePanelElement) : undefined,
+  };
+}
+
+function buildDeepReferenceSnapshot(
+  allElements: PanelElement[],
+  layerId: string,
+  visitedLayers = new Set<string>()
+): PanelElement[] {
+  if (visitedLayers.has(layerId)) return [];
+  const nextVisited = new Set(visitedLayers);
+  nextVisited.add(layerId);
+  const layerNodes = allElements.filter((el) => el.layerId === layerId);
+  return layerNodes.map((el) => {
+    const cloned = clonePanelElement(el);
+    if (cloned.materialType === "reference" && cloned.refLayerId) {
+      cloned.refCopyMode = "deep";
+      cloned.refSnapshot = buildDeepReferenceSnapshot(allElements, cloned.refLayerId, nextVisited);
+    }
+    return cloned;
+  });
 }
 
 export function usePanelElements() {
@@ -83,6 +185,7 @@ export function usePanelElements() {
             id: "el-1",
             layerId: DEFAULT_LAYER_ID,
             materialType: "bar",
+            chart: getDefaultChartConfig("bar"),
             x: 80,
             y: 80,
             width: 160,
@@ -93,6 +196,7 @@ export function usePanelElements() {
             id: "el-2",
             layerId: DEFAULT_LAYER_ID,
             materialType: "line",
+            chart: getDefaultChartConfig("line"),
             x: 300,
             y: 140,
             width: 220,
@@ -113,7 +217,7 @@ export function usePanelElements() {
         draft.root.children = seed.map(
           (el): Node => ({
             id: el.id,
-            type: "panel-element",
+            type: el.materialType ?? "unknown",
             props: el,
             children: [],
           })
@@ -125,7 +229,7 @@ export function usePanelElements() {
   const allElements = useMemo(() => {
     const nodes = state.root.children ?? [];
     return nodes
-      .filter((n) => n.type === "panel-element" && n.props)
+      .filter((n) => isPanelElementNode(n) && n.props)
       .map((n) => n.props as PanelElement);
   }, [state.root.children]);
 
@@ -171,16 +275,117 @@ export function usePanelElements() {
     store.update(
       (draft) => {
         draft.root.children = (draft.root.children ?? []).filter(
-          (n) => !(n.type === "panel-element" && n.id === id)
+          (n) => !(isPanelElementNode(n) && n.id === id)
         );
       },
       { meta: { type: "node.delete", id } }
     );
   }, []);
 
-  const duplicateElement = useCallback((id: string) => {
+  const deleteElements = useCallback((ids: string[]) => {
+    const idSet = new Set(ids.filter(Boolean));
+    if (idSet.size === 0) return;
+    store.update(
+      (draft) => {
+        draft.root.children = (draft.root.children ?? []).filter(
+          (n) => !(isPanelElementNode(n) && idSet.has(n.id))
+        );
+      },
+      { meta: { type: "node.batch-delete", ids: Array.from(idSet) } }
+    );
+  }, []);
+
+  const bringElementsToFront = useCallback((ids: string[]) => {
+    const idSet = new Set(ids.filter(Boolean));
+    if (idSet.size === 0) return;
+    store.update(
+      (draft) => {
+        const list = draft.root.children ?? [];
+        const selected: Node[] = [];
+        const rest: Node[] = [];
+        for (const n of list) {
+          if (isPanelElementNode(n) && idSet.has(n.id)) {
+            selected.push(n);
+          } else {
+            rest.push(n);
+          }
+        }
+        draft.root.children = [...rest, ...selected];
+      },
+      { meta: { type: "node.z.front", ids: Array.from(idSet) } }
+    );
+  }, []);
+
+  const sendElementsToBack = useCallback((ids: string[]) => {
+    const idSet = new Set(ids.filter(Boolean));
+    if (idSet.size === 0) return;
+    store.update(
+      (draft) => {
+        const list = draft.root.children ?? [];
+        const selected: Node[] = [];
+        const rest: Node[] = [];
+        for (const n of list) {
+          if (isPanelElementNode(n) && idSet.has(n.id)) {
+            selected.push(n);
+          } else {
+            rest.push(n);
+          }
+        }
+        draft.root.children = [...selected, ...rest];
+      },
+      { meta: { type: "node.z.back", ids: Array.from(idSet) } }
+    );
+  }, []);
+
+  const bringElementsForward = useCallback((ids: string[]) => {
+    const idSet = new Set(ids.filter(Boolean));
+    if (idSet.size === 0) return;
+    store.update(
+      (draft) => {
+        const list = draft.root.children ?? [];
+        for (let i = list.length - 2; i >= 0; i--) {
+          const cur = list[i];
+          const next = list[i + 1];
+          const curSelected = isPanelElementNode(cur) && idSet.has(cur.id);
+          const nextSelected = isPanelElementNode(next) && idSet.has(next.id);
+          if (curSelected && !nextSelected) {
+            list[i] = next;
+            list[i + 1] = cur;
+          }
+        }
+      },
+      { meta: { type: "node.z.up", ids: Array.from(idSet) } }
+    );
+  }, []);
+
+  const sendElementsBackward = useCallback((ids: string[]) => {
+    const idSet = new Set(ids.filter(Boolean));
+    if (idSet.size === 0) return;
+    store.update(
+      (draft) => {
+        const list = draft.root.children ?? [];
+        for (let i = 1; i < list.length; i++) {
+          const cur = list[i];
+          const prev = list[i - 1];
+          const curSelected = isPanelElementNode(cur) && idSet.has(cur.id);
+          const prevSelected = isPanelElementNode(prev) && idSet.has(prev.id);
+          if (curSelected && !prevSelected) {
+            list[i] = prev;
+            list[i - 1] = cur;
+          }
+        }
+      },
+      { meta: { type: "node.z.down", ids: Array.from(idSet) } }
+    );
+  }, []);
+
+  const duplicateElement = useCallback(
+    (
+      id: string,
+      options?: { referenceCopyMode?: ReferenceCopyMode }
+    ) => {
     const current = store.getState();
-    const node = current.root.children?.find((n) => n.type === "panel-element" && n.id === id);
+    const node = current.root.children?.find((n) => isPanelElementNode(n) && n.id === id);
     if (!node?.props) return;
     const layerId = node.props.layerId as string | undefined;
     const currentLayers =
@@ -195,19 +400,34 @@ export function usePanelElements() {
       x: Math.round((node.props.x ?? 0) + 20),
       y: Math.round((node.props.y ?? 0) + 20),
     };
+    const all = (current.root.children ?? [])
+      .filter((n) => isPanelElementNode(n) && n.props)
+      .map((n) => n.props as PanelElement);
+    const desiredMode = options?.referenceCopyMode;
+    if (nextProps.materialType === "reference" && desiredMode) {
+      if (desiredMode === "deep" && nextProps.refLayerId) {
+        nextProps.refCopyMode = "deep";
+        nextProps.refSnapshot = buildDeepReferenceSnapshot(all, nextProps.refLayerId);
+      } else {
+        nextProps.refCopyMode = "shallow";
+        nextProps.refSnapshot = undefined;
+      }
+    }
     store.update(
       (draft) => {
         draft.root.children = draft.root.children ?? [];
         draft.root.children.push({
           id: nextId,
-          type: "panel-element",
+          type: node.type,
           props: nextProps,
           children: [],
         });
       },
       { meta: { type: "node.duplicate", sourceId: id, id: nextId } }
     );
-  }, []);
+    },
+    []
+  );
 
   const addElementFromMaterial = useCallback((materialType: string, x: number, y: number) => {
     const current = store.getState();
@@ -224,6 +444,8 @@ export function usePanelElements() {
       id,
       layerId: currentLayerId,
       materialType,
+      refCopyMode: materialType === "reference" ? "shallow" : undefined,
+      chart: getDefaultChartConfig(materialType),
       x: Math.round(x - size.width / 2),
       y: Math.round(y - size.height / 2),
       width: size.width,
@@ -235,7 +457,7 @@ export function usePanelElements() {
         draft.root.children = draft.root.children ?? [];
         draft.root.children.push({
           id,
-          type: "panel-element",
+          type: materialType,
           props: next,
           children: [],
         });
@@ -243,6 +465,33 @@ export function usePanelElements() {
       { meta: { type: "node.add", materialType, id } }
     );
   }, []);
+
+  const setReferenceCopyMode = useCallback(
+    (id: string, mode: ReferenceCopyMode) => {
+      const current = store.getState();
+      const all = (current.root.children ?? [])
+        .filter((n) => isPanelElementNode(n) && n.props)
+        .map((n) => n.props as PanelElement);
+      const target = all.find((el) => el.id === id);
+      if (!target || target.materialType !== "reference") return;
+      store.updateById(
+        id,
+        (node) => {
+          const props = (node.props ?? {}) as PanelElement;
+          if (mode === "deep" && props.refLayerId) {
+            props.refCopyMode = "deep";
+            props.refSnapshot = buildDeepReferenceSnapshot(all, props.refLayerId);
+          } else {
+            props.refCopyMode = "shallow";
+            props.refSnapshot = undefined;
+          }
+          node.props = props;
+        },
+        { meta: { type: "node.ref-copy-mode", id, mode } }
+      );
+    },
+    []
+  );
 
   const setActiveLayer = useCallback((layerId: string) => {
     store.update(
@@ -322,14 +571,14 @@ export function usePanelElements() {
 
           if (mode === "move" && moveTarget) {
             draft.root.children = (draft.root.children ?? []).map((n) => {
-              if (n.type === "panel-element" && n.props?.layerId === layerId) {
+              if (isPanelElementNode(n) && n.props?.layerId === layerId) {
                 n.props = { ...(n.props ?? {}), layerId: moveTarget.id };
               }
               return n;
             });
           } else {
             draft.root.children = (draft.root.children ?? []).filter(
-              (n) => n.type !== "panel-element" || n.props?.layerId !== layerId
+              (n) => !isPanelElementNode(n) || n.props?.layerId !== layerId
             );
           }
 
@@ -375,7 +624,7 @@ export function usePanelElements() {
         const selectedSet = new Set(selected.map((l) => l.id));
 
         draft.root.children = (draft.root.children ?? []).map((n) => {
-          if (n.type === "panel-element" && selectedSet.has(n.props?.layerId)) {
+          if (isPanelElementNode(n) && selectedSet.has(n.props?.layerId)) {
             n.props = { ...(n.props ?? {}), layerId: nextId };
           }
           return n;
@@ -411,7 +660,13 @@ export function usePanelElements() {
       "node.group-resize": "批量缩放节点",
       "node.group-rotate": "批量旋转节点",
       "node.delete": "删除节点",
+      "node.batch-delete": "批量删除节点",
+      "node.z.front": "节点置顶",
+      "node.z.back": "节点置底",
+      "node.z.up": "节点上移一层",
+      "node.z.down": "节点下移一层",
       "node.duplicate": "复制节点",
+      "node.ref-copy-mode": "设置引用拷贝模式",
       "node.add": "添加节点",
       "layer.activate": "切换图层",
       "layer.add": "新增图层",
@@ -420,6 +675,7 @@ export function usePanelElements() {
       "layer.delete": "删除图层",
       "layer.toggle-merge": "勾选合并图层",
       "layer.merge": "合并图层",
+      "panel.import": "导入面板",
     };
     return entries.map((entry, index) => {
       const type = entry.meta?.type as string | undefined;
@@ -432,14 +688,43 @@ export function usePanelElements() {
     });
   }, [state]);
 
+  const exportPanelData = useCallback(() => {
+    const current = store.getState();
+    return JSON.parse(JSON.stringify(current)) as State;
+  }, []);
+
+  const importPanelData = useCallback((nextState: State) => {
+    if (!nextState || typeof nextState !== "object") return false;
+    if (!nextState.root || typeof nextState.root !== "object") return false;
+    if (!nextState.root.id || !nextState.root.type) return false;
+    if (!Array.isArray(nextState.root.children)) nextState.root.children = [];
+    nextState.variables = nextState.variables ?? {};
+    if (!Array.isArray(nextState.variables.layers)) {
+      nextState.variables.layers = [DEFAULT_LAYER];
+    }
+    if (typeof nextState.variables.activeLayerId !== "string") {
+      nextState.variables.activeLayerId =
+        (nextState.variables.layers[0] as PanelLayer | undefined)?.id ?? DEFAULT_LAYER_ID;
+    }
+    store.replaceState(nextState, { type: "panel.import" });
+    return true;
+  }, []);
+
   return {
+    allElements,
     elements,
     byId,
     layers,
     activeLayerId,
     updateElement,
     deleteElement,
+    deleteElements,
+    bringElementsToFront,
+    sendElementsToBack,
+    bringElementsForward,
+    sendElementsBackward,
     duplicateElement,
+    setReferenceCopyMode,
     addElementFromMaterial,
     setActiveLayer,
     addLayer,
@@ -454,6 +739,8 @@ export function usePanelElements() {
     canRedo,
     historyCursor,
     history,
+    exportPanelData,
+    importPanelData,
   };
 }
 

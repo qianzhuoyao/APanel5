@@ -1,0 +1,181 @@
+import type { EChartsOption } from "echarts";
+import type { PanelElement } from "../types";
+
+export const CHART_TYPES = new Set([
+  "bar",
+  "line",
+  "pie",
+  "area",
+  "scatter",
+  "radar",
+  "gauge",
+  "funnel",
+]);
+
+type ChartType =
+  | "bar"
+  | "line"
+  | "pie"
+  | "area"
+  | "scatter"
+  | "radar"
+  | "gauge"
+  | "funnel";
+
+function deepMerge<T extends Record<string, any>>(base: T, patch?: Record<string, unknown>): T {
+  if (!patch) return base;
+  const next: Record<string, any> = { ...base };
+  for (const [key, value] of Object.entries(patch)) {
+    if (
+      value &&
+      typeof value === "object" &&
+      !Array.isArray(value) &&
+      next[key] &&
+      typeof next[key] === "object" &&
+      !Array.isArray(next[key])
+    ) {
+      next[key] = deepMerge(next[key], value as Record<string, unknown>);
+    } else {
+      next[key] = value;
+    }
+  }
+  return next as T;
+}
+
+export function buildChartOption(element: PanelElement): EChartsOption {
+  const chartType = (element.materialType ?? "") as ChartType;
+  const labels = element.chart?.labels?.length ? element.chart.labels : ["A", "B", "C", "D"];
+  const values = element.chart?.values?.length ? element.chart.values : [12, 18, 9, 24];
+  const color = element.chart?.color || "#3b82f6";
+  const title = element.chart?.title || element.id;
+
+  if (chartType === "pie") {
+    const inner = element.chart?.pieInnerRadius ?? 30;
+    const outer = element.chart?.pieOuterRadius ?? 65;
+    const baseOption: EChartsOption = {
+      animation: false,
+      title: { text: title, left: "center", top: 6, textStyle: { fontSize: 12 } },
+      color: [color],
+      tooltip: { trigger: "item" },
+      series: [
+        {
+          type: "pie",
+          radius: [`${inner}%`, `${outer}%`],
+          center: ["50%", "58%"],
+          label: { fontSize: 10 },
+          data: labels.map((name, i) => ({ name, value: values[i] ?? 0 })),
+        },
+      ],
+    };
+    return deepMerge(baseOption as Record<string, any>, element.chart?.option) as EChartsOption;
+  }
+
+  if (chartType === "gauge") {
+    const gaugeValue = values[0] ?? 0;
+    const baseOption: EChartsOption = {
+      animation: false,
+      title: { text: title, left: "center", top: 6, textStyle: { fontSize: 12 } },
+      series: [
+        {
+          type: "gauge",
+          min: 0,
+          max: 100,
+          progress: { show: true, width: 10 },
+          axisLine: { lineStyle: { width: 10 } },
+          detail: { valueAnimation: false, formatter: "{value}%" },
+          data: [{ value: gaugeValue, name: title }],
+          itemStyle: { color },
+        },
+      ],
+    };
+    return deepMerge(baseOption as Record<string, any>, element.chart?.option) as EChartsOption;
+  }
+
+  if (chartType === "radar") {
+    const indicator = labels.map((name) => ({ name, max: 100 }));
+    const baseOption: EChartsOption = {
+      animation: false,
+      title: { text: title, left: "center", top: 6, textStyle: { fontSize: 12 } },
+      tooltip: {},
+      radar: { indicator, radius: "60%", center: ["50%", "58%"] },
+      series: [
+        {
+          type: "radar",
+          data: [{ value: values, name: title }],
+          areaStyle: { opacity: 0.25 },
+          lineStyle: { color },
+          itemStyle: { color },
+        },
+      ],
+    };
+    return deepMerge(baseOption as Record<string, any>, element.chart?.option) as EChartsOption;
+  }
+
+  if (chartType === "funnel") {
+    const baseOption: EChartsOption = {
+      animation: false,
+      title: { text: title, left: "center", top: 6, textStyle: { fontSize: 12 } },
+      tooltip: { trigger: "item" },
+      series: [
+        {
+          type: "funnel",
+          top: 28,
+          left: "10%",
+          width: "80%",
+          height: "65%",
+          sort: "descending",
+          data: labels.map((name, i) => ({ name, value: values[i] ?? 0 })),
+          label: { fontSize: 10 },
+          itemStyle: { color },
+        },
+      ],
+    };
+    return deepMerge(baseOption as Record<string, any>, element.chart?.option) as EChartsOption;
+  }
+
+  if (chartType === "scatter") {
+    const baseOption: EChartsOption = {
+      animation: false,
+      title: { text: title, left: 8, top: 6, textStyle: { fontSize: 12 } },
+      grid: { left: 28, right: 10, top: 30, bottom: 20 },
+      xAxis: { type: "value", axisLabel: { fontSize: 10 } },
+      yAxis: { type: "value", axisLabel: { fontSize: 10 } },
+      tooltip: { trigger: "item" },
+      series: [
+        {
+          type: "scatter",
+          data: values.map((v, i) => [i + 1, v]),
+          itemStyle: { color },
+          symbolSize: 10,
+        },
+      ],
+    };
+    return deepMerge(baseOption as Record<string, any>, element.chart?.option) as EChartsOption;
+  }
+
+  const seriesType = chartType === "area" ? "line" : chartType;
+  const baseOption: EChartsOption = {
+    animation: false,
+    title: { text: title, left: 8, top: 6, textStyle: { fontSize: 12 } },
+    grid: { left: 28, right: 10, top: 30, bottom: 20 },
+    xAxis: { type: "category", data: labels, axisLabel: { fontSize: 10 } },
+    yAxis: { type: "value", axisLabel: { fontSize: 10 } },
+    tooltip: { trigger: "axis" },
+    series: [
+      {
+        type: seriesType,
+        data: values,
+        smooth:
+          chartType === "line" || chartType === "area"
+            ? (element.chart?.smooth ?? true)
+            : undefined,
+        barWidth: chartType === "bar" ? (element.chart?.barWidth ?? 24) : undefined,
+        areaStyle: chartType === "area" ? { opacity: 0.25 } : undefined,
+        itemStyle: { color },
+        lineStyle: { color },
+      },
+    ],
+  };
+  return deepMerge(baseOption as Record<string, any>, element.chart?.option) as EChartsOption;
+}
+

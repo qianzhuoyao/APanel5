@@ -1,4 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import type { State } from "../../../rx-store/src/types";
+import type { PanelElement } from "./types";
 
 import { usePanelElements } from "./hooks/usePanelElements";
 import { PanelCanvas } from "./components/PanelCanvas";
@@ -6,7 +8,9 @@ import { PanelRulers } from "./components/PanelRulers";
 import { ElementsLayer } from "./components/ElementsLayer";
 import { SelectLayer } from "./components/SelectLayer";
 import { MoveableLayer } from "./components/MoveableLayer";
+import { buildChartOption, CHART_TYPES } from "./utils/chartOptionBuilder";
 import { MaterialSidebar } from "./components/MaterialSidebar";
+import { PanelConfigSidebar } from "./components/PanelConfigSidebar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -129,6 +133,52 @@ function IconHistory() {
   );
 }
 
+function IconBringFront() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M7 17h10M12 17V7" />
+      <path d="m8.5 9 3.5-3.5L15.5 9" />
+    </svg>
+  );
+}
+
+function IconSendBack() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M7 7h10M12 17V7" />
+      <path d="m15.5 15-3.5 3.5L8.5 15" />
+    </svg>
+  );
+}
+
+function IconForward() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M12 18V6" />
+      <path d="m8.5 9 3.5-3.5L15.5 9" />
+    </svg>
+  );
+}
+
+function IconBackward() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M12 6v12" />
+      <path d="m15.5 15-3.5 3.5L8.5 15" />
+    </svg>
+  );
+}
+
+function IconLayers() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="m12 4 8 4-8 4-8-4 8-4Z" />
+      <path d="m4 12 8 4 8-4" />
+      <path d="m4 16 8 4 8-4" />
+    </svg>
+  );
+}
+
 function getSelectedTargetsFromIds(
   container: HTMLElement | null,
   ids: string[],
@@ -178,12 +228,19 @@ export type ReactViewPanelProps = {
 export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelProps) {
   const {
     elements,
+    allElements,
     byId,
     layers,
     activeLayerId,
     updateElement,
     deleteElement,
+    deleteElements,
+    bringElementsToFront,
+    sendElementsToBack,
+    bringElementsForward,
+    sendElementsBackward,
     duplicateElement,
+    setReferenceCopyMode,
     addElementFromMaterial,
     setActiveLayer,
     addLayer,
@@ -198,6 +255,8 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
     canRedo,
     historyCursor,
     history,
+    exportPanelData,
+    importPanelData,
   } = usePanelElements();
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -219,6 +278,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
   }>({ active: false, moved: false, startX: 0, startY: 0 });
   const [copiedNodeId, setCopiedNodeId] = useState<string | null>(null);
   const [isDark, setIsDark] = useState(false);
+  const importInputRef = useRef<HTMLInputElement | null>(null);
   const [editingLayerId, setEditingLayerId] = useState<string | null>(null);
   const [editingLayerName, setEditingLayerName] = useState("");
   const [confirmDeleteLayerId, setConfirmDeleteLayerId] = useState<string | null>(null);
@@ -294,15 +354,179 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
   const activeLayer = layers.find((l) => l.id === activeLayerId) ?? null;
   const deletingLayer = layers.find((l) => l.id === confirmDeleteLayerId) ?? null;
   const deleteTargetCandidates = layers.filter((l) => l.id !== confirmDeleteLayerId);
+  const selectedElement = selectedIds.length === 1 ? byId.get(selectedIds[0]) ?? null : null;
 
   const isRightLikePointer = (e: React.PointerEvent<HTMLElement>) =>
     e.button === 2 || (e.button === 0 && e.ctrlKey);
+  const hasSelection = selectedIds.length > 0;
+
+  const handleExport = useCallback(() => {
+    const data = exportPanelData();
+    const blob = new Blob([JSON.stringify(data, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `panel-export-${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [exportPanelData]);
+
+  const handleImportFile = useCallback(
+    async (file: File) => {
+      const text = await file.text();
+      const parsed = JSON.parse(text) as State;
+      const ok = importPanelData(parsed);
+      if (!ok) {
+        window.alert("导入失败：文件格式不正确");
+      } else {
+        setSelectedIds([]);
+      }
+    },
+    [importPanelData]
+  );
+
+  const handlePreviewLayer = useCallback(() => {
+    const targetLayer = layers.find((l) => l.id === activeLayerId);
+    const layerElements = allElements.filter((el) => el.layerId === activeLayerId);
+    const serializeStyle = (el: PanelElement, offsetX: number, offsetY: number) => {
+      const s = el.style ?? {};
+      return [
+        `left:${el.x - offsetX}px`,
+        `top:${el.y - offsetY}px`,
+        `width:${el.width}px`,
+        `height:${el.height}px`,
+        `position:absolute`,
+        `transform:rotate(${el.rotate ?? 0}deg)`,
+        s.backgroundColor ? `background-color:${s.backgroundColor}` : "",
+        s.backgroundImage ? `background-image:${s.backgroundImage}` : "",
+        s.backgroundSize ? `background-size:${s.backgroundSize}` : "",
+        s.backgroundPosition ? `background-position:${s.backgroundPosition}` : "",
+        s.borderWidth !== undefined ? `border-width:${s.borderWidth}px` : "",
+        s.borderStyle ? `border-style:${s.borderStyle}` : "",
+        s.borderColor ? `border-color:${s.borderColor}` : "",
+        s.borderRadius !== undefined ? `border-radius:${s.borderRadius}px` : "",
+        "box-sizing:border-box",
+        "overflow:hidden",
+      ]
+        .filter(Boolean)
+        .join(";");
+    };
+    const getAABB = (el: PanelElement) => {
+      const rad = ((el.rotate ?? 0) * Math.PI) / 180;
+      const absCos = Math.abs(Math.cos(rad));
+      const absSin = Math.abs(Math.sin(rad));
+      const bw = el.width * absCos + el.height * absSin;
+      const bh = el.width * absSin + el.height * absCos;
+      const cx = el.x + el.width / 2;
+      const cy = el.y + el.height / 2;
+      return {
+        left: cx - bw / 2,
+        top: cy - bh / 2,
+        right: cx + bw / 2,
+        bottom: cy + bh / 2,
+      };
+    };
+    const boxes = layerElements.map(getAABB);
+    const minX = boxes.length ? Math.min(...boxes.map((b) => b.left)) : 0;
+    const minY = boxes.length ? Math.min(...boxes.map((b) => b.top)) : 0;
+    const maxX = boxes.length ? Math.max(...boxes.map((b) => b.right)) : 1;
+    const maxY = boxes.length ? Math.max(...boxes.map((b) => b.bottom)) : 1;
+    const sceneWidth = Math.max(1, maxX - minX);
+    const sceneHeight = Math.max(1, maxY - minY);
+    const previewNodes = layerElements.map((el) => ({
+      id: el.id,
+      styleText: serializeStyle(el, minX, minY),
+      title: el.chart?.title || el.materialType || el.id,
+      isChart: CHART_TYPES.has(el.materialType ?? ""),
+      option: CHART_TYPES.has(el.materialType ?? "")
+        ? buildChartOption(el)
+        : null,
+    }));
+    const payload = JSON.stringify(previewNodes).replace(/<\//g, "<\\/");
+    const html = `<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8"/>
+    <title>Preview</title>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+  </head>
+  <body style="margin:0;background:#fff;overflow:hidden;">
+    <div id="preview-root" style="position:absolute;left:0;top:0;width:${sceneWidth}px;height:${sceneHeight}px;transform-origin:left top;">
+      ${previewNodes
+        .map(
+          (n) => `<div id="node-${n.id}" style="${n.styleText}">
+            ${
+              n.isChart
+                ? `<div style="width:100%;height:100%"></div>`
+                : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:12px;color:#64748b;">${n.title}</div>`
+            }
+          </div>`
+        )
+        .join("")}
+    </div>
+    <script id="preview-data" type="application/json">${payload}</script>
+    <script>
+      (function () {
+        var scene = document.getElementById("preview-root");
+        function fitScene() {
+          if (!scene) return;
+          var vw = window.innerWidth || 1;
+          var vh = window.innerHeight || 1;
+          var sw = ${sceneWidth} || 1;
+          var sh = ${sceneHeight} || 1;
+          var scale = Math.min(vw / sw, vh / sh);
+          var ox = (vw - sw * scale) / 2;
+          var oy = (vh - sh * scale) / 2;
+          scene.style.transform = "translate(" + ox + "px," + oy + "px) scale(" + scale + ")";
+        }
+        fitScene();
+        window.addEventListener("resize", fitScene);
+        var raw = document.getElementById("preview-data");
+        if (!raw) return;
+        var nodes = [];
+        try { nodes = JSON.parse(raw.textContent || "[]"); } catch (e) { return; }
+        nodes.forEach(function (n) {
+          if (!n.isChart) return;
+          var host = document.querySelector("#node-" + n.id + " > div");
+          if (!host || !window.echarts) return;
+          var chart = window.echarts.init(host);
+          chart.setOption(n.option || {}, true);
+          chart.resize();
+          window.addEventListener("resize", function () { chart.resize(); });
+        });
+      })();
+    </script>
+  </body>
+</html>`;
+    const win = window.open("", "_blank");
+    if (!win) return;
+    win.document.write(html);
+    win.document.close();
+    win.document.title = `预览 - ${targetLayer?.name ?? "图层"}`;
+  }, [activeLayerId, allElements, layers]);
 
   return (
     <div className={["h-full w-full bg-background text-foreground", className ?? ""].join(" ")}>
       <ResizablePanelGroup direction="horizontal" className="h-full w-full">
         <ResizablePanel defaultSize={15} minSize={15}>
-          <MaterialSidebar />
+          <MaterialSidebar
+            layers={layers}
+            allElements={allElements}
+            selectedIds={selectedIds}
+            onSelectNode={(nodeId, layerId) => {
+              if (activeLayerId !== layerId) setActiveLayer(layerId);
+              setSelectedIds([nodeId]);
+            }}
+            onCopyNode={(nodeId, mode) => {
+              duplicateElement(nodeId, { referenceCopyMode: mode });
+            }}
+            onDeleteNode={(nodeId) => {
+              deleteElement(nodeId);
+              setSelectedIds((prev) => prev.filter((id) => id !== nodeId));
+            }}
+          />
         </ResizablePanel>
         <ResizableHandle withHandle />
         <ResizablePanel defaultSize={65} minSize={10}>
@@ -322,6 +546,42 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                 <strong className="text-xs font-semibold">Panel</strong>
                 <div className="flex-1" />
                 <TooltipProvider delayDuration={150}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        onClick={handleExport}
+                        className="rounded border border-border px-2 py-1 text-xs hover:bg-accent"
+                      >
+                        导出
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent className="z-[10000]">导出全部面板数据</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        onClick={() => importInputRef.current?.click()}
+                        className="rounded border border-border px-2 py-1 text-xs hover:bg-accent"
+                      >
+                        导入
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent className="z-[10000]">导入已导出的 JSON 文件</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        onClick={handlePreviewLayer}
+                        className="rounded border border-border px-2 py-1 text-xs hover:bg-accent"
+                      >
+                        预览
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent className="z-[10000]">新标签页预览当前图层</TooltipContent>
+                  </Tooltip>
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <button
@@ -350,6 +610,41 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                     </TooltipTrigger>
                     <TooltipContent className="z-[10000]">重做（Cmd/Ctrl + Shift + Z）</TooltipContent>
                   </Tooltip>
+                  <DropdownMenu>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <DropdownMenuTrigger asChild>
+                          <button
+                            type="button"
+                            disabled={!hasSelection}
+                            className="rounded border border-border p-1 hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40"
+                            aria-label="节点层级操作"
+                          >
+                            <IconLayers />
+                          </button>
+                        </DropdownMenuTrigger>
+                      </TooltipTrigger>
+                      <TooltipContent className="z-[10000]">节点层级操作</TooltipContent>
+                    </Tooltip>
+                    <DropdownMenuContent align="start" sideOffset={6} className="z-[10000] w-44">
+                      <DropdownMenuItem onClick={() => bringElementsForward(selectedIds)}>
+                        <span className="mr-2 inline-flex"><IconForward /></span>
+                        上移一层
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => sendElementsBackward(selectedIds)}>
+                        <span className="mr-2 inline-flex"><IconBackward /></span>
+                        下移一层
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => bringElementsToFront(selectedIds)}>
+                        <span className="mr-2 inline-flex"><IconBringFront /></span>
+                        置顶
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => sendElementsToBack(selectedIds)}>
+                        <span className="mr-2 inline-flex"><IconSendBack /></span>
+                        置底
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                   <DropdownMenu open={historyOpen} onOpenChange={setHistoryOpen}>
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -487,6 +782,22 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                   </Tooltip>
                 </TooltipProvider>
               </div>
+              <input
+                ref={importInputRef}
+                type="file"
+                accept="application/json"
+                className="hidden"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  e.currentTarget.value = "";
+                  if (!file) return;
+                  try {
+                    await handleImportFile(file);
+                  } catch {
+                    window.alert("导入失败：JSON 解析错误");
+                  }
+                }}
+              />
 
               {/* Stage */}
               <div className="relative min-h-0 flex-1">
@@ -565,6 +876,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                   >
                     <ElementsLayer
                       elements={elements}
+                      allElements={allElements}
                       selectedIds={selectedIds}
                       onSelectIds={setSelectedIds}
                     />
@@ -612,14 +924,25 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() => {
-                            deleteElement(contextMenuNodeId);
-                            setSelectedIds((prev) =>
-                              prev.filter((sid) => sid !== contextMenuNodeId)
-                            );
+                            const shouldDeleteBatch =
+                              !!contextMenuNodeId &&
+                              selectedIds.includes(contextMenuNodeId) &&
+                              selectedIds.length > 1;
+                            if (shouldDeleteBatch) {
+                              deleteElements(selectedIds);
+                              setSelectedIds([]);
+                            } else {
+                              deleteElement(contextMenuNodeId);
+                              setSelectedIds((prev) =>
+                                prev.filter((sid) => sid !== contextMenuNodeId)
+                              );
+                            }
                             setContextMenuNodeId(null);
                           }}
                         >
-                          删除节点
+                          {contextMenuNodeId && selectedIds.includes(contextMenuNodeId) && selectedIds.length > 1
+                            ? `删除选中节点（${selectedIds.length}）`
+                            : "删除节点"}
                         </DropdownMenuItem>
                       </>
                     ) : (
@@ -978,13 +1301,12 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
         </ResizablePanel>
         <ResizableHandle withHandle />
         <ResizablePanel defaultSize={20} minSize={20}>
-          {/* Right config sidebar (placeholder) */}
-          <aside className="h-full border-l border-border bg-background px-3 py-3 text-foreground">
-            <div className="mb-2 text-xs font-semibold">配置</div>
-            <div className="text-xs leading-6 text-muted-foreground">
-              这里先留空。后续可放属性编辑、图层树、样式配置等。
-            </div>
-          </aside>
+          <PanelConfigSidebar
+            selectedElement={selectedElement}
+            layers={layers}
+            updateElement={updateElement}
+            setReferenceCopyMode={setReferenceCopyMode}
+          />
         </ResizablePanel>
       </ResizablePanelGroup>
     </div>

@@ -24,6 +24,7 @@
     "react": "^19",
     "immer": "^11.0.1",
     "infinite-viewer": "^0.29.1",
+    "echarts": "^6.0.0",
     "uuid": "^13.0.0"
   },
   "devDependencies": {
