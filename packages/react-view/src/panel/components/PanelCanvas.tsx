@@ -11,6 +11,7 @@ export type PanelCanvasProps = {
   className?: string;
   canvasRef?: React.Ref<HTMLDivElement>;
   onCanvasMouseDownCapture?: React.MouseEventHandler<HTMLDivElement>;
+  onDropMaterial?: (payload: { materialId: string; x: number; y: number }) => void;
 };
 
 export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
@@ -24,6 +25,7 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
       className,
       canvasRef,
       onCanvasMouseDownCapture,
+      onDropMaterial,
     },
     scrollRef
   ) => {
@@ -285,6 +287,30 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
             style={style}
             className=""
             onMouseDownCapture={onCanvasMouseDownCapture}
+            onDragOver={(e) => {
+              if (e.dataTransfer.types.includes("application/x-arron-material")) {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = "copy";
+              }
+            }}
+            onDrop={(e) => {
+              const raw = e.dataTransfer.getData("application/x-arron-material");
+              if (!raw) return;
+              e.preventDefault();
+              try {
+                const material = JSON.parse(raw) as { id?: string };
+                if (!material?.id) return;
+                const rect = e.currentTarget.getBoundingClientRect();
+                const viewportX = e.clientX - rect.left;
+                const viewportY = e.clientY - rect.top;
+                const currentZoom = Math.max(0.0001, zoomRef.current);
+                const x = (lastScrollRef.current.left + viewportX) / currentZoom;
+                const y = (lastScrollRef.current.top + viewportY) / currentZoom;
+                onDropMaterial?.({ materialId: material.id, x, y });
+              } catch {
+                // ignore invalid payload
+              }
+            }}
           >
             {children}
           </div>

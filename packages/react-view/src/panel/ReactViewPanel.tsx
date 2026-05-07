@@ -12,11 +12,90 @@ import {
   ResizablePanel,
   ResizablePanelGroup,
   Switch,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@arron/ui";
+
+function IconPlus() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M12 5v14M5 12h14" />
+    </svg>
+  );
+}
+
+function IconMerge() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M7 7h4a4 4 0 0 1 4 4v6" />
+      <path d="m12 14 3 3 3-3" />
+      <path d="M7 17h2" />
+    </svg>
+  );
+}
+
+function IconLock({ locked }: { locked: boolean }) {
+  return locked ? (
+    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
+      <rect x="4" y="11" width="16" height="9" rx="2" />
+      <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+    </svg>
+  ) : (
+    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
+      <rect x="4" y="11" width="16" height="9" rx="2" />
+      <path d="M16 11V8a4 4 0 0 0-7-2.5" />
+    </svg>
+  );
+}
+
+function IconEdit() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M12 20h9" />
+      <path d="m16.5 3.5 4 4L8 20l-5 1 1-5Z" />
+    </svg>
+  );
+}
+
+function IconTrash() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M3 6h18" />
+      <path d="M8 6V4h8v2" />
+      <path d="M19 6l-1 14H6L5 6" />
+    </svg>
+  );
+}
+
+function IconCheck() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="m5 12 5 5L20 7" />
+    </svg>
+  );
+}
+
+function IconClose() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M6 6l12 12M18 6 6 18" />
+    </svg>
+  );
+}
+
+function IconChevron({ expanded }: { expanded: boolean }) {
+  return (
+    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
+      {expanded ? <path d="m6 14 6-6 6 6" /> : <path d="m6 10 6 6 6-6" />}
+    </svg>
+  );
+}
 
 function getSelectedTargetsFromIds(
   container: HTMLElement | null,
@@ -39,7 +118,21 @@ export type ReactViewPanelProps = {
 };
 
 export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelProps) {
-  const { elements, byId, updateElement } = usePanelElements();
+  const {
+    elements,
+    byId,
+    layers,
+    activeLayerId,
+    updateElement,
+    addElementFromMaterial,
+    setActiveLayer,
+    addLayer,
+    renameLayer,
+    toggleLayerLock,
+    deleteLayer,
+    toggleLayerMergeSelected,
+    mergeSelectedLayers,
+  } = usePanelElements();
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLDivElement | null>(null);
@@ -49,6 +142,16 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [selectedTargets, setSelectedTargets] = useState<HTMLElement[]>([]);
   const [isDark, setIsDark] = useState(false);
+  const [editingLayerId, setEditingLayerId] = useState<string | null>(null);
+  const [editingLayerName, setEditingLayerName] = useState("");
+  const [confirmDeleteLayerId, setConfirmDeleteLayerId] = useState<string | null>(null);
+  const [deleteMode, setDeleteMode] = useState<"remove" | "move">("move");
+  const [deleteTargetLayerId, setDeleteTargetLayerId] = useState<string>("");
+  const [isMergingLayers, setIsMergingLayers] = useState(false);
+  const [mergeLayerName, setMergeLayerName] = useState("");
+  const [isLayerPanelExpanded, setIsLayerPanelExpanded] = useState(false);
+  const mergeSelectedCount = layers.filter((l) => l.mergeSelected).length;
+  const canMergeLayers = mergeSelectedCount >= 2;
 
   useEffect(() => {
     const root = document.documentElement;
@@ -64,6 +167,17 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
     setSelectedTargets([]);
   }, []);
 
+  useEffect(() => {
+    clearSelection();
+  }, [activeLayerId, clearSelection]);
+
+  useEffect(() => {
+    if (isMergingLayers && !canMergeLayers) {
+      setIsMergingLayers(false);
+      setMergeLayerName("");
+    }
+  }, [canMergeLayers, isMergingLayers]);
+
   // 平移/滚动由 InfiniteViewer 驱动，通过 PanelCanvas 回传
 
   const handleSelectedIdsChange = useCallback((ids: string[]) => {
@@ -78,6 +192,9 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
   }, [selectedIds]);
 
   const canvasContainer = canvasRef.current;
+  const activeLayer = layers.find((l) => l.id === activeLayerId) ?? null;
+  const deletingLayer = layers.find((l) => l.id === confirmDeleteLayerId) ?? null;
+  const deleteTargetCandidates = layers.filter((l) => l.id !== confirmDeleteLayerId);
 
   return (
     <div className={["h-full w-full bg-background text-foreground", className ?? ""].join(" ")}>
@@ -89,7 +206,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
         <ResizablePanel defaultSize={60} minSize={10}>
           {/* Center workspace */}
           <div className="min-w-0 h-full">
-            <div className="relative h-full overflow-hidden border border-border bg-background">
+            <div className="relative flex h-full flex-col overflow-hidden border border-border bg-background">
               {/* Top bar */}
               <div className="flex items-center gap-2 border-b border-border bg-background/90 px-3 py-2 text-foreground">
                 <strong className="text-xs font-semibold">Panel</strong>
@@ -184,7 +301,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
               </div>
 
               {/* Stage */}
-              <div className="relative h-[calc(100%-41px)]">
+              <div className="relative min-h-0 flex-1">
                 <PanelRulers
                   zoom={zoom}
                   scrollLeft={scroll.left}
@@ -213,6 +330,9 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                     }
                     clearSelection();
                   }}
+                  onDropMaterial={({ materialId, x, y }) => {
+                    addElementFromMaterial(materialId, x, y);
+                  }}
                   className="h-full w-full"
                 >
                   <ElementsLayer
@@ -236,6 +356,333 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                     updateElement={updateElement}
                   />
                 </PanelCanvas>
+              </div>
+
+              <div className="border-t border-border bg-background/95 px-2 py-1.5">
+                <TooltipProvider delayDuration={120}>
+                  <Tabs value={activeLayerId} onValueChange={setActiveLayer}>
+                    <div className="mb-1 flex items-center gap-2">
+                      <div className="text-[11px] font-semibold text-muted-foreground">图层</div>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            onClick={() => setIsLayerPanelExpanded((v) => !v)}
+                            aria-label={isLayerPanelExpanded ? "收起图层输入区" : "展开图层输入区"}
+                            className="rounded border border-border p-1 hover:bg-accent"
+                          >
+                            <IconChevron expanded={isLayerPanelExpanded} />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          {isLayerPanelExpanded ? "收起输入区" : "展开输入区"}
+                        </TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            onClick={addLayer}
+                            aria-label="新增图层"
+                            className="rounded border border-border p-1 hover:bg-accent"
+                          >
+                            <IconPlus />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent>新增图层</TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            onClick={() => {
+                            if (!canMergeLayers) return;
+                              setIsMergingLayers(true);
+                            }}
+                            aria-label="合并图层"
+                          disabled={!canMergeLayers}
+                          className="rounded border border-border p-1 hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40"
+                          >
+                            <IconMerge />
+                          </button>
+                        </TooltipTrigger>
+                      <TooltipContent>
+                        {canMergeLayers ? "合并图层" : "至少勾选 2 个图层后可合并"}
+                      </TooltipContent>
+                      </Tooltip>
+                    </div>
+
+                    <TabsList className="h-auto w-full justify-start gap-1 overflow-x-auto bg-muted/40 p-1">
+                      {layers.map((layer) => (
+                        <TabsTrigger
+                          key={layer.id}
+                          value={layer.id}
+                          className="flex min-w-[120px] items-center gap-1 px-2 py-1 text-xs"
+                        >
+                          <span className="truncate">{layer.name}</span>
+                          {layer.locked ? <IconLock locked /> : null}
+                        </TabsTrigger>
+                      ))}
+                    </TabsList>
+
+                    <TabsContent value={activeLayerId} className="mt-2 space-y-2">
+                      {activeLayer ? (
+                        <div className="flex items-center gap-2 rounded border border-border bg-card px-2 py-1.5 text-xs">
+                          <span className="truncate font-medium">{activeLayer.name}</span>
+                          <div className="flex-1" />
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button
+                                type="button"
+                                onClick={() => toggleLayerLock(activeLayer.id)}
+                                disabled={!activeLayer.editable}
+                                aria-label={activeLayer.locked ? "解锁图层" : "锁定图层"}
+                                className="rounded border border-border p-1 disabled:opacity-40"
+                              >
+                                <IconLock locked={activeLayer.locked} />
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              {activeLayer.locked ? "解锁图层" : "锁定图层"}
+                            </TooltipContent>
+                          </Tooltip>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingLayerId(activeLayer.id);
+                                  setEditingLayerName(activeLayer.name);
+                                }}
+                                disabled={!activeLayer.editable}
+                                aria-label="重命名图层"
+                                className="rounded border border-border p-1 disabled:opacity-40"
+                              >
+                                <IconEdit />
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent>重命名图层</TooltipContent>
+                          </Tooltip>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setConfirmDeleteLayerId(activeLayer.id);
+                                  const firstTarget = layers.find((l) => l.id !== activeLayer.id);
+                                  setDeleteTargetLayerId(firstTarget?.id ?? "");
+                                  setDeleteMode("move");
+                                }}
+                                disabled={!activeLayer.editable}
+                                aria-label={
+                                  activeLayer.editable ? "删除图层" : "默认图层不可删除"
+                                }
+                                className="rounded border border-border p-1 disabled:opacity-40"
+                              >
+                                <IconTrash />
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              {activeLayer.editable ? "删除图层" : "默认图层不可删除"}
+                            </TooltipContent>
+                          </Tooltip>
+                        </div>
+                      ) : null}
+
+                      {isLayerPanelExpanded ? (
+                        <div className="rounded border border-border bg-card px-2 py-1.5 text-xs">
+                          <div className="mb-1 text-muted-foreground">选择合并图层</div>
+                          <div className="flex flex-wrap gap-2">
+                            {layers.map((layer) => (
+                              <label key={layer.id} className="flex items-center gap-1.5">
+                                <input
+                                  type="checkbox"
+                                  checked={Boolean(layer.mergeSelected)}
+                                  onChange={() => toggleLayerMergeSelected(layer.id)}
+                                  className="h-3.5 w-3.5"
+                                />
+                                <span className="max-w-[120px] truncate">{layer.name}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
+                    </TabsContent>
+                  </Tabs>
+
+                {isLayerPanelExpanded && editingLayerId ? (
+                  <div className="mt-2 flex items-center gap-2 rounded border border-border bg-card px-2 py-1.5 text-xs">
+                    <span className="text-muted-foreground">编辑图层名</span>
+                    <input
+                      value={editingLayerName}
+                      onChange={(e) => setEditingLayerName(e.target.value)}
+                      className="h-7 min-w-0 flex-1 rounded border border-border bg-background px-2 outline-none"
+                      placeholder="请输入图层名称"
+                      autoFocus
+                    />
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            renameLayer(editingLayerId, editingLayerName);
+                            setEditingLayerId(null);
+                            setEditingLayerName("");
+                          }}
+                          aria-label="保存图层名称"
+                          className="rounded border border-border p-1 hover:bg-accent"
+                        >
+                          <IconCheck />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>保存图层名称</TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingLayerId(null);
+                            setEditingLayerName("");
+                          }}
+                          aria-label="取消编辑图层名称"
+                          className="rounded border border-border p-1 hover:bg-accent"
+                        >
+                          <IconClose />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>取消编辑</TooltipContent>
+                    </Tooltip>
+                  </div>
+                ) : null}
+                {isLayerPanelExpanded && isMergingLayers ? (
+                  <div className="mt-2 flex items-center gap-2 rounded border border-border bg-card px-2 py-1.5 text-xs">
+                    <span className="text-muted-foreground">合并后图层名</span>
+                    <input
+                      value={mergeLayerName}
+                      onChange={(e) => setMergeLayerName(e.target.value)}
+                      className="h-7 min-w-0 flex-1 rounded border border-border bg-background px-2 outline-none"
+                      placeholder="可空，留空将随机命名"
+                      autoFocus
+                    />
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!canMergeLayers) return;
+                            mergeSelectedLayers(mergeLayerName || undefined);
+                            setIsMergingLayers(false);
+                            setMergeLayerName("");
+                          }}
+                          aria-label="确认合并图层"
+                          disabled={!canMergeLayers}
+                          className="rounded border border-border p-1 hover:bg-accent"
+                        >
+                          <IconCheck />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>确认合并</TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsMergingLayers(false);
+                            setMergeLayerName("");
+                          }}
+                          aria-label="取消合并图层"
+                          className="rounded border border-border p-1 hover:bg-accent"
+                        >
+                          <IconClose />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>取消合并</TooltipContent>
+                    </Tooltip>
+                  </div>
+                ) : null}
+                {isLayerPanelExpanded && deletingLayer ? (
+                  <div className="mt-2 rounded border border-border bg-card px-2 py-2 text-xs">
+                    <div className="mb-2">
+                      确认删除图层：
+                      <span className="font-semibold">{deletingLayer.name}</span>
+                    </div>
+                    <div className="mb-2 flex items-center gap-3">
+                      <label className="flex items-center gap-1.5">
+                        <input
+                          type="radio"
+                          checked={deleteMode === "move"}
+                          onChange={() => setDeleteMode("move")}
+                        />
+                        节点迁移到
+                      </label>
+                      <select
+                        value={deleteTargetLayerId}
+                        onChange={(e) => setDeleteTargetLayerId(e.target.value)}
+                        disabled={deleteMode !== "move" || deleteTargetCandidates.length === 0}
+                        className="h-7 rounded border border-border bg-background px-2 disabled:opacity-50"
+                      >
+                        {deleteTargetCandidates.map((l) => (
+                          <option key={l.id} value={l.id}>
+                            {l.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="mb-2">
+                      <label className="flex items-center gap-1.5">
+                        <input
+                          type="radio"
+                          checked={deleteMode === "remove"}
+                          onChange={() => setDeleteMode("remove")}
+                        />
+                        同时删除该图层下所有节点
+                      </label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              deleteLayer(deletingLayer.id, {
+                                mode: deleteMode,
+                                targetLayerId: deleteTargetLayerId || undefined,
+                              });
+                              setConfirmDeleteLayerId(null);
+                              setDeleteMode("move");
+                              setDeleteTargetLayerId("");
+                            }}
+                            aria-label="确认删除图层"
+                            className="rounded border border-border p-1 hover:bg-accent"
+                          >
+                            <IconCheck />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent>确认删除</TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setConfirmDeleteLayerId(null);
+                              setDeleteMode("move");
+                              setDeleteTargetLayerId("");
+                            }}
+                            aria-label="取消删除图层"
+                            className="rounded border border-border p-1 hover:bg-accent"
+                          >
+                            <IconClose />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent>取消删除</TooltipContent>
+                      </Tooltip>
+                    </div>
+                  </div>
+                ) : null}
+                </TooltipProvider>
               </div>
             </div>
           </div>

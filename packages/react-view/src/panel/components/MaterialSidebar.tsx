@@ -164,9 +164,10 @@ const defaultCategories: MaterialCategory[] = [
 
 export type MaterialSidebarProps = {
   className?: string;
+  onDragMaterialStart?: (material: MaterialItem) => void;
 };
 
-export function MaterialSidebar({ className }: MaterialSidebarProps) {
+export function MaterialSidebar({ className, onDragMaterialStart }: MaterialSidebarProps) {
   const categories = useMemo(() => defaultCategories, []);
   const [activeCategoryId, setActiveCategoryId] =
     useState<MaterialCategoryId>("charts");
@@ -242,7 +243,16 @@ export function MaterialSidebar({ className }: MaterialSidebarProps) {
               <button
                 key={isSearching ? `${it.id}-${(it as any).categoryTitle}` : it.id}
                 type="button"
+                draggable
                 className="cursor-pointer rounded-xl border border-border bg-card px-2 py-2 text-left text-xs text-card-foreground hover:bg-accent/60"
+                onDragStart={(e) => {
+                  e.dataTransfer.setData(
+                    "application/x-arron-material",
+                    JSON.stringify({ id: it.id, title: it.title })
+                  );
+                  e.dataTransfer.effectAllowed = "copy";
+                  onDragMaterialStart?.(it);
+                }}
                 onClick={() => {
                   // placeholder: later we can emit "add material" events
                 }}
