@@ -194,6 +194,9 @@ export function MaterialSidebar({ className, onDragMaterialStart }: MaterialSide
     return result;
   }, [categories, isSearching, normalizedKeyword]);
 
+  const themedScrollbarClass =
+    "scrollbar-thin [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-muted/40 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border/80 [&::-webkit-scrollbar-thumb]:hover:bg-border";
+
   return (
     <aside
       className={[
@@ -213,7 +216,7 @@ export function MaterialSidebar({ className, onDragMaterialStart }: MaterialSide
 
       {/* 2 columns: category + type */}
       <div className="grid min-h-0 grid-cols-[110px_1fr]">
-        <div className="overflow-auto border-r border-border">
+        <div className={`overflow-auto border-r border-border ${themedScrollbarClass}`}>
           {categories.map((c) => {
             const active = c.id === activeCategoryId;
             return (
@@ -234,7 +237,7 @@ export function MaterialSidebar({ className, onDragMaterialStart }: MaterialSide
           })}
         </div>
 
-        <div className="overflow-auto">
+        <div className={`overflow-auto ${themedScrollbarClass}`}>
           <div className="px-2.5 py-2.5 text-xs font-semibold">
             {isSearching ? `搜索结果（${matchedItems.length}）` : activeCategory.title}
           </div>

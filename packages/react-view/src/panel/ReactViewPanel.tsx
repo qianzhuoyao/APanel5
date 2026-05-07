@@ -301,11 +301,11 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
   return (
     <div className={["h-full w-full bg-background text-foreground", className ?? ""].join(" ")}>
       <ResizablePanelGroup direction="horizontal" className="h-full w-full">
-        <ResizablePanel defaultSize={20} minSize={20}>
+        <ResizablePanel defaultSize={15} minSize={15}>
           <MaterialSidebar />
         </ResizablePanel>
         <ResizableHandle withHandle />
-        <ResizablePanel defaultSize={60} minSize={10}>
+        <ResizablePanel defaultSize={65} minSize={10}>
           {/* Center workspace */}
           <div
             className="min-w-0 h-full"
