@@ -13,11 +13,16 @@ import {
   ResizablePanelGroup,
 } from "@arron/ui";
 
-function getSelectedTargetsFromIds(container: HTMLElement | null, ids: string[]) {
+function getSelectedTargetsFromIds(
+  container: HTMLElement | null,
+  ids: string[],
+) {
   if (!container) return [];
   const targets: HTMLElement[] = [];
   for (const id of ids) {
-    const el = container.querySelector<HTMLElement>(`[data-element-id="${id}"]`);
+    const el = container.querySelector<HTMLElement>(
+      `[data-element-id="${id}"]`,
+    );
     if (el) targets.push(el);
   }
   return targets;
@@ -63,7 +68,9 @@ export function ReactViewPanel({ initialZoom = 1 }: ReactViewPanelProps) {
 
   // 同步点击选中 -> targets
   useEffect(() => {
-    setSelectedTargets(getSelectedTargetsFromIds(canvasRef.current, selectedIds));
+    setSelectedTargets(
+      getSelectedTargetsFromIds(canvasRef.current, selectedIds),
+    );
   }, [selectedIds]);
 
   const canvasContainer = canvasRef.current;
@@ -78,86 +85,88 @@ export function ReactViewPanel({ initialZoom = 1 }: ReactViewPanelProps) {
         <ResizablePanel defaultSize={60} minSize={10}>
           {/* Center workspace */}
           <div className="min-w-0 h-full">
-        <div className="relative h-full overflow-hidden border border-black/10 bg-slate-900">
-          {/* Top bar */}
-          <div className="flex items-center gap-2 border-b border-white/10 bg-slate-900/90 px-3 py-2 text-white/85">
-            <strong className="text-xs font-semibold">Panel</strong>
-            <div className="flex-1" />
-            <button
-              type="button"
-              onClick={() =>
-                setZoom((z) => Math.max(0.25, Number((z - 0.1).toFixed(2))))
-              }
-              className="rounded-md border border-white/10 bg-white/5 px-2 py-1 text-xs hover:bg-white/10"
-            >
-              -
-            </button>
-            <span className="w-16 text-center text-xs">
-              {(zoom * 100).toFixed(0)}%
-            </span>
-            <button
-              type="button"
-              onClick={() => setZoom((z) => Math.min(4, Number((z + 0.1).toFixed(2))))}
-              className="rounded-md border border-white/10 bg-white/5 px-2 py-1 text-xs hover:bg-white/10"
-            >
-              +
-            </button>
-          </div>
+            <div className="relative h-full overflow-hidden border border-black/10 bg-slate-900">
+              {/* Top bar */}
+              <div className="flex items-center gap-2 border-b border-white/10 bg-slate-900/90 px-3 py-2 text-white/85">
+                <strong className="text-xs font-semibold">Panel</strong>
+                <div className="flex-1" />
+                <button
+                  type="button"
+                  onClick={() =>
+                    setZoom((z) => Math.max(0.25, Number((z - 0.1).toFixed(2))))
+                  }
+                  className="rounded-md border border-white/10 bg-white/5 px-2 py-1 text-xs hover:bg-white/10"
+                >
+                  -
+                </button>
+                <span className="w-16 text-center text-xs">
+                  {(zoom * 100).toFixed(0)}%
+                </span>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setZoom((z) => Math.min(4, Number((z + 0.1).toFixed(2))))
+                  }
+                  className="rounded-md border border-white/10 bg-white/5 px-2 py-1 text-xs hover:bg-white/10"
+                >
+                  +
+                </button>
+              </div>
 
-          {/* Stage */}
-          <div className="relative h-[calc(100%-41px)]">
-            <PanelRulers
-              zoom={zoom}
-              scrollLeft={scroll.left}
-              scrollTop={scroll.top}
-              onZoomChange={setZoom}
-            />
+              {/* Stage */}
+              <div className="relative h-[calc(100%-41px)]">
+                <PanelRulers
+                  zoom={zoom}
+                  scrollLeft={scroll.left}
+                  scrollTop={scroll.top}
+                  onZoomChange={setZoom}
+                />
 
-            <PanelCanvas
-              ref={scrollRef}
-              zoom={zoom}
-              onZoomChange={setZoom}
-              canvasRef={canvasRef}
-              onCanvasMouseDownCapture={(e) => {
-                const target = e.target as HTMLElement | null;
-                if (!target) return;
-                // 点击在节点或 Moveable 控制框上时，不清空选择
-                if (
-                  target.closest(".rv-selectable") ||
-                  target.closest(".moveable-control-box") ||
-                  target.closest(".moveable-line") ||
-                  target.closest(".moveable-control") ||
-                  target.closest(".moveable-direction")
-                ) {
-                  return;
-                }
-                clearSelection();
-              }}
-              className="h-full w-full"
-            >
-              <ElementsLayer
-                elements={elements}
-                selectedIds={selectedIds}
-                onSelectIds={setSelectedIds}
-              />
+                <PanelCanvas
+                  ref={scrollRef}
+                  zoom={zoom}
+                  onZoomChange={setZoom}
+                  canvasRef={canvasRef}
+                  onCanvasMouseDownCapture={(e) => {
+                    const target = e.target as HTMLElement | null;
+                    if (!target) return;
+                    // 点击在节点或 Moveable 控制框上时，不清空选择
+                    if (
+                      target.closest(".rv-selectable") ||
+                      target.closest(".moveable-control-box") ||
+                      target.closest(".moveable-line") ||
+                      target.closest(".moveable-control") ||
+                      target.closest(".moveable-direction")
+                    ) {
+                      return;
+                    }
+                    clearSelection();
+                  }}
+                  className="h-full w-full"
+                >
+                  <ElementsLayer
+                    elements={elements}
+                    selectedIds={selectedIds}
+                    onSelectIds={setSelectedIds}
+                  />
 
-              <SelectLayer
-                container={canvasContainer}
-                dragContainer={scrollRef.current}
-                rootContainer={scrollRef.current}
-                selectedIds={selectedIds}
-                onSelectedIdsChange={handleSelectedIdsChange}
-              />
+                  <SelectLayer
+                    container={canvasContainer}
+                    dragContainer={scrollRef.current}
+                    rootContainer={scrollRef.current}
+                    selectedIds={selectedIds}
+                    onSelectedIdsChange={handleSelectedIdsChange}
+                  />
 
-              <MoveableLayer
-                zoom={zoom}
-                selectedTargets={selectedTargets}
-                elementsById={byId}
-                updateElement={updateElement}
-              />
-            </PanelCanvas>
-          </div>
-        </div>
+                  <MoveableLayer
+                    zoom={zoom}
+                    selectedTargets={selectedTargets}
+                    elementsById={byId}
+                    updateElement={updateElement}
+                  />
+                </PanelCanvas>
+              </div>
+            </div>
           </div>
         </ResizablePanel>
         <ResizableHandle withHandle />
@@ -174,4 +183,3 @@ export function ReactViewPanel({ initialZoom = 1 }: ReactViewPanelProps) {
     </div>
   );
 }
-

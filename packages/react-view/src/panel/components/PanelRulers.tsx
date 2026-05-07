@@ -14,7 +14,7 @@ export function PanelRulers({
   scrollLeft,
   scrollTop,
   onZoomChange: _onZoomChange,
-  size = 24,
+  size = 32,
 }: PanelRulersProps) {
   const commonProps = useMemo(
     () => ({
@@ -33,12 +33,12 @@ export function PanelRulers({
 
   return (
     <div
-      className="pointer-events-none absolute inset-0"
+      className="pointer-events-none absolute inset-0 z-20"
       style={{ ["--rv-ruler-size" as any]: `${size}px` }}
     >
       {/* Top */}
       <div
-        className="pointer-events-auto absolute left-[var(--rv-ruler-size)] right-[var(--rv-ruler-size)] top-0 h-[var(--rv-ruler-size)]"
+        className="pointer-events-auto absolute left-[var(--rv-ruler-size)] right-[var(--rv-ruler-size)] top-0 h-[var(--rv-ruler-size)] overflow-visible"
       >
         <Ruler
           type="horizontal"
@@ -49,7 +49,7 @@ export function PanelRulers({
 
       {/* Left */}
       <div
-        className="pointer-events-auto absolute left-0 top-[var(--rv-ruler-size)] bottom-[var(--rv-ruler-size)] w-[var(--rv-ruler-size)]"
+        className="pointer-events-auto absolute left-0 top-[var(--rv-ruler-size)] bottom-[var(--rv-ruler-size)] w-[var(--rv-ruler-size)] overflow-visible"
       >
         <Ruler
           type="vertical"
@@ -60,7 +60,7 @@ export function PanelRulers({
 
       {/* Bottom */}
       <div
-        className="pointer-events-auto absolute left-[var(--rv-ruler-size)] right-[var(--rv-ruler-size)] bottom-0 h-[var(--rv-ruler-size)]"
+        className="pointer-events-auto absolute left-[var(--rv-ruler-size)] right-[var(--rv-ruler-size)] bottom-0 h-[var(--rv-ruler-size)] overflow-visible"
       >
         <Ruler
           type="horizontal"
@@ -71,7 +71,7 @@ export function PanelRulers({
 
       {/* Right */}
       <div
-        className="pointer-events-auto absolute right-0 top-[var(--rv-ruler-size)] bottom-[var(--rv-ruler-size)] w-[var(--rv-ruler-size)]"
+        className="pointer-events-auto absolute right-0 top-[var(--rv-ruler-size)] bottom-[var(--rv-ruler-size)] w-[var(--rv-ruler-size)] overflow-visible"
       >
         <Ruler
           type="vertical"
