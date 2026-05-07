@@ -7,7 +7,12 @@ export type MoveableLayerProps = {
   zoom: number;
   selectedTargets: HTMLElement[];
   elementsById: Map<string, PanelElement>;
-  updateElement: (id: string, patch: Partial<PanelElement>) => void;
+  updateElement: (
+    id: string,
+    patch: Partial<PanelElement>,
+    options?: { batchId?: string; meta?: Record<string, unknown> }
+  ) => void;
+  refreshToken?: number;
 };
 
 export function MoveableLayer({
@@ -15,6 +20,7 @@ export function MoveableLayer({
   selectedTargets,
   elementsById,
   updateElement,
+  refreshToken,
 }: MoveableLayerProps) {
   const moveableRef = useRef<any>(null);
   const targets = useMemo(
@@ -38,6 +44,11 @@ export function MoveableLayer({
     if (!targets) return;
     updateRectNextFrame();
   }, [targets, updateRectNextFrame]);
+
+  useEffect(() => {
+    if (!targets) return;
+    updateRectNextFrame();
+  }, [refreshToken, targets, updateRectNextFrame]);
 
   if (!targets) return null;
 
@@ -167,6 +178,7 @@ export function MoveableLayer({
         updateRectNextFrame();
       }}
       onDragGroupEnd={(e: any) => {
+        const batchId = `move-group-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
         e.events.forEach((ev: any) => {
           const id = ev.target ? getId(ev.target) : null;
           if (!id) return;
@@ -176,7 +188,11 @@ export function MoveableLayer({
           const sy = ev.datas.__startY ?? data.y;
           const tx = ev.lastEvent?.beforeTranslate?.[0] ?? 0;
           const ty = ev.lastEvent?.beforeTranslate?.[1] ?? 0;
-          updateElement(id, { x: sx + tx, y: sy + ty });
+          updateElement(
+            id,
+            { x: sx + tx, y: sy + ty },
+            { batchId, meta: { type: "node.group-drag" } }
+          );
         });
         updateRectNextFrame();
       }}
@@ -195,6 +211,7 @@ export function MoveableLayer({
         updateRectNextFrame();
       }}
       onResizeGroupEnd={(e: any) => {
+        const batchId = `resize-group-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
         e.events.forEach((ev: any) => {
           const id = ev.target ? getId(ev.target) : null;
           if (!id) return;
@@ -206,7 +223,11 @@ export function MoveableLayer({
           const ty = ev.lastEvent?.drag?.beforeTranslate?.[1] ?? 0;
           const sx = ev.datas.__startX ?? data.x;
           const sy = ev.datas.__startY ?? data.y;
-          updateElement(id, { width, height, x: sx + tx, y: sy + ty });
+          updateElement(
+            id,
+            { width, height, x: sx + tx, y: sy + ty },
+            { batchId, meta: { type: "node.group-resize" } }
+          );
         });
         updateRectNextFrame();
       }}
@@ -220,13 +241,14 @@ export function MoveableLayer({
         updateRectNextFrame();
       }}
       onRotateGroupEnd={(e: any) => {
+        const batchId = `rotate-group-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
         e.events.forEach((ev: any) => {
           const id = ev.target ? getId(ev.target) : null;
           if (!id) return;
           const data = elementsById.get(id);
           if (!data) return;
           const rotate = ev.lastEvent?.beforeRotate ?? data.rotate ?? 0;
-          updateElement(id, { rotate });
+          updateElement(id, { rotate }, { batchId, meta: { type: "node.group-rotate" } });
         });
         updateRectNextFrame();
       }}

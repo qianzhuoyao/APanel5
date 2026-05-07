@@ -11,6 +11,13 @@ export type PanelLayer = {
   mergeSelected?: boolean;
 };
 
+export type PanelHistoryItem = {
+  index: number;
+  timestamp: number;
+  label: string;
+  active: boolean;
+};
+
 const DEFAULT_LAYER_ID = "layer-1";
 const DEFAULT_LAYER: PanelLayer = {
   id: DEFAULT_LAYER_ID,
@@ -52,6 +59,9 @@ export function usePanelElements() {
   const layers = (state.variables?.layers as PanelLayer[] | undefined) ?? [DEFAULT_LAYER];
   const activeLayerId =
     (state.variables?.activeLayerId as string | undefined) ?? DEFAULT_LAYER_ID;
+  const canUndo = store.getHistoryCursorIndex() > 0;
+  const canRedo = store.getHistoryCursorIndex() < store.getHistoryEntries().length - 1;
+  const historyCursor = store.getHistoryCursorIndex();
 
   useEffect(() => {
     const vars = store.getState().variables ?? {};
@@ -130,25 +140,42 @@ export function usePanelElements() {
     return map;
   }, [allElements]);
 
-  const updateElement = useCallback((id: string, patch: Partial<PanelElement>) => {
-    const current = store.getState();
-    const list = (current.variables?.layers as PanelLayer[] | undefined) ?? [DEFAULT_LAYER];
-    const target = current.root.children?.find((n) => n.id === id);
-    const layerId = target?.props?.layerId as string | undefined;
-    const layer = list.find((l) => l.id === layerId);
-    if (layer?.locked) return;
+  const updateElement = useCallback(
+    (
+      id: string,
+      patch: Partial<PanelElement>,
+      options?: { batchId?: string; meta?: Record<string, unknown> }
+    ) => {
+      const current = store.getState();
+      const list = (current.variables?.layers as PanelLayer[] | undefined) ?? [DEFAULT_LAYER];
+      const target = current.root.children?.find((n) => n.id === id);
+      const layerId = target?.props?.layerId as string | undefined;
+      const layer = list.find((l) => l.id === layerId);
+      if (layer?.locked) return;
 
-    store.updateById(id, (node) => {
-      node.props = { ...(node.props ?? {}), ...patch };
-    });
-  }, []);
+      store.updateById(
+        id,
+        (node) => {
+          node.props = { ...(node.props ?? {}), ...patch };
+        },
+        {
+          batchId: options?.batchId,
+          meta: { type: "node.update", id, ...(options?.meta ?? {}) },
+        }
+      );
+    },
+    []
+  );
 
   const deleteElement = useCallback((id: string) => {
-    store.update((draft) => {
-      draft.root.children = (draft.root.children ?? []).filter(
-        (n) => !(n.type === "panel-element" && n.id === id)
-      );
-    });
+    store.update(
+      (draft) => {
+        draft.root.children = (draft.root.children ?? []).filter(
+          (n) => !(n.type === "panel-element" && n.id === id)
+        );
+      },
+      { meta: { type: "node.delete", id } }
+    );
   }, []);
 
   const duplicateElement = useCallback((id: string) => {
@@ -168,15 +195,18 @@ export function usePanelElements() {
       x: Math.round((node.props.x ?? 0) + 20),
       y: Math.round((node.props.y ?? 0) + 20),
     };
-    store.update((draft) => {
-      draft.root.children = draft.root.children ?? [];
-      draft.root.children.push({
-        id: nextId,
-        type: "panel-element",
-        props: nextProps,
-        children: [],
-      });
-    });
+    store.update(
+      (draft) => {
+        draft.root.children = draft.root.children ?? [];
+        draft.root.children.push({
+          id: nextId,
+          type: "panel-element",
+          props: nextProps,
+          children: [],
+        });
+      },
+      { meta: { type: "node.duplicate", sourceId: id, id: nextId } }
+    );
   }, []);
 
   const addElementFromMaterial = useCallback((materialType: string, x: number, y: number) => {
@@ -200,57 +230,72 @@ export function usePanelElements() {
       height: size.height,
       rotate: 0,
     };
-    store.update((draft) => {
-      draft.root.children = draft.root.children ?? [];
-      draft.root.children.push({
-        id,
-        type: "panel-element",
-        props: next,
-        children: [],
-      });
-    });
+    store.update(
+      (draft) => {
+        draft.root.children = draft.root.children ?? [];
+        draft.root.children.push({
+          id,
+          type: "panel-element",
+          props: next,
+          children: [],
+        });
+      },
+      { meta: { type: "node.add", materialType, id } }
+    );
   }, []);
 
   const setActiveLayer = useCallback((layerId: string) => {
-    store.update((draft) => {
-      draft.variables = draft.variables ?? {};
-      draft.variables.activeLayerId = layerId;
-    });
+    store.update(
+      (draft) => {
+        draft.variables = draft.variables ?? {};
+        draft.variables.activeLayerId = layerId;
+      },
+      { meta: { type: "layer.activate", layerId } }
+    );
   }, []);
 
   const addLayer = useCallback(() => {
-    store.update((draft) => {
-      draft.variables = draft.variables ?? {};
-      const list = (draft.variables.layers as PanelLayer[] | undefined) ?? [DEFAULT_LAYER];
-      const nextId = randomId("layer");
-      const next: PanelLayer = {
-        id: nextId,
-        name: `图层${list.length + 1}`,
-        locked: false,
-        editable: true,
-        mergeSelected: false,
-      };
-      draft.variables.layers = [...list, next];
-      draft.variables.activeLayerId = nextId;
-    });
+    store.update(
+      (draft) => {
+        draft.variables = draft.variables ?? {};
+        const list = (draft.variables.layers as PanelLayer[] | undefined) ?? [DEFAULT_LAYER];
+        const nextId = randomId("layer");
+        const next: PanelLayer = {
+          id: nextId,
+          name: `图层${list.length + 1}`,
+          locked: false,
+          editable: true,
+          mergeSelected: false,
+        };
+        draft.variables.layers = [...list, next];
+        draft.variables.activeLayerId = nextId;
+      },
+      { meta: { type: "layer.add" } }
+    );
   }, []);
 
   const renameLayer = useCallback((layerId: string, name: string) => {
-    store.update((draft) => {
-      const list = (draft.variables?.layers as PanelLayer[] | undefined) ?? [];
-      const target = list.find((l) => l.id === layerId);
-      if (!target || !target.editable) return;
-      target.name = name.trim() || target.name;
-    });
+    store.update(
+      (draft) => {
+        const list = (draft.variables?.layers as PanelLayer[] | undefined) ?? [];
+        const target = list.find((l) => l.id === layerId);
+        if (!target || !target.editable) return;
+        target.name = name.trim() || target.name;
+      },
+      { meta: { type: "layer.rename", layerId } }
+    );
   }, []);
 
   const toggleLayerLock = useCallback((layerId: string) => {
-    store.update((draft) => {
-      const list = (draft.variables?.layers as PanelLayer[] | undefined) ?? [];
-      const target = list.find((l) => l.id === layerId);
-      if (!target || !target.editable) return;
-      target.locked = !target.locked;
-    });
+    store.update(
+      (draft) => {
+        const list = (draft.variables?.layers as PanelLayer[] | undefined) ?? [];
+        const target = list.find((l) => l.id === layerId);
+        if (!target || !target.editable) return;
+        target.locked = !target.locked;
+      },
+      { meta: { type: "layer.toggle-lock", layerId } }
+    );
   }, []);
 
   const deleteLayer = useCallback(
@@ -261,83 +306,131 @@ export function usePanelElements() {
       const mode = options?.mode ?? "remove";
       const targetLayerId = options?.targetLayerId;
 
-      store.update((draft) => {
-        const list = (draft.variables?.layers as PanelLayer[] | undefined) ?? [];
-        const target = list.find((l) => l.id === layerId);
-        if (!target || !target.editable) return;
+      store.update(
+        (draft) => {
+          const list = (draft.variables?.layers as PanelLayer[] | undefined) ?? [];
+          const target = list.find((l) => l.id === layerId);
+          if (!target || !target.editable) return;
 
-        const remainingLayers = list.filter((l) => l.id !== layerId);
-        const moveTarget = remainingLayers.find((l) => l.id === targetLayerId);
+          const remainingLayers = list.filter((l) => l.id !== layerId);
+          const moveTarget = remainingLayers.find((l) => l.id === targetLayerId);
 
-        draft.variables!.layers = remainingLayers.map((l) => ({
-          ...l,
-          mergeSelected: false,
-        }));
+          draft.variables!.layers = remainingLayers.map((l) => ({
+            ...l,
+            mergeSelected: false,
+          }));
 
-        if (mode === "move" && moveTarget) {
-          draft.root.children = (draft.root.children ?? []).map((n) => {
-            if (n.type === "panel-element" && n.props?.layerId === layerId) {
-              n.props = { ...(n.props ?? {}), layerId: moveTarget.id };
-            }
-            return n;
-          });
-        } else {
-          draft.root.children = (draft.root.children ?? []).filter(
-            (n) => n.type !== "panel-element" || n.props?.layerId !== layerId
-          );
-        }
+          if (mode === "move" && moveTarget) {
+            draft.root.children = (draft.root.children ?? []).map((n) => {
+              if (n.type === "panel-element" && n.props?.layerId === layerId) {
+                n.props = { ...(n.props ?? {}), layerId: moveTarget.id };
+              }
+              return n;
+            });
+          } else {
+            draft.root.children = (draft.root.children ?? []).filter(
+              (n) => n.type !== "panel-element" || n.props?.layerId !== layerId
+            );
+          }
 
-        if (draft.variables!.activeLayerId === layerId) {
-          draft.variables!.activeLayerId =
-            moveTarget?.id ?? remainingLayers[0]?.id ?? DEFAULT_LAYER_ID;
-        }
-      });
+          if (draft.variables!.activeLayerId === layerId) {
+            draft.variables!.activeLayerId =
+              moveTarget?.id ?? remainingLayers[0]?.id ?? DEFAULT_LAYER_ID;
+          }
+        },
+        { meta: { type: "layer.delete", layerId, mode } }
+      );
     },
     []
   );
 
   const toggleLayerMergeSelected = useCallback((layerId: string) => {
-    store.update((draft) => {
-      const list = (draft.variables?.layers as PanelLayer[] | undefined) ?? [];
-      const target = list.find((l) => l.id === layerId);
-      if (!target) return;
-      target.mergeSelected = !target.mergeSelected;
-    });
+    store.update(
+      (draft) => {
+        const list = (draft.variables?.layers as PanelLayer[] | undefined) ?? [];
+        const target = list.find((l) => l.id === layerId);
+        if (!target) return;
+        target.mergeSelected = !target.mergeSelected;
+      },
+      { meta: { type: "layer.toggle-merge", layerId } }
+    );
   }, []);
 
   const mergeSelectedLayers = useCallback((name?: string) => {
-    store.update((draft) => {
-      draft.variables = draft.variables ?? {};
-      const list = ((draft.variables.layers as PanelLayer[] | undefined) ?? []).slice();
-      const selected = list.filter((l) => l.mergeSelected);
-      if (selected.length < 2) return;
+    store.update(
+      (draft) => {
+        draft.variables = draft.variables ?? {};
+        const list = ((draft.variables.layers as PanelLayer[] | undefined) ?? []).slice();
+        const selected = list.filter((l) => l.mergeSelected);
+        if (selected.length < 2) return;
 
-      const nextId = randomId("layer");
-      const nextLayer: PanelLayer = {
-        id: nextId,
-        name: name?.trim() || `图层-${Math.random().toString(36).slice(2, 6)}`,
-        locked: false,
-        editable: true,
-        mergeSelected: false,
-      };
-      const selectedSet = new Set(selected.map((l) => l.id));
+        const nextId = randomId("layer");
+        const nextLayer: PanelLayer = {
+          id: nextId,
+          name: name?.trim() || `图层-${Math.random().toString(36).slice(2, 6)}`,
+          locked: false,
+          editable: true,
+          mergeSelected: false,
+        };
+        const selectedSet = new Set(selected.map((l) => l.id));
 
-      draft.root.children = (draft.root.children ?? []).map((n) => {
-        if (n.type === "panel-element" && selectedSet.has(n.props?.layerId)) {
-          n.props = { ...(n.props ?? {}), layerId: nextId };
-        }
-        return n;
-      });
+        draft.root.children = (draft.root.children ?? []).map((n) => {
+          if (n.type === "panel-element" && selectedSet.has(n.props?.layerId)) {
+            n.props = { ...(n.props ?? {}), layerId: nextId };
+          }
+          return n;
+        });
 
-      draft.variables.layers = [
-        ...list
-          .filter((l) => !selectedSet.has(l.id))
-          .map((l) => ({ ...l, mergeSelected: false })),
-        nextLayer,
-      ];
-      draft.variables.activeLayerId = nextId;
-    });
+        draft.variables.layers = [
+          ...list
+            .filter((l) => !selectedSet.has(l.id))
+            .map((l) => ({ ...l, mergeSelected: false })),
+          nextLayer,
+        ];
+        draft.variables.activeLayerId = nextId;
+      },
+      { meta: { type: "layer.merge", name } }
+    );
   }, []);
+
+  const undo = useCallback(() => {
+    store.undo();
+  }, []);
+
+  const redo = useCallback(() => {
+    store.redo();
+  }, []);
+
+  const history = useMemo<PanelHistoryItem[]>(() => {
+    const entries = store.getHistoryEntries();
+    const cursor = store.getHistoryCursorIndex();
+    const labelByType: Record<string, string> = {
+      initial: "初始化",
+      "node.update": "更新节点",
+      "node.group-drag": "批量移动节点",
+      "node.group-resize": "批量缩放节点",
+      "node.group-rotate": "批量旋转节点",
+      "node.delete": "删除节点",
+      "node.duplicate": "复制节点",
+      "node.add": "添加节点",
+      "layer.activate": "切换图层",
+      "layer.add": "新增图层",
+      "layer.rename": "重命名图层",
+      "layer.toggle-lock": "切换图层锁定",
+      "layer.delete": "删除图层",
+      "layer.toggle-merge": "勾选合并图层",
+      "layer.merge": "合并图层",
+    };
+    return entries.map((entry, index) => {
+      const type = entry.meta?.type as string | undefined;
+      return {
+        index,
+        timestamp: entry.timestamp,
+        label: (type && labelByType[type]) || "编辑",
+        active: index === cursor,
+      };
+    });
+  }, [state]);
 
   return {
     elements,
@@ -355,6 +448,12 @@ export function usePanelElements() {
     deleteLayer,
     toggleLayerMergeSelected,
     mergeSelectedLayers,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
+    historyCursor,
+    history,
   };
 }
 

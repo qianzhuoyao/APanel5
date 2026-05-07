@@ -101,6 +101,34 @@ function IconChevron({ expanded }: { expanded: boolean }) {
   );
 }
 
+function IconUndo() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M9 14 4 9l5-5" />
+      <path d="M20 20a9 9 0 0 0-9-9H4" />
+    </svg>
+  );
+}
+
+function IconRedo() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="m15 14 5-5-5-5" />
+      <path d="M4 20a9 9 0 0 1 9-9h7" />
+    </svg>
+  );
+}
+
+function IconHistory() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M3 12a9 9 0 1 0 3-6.7" />
+      <path d="M3 4v4h4" />
+      <path d="M12 7v5l3 2" />
+    </svg>
+  );
+}
+
 function getSelectedTargetsFromIds(
   container: HTMLElement | null,
   ids: string[],
@@ -114,6 +142,32 @@ function getSelectedTargetsFromIds(
     if (el) targets.push(el);
   }
   return targets;
+}
+
+function shouldClearSelectionOnBlank(target: HTMLElement | null) {
+  if (!target) return false;
+  if (
+    target.closest(".rv-selectable") ||
+    target.closest(".moveable-control-box") ||
+    target.closest(".moveable-line") ||
+    target.closest(".moveable-control") ||
+    target.closest(".moveable-direction")
+  ) {
+    return false;
+  }
+  if (
+    target.closest("button") ||
+    target.closest("input") ||
+    target.closest("select") ||
+    target.closest("textarea") ||
+    target.closest("label") ||
+    target.closest("a") ||
+    target.closest("[role='menuitem']") ||
+    target.closest("[data-radix-popper-content-wrapper]")
+  ) {
+    return false;
+  }
+  return true;
 }
 
 export type ReactViewPanelProps = {
@@ -138,6 +192,12 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
     deleteLayer,
     toggleLayerMergeSelected,
     mergeSelectedLayers,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
+    historyCursor,
+    history,
   } = usePanelElements();
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -167,6 +227,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
   const [isMergingLayers, setIsMergingLayers] = useState(false);
   const [mergeLayerName, setMergeLayerName] = useState("");
   const [isLayerPanelExpanded, setIsLayerPanelExpanded] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const mergeSelectedCount = layers.filter((l) => l.mergeSelected).length;
   const canMergeLayers = mergeSelectedCount >= 2;
 
@@ -195,6 +256,22 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
     }
   }, [canMergeLayers, isMergingLayers]);
 
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      const cmdOrCtrl = e.metaKey || e.ctrlKey;
+      if (!cmdOrCtrl) return;
+      if (e.key.toLowerCase() !== "z") return;
+      e.preventDefault();
+      if (e.shiftKey) {
+        if (canRedo) redo();
+      } else if (canUndo) {
+        undo();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [canRedo, canUndo, redo, undo]);
+
   // 平移/滚动由 InfiniteViewer 驱动，通过 PanelCanvas 回传
 
   const handleSelectedIdsChange = useCallback((ids: string[]) => {
@@ -206,7 +283,12 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
     setSelectedTargets(
       getSelectedTargetsFromIds(canvasRef.current, selectedIds),
     );
-  }, [selectedIds]);
+  }, [selectedIds, elements, historyCursor]);
+
+  useEffect(() => {
+    const existing = new Set(elements.map((el) => el.id));
+    setSelectedIds((prev) => prev.filter((id) => existing.has(id)));
+  }, [elements]);
 
   const canvasContainer = canvasRef.current;
   const activeLayer = layers.find((l) => l.id === activeLayerId) ?? null;
@@ -225,13 +307,99 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
         <ResizableHandle withHandle />
         <ResizablePanel defaultSize={60} minSize={10}>
           {/* Center workspace */}
-          <div className="min-w-0 h-full">
+          <div
+            className="min-w-0 h-full"
+            onMouseDownCapture={(e) => {
+              if (e.button !== 0) return;
+              const target = e.target as HTMLElement | null;
+              if (!shouldClearSelectionOnBlank(target)) return;
+              clearSelection();
+            }}
+          >
             <div className="relative flex h-full flex-col overflow-hidden border border-border bg-background">
               {/* Top bar */}
-              <div className="flex items-center gap-2 border-b border-border bg-background/90 px-3 py-2 text-foreground">
+              <div className="relative z-20 flex items-center gap-2 border-b border-border bg-background/90 px-3 py-2 text-foreground">
                 <strong className="text-xs font-semibold">Panel</strong>
                 <div className="flex-1" />
                 <TooltipProvider delayDuration={150}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        onClick={undo}
+                        disabled={!canUndo}
+                        className="rounded border border-border p-1 hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40"
+                        aria-label="撤销"
+                      >
+                        <IconUndo />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent className="z-[10000]">撤销（Cmd/Ctrl + Z）</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        onClick={redo}
+                        disabled={!canRedo}
+                        className="rounded border border-border p-1 hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40"
+                        aria-label="重做"
+                      >
+                        <IconRedo />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent className="z-[10000]">重做（Cmd/Ctrl + Shift + Z）</TooltipContent>
+                  </Tooltip>
+                  <DropdownMenu open={historyOpen} onOpenChange={setHistoryOpen}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <DropdownMenuTrigger asChild>
+                          <button
+                            type="button"
+                            className="rounded border border-border p-1 hover:bg-accent"
+                            aria-label="查看操作历史"
+                          >
+                            <IconHistory />
+                          </button>
+                        </DropdownMenuTrigger>
+                      </TooltipTrigger>
+                      <TooltipContent className="z-[10000]">查看操作历史</TooltipContent>
+                    </Tooltip>
+                    <DropdownMenuContent
+                      align="end"
+                      sideOffset={6}
+                      className="z-[10000] w-72"
+                    >
+                      <div className="px-2 py-1 text-xs font-semibold text-muted-foreground">
+                        操作历史（最近 20 条）
+                      </div>
+                      <div className="max-h-64 overflow-auto px-1 pb-1">
+                        {history.length === 0 ? (
+                          <div className="px-2 py-1.5 text-xs text-muted-foreground">暂无历史</div>
+                        ) : (
+                          history
+                            .slice(-20)
+                            .reverse()
+                            .map((item) => (
+                              <div
+                                key={item.index}
+                                className={[
+                                  "rounded px-2 py-1 text-xs",
+                                  item.active
+                                    ? "bg-primary/15 text-foreground"
+                                    : "text-muted-foreground",
+                                ].join(" ")}
+                              >
+                                <div className="truncate">{item.label}</div>
+                                <div className="text-[10px] opacity-80">
+                                  {new Date(item.timestamp).toLocaleTimeString()}
+                                </div>
+                              </div>
+                            ))
+                        )}
+                      </div>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <div className="relative">
@@ -282,7 +450,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                         </div>
                       </div>
                     </TooltipTrigger>
-                    <TooltipContent>切换深色/浅色主题</TooltipContent>
+                    <TooltipContent className="z-[10000]">切换深色/浅色主题</TooltipContent>
                   </Tooltip>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -296,7 +464,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                         -
                       </button>
                     </TooltipTrigger>
-                    <TooltipContent>缩小画布</TooltipContent>
+                    <TooltipContent className="z-[10000]">缩小画布</TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
                 <span className="w-16 text-center text-xs">
@@ -315,7 +483,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                         +
                       </button>
                     </TooltipTrigger>
-                    <TooltipContent>放大画布</TooltipContent>
+                    <TooltipContent className="z-[10000]">放大画布</TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
               </div>
@@ -387,17 +555,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                     onCanvasMouseDownCapture={(e) => {
                       if (e.button !== 0) return;
                       const target = e.target as HTMLElement | null;
-                      if (!target) return;
-                      // 点击在节点或 Moveable 控制框上时，不清空选择
-                      if (
-                        target.closest(".rv-selectable") ||
-                        target.closest(".moveable-control-box") ||
-                        target.closest(".moveable-line") ||
-                        target.closest(".moveable-control") ||
-                        target.closest(".moveable-direction")
-                      ) {
-                        return;
-                      }
+                      if (!shouldClearSelectionOnBlank(target)) return;
                       clearSelection();
                     }}
                     onDropMaterial={({ materialId, x, y }) => {
@@ -424,6 +582,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                       selectedTargets={selectedTargets}
                       elementsById={byId}
                       updateElement={updateElement}
+                      refreshToken={historyCursor}
                     />
                   </PanelCanvas>
                 </div>
@@ -504,7 +663,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                             <IconChevron expanded={isLayerPanelExpanded} />
                           </button>
                         </TooltipTrigger>
-                        <TooltipContent>
+                        <TooltipContent className="z-[10000]">
                           {isLayerPanelExpanded ? "收起输入区" : "展开输入区"}
                         </TooltipContent>
                       </Tooltip>
@@ -519,7 +678,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                             <IconPlus />
                           </button>
                         </TooltipTrigger>
-                        <TooltipContent>新增图层</TooltipContent>
+                        <TooltipContent className="z-[10000]">新增图层</TooltipContent>
                       </Tooltip>
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -536,7 +695,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                             <IconMerge />
                           </button>
                         </TooltipTrigger>
-                      <TooltipContent>
+                      <TooltipContent className="z-[10000]">
                         {canMergeLayers ? "合并图层" : "至少勾选 2 个图层后可合并"}
                       </TooltipContent>
                       </Tooltip>
@@ -572,7 +731,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                                 <IconLock locked={activeLayer.locked} />
                               </button>
                             </TooltipTrigger>
-                            <TooltipContent>
+                            <TooltipContent className="z-[10000]">
                               {activeLayer.locked ? "解锁图层" : "锁定图层"}
                             </TooltipContent>
                           </Tooltip>
@@ -591,7 +750,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                                 <IconEdit />
                               </button>
                             </TooltipTrigger>
-                            <TooltipContent>重命名图层</TooltipContent>
+                            <TooltipContent className="z-[10000]">重命名图层</TooltipContent>
                           </Tooltip>
                           <Tooltip>
                             <TooltipTrigger asChild>
@@ -612,7 +771,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                                 <IconTrash />
                               </button>
                             </TooltipTrigger>
-                            <TooltipContent>
+                            <TooltipContent className="z-[10000]">
                               {activeLayer.editable ? "删除图层" : "默认图层不可删除"}
                             </TooltipContent>
                           </Tooltip>
@@ -665,7 +824,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                           <IconCheck />
                         </button>
                       </TooltipTrigger>
-                      <TooltipContent>保存图层名称</TooltipContent>
+                      <TooltipContent className="z-[10000]">保存图层名称</TooltipContent>
                     </Tooltip>
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -681,7 +840,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                           <IconClose />
                         </button>
                       </TooltipTrigger>
-                      <TooltipContent>取消编辑</TooltipContent>
+                      <TooltipContent className="z-[10000]">取消编辑</TooltipContent>
                     </Tooltip>
                   </div>
                 ) : null}
@@ -712,7 +871,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                           <IconCheck />
                         </button>
                       </TooltipTrigger>
-                      <TooltipContent>确认合并</TooltipContent>
+                      <TooltipContent className="z-[10000]">确认合并</TooltipContent>
                     </Tooltip>
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -728,7 +887,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                           <IconClose />
                         </button>
                       </TooltipTrigger>
-                      <TooltipContent>取消合并</TooltipContent>
+                      <TooltipContent className="z-[10000]">取消合并</TooltipContent>
                     </Tooltip>
                   </div>
                 ) : null}
@@ -790,7 +949,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                             <IconCheck />
                           </button>
                         </TooltipTrigger>
-                        <TooltipContent>确认删除</TooltipContent>
+                        <TooltipContent className="z-[10000]">确认删除</TooltipContent>
                       </Tooltip>
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -807,7 +966,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                             <IconClose />
                           </button>
                         </TooltipTrigger>
-                        <TooltipContent>取消删除</TooltipContent>
+                        <TooltipContent className="z-[10000]">取消删除</TooltipContent>
                       </Tooltip>
                     </div>
                   </div>
