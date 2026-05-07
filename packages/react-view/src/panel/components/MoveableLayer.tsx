@@ -37,7 +37,7 @@ export function MoveableLayer({
   useEffect(() => {
     if (!targets) return;
     updateRectNextFrame();
-  }, [targets, zoom, updateRectNextFrame]);
+  }, [targets, updateRectNextFrame]);
 
   if (!targets) return null;
 
@@ -46,8 +46,8 @@ export function MoveableLayer({
       ref={moveableRef}
       // Moveable 支持单个 HTMLElement 或 HTMLElement[]
       target={targets as unknown as HTMLElement[]}
-      // 父容器做了 transform: scale(zoom) 时，这里传入同样的 zoom 用于坐标换算
-      zoom={zoom}
+      // 让节点跟随画布缩放，但控制框保持近似固定像素大小
+      zoom={zoom > 0 ? 1 / zoom : 1}
       // 允许在控制框内部区域拖动（不必必须点到某个节点本体）
       dragArea
       draggable

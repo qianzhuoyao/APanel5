@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import InfiniteViewer from "react-infinite-viewer";
+import { TransformComponent, TransformWrapper } from "react-zoom-pan-pinch";
 
 export type PanelCanvasProps = {
   zoom: number;
@@ -28,8 +29,15 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
   ) => {
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const viewerRef = useRef<any>(null);
+  const transformRef = useRef<any>(null);
+  const syncingZoomRef = useRef(false);
+  const didAutoCenterRef = useRef(false);
   const [isPanning, setIsPanning] = useState(false);
   const lastScrollRef = useRef({ left: 0, top: 0 });
+  const zoomRef = useRef(zoom);
+  useEffect(() => {
+    zoomRef.current = zoom;
+  }, [zoom]);
   const panRef = useRef<{
     active: boolean;
     startClientX: number;
@@ -55,7 +63,20 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
 
   useEffect(() => clearWindowPanListeners, [clearWindowPanListeners]);
 
-  const setScrollRef = useCallback(
+  useEffect(() => {
+    const api = transformRef.current;
+    if (!api) return;
+    const current = api.state?.scale ?? 1;
+    if (Math.abs(current - zoom) < 0.0001) return;
+    syncingZoomRef.current = true;
+    // 位置始终锁定为 0，避免可操作层偏移出操作面板
+    api.setTransform(0, 0, zoom, 120, "easeOut");
+    requestAnimationFrame(() => {
+      syncingZoomRef.current = false;
+    });
+  }, [zoom]);
+
+  const syncViewportElement = useCallback(
     (el: HTMLDivElement | null) => {
       viewportRef.current = el;
       if (!scrollRef) return;
@@ -64,6 +85,50 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
     },
     [scrollRef]
   );
+
+  useEffect(() => {
+    const container = viewerRef.current?.getContainer?.() as HTMLDivElement | undefined;
+    syncViewportElement(container ?? null);
+  }, [syncViewportElement]);
+
+  useEffect(() => {
+    if (didAutoCenterRef.current) return;
+    const viewer = viewerRef.current as any;
+    const viewportEl = viewportRef.current;
+    if (!viewer || !viewportEl) return;
+
+    const id = requestAnimationFrame(() => {
+      const nodes = viewportEl.querySelectorAll<HTMLElement>(".rv-selectable");
+      if (!nodes.length) return;
+
+      let minX = Infinity;
+      let minY = Infinity;
+      let maxX = -Infinity;
+      let maxY = -Infinity;
+
+      nodes.forEach((node) => {
+        const left = node.offsetLeft;
+        const top = node.offsetTop;
+        const width = node.offsetWidth;
+        const height = node.offsetHeight;
+        minX = Math.min(minX, left);
+        minY = Math.min(minY, top);
+        maxX = Math.max(maxX, left + width);
+        maxY = Math.max(maxY, top + height);
+      });
+
+      if (!Number.isFinite(minX) || !Number.isFinite(minY)) return;
+      const boundsWidth = Math.max(1, maxX - minX);
+      const boundsHeight = Math.max(1, maxY - minY);
+
+      const targetLeft = minX + boundsWidth / 2 - viewportEl.clientWidth / 2;
+      const targetTop = minY + boundsHeight / 2 - viewportEl.clientHeight / 2;
+      viewer.scrollTo(Math.round(targetLeft), Math.round(targetTop));
+      didAutoCenterRef.current = true;
+    });
+
+    return () => cancelAnimationFrame(id);
+  }, [children]);
 
   const [viewport, setViewport] = useState({ width: 0, height: 0 });
 
@@ -90,25 +155,13 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
     return () => window.removeEventListener("resize", update);
   }, []);
 
-  const handleWheel = useCallback(
-    (e: React.WheelEvent<HTMLDivElement>) => {
-      if (!e.ctrlKey && !e.metaKey) return;
+  useEffect(() => {
+    const el = viewportRef.current;
+    if (!el) return;
+    const onContextMenu = (e: MouseEvent) => {
       e.preventDefault();
-
-      const delta = e.deltaY;
-      const step = delta > 0 ? -0.05 : 0.05;
-      const next = Math.max(0.25, Math.min(4, Number((zoom + step).toFixed(2))));
-      onZoomChange(next);
-    },
-    [onZoomChange, zoom]
-  );
-  const handleContextMenu = useCallback((e: React.MouseEvent) => {
-    // InfiniteViewer 右键拖拽时禁用默认菜单，避免手势被打断
-    e.preventDefault();
-  }, []);
-
-  const handleRightPanMouseDownCapture = useCallback(
-    (e: React.MouseEvent<HTMLDivElement>) => {
+    };
+    const onMouseDown = (e: MouseEvent) => {
       // 右键 或 mac 上 ctrl+左键
       const isRightLike = e.button === 2 || (e.button === 0 && e.ctrlKey);
       if (!isRightLike) return;
@@ -130,7 +183,6 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
         ev.preventDefault();
         const dx = ev.clientX - panRef.current.startClientX;
         const dy = ev.clientY - panRef.current.startClientY;
-        // 关键：用 InfiniteViewer 自己的 scrollTo 来移动
         viewer.scrollTo(panRef.current.startLeft - dx, panRef.current.startTop - dy);
       };
 
@@ -146,9 +198,15 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
       panHandlersRef.current.up = up;
       window.addEventListener("mousemove", move, true);
       window.addEventListener("mouseup", up, true);
-    },
-    [clearWindowPanListeners]
-  );
+    };
+
+    el.addEventListener("contextmenu", onContextMenu, true);
+    el.addEventListener("mousedown", onMouseDown, true);
+    return () => {
+      el.removeEventListener("contextmenu", onContextMenu, true);
+      el.removeEventListener("mousedown", onMouseDown, true);
+    };
+  }, [clearWindowPanListeners]);
 
   const resolvedContentSize = useMemo(() => {
     if (contentSize) return contentSize;
@@ -160,18 +218,19 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
     () => ({
       width: resolvedContentSize.width,
       height: resolvedContentSize.height,
-      transform: `scale(${zoom})`,
-      transformOrigin: "0 0",
+      minWidth: "100%",
+      minHeight: "100%",
       position: "relative",
     }),
-    [resolvedContentSize.height, resolvedContentSize.width, zoom]
+    [resolvedContentSize.height, resolvedContentSize.width]
   );
 
   return (
     <InfiniteViewer
       ref={viewerRef}
       className={[
-        "relative h-full w-full",
+        // 禁用原生滚动条外观（InfiniteViewer 自己的滚动条也会被下面的 props 关闭）
+        "relative h-full w-full overflow-hidden bg-white [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden bg-[linear-gradient(to_right,rgba(255,255,255,0.06)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.06)_1px,transparent_1px)] [background-size:20px_20px]",
         isPanning ? "cursor-grabbing select-none" : "",
         className ?? "",
       ].join(" ")}
@@ -179,6 +238,12 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
       threshold={0}
       // 只允许右键平移：禁用 InfiniteViewer 的默认鼠标拖拽（通常是左键）
       useMouseDrag={false}
+      // 不显示滚动条 & 禁用滚轮滚动（类型定义未暴露这些 props，按 any 透传）
+      {...({
+        displayVerticalScroll: false,
+        displayHorizontalScroll: false,
+        useWheelScroll: false,
+      } as any)}
       preventWheelClick
       onScroll={(e: any) => {
         const next = { left: e.scrollLeft ?? 0, top: e.scrollTop ?? 0 };
@@ -186,30 +251,40 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
         onScrollChange?.(next);
       }}
     >
-      <div
-        ref={setScrollRef}
-        className="relative h-full w-full overflow-hidden bg-white"
-        onWheel={handleWheel}
-        onContextMenu={handleContextMenu}
-        onMouseDownCapture={handleRightPanMouseDownCapture}
+      <TransformWrapper
+        ref={transformRef}
+        initialScale={zoom}
+        minScale={0.5}
+        maxScale={2}
+        centerOnInit={false}
+        limitToBounds={false}
+        panning={{ disabled: true }}
+        doubleClick={{ disabled: true }}
+        pinch={{ disabled: true }}
+        wheel={{ step: 0.08, disabled: false, wheelDisabled: false }}
+        centerZoomedOut={false}
+        onWheel={(ref) => {
+          const next = Number(ref.state.scale.toFixed(4));
+          if (syncingZoomRef.current) return;
+          onZoomChange(next);
+        }}
       >
-        <div
-          style={{
-            width: resolvedContentSize.width * zoom,
-            height: resolvedContentSize.height * zoom,
-          }}
+        <TransformComponent
+          // 始终占满操作容器，但不在这一层裁切放大后的内容
+          wrapperStyle={{ width: "100%", height: "100%", overflow: "visible" }}
+          contentStyle={{ width: "100%", height: "100%", overflow: "visible" }}
         >
           <div
             ref={canvasRef}
             data-panel-canvas
             style={style}
-            className="bg-[linear-gradient(to_right,rgba(255,255,255,0.06)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.06)_1px,transparent_1px)] [background-size:20px_20px]"
+            className=""
             onMouseDownCapture={onCanvasMouseDownCapture}
           >
             {children}
           </div>
-        </div>
-      </div>
+        </TransformComponent>
+      </TransformWrapper>
     </InfiniteViewer>
   );
 }
