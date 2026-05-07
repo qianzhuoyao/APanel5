@@ -71,11 +71,11 @@ export function ReactViewPanel({ initialZoom = 1 }: ReactViewPanelProps) {
   return (
     <div className="h-full w-full bg-slate-50">
       <ResizablePanelGroup direction="horizontal" className="h-full w-full">
-        <ResizablePanel defaultSize={25} minSize={25}>
+        <ResizablePanel defaultSize={20} minSize={20}>
           <MaterialSidebar />
         </ResizablePanel>
         <ResizableHandle withHandle />
-        <ResizablePanel defaultSize={50} minSize={10}>
+        <ResizablePanel defaultSize={60} minSize={10}>
           {/* Center workspace */}
           <div className="min-w-0 h-full">
         <div className="relative h-full overflow-hidden border border-black/10 bg-slate-900">
@@ -161,7 +161,7 @@ export function ReactViewPanel({ initialZoom = 1 }: ReactViewPanelProps) {
           </div>
         </ResizablePanel>
         <ResizableHandle withHandle />
-        <ResizablePanel defaultSize={25} minSize={25}>
+        <ResizablePanel defaultSize={20} minSize={20}>
           {/* Right config sidebar (placeholder) */}
           <aside className="h-full border-l border-black/10 bg-slate-950 px-3 py-3 text-white/85">
             <div className="mb-2 text-xs font-semibold">配置</div>
