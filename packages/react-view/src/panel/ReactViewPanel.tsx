@@ -48,19 +48,7 @@ export function ReactViewPanel({ initialZoom = 1 }: ReactViewPanelProps) {
     setSelectedTargets([]);
   }, []);
 
-  const handleScroll = useCallback(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    setScroll({ left: el.scrollLeft, top: el.scrollTop });
-  }, []);
-
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    handleScroll();
-    el.addEventListener("scroll", handleScroll, { passive: true });
-    return () => el.removeEventListener("scroll", handleScroll as any);
-  }, [handleScroll]);
+  // 平移/滚动由 InfiniteViewer 驱动，通过 PanelCanvas 回传
 
   const handleSelectedIdsChange = useCallback((ids: string[]) => {
     setSelectedIds(ids);
@@ -126,6 +114,7 @@ export function ReactViewPanel({ initialZoom = 1 }: ReactViewPanelProps) {
                   ref={scrollRef}
                   zoom={zoom}
                   onZoomChange={setZoom}
+                  onScrollChange={setScroll}
                   canvasRef={canvasRef}
                   onCanvasMouseDownCapture={(e) => {
                     const target = e.target as HTMLElement | null;

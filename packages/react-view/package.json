@@ -16,11 +16,13 @@
   "dependencies": {
     "@arron/ui": "workspace:*",
     "@scena/react-ruler": "^0.19.0",
+    "react-infinite-viewer": "^0.28.1",
     "react-moveable": "^0.56.0",
     "react-selecto": "^1.26.3",
     "rxjs": "^7.8.2",
     "react": "^19",
     "immer": "^11.0.1",
+    "infinite-viewer": "^0.29.1",
     "uuid": "^13.0.0"
   },
   "devDependencies": {

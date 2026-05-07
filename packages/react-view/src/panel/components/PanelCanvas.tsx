@@ -1,9 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import InfiniteViewer from "react-infinite-viewer";
 
 export type PanelCanvasProps = {
   zoom: number;
   onZoomChange: (next: number) => void;
   contentSize?: { width: number; height: number } | null;
+  onScrollChange?: (pos: { left: number; top: number }) => void;
   children: React.ReactNode;
   className?: string;
   canvasRef?: React.Ref<HTMLDivElement>;
@@ -16,6 +18,7 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
       zoom,
       onZoomChange,
       contentSize = null,
+      onScrollChange,
       children,
       className,
       canvasRef,
@@ -23,10 +26,38 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
     },
     scrollRef
   ) => {
-  const innerScrollRef = useRef<HTMLDivElement | null>(null);
+  const viewportRef = useRef<HTMLDivElement | null>(null);
+  const viewerRef = useRef<any>(null);
+  const [isPanning, setIsPanning] = useState(false);
+  const lastScrollRef = useRef({ left: 0, top: 0 });
+  const panRef = useRef<{
+    active: boolean;
+    startClientX: number;
+    startClientY: number;
+    startLeft: number;
+    startTop: number;
+  }>({ active: false, startClientX: 0, startClientY: 0, startLeft: 0, startTop: 0 });
+  const panHandlersRef = useRef<{
+    move: ((ev: MouseEvent) => void) | null;
+    up: ((ev: MouseEvent) => void) | null;
+  }>({ move: null, up: null });
+
+  const clearWindowPanListeners = useCallback(() => {
+    if (panHandlersRef.current.move) {
+      window.removeEventListener("mousemove", panHandlersRef.current.move, true);
+      panHandlersRef.current.move = null;
+    }
+    if (panHandlersRef.current.up) {
+      window.removeEventListener("mouseup", panHandlersRef.current.up, true);
+      panHandlersRef.current.up = null;
+    }
+  }, []);
+
+  useEffect(() => clearWindowPanListeners, [clearWindowPanListeners]);
+
   const setScrollRef = useCallback(
     (el: HTMLDivElement | null) => {
-      innerScrollRef.current = el;
+      viewportRef.current = el;
       if (!scrollRef) return;
       if (typeof scrollRef === "function") scrollRef(el);
       else (scrollRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
@@ -37,7 +68,7 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
   const [viewport, setViewport] = useState({ width: 0, height: 0 });
 
   useEffect(() => {
-    const el = innerScrollRef.current;
+    const el = viewportRef.current;
     if (!el) return;
 
     const update = () => {
@@ -71,6 +102,53 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
     },
     [onZoomChange, zoom]
   );
+  const handleContextMenu = useCallback((e: React.MouseEvent) => {
+    // InfiniteViewer 右键拖拽时禁用默认菜单，避免手势被打断
+    e.preventDefault();
+  }, []);
+
+  const handleRightPanMouseDownCapture = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      // 右键 或 mac 上 ctrl+左键
+      const isRightLike = e.button === 2 || (e.button === 0 && e.ctrlKey);
+      if (!isRightLike) return;
+      const viewer = viewerRef.current as any;
+      if (!viewer) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      panRef.current.active = true;
+      panRef.current.startClientX = e.clientX;
+      panRef.current.startClientY = e.clientY;
+      panRef.current.startLeft = lastScrollRef.current.left;
+      panRef.current.startTop = lastScrollRef.current.top;
+      setIsPanning(true);
+
+      const move = (ev: MouseEvent) => {
+        if (!panRef.current.active) return;
+        ev.preventDefault();
+        const dx = ev.clientX - panRef.current.startClientX;
+        const dy = ev.clientY - panRef.current.startClientY;
+        // 关键：用 InfiniteViewer 自己的 scrollTo 来移动
+        viewer.scrollTo(panRef.current.startLeft - dx, panRef.current.startTop - dy);
+      };
+
+      const up = (ev: MouseEvent) => {
+        if (!panRef.current.active) return;
+        ev.preventDefault();
+        panRef.current.active = false;
+        setIsPanning(false);
+        clearWindowPanListeners();
+      };
+
+      panHandlersRef.current.move = move;
+      panHandlersRef.current.up = up;
+      window.addEventListener("mousemove", move, true);
+      window.addEventListener("mouseup", up, true);
+    },
+    [clearWindowPanListeners]
+  );
 
   const resolvedContentSize = useMemo(() => {
     if (contentSize) return contentSize;
@@ -90,32 +168,48 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
   );
 
   return (
-    <div
-      ref={setScrollRef}
+    <InfiniteViewer
+      ref={viewerRef}
       className={[
-        // Keep scrollbar space stable to avoid ResizeObserver feedback loop.
-        "relative h-full w-full overflow-scroll bg-white [scrollbar-gutter:stable]",
+        "relative h-full w-full",
+        isPanning ? "cursor-grabbing select-none" : "",
         className ?? "",
       ].join(" ")}
-      onWheel={handleWheel}
+      margin={0}
+      threshold={0}
+      useMouseDrag
+      preventWheelClick
+      onScroll={(e: any) => {
+        const next = { left: e.scrollLeft ?? 0, top: e.scrollTop ?? 0 };
+        lastScrollRef.current = next;
+        onScrollChange?.(next);
+      }}
     >
       <div
-        style={{
-          width: resolvedContentSize.width * zoom,
-          height: resolvedContentSize.height * zoom,
-        }}
+        ref={setScrollRef}
+        className="relative h-full w-full overflow-hidden bg-white"
+        onWheel={handleWheel}
+        onContextMenu={handleContextMenu}
+        onMouseDownCapture={handleRightPanMouseDownCapture}
       >
         <div
-          ref={canvasRef}
-          data-panel-canvas
-          style={style}
-          className="bg-[linear-gradient(to_right,rgba(255,255,255,0.06)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.06)_1px,transparent_1px)] [background-size:20px_20px]"
-          onMouseDownCapture={onCanvasMouseDownCapture}
+          style={{
+            width: resolvedContentSize.width * zoom,
+            height: resolvedContentSize.height * zoom,
+          }}
         >
-          {children}
+          <div
+            ref={canvasRef}
+            data-panel-canvas
+            style={style}
+            className="bg-[linear-gradient(to_right,rgba(255,255,255,0.06)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.06)_1px,transparent_1px)] [background-size:20px_20px]"
+            onMouseDownCapture={onCanvasMouseDownCapture}
+          >
+            {children}
+          </div>
         </div>
       </div>
-    </div>
+    </InfiniteViewer>
   );
 }
 );

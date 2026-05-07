@@ -38,7 +38,7 @@ export function PanelRulers({
     >
       {/* Top */}
       <div
-        className="pointer-events-auto absolute left-[var(--rv-ruler-size)] right-[var(--rv-ruler-size)] top-0 h-[var(--rv-ruler-size)] overflow-visible"
+        className="absolute left-[var(--rv-ruler-size)] right-[var(--rv-ruler-size)] top-0 h-[var(--rv-ruler-size)] overflow-visible"
       >
         <Ruler
           type="horizontal"
@@ -49,7 +49,7 @@ export function PanelRulers({
 
       {/* Left */}
       <div
-        className="pointer-events-auto absolute left-0 top-[var(--rv-ruler-size)] bottom-[var(--rv-ruler-size)] w-[var(--rv-ruler-size)] overflow-visible"
+        className="absolute left-0 top-[var(--rv-ruler-size)] bottom-[var(--rv-ruler-size)] w-[var(--rv-ruler-size)] overflow-visible"
       >
         <Ruler
           type="vertical"
@@ -60,7 +60,7 @@ export function PanelRulers({
 
       {/* Bottom */}
       <div
-        className="pointer-events-auto absolute left-[var(--rv-ruler-size)] right-[var(--rv-ruler-size)] bottom-0 h-[var(--rv-ruler-size)] overflow-visible"
+        className="absolute left-[var(--rv-ruler-size)] right-[var(--rv-ruler-size)] bottom-0 h-[var(--rv-ruler-size)] overflow-visible"
       >
         <Ruler
           type="horizontal"
@@ -71,7 +71,7 @@ export function PanelRulers({
 
       {/* Right */}
       <div
-        className="pointer-events-auto absolute right-0 top-[var(--rv-ruler-size)] bottom-[var(--rv-ruler-size)] w-[var(--rv-ruler-size)] overflow-visible"
+        className="absolute right-0 top-[var(--rv-ruler-size)] bottom-[var(--rv-ruler-size)] w-[var(--rv-ruler-size)] overflow-visible"
       >
         <Ruler
           type="vertical"
@@ -80,12 +80,12 @@ export function PanelRulers({
         />
       </div>
 
-      <div className="pointer-events-auto absolute left-0 top-0 h-[var(--rv-ruler-size)] w-[var(--rv-ruler-size)] border-b border-r border-black/10 bg-black/5" />
+      <div className="absolute left-0 top-0 h-[var(--rv-ruler-size)] w-[var(--rv-ruler-size)] border-b border-r border-black/10 bg-black/5" />
 
       {/* Corners */}
-      <div className="pointer-events-auto absolute right-0 top-0 h-[var(--rv-ruler-size)] w-[var(--rv-ruler-size)] border-b border-l border-black/10 bg-black/5" />
-      <div className="pointer-events-auto absolute left-0 bottom-0 h-[var(--rv-ruler-size)] w-[var(--rv-ruler-size)] border-r border-t border-black/10 bg-black/5" />
-      <div className="pointer-events-auto absolute right-0 bottom-0 h-[var(--rv-ruler-size)] w-[var(--rv-ruler-size)] border-l border-t border-black/10 bg-black/5" />
+      <div className="absolute right-0 top-0 h-[var(--rv-ruler-size)] w-[var(--rv-ruler-size)] border-b border-l border-black/10 bg-black/5" />
+      <div className="absolute left-0 bottom-0 h-[var(--rv-ruler-size)] w-[var(--rv-ruler-size)] border-r border-t border-black/10 bg-black/5" />
+      <div className="absolute right-0 bottom-0 h-[var(--rv-ruler-size)] w-[var(--rv-ruler-size)] border-l border-t border-black/10 bg-black/5" />
     </div>
   );
 }
