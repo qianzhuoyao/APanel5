@@ -19,7 +19,12 @@ export function ElementsLayer({
         return (
           <div
             key={el.id}
-            className="rv-selectable"
+            className={[
+              "rv-selectable absolute select-none rounded-lg bg-blue-500/10",
+              isSelected
+                ? "border-2 border-blue-500/90"
+                : "border border-black/25",
+            ].join(" ")}
             data-element-id={el.id}
             onMouseDown={(e) => {
               // 单击选中（与 Selecto 的框选互补）
@@ -34,30 +39,15 @@ export function ElementsLayer({
               }
             }}
             style={{
-              position: "absolute",
               left: el.x,
               top: el.y,
               width: el.width,
               height: el.height,
               transform: `rotate(${el.rotate ?? 0}deg)`,
-              border: isSelected
-                ? "2px solid rgba(59, 130, 246, 0.9)"
-                : "1px solid rgba(0,0,0,0.25)",
-              borderRadius: 8,
-              background: "rgba(59, 130, 246, 0.08)",
               boxSizing: "border-box",
-              userSelect: "none",
             }}
           >
-            <div
-              style={{
-                fontSize: 12,
-                padding: 8,
-                color: "rgba(0,0,0,0.75)",
-              }}
-            >
-              {el.id}
-            </div>
+            <div className="p-2 text-xs text-black/75">{el.id}</div>
           </div>
         );
       })}

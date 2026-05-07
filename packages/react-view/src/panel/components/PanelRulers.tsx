@@ -13,7 +13,7 @@ export function PanelRulers({
   zoom,
   scrollLeft,
   scrollTop,
-  onZoomChange,
+  onZoomChange: _onZoomChange,
   size = 24,
 }: PanelRulersProps) {
   const commonProps = useMemo(
@@ -33,21 +33,12 @@ export function PanelRulers({
 
   return (
     <div
-      style={{
-        position: "absolute",
-        inset: 0,
-        pointerEvents: "none",
-      }}
+      className="pointer-events-none absolute inset-0"
+      style={{ ["--rv-ruler-size" as any]: `${size}px` }}
     >
+      {/* Top */}
       <div
-        style={{
-          position: "absolute",
-          left: size,
-          top: 0,
-          right: 0,
-          height: size,
-          pointerEvents: "auto",
-        }}
+        className="pointer-events-auto absolute left-[var(--rv-ruler-size)] right-[var(--rv-ruler-size)] top-0 h-[var(--rv-ruler-size)]"
       >
         <Ruler
           type="horizontal"
@@ -56,15 +47,9 @@ export function PanelRulers({
         />
       </div>
 
+      {/* Left */}
       <div
-        style={{
-          position: "absolute",
-          left: 0,
-          top: size,
-          bottom: 0,
-          width: size,
-          pointerEvents: "auto",
-        }}
+        className="pointer-events-auto absolute left-0 top-[var(--rv-ruler-size)] bottom-[var(--rv-ruler-size)] w-[var(--rv-ruler-size)]"
       >
         <Ruler
           type="vertical"
@@ -73,19 +58,34 @@ export function PanelRulers({
         />
       </div>
 
+      {/* Bottom */}
       <div
-        style={{
-          position: "absolute",
-          left: 0,
-          top: 0,
-          width: size,
-          height: size,
-          background: "rgba(0,0,0,0.05)",
-          borderRight: "1px solid rgba(0,0,0,0.08)",
-          borderBottom: "1px solid rgba(0,0,0,0.08)",
-          pointerEvents: "auto",
-        }}
-      />
+        className="pointer-events-auto absolute left-[var(--rv-ruler-size)] right-[var(--rv-ruler-size)] bottom-0 h-[var(--rv-ruler-size)]"
+      >
+        <Ruler
+          type="horizontal"
+          {...commonProps}
+          scrollPos={scrollLeft}
+        />
+      </div>
+
+      {/* Right */}
+      <div
+        className="pointer-events-auto absolute right-0 top-[var(--rv-ruler-size)] bottom-[var(--rv-ruler-size)] w-[var(--rv-ruler-size)]"
+      >
+        <Ruler
+          type="vertical"
+          {...commonProps}
+          scrollPos={scrollTop}
+        />
+      </div>
+
+      <div className="pointer-events-auto absolute left-0 top-0 h-[var(--rv-ruler-size)] w-[var(--rv-ruler-size)] border-b border-r border-black/10 bg-black/5" />
+
+      {/* Corners */}
+      <div className="pointer-events-auto absolute right-0 top-0 h-[var(--rv-ruler-size)] w-[var(--rv-ruler-size)] border-b border-l border-black/10 bg-black/5" />
+      <div className="pointer-events-auto absolute left-0 bottom-0 h-[var(--rv-ruler-size)] w-[var(--rv-ruler-size)] border-r border-t border-black/10 bg-black/5" />
+      <div className="pointer-events-auto absolute right-0 bottom-0 h-[var(--rv-ruler-size)] w-[var(--rv-ruler-size)] border-l border-t border-black/10 bg-black/5" />
     </div>
   );
 }
