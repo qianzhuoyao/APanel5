@@ -230,10 +230,15 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
       ref={viewerRef}
       className={[
         // 禁用原生滚动条外观（InfiniteViewer 自己的滚动条也会被下面的 props 关闭）
-        "relative h-full w-full overflow-hidden bg-white [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden bg-[linear-gradient(to_right,rgba(255,255,255,0.06)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.06)_1px,transparent_1px)] [background-size:20px_20px]",
+        "relative h-full w-full overflow-hidden bg-background [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden",
         isPanning ? "cursor-grabbing select-none" : "",
         className ?? "",
       ].join(" ")}
+      style={{
+        backgroundImage:
+          "linear-gradient(to right, hsl(var(--border) / 0.45) 1px, transparent 1px), linear-gradient(to bottom, hsl(var(--border) / 0.45) 1px, transparent 1px)",
+        backgroundSize: "20px 20px",
+      }}
       margin={0}
       threshold={0}
       // 只允许右键平移：禁用 InfiniteViewer 的默认鼠标拖拽（通常是左键）

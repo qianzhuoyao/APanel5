@@ -16,7 +16,7 @@ export type ArronThemeProviderProps = Omit<
 
 export function ThemeProvider({
   children,
-  defaultTheme = "light",
+  defaultTheme = "dark",
   enableSystem = true,
   ...props
 }: ArronThemeProviderProps) {
