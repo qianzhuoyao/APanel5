@@ -261,7 +261,7 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
         panning={{ disabled: true }}
         doubleClick={{ disabled: true }}
         pinch={{ disabled: true }}
-        wheel={{ step: 0.08, disabled: false, wheelDisabled: false }}
+        wheel={{ step: 0.008, disabled: false, wheelDisabled: false }}
         centerZoomedOut={false}
         onWheel={(ref) => {
           const next = Number(ref.state.scale.toFixed(4));
