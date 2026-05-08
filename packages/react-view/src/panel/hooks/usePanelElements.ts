@@ -22,6 +22,27 @@ export type PanelHistoryItem = {
 export type PanelActionResult = { ok: true } | { ok: false; reason: string };
 
 const DEFAULT_LAYER_ID = "layer-1";
+
+const DEFAULT_NODE_NAME_MAP: Record<string, string> = {
+  bar: "柱状图",
+  line: "折线图",
+  pie: "饼图",
+  area: "面积图",
+  scatter: "散点图",
+  radar: "雷达图",
+  gauge: "仪表盘",
+  funnel: "漏斗图",
+  text: "文本",
+  grid: "网格布局",
+  image: "图片",
+  video: "视频",
+  audio: "音频",
+  reference: "引用组件",
+};
+
+function getDefaultNodeName(materialType: string): string {
+  return DEFAULT_NODE_NAME_MAP[materialType] ?? materialType;
+}
 const DEFAULT_LAYER: PanelLayer = {
   id: DEFAULT_LAYER_ID,
   name: "图层1",
@@ -736,6 +757,7 @@ export function usePanelElements() {
       id,
       layerId: currentLayerId,
       materialType,
+      name: getDefaultNodeName(materialType),
       ...getDefaultTextContent(materialType),
       ...getDefaultGridConfig(materialType),
       refCopyMode: materialType === "reference" ? "shallow" : undefined,

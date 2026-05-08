@@ -48,6 +48,8 @@ export function PanelConfigSidebar({
   const [audioStatus, setAudioStatus] = useState<string>("");
   const [videoStatus, setVideoStatus] = useState<string>("");
   const [configSearch, setConfigSearch] = useState("");
+  const [isSearchCollapsed, setIsSearchCollapsed] = useState(false);
+  const SEARCH_COLLAPSE_STORAGE_KEY = "panel:config-search-collapsed";
   const textEditorRef = useRef<HTMLDivElement | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const recordStreamRef = useRef<MediaStream | null>(null);
@@ -120,6 +122,15 @@ export function PanelConfigSidebar({
       textEditorRef.current.innerHTML = nextHtml;
     }
   }, [selectedElement?.id, selectedElement?.materialType, selectedElement?.textHtml]);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const saved = window.localStorage.getItem(SEARCH_COLLAPSE_STORAGE_KEY);
+    if (saved === "1") setIsSearchCollapsed(true);
+  }, []);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(SEARCH_COLLAPSE_STORAGE_KEY, isSearchCollapsed ? "1" : "0");
+  }, [isSearchCollapsed]);
   useEffect(
     () => () => {
       recordStreamRef.current?.getTracks().forEach((track) => track.stop());
@@ -330,20 +341,20 @@ export function PanelConfigSidebar({
     <Collapsible
       open={hasSearch ? true : isSectionExpanded(key, defaultOpen)}
       onOpenChange={(open) => setSectionExpanded(key, open)}
-      className="rounded-lg border border-border/80 bg-card/90 shadow-sm"
+      className="rounded-xl border border-border/70 bg-card/95 shadow-sm"
     >
-      <div className="flex items-center gap-1 px-2 py-1.5">
+      <div className="flex items-center gap-1.5 px-3 py-2">
         <CollapsibleTrigger asChild>
           <button
             type="button"
-            className="flex h-6 w-6 items-center justify-center rounded text-xs hover:bg-accent"
+            className="flex h-6 w-6 items-center justify-center rounded-md text-xs hover:bg-accent"
           >
             {isSectionExpanded(key, defaultOpen) ? "▾" : "▸"}
           </button>
         </CollapsibleTrigger>
-        <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{title}</div>
+        <div className="text-[11px] font-semibold tracking-wide text-muted-foreground">{title}</div>
       </div>
-      <CollapsibleContent className="space-y-3 border-t border-border/60 bg-muted/[0.12] p-2.5">
+      <CollapsibleContent className="space-y-3 border-t border-border/60 bg-muted/[0.1] px-3 pb-3 pt-2.5">
         {children}
       </CollapsibleContent>
     </Collapsible>
@@ -351,8 +362,8 @@ export function PanelConfigSidebar({
   };
 
   const renderFieldGroup = (title: string, children: React.ReactNode) => (
-    <div className="space-y-2 rounded-md border border-border/60 bg-muted/25 p-2">
-      <div className="text-[11px] font-medium text-muted-foreground">{title}</div>
+    <div className="space-y-2.5 rounded-lg border border-border/55 bg-background/80 p-2.5">
+      <div className="text-[11px] font-semibold text-muted-foreground">{title}</div>
       {children}
     </div>
   );
@@ -362,8 +373,8 @@ export function PanelConfigSidebar({
     value: string,
     onTextChange: (next: string) => void
   ) => (
-    <label className="block space-y-1">
-      <div>{label}</div>
+    <label className="block space-y-1.5">
+      <div className="text-[11px] text-muted-foreground">{label}</div>
       <div className="flex items-center gap-2">
         <Input
           value={value}
@@ -393,30 +404,45 @@ export function PanelConfigSidebar({
   let renderedSectionCount = 0;
   return (
     <aside
-      className={`h-full overflow-auto border-l border-border bg-muted/[0.18] px-3 py-3 text-foreground ${themedScrollbarClass}`}
+      className={`h-full overflow-auto border-l border-border bg-muted/[0.14] px-3 py-3 text-foreground ${themedScrollbarClass}`}
     >
-      <div className="mb-2 text-xs font-semibold">配置</div>
-      <div className="mb-2 space-y-1">
-        <Input
-          value={configSearch}
-          onChange={(e) => setConfigSearch(e.target.value)}
-          placeholder="搜索配置，如：边框、tooltip、音频、网格..."
-          className="h-7"
-        />
-        {hasSearch ? (
-          <div className="text-[11px] text-muted-foreground">搜索中：{configSearch}</div>
+      <div className="sticky top-0 z-20 mb-3 rounded-lg border border-border/70 bg-card/95 px-2.5 py-2 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/80">
+        <div className="flex items-center justify-between gap-2">
+          <div className="text-xs font-semibold tracking-wide">配置面板</div>
+          <button
+            type="button"
+            className="rounded border border-border px-1.5 py-0.5 text-[11px] text-muted-foreground hover:bg-accent"
+            onClick={() => setIsSearchCollapsed((prev) => !prev)}
+          >
+            {isSearchCollapsed ? "展开搜索" : "收起搜索"}
+          </button>
+        </div>
+        {!isSearchCollapsed ? (
+          <div className="mt-2">
+            <Input
+              value={configSearch}
+              onChange={(e) => setConfigSearch(e.target.value)}
+              placeholder="搜索配置，如：边框、tooltip、音频、网格..."
+              className="h-7"
+            />
+            {hasSearch ? (
+              <div className="mt-1 text-[11px] text-muted-foreground">搜索中：{configSearch}</div>
+            ) : null}
+          </div>
         ) : null}
       </div>
       {!selectedElement ? (
-        <div className="text-xs leading-6 text-muted-foreground">请选择一个节点后进行配置</div>
+        <div className="rounded-lg border border-dashed border-border/70 bg-card/50 px-3 py-2 text-xs leading-6 text-muted-foreground">
+          请选择一个节点后进行配置
+        </div>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-3">
           {!isNodeEditable ? (
             <div className="rounded border border-amber-500/40 bg-amber-500/10 px-2 py-1.5 text-[11px] text-amber-700 dark:text-amber-300">
               {readonlyReason}
             </div>
           ) : null}
-          <div className="rounded border border-border/60 bg-card/70 px-2 py-1.5 text-xs">
+          <div className="rounded-lg border border-border/60 bg-card/80 px-2.5 py-2 text-xs">
             <label className="flex items-center gap-2">
               <Checkbox
                 checked={selectedElement.locked === true}
@@ -432,7 +458,7 @@ export function PanelConfigSidebar({
             </label>
           </div>
           <fieldset disabled={!isNodeEditable} className={!isNodeEditable ? "opacity-60" : ""}>
-            <div className="space-y-3 text-xs">
+            <div className="space-y-3.5 text-xs">
               {renderSection(
             "nodeInfo",
             "节点信息",
