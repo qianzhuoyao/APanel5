@@ -601,6 +601,17 @@ export function PanelConfigSidebar({
                       />
                     </label>
                     <label className="block space-y-1">
+                      <div>旋转角度</div>
+                      <Input
+                        className="h-7"
+                        type="number"
+                        value={el.rotate ?? 0}
+                        onChange={(e) =>
+                          updateElement(el.id, { rotate: Number(e.target.value) || 0 })
+                        }
+                      />
+                    </label>
+                    <label className="block space-y-1">
                       <div>宽</div>
                       <Input
                         className="h-7"
@@ -915,6 +926,77 @@ export function PanelConfigSidebar({
                   className="h-7"
                 />
               </label>
+              <div className="grid grid-cols-3 gap-2">
+                <label className="block space-y-1">
+                  <div>X</div>
+                  <Input
+                    type="number"
+                    value={selectedElement.x}
+                    onChange={(e) =>
+                      updateElement(selectedElement.id, {
+                        x: Number(e.target.value) || 0,
+                      })
+                    }
+                    className="h-7"
+                  />
+                </label>
+                <label className="block space-y-1">
+                  <div>Y</div>
+                  <Input
+                    type="number"
+                    value={selectedElement.y}
+                    onChange={(e) =>
+                      updateElement(selectedElement.id, {
+                        y: Number(e.target.value) || 0,
+                      })
+                    }
+                    className="h-7"
+                  />
+                </label>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <label className="block space-y-1">
+                  <div>旋转角度</div>
+                  <Input
+                    type="number"
+                    value={selectedElement.rotate ?? 0}
+                    onChange={(e) =>
+                      updateElement(selectedElement.id, {
+                        rotate: Number(e.target.value) || 0,
+                      })
+                    }
+                    className="h-7"
+                  />
+                </label>
+                <label className="block space-y-1">
+                  <div>宽</div>
+                  <Input
+                    type="number"
+                    min={1}
+                    value={selectedElement.width}
+                    onChange={(e) =>
+                      updateElement(selectedElement.id, {
+                        width: Math.max(1, Number(e.target.value) || 1),
+                      })
+                    }
+                    className="h-7"
+                  />
+                </label>
+                <label className="block space-y-1">
+                  <div>高</div>
+                  <Input
+                    type="number"
+                    min={1}
+                    value={selectedElement.height}
+                    onChange={(e) =>
+                      updateElement(selectedElement.id, {
+                        height: Math.max(1, Number(e.target.value) || 1),
+                      })
+                    }
+                    className="h-7"
+                  />
+                </label>
+              </div>
               <div className="space-y-1.5">
                 <div className="text-[11px] text-muted-foreground">节点层级</div>
                 <div className="text-[11px] text-muted-foreground/90">

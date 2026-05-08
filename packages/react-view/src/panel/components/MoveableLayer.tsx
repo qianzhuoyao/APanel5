@@ -121,6 +121,15 @@ export function MoveableLayer({
     [elementsById, selectedIds]
   );
   const hasLockedSelected = lockedSelected.length > 0;
+  const movableTargets = useMemo(() => {
+    if (!targets) return null;
+    const unlocked = targets.filter((target) => {
+      const id = getId(target);
+      if (!id) return false;
+      return !elementsById.get(id)?.locked;
+    });
+    return unlocked.length ? unlocked : null;
+  }, [elementsById, getId, targets]);
   const lockBadgeAnchor = useMemo(() => {
     const id = lockedSelected[0];
     if (!id) return null;
@@ -228,7 +237,7 @@ export function MoveableLayer({
   }, [refreshToken, targets, updateRectNextFrame]);
 
   if (!targets) return null;
-  if (hasLockedSelected) {
+  if (!movableTargets) {
     return lockBadgeAnchor ? (
       <div
         className="pointer-events-none absolute z-[80] inline-flex select-none items-center gap-1 rounded border border-border bg-background/95 px-1.5 py-0.5 text-[11px] text-foreground shadow-sm"
@@ -246,14 +255,14 @@ export function MoveableLayer({
       <Moveable
         ref={moveableRef}
       // Moveable 支持单个 HTMLElement 或 HTMLElement[]
-      target={targets as unknown as HTMLElement[]}
+      target={movableTargets as unknown as HTMLElement[]}
       // 让节点跟随画布缩放，但控制框保持近似固定像素大小
       zoom={zoom > 0 ? 1 / zoom : 1}
       // 允许在控制框内部区域拖动（不必必须点到某个节点本体）
-      dragArea={!hasLockedSelected}
-      draggable={!hasLockedSelected}
-      resizable={!hasLockedSelected}
-      rotatable={!hasLockedSelected}
+      dragArea
+      draggable
+      resizable
+      rotatable
       origin={false}
       throttleDrag={0}
       throttleResize={0}
@@ -494,7 +503,16 @@ export function MoveableLayer({
         updateRectNextFrame();
       }}
       />
-      {null}
+      {hasLockedSelected && lockBadgeAnchor ? (
+        <div
+          className="pointer-events-none absolute z-[80] inline-flex select-none items-center gap-1 rounded border border-border bg-background/95 px-1.5 py-0.5 text-[11px] text-foreground shadow-sm"
+          style={{ left: lockBadgeAnchor.x + 6, top: lockBadgeAnchor.y - 22 }}
+          title="部分节点已锁定，已自动排除"
+        >
+          <LockGlyph />
+          <span>锁定节点已排除</span>
+        </div>
+      ) : null}
     </>
   );
 }
