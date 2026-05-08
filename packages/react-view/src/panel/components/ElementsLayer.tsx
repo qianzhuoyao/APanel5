@@ -8,7 +8,54 @@ export type ElementsLayerProps = {
   allElements: PanelElement[];
   selectedIds: string[];
   onSelectIds: (ids: string[]) => void;
+  updateElement: (
+    id: string,
+    patch: Partial<PanelElement>,
+    options?: { batchId?: string; meta?: Record<string, unknown> }
+  ) => void;
+  layerLocked?: boolean;
 };
+
+function TextNodeContent({
+  element,
+  editable,
+  onChange,
+}: {
+  element: PanelElement;
+  editable: boolean;
+  onChange: (nextHtml: string) => void;
+}) {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const html = element.textHtml ?? "<p>双击输入文本</p>";
+  const textStyle: React.CSSProperties = {
+    fontFamily: element.textFontFamily || undefined,
+    fontSize: element.textFontSize ? `${element.textFontSize}px` : undefined,
+    fontWeight: element.textFontWeight || undefined,
+    color: element.textColor || undefined,
+    lineHeight: element.textLineHeight ? String(element.textLineHeight) : undefined,
+    textAlign: element.textAlign ?? "left",
+  };
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (el.innerHTML !== html) {
+      el.innerHTML = html;
+    }
+  }, [html]);
+
+  return (
+    <div
+      ref={ref}
+      className="h-full w-full overflow-auto break-words p-2 text-sm leading-relaxed outline-none"
+      style={textStyle}
+      contentEditable={editable}
+      suppressContentEditableWarning
+      onInput={(e) => onChange((e.currentTarget as HTMLDivElement).innerHTML)}
+      onBlur={(e) => onChange((e.currentTarget as HTMLDivElement).innerHTML)}
+    />
+  );
+}
 
 function ChartNodeContent({ element }: { element: PanelElement }) {
   const hostRef = useRef<HTMLDivElement | null>(null);
@@ -196,6 +243,8 @@ export function ElementsLayer({
   allElements,
   selectedIds,
   onSelectIds,
+  updateElement,
+  layerLocked = false,
 }: ElementsLayerProps) {
   return (
     <>
@@ -236,6 +285,14 @@ export function ElementsLayer({
               <ChartNodeContent element={el} />
             ) : el.materialType === "reference" ? (
               <ReferenceNodeContent element={el} allElements={allElements} />
+            ) : el.materialType === "text" ? (
+              <TextNodeContent
+                element={el}
+                editable={(el.textAllowInput ?? true) && !el.locked && !layerLocked}
+                onChange={(nextHtml) => {
+                  updateElement(el.id, { textHtml: nextHtml });
+                }}
+              />
             ) : (
               <div className="h-full w-full" />
             )}

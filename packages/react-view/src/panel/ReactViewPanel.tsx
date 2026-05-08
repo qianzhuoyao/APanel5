@@ -974,6 +974,8 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                       allElements={allElements}
                       selectedIds={selectedIds}
                       onSelectIds={setSelectedIds}
+                      updateElement={updateElement}
+                      layerLocked={Boolean(activeLayer?.locked)}
                     />
 
                     <SelectLayer

@@ -56,6 +56,14 @@ export type PanelElement = {
   refCopyMode?: ReferenceCopyMode;
   refSnapshot?: PanelElement[];
   chart?: PanelChartConfig;
+  textHtml?: string;
+  textAllowInput?: boolean;
+  textFontFamily?: string;
+  textFontSize?: number;
+  textFontWeight?: string;
+  textColor?: string;
+  textLineHeight?: number;
+  textAlign?: "left" | "center" | "right" | "justify";
   style?: PanelElementStyle;
   x: number;
   y: number;

@@ -52,6 +52,18 @@ function getDefaultSizeByMaterial(materialType: string) {
   }
 }
 
+function getDefaultTextContent(materialType: string) {
+  if (materialType !== "text") return {};
+  return {
+    textHtml: "<p>双击输入文本</p>",
+    textAllowInput: true,
+    textFontSize: 14,
+    textFontWeight: "400",
+    textLineHeight: 1.6,
+    textAlign: "left",
+  } as const;
+}
+
 function getDefaultChartConfig(materialType: string): PanelChartConfig | undefined {
   if (!["bar", "line", "pie", "area", "scatter", "radar", "gauge", "funnel"].includes(materialType)) return undefined;
   const common = {
@@ -498,6 +510,7 @@ export function usePanelElements() {
       id,
       layerId: currentLayerId,
       materialType,
+      ...getDefaultTextContent(materialType),
       refCopyMode: materialType === "reference" ? "shallow" : undefined,
       chart: getDefaultChartConfig(materialType),
       x: Math.round(x - size.width / 2),

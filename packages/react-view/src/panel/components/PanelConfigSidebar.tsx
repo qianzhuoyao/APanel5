@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Checkbox,
   Collapsible,
@@ -44,6 +44,7 @@ export function PanelConfigSidebar({
   const [optionJsonText, setOptionJsonText] = useState("{}");
   const [optionJsonError, setOptionJsonError] = useState<string | null>(null);
   const [uploadStatus, setUploadStatus] = useState<string>("");
+  const textEditorRef = useRef<HTMLDivElement | null>(null);
   const themedScrollbarClass =
     "scrollbar-thin [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-muted/40 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border/80 [&::-webkit-scrollbar-thumb]:hover:bg-border";
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
@@ -101,6 +102,14 @@ export function PanelConfigSidebar({
     }));
   }, [selectedElement?.id, selectedElement?.materialType]);
 
+  useEffect(() => {
+    if (!selectedElement || selectedElement.materialType !== "text") return;
+    const nextHtml = selectedElement.textHtml ?? "<p>双击输入文本</p>";
+    if (textEditorRef.current && textEditorRef.current.innerHTML !== nextHtml) {
+      textEditorRef.current.innerHTML = nextHtml;
+    }
+  }, [selectedElement?.id, selectedElement?.materialType, selectedElement?.textHtml]);
+
   const updateSelectedChart = useCallback(
     (patch: Partial<PanelChartConfig>) => {
       if (!selectedElement) return;
@@ -117,6 +126,13 @@ export function PanelConfigSidebar({
       updateElement(selectedElement.id, {
         style: { ...(selectedElement.style ?? {}), ...patch },
       });
+    },
+    [selectedElement, updateElement]
+  );
+  const updateSelectedText = useCallback(
+    (patch: Partial<PanelElement>) => {
+      if (!selectedElement || selectedElement.materialType !== "text") return;
+      updateElement(selectedElement.id, patch);
     },
     [selectedElement, updateElement]
   );
@@ -217,6 +233,14 @@ export function PanelConfigSidebar({
       </div>
     </label>
   );
+  const execTextCommand = (cmd: "bold" | "italic" | "underline") => {
+    textEditorRef.current?.focus();
+    document.execCommand(cmd);
+    const next = textEditorRef.current?.innerHTML ?? "";
+    if (selectedElement?.materialType === "text") {
+      updateElement(selectedElement.id, { textHtml: next || "<p><br/></p>" });
+    }
+  };
 
   return (
     <aside
@@ -842,6 +866,188 @@ export function PanelConfigSidebar({
                 false
               )}
             </>
+          ) : selectedElement.materialType === "text" ? (
+            renderSection(
+              "textConfig",
+              "文本配置",
+              <>
+                {renderFieldGroup(
+                  "文本内容",
+                  <>
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        className="rounded border border-border px-2 py-1 text-[11px] hover:bg-accent"
+                        onClick={() => execTextCommand("bold")}
+                      >
+                        B
+                      </button>
+                      <button
+                        type="button"
+                        className="rounded border border-border px-2 py-1 text-[11px] italic hover:bg-accent"
+                        onClick={() => execTextCommand("italic")}
+                      >
+                        I
+                      </button>
+                      <button
+                        type="button"
+                        className="rounded border border-border px-2 py-1 text-[11px] underline hover:bg-accent"
+                        onClick={() => execTextCommand("underline")}
+                      >
+                        U
+                      </button>
+                    </div>
+                    <div
+                      ref={textEditorRef}
+                      className="min-h-[120px] rounded border border-border bg-background px-2 py-1.5 text-xs leading-6 outline-none"
+                      style={{
+                        fontFamily: selectedElement.textFontFamily || undefined,
+                        fontSize: selectedElement.textFontSize
+                          ? `${selectedElement.textFontSize}px`
+                          : undefined,
+                        fontWeight: selectedElement.textFontWeight || undefined,
+                        color: selectedElement.textColor || undefined,
+                        lineHeight: selectedElement.textLineHeight
+                          ? String(selectedElement.textLineHeight)
+                          : undefined,
+                        textAlign: selectedElement.textAlign ?? "left",
+                      }}
+                      contentEditable
+                      suppressContentEditableWarning
+                      onInput={(e) => {
+                        const nextHtml = (e.currentTarget as HTMLDivElement).innerHTML;
+                        updateSelectedText({
+                          textHtml: nextHtml || "<p><br/></p>",
+                        });
+                      }}
+                    />
+                  </>
+                )}
+                {renderFieldGroup(
+                  "文字样式",
+                  <>
+                    <label className="block space-y-1">
+                      <div>字体</div>
+                      <Input
+                        value={selectedElement.textFontFamily ?? ""}
+                        onChange={(e) =>
+                          updateSelectedText({
+                            textFontFamily: e.target.value || undefined,
+                          })
+                        }
+                        placeholder="如：Inter, PingFang SC, Microsoft YaHei"
+                        className="h-7"
+                      />
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <label className="block space-y-1">
+                        <div>字号（px）</div>
+                        <Input
+                          type="number"
+                          min={8}
+                          max={200}
+                          step={1}
+                          value={selectedElement.textFontSize ?? 14}
+                          onChange={(e) =>
+                            updateSelectedText({
+                              textFontSize: Math.max(8, Number(e.target.value) || 14),
+                            })
+                          }
+                          className="h-7"
+                        />
+                      </label>
+                      <label className="block space-y-1">
+                        <div>字重</div>
+                        <Select
+                          value={selectedElement.textFontWeight ?? "400"}
+                          onValueChange={(value) =>
+                            updateSelectedText({
+                              textFontWeight: value,
+                            })
+                          }
+                        >
+                          <SelectTrigger className="h-7">
+                            <SelectValue placeholder="选择字重" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="300">300</SelectItem>
+                            <SelectItem value="400">400</SelectItem>
+                            <SelectItem value="500">500</SelectItem>
+                            <SelectItem value="600">600</SelectItem>
+                            <SelectItem value="700">700</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </label>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <label className="block space-y-1">
+                        <div>对齐</div>
+                        <Select
+                          value={selectedElement.textAlign ?? "left"}
+                          onValueChange={(value) =>
+                            updateSelectedText({
+                              textAlign: value as "left" | "center" | "right" | "justify",
+                            })
+                          }
+                        >
+                          <SelectTrigger className="h-7">
+                            <SelectValue placeholder="选择对齐方式" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="left">左对齐</SelectItem>
+                            <SelectItem value="center">居中</SelectItem>
+                            <SelectItem value="right">右对齐</SelectItem>
+                            <SelectItem value="justify">两端对齐</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </label>
+                      <label className="block space-y-1">
+                        <div>行高</div>
+                        <Input
+                          type="number"
+                          min={1}
+                          max={3}
+                          step={0.1}
+                          value={selectedElement.textLineHeight ?? 1.6}
+                          onChange={(e) =>
+                            updateSelectedText({
+                              textLineHeight: Math.min(
+                                3,
+                                Math.max(1, Number(e.target.value) || 1.6)
+                              ),
+                            })
+                          }
+                          className="h-7"
+                        />
+                      </label>
+                    </div>
+                    {renderColorField(
+                      "文字颜色",
+                      selectedElement.textColor ?? "",
+                      (next) =>
+                        updateSelectedText({
+                          textColor: next || undefined,
+                        })
+                    )}
+                  </>
+                )}
+                {renderFieldGroup(
+                  "输入能力",
+                  <label className="flex items-center gap-2">
+                    <Checkbox
+                      checked={selectedElement.textAllowInput ?? true}
+                      className="h-4 w-4 border-2 border-foreground/80 bg-background ring-1 ring-foreground/40 data-[state=checked]:border-primary data-[state=checked]:ring-primary/40"
+                      onCheckedChange={(checked) =>
+                        updateSelectedText({
+                          textAllowInput: checked !== false,
+                        })
+                      }
+                    />
+                    <span>允许在画布内直接输入（默认开启）</span>
+                  </label>
+                )}
+              </>
+            )
           ) : selectedElement.materialType === "reference" ? (
             renderSection(
               "reference",
