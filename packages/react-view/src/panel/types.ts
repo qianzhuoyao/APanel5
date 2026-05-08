@@ -50,6 +50,7 @@ export type PanelElement = {
   id: string;
   layerId: string;
   name?: string;
+  locked?: boolean;
   materialType?: string;
   refLayerId?: string;
   refCopyMode?: ReferenceCopyMode;

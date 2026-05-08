@@ -3,6 +3,25 @@ import Moveable from "react-moveable";
 
 import type { PanelElement } from "../types";
 
+function LockGlyph({ className = "h-3.5 w-3.5" }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.9"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
+      <rect x="4.5" y="10.5" width="15" height="10" rx="2.5" />
+      <path d="M8 10.5V8a4 4 0 0 1 8 0v2.5" />
+      <circle cx="12" cy="15.5" r="1.2" />
+    </svg>
+  );
+}
+
 export type MoveableLayerProps = {
   zoom: number;
   selectedTargets: HTMLElement[];
@@ -32,6 +51,25 @@ export function MoveableLayer({
     const el = target.closest<HTMLElement>(".rv-selectable");
     return el?.dataset.elementId ?? null;
   }, []);
+  const selectedIds = useMemo(
+    () =>
+      (targets ?? [])
+        .map((target) => getId(target))
+        .filter((id): id is string => !!id),
+    [getId, targets]
+  );
+  const lockedSelected = useMemo(
+    () => selectedIds.filter((id) => elementsById.get(id)?.locked),
+    [elementsById, selectedIds]
+  );
+  const hasLockedSelected = lockedSelected.length > 0;
+  const lockBadgeAnchor = useMemo(() => {
+    const id = lockedSelected[0];
+    if (!id) return null;
+    const el = elementsById.get(id);
+    if (!el) return null;
+    return { x: el.x, y: el.y };
+  }, [elementsById, lockedSelected]);
 
   const updateRectNextFrame = useCallback(() => {
     // 等 React 把 left/top/width/height 重新渲染后，再让 Moveable 重新计算控制框
@@ -53,17 +91,18 @@ export function MoveableLayer({
   if (!targets) return null;
 
   return (
-    <Moveable
-      ref={moveableRef}
+    <>
+      <Moveable
+        ref={moveableRef}
       // Moveable 支持单个 HTMLElement 或 HTMLElement[]
       target={targets as unknown as HTMLElement[]}
       // 让节点跟随画布缩放，但控制框保持近似固定像素大小
       zoom={zoom > 0 ? 1 / zoom : 1}
       // 允许在控制框内部区域拖动（不必必须点到某个节点本体）
-      dragArea
-      draggable
-      resizable
-      rotatable
+      dragArea={!hasLockedSelected}
+      draggable={!hasLockedSelected}
+      resizable={!hasLockedSelected}
+      rotatable={!hasLockedSelected}
       origin={false}
       throttleDrag={0}
       throttleResize={0}
@@ -252,7 +291,18 @@ export function MoveableLayer({
         });
         updateRectNextFrame();
       }}
-    />
+      />
+      {hasLockedSelected && lockBadgeAnchor ? (
+        <div
+          className="pointer-events-none absolute z-[80] inline-flex select-none items-center gap-1 rounded border border-border bg-background/95 px-1.5 py-0.5 text-[11px] text-foreground shadow-sm"
+          style={{ left: lockBadgeAnchor.x + 6, top: lockBadgeAnchor.y - 22 }}
+          title="节点已锁定"
+        >
+          <LockGlyph />
+          <span>已锁定</span>
+        </div>
+      ) : null}
+    </>
   );
 }
 

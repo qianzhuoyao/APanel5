@@ -258,6 +258,15 @@ export function usePanelElements() {
       const layerId = target?.props?.layerId as string | undefined;
       const layer = list.find((l) => l.id === layerId);
       if (layer?.locked) return;
+      const currentElement = (target?.props ?? {}) as PanelElement;
+      const hasTransformPatch =
+        "x" in patch ||
+        "y" in patch ||
+        "width" in patch ||
+        "height" in patch ||
+        "rotate" in patch ||
+        "layerId" in patch;
+      if (currentElement.locked && hasTransformPatch) return;
 
       store.updateById(
         id,
@@ -298,7 +307,11 @@ export function usePanelElements() {
   }, []);
 
   const bringElementsToFront = useCallback((ids: string[]) => {
-    const idSet = new Set(ids.filter(Boolean));
+    const unlocked = ids.filter((id) => {
+      const el = byId.get(id);
+      return !!id && !!el && !el.locked;
+    });
+    const idSet = new Set(unlocked);
     if (idSet.size === 0) return;
     store.update(
       (draft) => {
@@ -316,10 +329,14 @@ export function usePanelElements() {
       },
       { meta: { type: "node.z.front", ids: Array.from(idSet) } }
     );
-  }, []);
+  }, [byId]);
 
   const sendElementsToBack = useCallback((ids: string[]) => {
-    const idSet = new Set(ids.filter(Boolean));
+    const unlocked = ids.filter((id) => {
+      const el = byId.get(id);
+      return !!id && !!el && !el.locked;
+    });
+    const idSet = new Set(unlocked);
     if (idSet.size === 0) return;
     store.update(
       (draft) => {
@@ -337,10 +354,14 @@ export function usePanelElements() {
       },
       { meta: { type: "node.z.back", ids: Array.from(idSet) } }
     );
-  }, []);
+  }, [byId]);
 
   const bringElementsForward = useCallback((ids: string[]) => {
-    const idSet = new Set(ids.filter(Boolean));
+    const unlocked = ids.filter((id) => {
+      const el = byId.get(id);
+      return !!id && !!el && !el.locked;
+    });
+    const idSet = new Set(unlocked);
     if (idSet.size === 0) return;
     store.update(
       (draft) => {
@@ -358,10 +379,14 @@ export function usePanelElements() {
       },
       { meta: { type: "node.z.up", ids: Array.from(idSet) } }
     );
-  }, []);
+  }, [byId]);
 
   const sendElementsBackward = useCallback((ids: string[]) => {
-    const idSet = new Set(ids.filter(Boolean));
+    const unlocked = ids.filter((id) => {
+      const el = byId.get(id);
+      return !!id && !!el && !el.locked;
+    });
+    const idSet = new Set(unlocked);
     if (idSet.size === 0) return;
     store.update(
       (draft) => {
@@ -379,7 +404,7 @@ export function usePanelElements() {
       },
       { meta: { type: "node.z.down", ids: Array.from(idSet) } }
     );
-  }, []);
+  }, [byId]);
 
   const duplicateElement = useCallback(
     (

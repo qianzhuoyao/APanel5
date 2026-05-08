@@ -233,6 +233,18 @@ export function PanelConfigSidebar({
                   className="h-7"
                 />
               </label>
+              <label className="flex items-center gap-2">
+                <Checkbox
+                  checked={selectedElement.locked === true}
+                  className="h-4 w-4 border-2 border-foreground/80 bg-background ring-1 ring-foreground/40 data-[state=checked]:border-primary data-[state=checked]:ring-primary/40"
+                  onCheckedChange={(checked) =>
+                    updateElement(selectedElement.id, {
+                      locked: checked === true,
+                    })
+                  }
+                />
+                <span>锁定节点（禁止层级/位置/大小/旋转）</span>
+              </label>
               <div className="truncate text-muted-foreground">ID: {selectedElement.id}</div>
               <div className="text-muted-foreground">类型: {selectedElement.materialType ?? selectedElement.id}</div>
             </>

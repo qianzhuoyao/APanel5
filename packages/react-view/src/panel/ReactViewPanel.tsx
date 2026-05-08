@@ -427,6 +427,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
   const isRightLikePointer = (e: React.PointerEvent<HTMLElement>) =>
     e.button === 2 || (e.button === 0 && e.ctrlKey);
   const hasSelection = selectedIds.length > 0;
+  const hasUnlockedSelection = selectedIds.some((id) => !byId.get(id)?.locked);
 
   const handleExport = useCallback(() => {
     const data = exportPanelData();
@@ -613,10 +614,10 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
               <MenubarItem disabled={!canUndo} onClick={undo}>撤销</MenubarItem>
               <MenubarItem disabled={!canRedo} onClick={redo}>重做</MenubarItem>
               <MenubarSeparator />
-              <MenubarItem disabled={!hasSelection} onClick={() => bringElementsForward(selectedIds)}>上移一层</MenubarItem>
-              <MenubarItem disabled={!hasSelection} onClick={() => sendElementsBackward(selectedIds)}>下移一层</MenubarItem>
-              <MenubarItem disabled={!hasSelection} onClick={() => bringElementsToFront(selectedIds)}>置顶</MenubarItem>
-              <MenubarItem disabled={!hasSelection} onClick={() => sendElementsToBack(selectedIds)}>置底</MenubarItem>
+              <MenubarItem disabled={!hasUnlockedSelection} onClick={() => bringElementsForward(selectedIds)}>上移一层</MenubarItem>
+              <MenubarItem disabled={!hasUnlockedSelection} onClick={() => sendElementsBackward(selectedIds)}>下移一层</MenubarItem>
+              <MenubarItem disabled={!hasUnlockedSelection} onClick={() => bringElementsToFront(selectedIds)}>置顶</MenubarItem>
+              <MenubarItem disabled={!hasUnlockedSelection} onClick={() => sendElementsToBack(selectedIds)}>置底</MenubarItem>
             </MenubarContent>
           </MenubarMenu>
           <MenubarMenu>
@@ -726,7 +727,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                   <DropdownMenuTrigger asChild>
                     <button
                       type="button"
-                      disabled={!hasSelection}
+                      disabled={!hasUnlockedSelection}
                       className="rounded border border-border p-1 hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40"
                       aria-label="节点层级操作"
                     >
@@ -734,19 +735,31 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="start" sideOffset={6} className="z-[10000] w-44">
-                    <DropdownMenuItem onClick={() => bringElementsForward(selectedIds)}>
+                    <DropdownMenuItem
+                      disabled={!hasUnlockedSelection}
+                      onClick={() => bringElementsForward(selectedIds)}
+                    >
                       <span className="mr-2 inline-flex"><IconForward /></span>
                       上移一层
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => sendElementsBackward(selectedIds)}>
+                    <DropdownMenuItem
+                      disabled={!hasUnlockedSelection}
+                      onClick={() => sendElementsBackward(selectedIds)}
+                    >
                       <span className="mr-2 inline-flex"><IconBackward /></span>
                       下移一层
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => bringElementsToFront(selectedIds)}>
+                    <DropdownMenuItem
+                      disabled={!hasUnlockedSelection}
+                      onClick={() => bringElementsToFront(selectedIds)}
+                    >
                       <span className="mr-2 inline-flex"><IconBringFront /></span>
                       置顶
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => sendElementsToBack(selectedIds)}>
+                    <DropdownMenuItem
+                      disabled={!hasUnlockedSelection}
+                      onClick={() => sendElementsToBack(selectedIds)}
+                    >
                       <span className="mr-2 inline-flex"><IconSendBack /></span>
                       置底
                     </DropdownMenuItem>

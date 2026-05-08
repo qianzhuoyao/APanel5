@@ -43,6 +43,25 @@ const MATERIAL_LABEL_MAP: Record<string, string> = {
   reference: "引用组件",
 };
 
+function LockGlyph({ className = "h-3.5 w-3.5" }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.9"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
+      <rect x="4.5" y="10.5" width="15" height="10" rx="2.5" />
+      <path d="M8 10.5V8a4 4 0 0 1 8 0v2.5" />
+      <circle cx="12" cy="15.5" r="1.2" />
+    </svg>
+  );
+}
+
 function MaterialPreview({ id }: { id: string }) {
   const common =
     "relative aspect-[4/3] w-full shrink-0 overflow-hidden rounded-md border border-border bg-gradient-to-br from-card to-muted/40";
@@ -390,6 +409,14 @@ export function MaterialSidebar({
           >
             {getNodeDisplayName(node)}
           </button>
+          {node.locked ? (
+            <span
+              className="inline-flex h-5 w-5 items-center justify-center rounded border border-border/80 bg-background/80 text-muted-foreground"
+              title="节点已锁定"
+            >
+              <LockGlyph />
+            </span>
+          ) : null}
           {isRef ? (
             <>
               <button
