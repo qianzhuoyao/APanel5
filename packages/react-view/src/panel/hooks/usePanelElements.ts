@@ -37,6 +37,8 @@ function getDefaultSizeByMaterial(materialType: string) {
       return { width: 180, height: 56 };
     case "rect":
       return { width: 180, height: 120 };
+    case "grid":
+      return { width: 320, height: 220 };
     case "image":
       return { width: 220, height: 140 };
     case "video":
@@ -61,6 +63,17 @@ function getDefaultTextContent(materialType: string) {
     textFontWeight: "400",
     textLineHeight: 1.6,
     textAlign: "left",
+  } as const;
+}
+
+function getDefaultGridConfig(materialType: string) {
+  if (materialType !== "grid") return {};
+  return {
+    gridRows: 2,
+    gridCols: 3,
+    gridGap: 8,
+    gridPadding: 10,
+    gridSnapThreshold: 36,
   } as const;
 }
 
@@ -162,6 +175,32 @@ function buildDeepReferenceSnapshot(
     }
     return cloned;
   });
+}
+
+function getGridSlotLayout(grid: PanelElement) {
+  const rows = Math.max(1, Math.floor(grid.gridRows ?? 2));
+  const cols = Math.max(1, Math.floor(grid.gridCols ?? 3));
+  const gap = Math.max(0, grid.gridGap ?? 8);
+  const padding = Math.max(0, grid.gridPadding ?? 10);
+  const innerWidth = Math.max(1, grid.width - padding * 2);
+  const innerHeight = Math.max(1, grid.height - padding * 2);
+  const cellWidth = Math.max(1, (innerWidth - gap * (cols - 1)) / cols);
+  const cellHeight = Math.max(1, (innerHeight - gap * (rows - 1)) / rows);
+  const slots: Array<{ index: number; x: number; y: number; width: number; height: number }> = [];
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const x = grid.x + padding + c * (cellWidth + gap);
+      const y = grid.y + padding + r * (cellHeight + gap);
+      slots.push({
+        index: r * cols + c,
+        x,
+        y,
+        width: cellWidth,
+        height: cellHeight,
+      });
+    }
+  }
+  return { slots, rows, cols };
 }
 
 export function usePanelElements() {
@@ -285,6 +324,70 @@ export function usePanelElements() {
         "rotate" in patch ||
         "layerId" in patch;
       if (currentElement.locked && hasTransformPatch) return;
+      const isGridNode = currentElement.materialType === "grid";
+      const hasGridLayoutPatch =
+        "gridRows" in patch ||
+        "gridCols" in patch ||
+        "gridGap" in patch ||
+        "gridPadding" in patch ||
+        "width" in patch ||
+        "height" in patch ||
+        "x" in patch ||
+        "y" in patch;
+      if (isGridNode && hasGridLayoutPatch) {
+        store.update(
+          (draft) => {
+            const nodes = draft.root.children ?? [];
+            const targetNode = nodes.find((n) => isPanelElementNode(n) && n.id === id);
+            if (!targetNode?.props) return;
+            const byParent = new Map<string, PanelElement[]>();
+            nodes.forEach((n) => {
+              if (!isPanelElementNode(n) || !n.props) return;
+              const p = n.props as PanelElement;
+              if (!p.parentGridId) return;
+              const list = byParent.get(p.parentGridId) ?? [];
+              list.push(p);
+              byParent.set(p.parentGridId, list);
+            });
+            const byIdNode = new Map<string, Node>();
+            nodes.forEach((n) => {
+              if (!isPanelElementNode(n) || !n.props) return;
+              byIdNode.set((n.props as PanelElement).id, n);
+            });
+            const reflowGridDescendants = (grid: PanelElement) => {
+              const { slots } = getGridSlotLayout(grid);
+              if (slots.length === 0) return;
+              const directChildren = byParent.get(grid.id) ?? [];
+              directChildren.forEach((child) => {
+                const slotIndex =
+                  child.gridSlotIndex !== undefined
+                    ? Math.max(0, Math.floor(child.gridSlotIndex))
+                    : 0;
+                const slot = slots[slotIndex % slots.length];
+                if (!slot) return;
+                child.gridSlotIndex = slot.index;
+                child.x = slot.x;
+                child.y = slot.y;
+                child.width = slot.width;
+                child.height = slot.height;
+                const childNode = byIdNode.get(child.id);
+                if (childNode) childNode.props = child;
+                if (child.materialType === "grid") {
+                  reflowGridDescendants(child);
+                }
+              });
+            };
+            const nextGrid = { ...(targetNode.props as PanelElement), ...patch } as PanelElement;
+            targetNode.props = nextGrid;
+            reflowGridDescendants(nextGrid);
+          },
+          {
+            batchId: options?.batchId,
+            meta: { type: "node.update", id, ...(options?.meta ?? {}) },
+          }
+        );
+        return;
+      }
 
       store.updateById(
         id,
@@ -511,6 +614,7 @@ export function usePanelElements() {
       layerId: currentLayerId,
       materialType,
       ...getDefaultTextContent(materialType),
+      ...getDefaultGridConfig(materialType),
       refCopyMode: materialType === "reference" ? "shallow" : undefined,
       chart: getDefaultChartConfig(materialType),
       x: Math.round(x - size.width / 2),

@@ -34,6 +34,59 @@ export type MoveableLayerProps = {
   refreshToken?: number;
 };
 
+function getGridSlotLayout(grid: PanelElement) {
+  const rows = Math.max(1, Math.floor(grid.gridRows ?? 2));
+  const cols = Math.max(1, Math.floor(grid.gridCols ?? 3));
+  const gap = Math.max(0, grid.gridGap ?? 8);
+  const padding = Math.max(0, grid.gridPadding ?? 10);
+  const innerWidth = Math.max(1, grid.width - padding * 2);
+  const innerHeight = Math.max(1, grid.height - padding * 2);
+  const cellWidth = Math.max(1, (innerWidth - gap * (cols - 1)) / cols);
+  const cellHeight = Math.max(1, (innerHeight - gap * (rows - 1)) / rows);
+  const slots: Array<{ index: number; centerX: number; centerY: number; x: number; y: number }> = [];
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const x = grid.x + padding + c * (cellWidth + gap);
+      const y = grid.y + padding + r * (cellHeight + gap);
+      slots.push({
+        index: r * cols + c,
+        x,
+        y,
+        centerX: x + cellWidth / 2,
+        centerY: y + cellHeight / 2,
+      });
+    }
+  }
+  return { slots, cellWidth, cellHeight };
+}
+
+function getOccupiedSlotSet(elementsById: Map<string, PanelElement>, gridId: string, selfId: string) {
+  const occupied = new Set<number>();
+  for (const el of elementsById.values()) {
+    if (el.id === selfId) continue;
+    if (el.parentGridId !== gridId) continue;
+    if (el.gridSlotIndex === undefined) continue;
+    occupied.add(el.gridSlotIndex);
+  }
+  return occupied;
+}
+
+function isDescendantGrid(
+  elementsById: Map<string, PanelElement>,
+  possibleDescendantGridId: string,
+  ancestorGridId: string
+) {
+  let current = elementsById.get(possibleDescendantGridId);
+  const visited = new Set<string>();
+  while (current?.parentGridId) {
+    if (visited.has(current.id)) return false;
+    visited.add(current.id);
+    if (current.parentGridId === ancestorGridId) return true;
+    current = elementsById.get(current.parentGridId);
+  }
+  return false;
+}
+
 export function MoveableLayer({
   zoom,
   selectedTargets,
@@ -77,6 +130,87 @@ export function MoveableLayer({
       moveableRef.current?.updateRect?.();
     });
   }, []);
+  const getGridDescendants = useCallback(
+    (gridId: string) => {
+      const byParent = new Map<string, PanelElement[]>();
+      for (const el of elementsById.values()) {
+        if (!el.parentGridId) continue;
+        const list = byParent.get(el.parentGridId) ?? [];
+        list.push(el);
+        byParent.set(el.parentGridId, list);
+      }
+      const result: PanelElement[] = [];
+      const queue = [...(byParent.get(gridId) ?? [])];
+      const visited = new Set<string>();
+      while (queue.length > 0) {
+        const cur = queue.shift()!;
+        if (visited.has(cur.id)) continue;
+        visited.add(cur.id);
+        result.push(cur);
+        const children = byParent.get(cur.id) ?? [];
+        children.forEach((child) => queue.push(child));
+      }
+      return result;
+    },
+    [elementsById]
+  );
+  const getSnapPatch = useCallback(
+    (movingId: string, x: number, y: number, width: number, height: number): Partial<PanelElement> => {
+      const moving = elementsById.get(movingId);
+      if (!moving) return {};
+      const centerX = x + width / 2;
+      const centerY = y + height / 2;
+      let nearest:
+        | {
+            gridId: string;
+            slotIndex: number;
+            slotX: number;
+            slotY: number;
+            distance: number;
+          }
+        | null = null;
+      for (const [id, el] of elementsById.entries()) {
+        if (id === movingId || el.materialType !== "grid") continue;
+        if (
+          moving.materialType === "grid" &&
+          isDescendantGrid(elementsById, id, movingId)
+        ) {
+          // 防止把父 grid 吸附到自己的子孙 grid，形成循环父子关系
+          continue;
+        }
+        const { slots, cellWidth, cellHeight } = getGridSlotLayout(el);
+        const occupiedSlots = getOccupiedSlotSet(elementsById, el.id, movingId);
+        const threshold = Math.max(8, el.gridSnapThreshold ?? 36);
+        for (const slot of slots) {
+          if (occupiedSlots.has(slot.index)) continue;
+          const distance = Math.hypot(slot.centerX - centerX, slot.centerY - centerY);
+          if (distance > threshold) continue;
+          if (!nearest || distance < nearest.distance) {
+            nearest = {
+              gridId: el.id,
+              slotIndex: slot.index,
+              slotX: slot.x + (cellWidth - width) / 2,
+              slotY: slot.y + (cellHeight - height) / 2,
+              distance,
+            };
+          }
+        }
+      }
+      if (!nearest) {
+        if (moving.parentGridId || moving.gridSlotIndex !== undefined) {
+          return { parentGridId: undefined, gridSlotIndex: undefined };
+        }
+        return {};
+      }
+      return {
+        x: nearest.slotX,
+        y: nearest.slotY,
+        parentGridId: nearest.gridId,
+        gridSlotIndex: nearest.slotIndex,
+      };
+    },
+    [elementsById]
+  );
 
   useEffect(() => {
     if (!targets) return;
@@ -213,11 +347,35 @@ export function MoveableLayer({
         const sy = e.datas.__startY ?? data.y;
         const tx = e.lastEvent?.beforeTranslate?.[0] ?? 0;
         const ty = e.lastEvent?.beforeTranslate?.[1] ?? 0;
-        updateElement(id, { x: sx + tx, y: sy + ty });
+        const nextX = sx + tx;
+        const nextY = sy + ty;
+        const patch = getSnapPatch(id, nextX, nextY, data.width, data.height);
+        updateElement(id, { x: nextX, y: nextY, ...patch });
+        if (data.materialType === "grid") {
+          const dx = nextX - data.x;
+          const dy = nextY - data.y;
+          if (Math.abs(dx) > 0.001 || Math.abs(dy) > 0.001) {
+            const descendants = getGridDescendants(id);
+            const batchId = `move-grid-children-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+            descendants.forEach((child) => {
+              updateElement(
+                child.id,
+                { x: child.x + dx, y: child.y + dy },
+                { batchId, meta: { type: "node.group-drag" } }
+              );
+            });
+          }
+        }
         updateRectNextFrame();
       }}
       onDragGroupEnd={(e: any) => {
         const batchId = `move-group-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+        const selectedSet = new Set(
+          e.events
+            .map((ev: any) => (ev.target ? getId(ev.target) : null))
+            .filter((id: string | null): id is string => !!id)
+        );
+        const gridDeltaMap = new Map<string, { dx: number; dy: number }>();
         e.events.forEach((ev: any) => {
           const id = ev.target ? getId(ev.target) : null;
           if (!id) return;
@@ -227,12 +385,33 @@ export function MoveableLayer({
           const sy = ev.datas.__startY ?? data.y;
           const tx = ev.lastEvent?.beforeTranslate?.[0] ?? 0;
           const ty = ev.lastEvent?.beforeTranslate?.[1] ?? 0;
+          const nextX = sx + tx;
+          const nextY = sy + ty;
+          const patch = getSnapPatch(id, nextX, nextY, data.width, data.height);
           updateElement(
             id,
-            { x: sx + tx, y: sy + ty },
+            { x: nextX, y: nextY, ...patch },
             { batchId, meta: { type: "node.group-drag" } }
           );
+          if (data.materialType === "grid") {
+            const dx = nextX - data.x;
+            const dy = nextY - data.y;
+            if (Math.abs(dx) > 0.001 || Math.abs(dy) > 0.001) {
+              gridDeltaMap.set(id, { dx, dy });
+            }
+          }
         });
+        for (const [gridId, delta] of gridDeltaMap.entries()) {
+          const descendants = getGridDescendants(gridId);
+          descendants.forEach((child) => {
+            if (selectedSet.has(child.id)) return;
+            updateElement(
+              child.id,
+              { x: child.x + delta.dx, y: child.y + delta.dy },
+              { batchId, meta: { type: "node.group-drag" } }
+            );
+          });
+        }
         updateRectNextFrame();
       }}
       onResizeEnd={(e: any) => {

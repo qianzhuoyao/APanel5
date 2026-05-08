@@ -64,6 +64,13 @@ export type PanelElement = {
   textColor?: string;
   textLineHeight?: number;
   textAlign?: "left" | "center" | "right" | "justify";
+  gridRows?: number;
+  gridCols?: number;
+  gridGap?: number;
+  gridPadding?: number;
+  gridSnapThreshold?: number;
+  parentGridId?: string;
+  gridSlotIndex?: number;
   style?: PanelElementStyle;
   x: number;
   y: number;

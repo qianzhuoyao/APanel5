@@ -1048,6 +1048,99 @@ export function PanelConfigSidebar({
                 )}
               </>
             )
+          ) : selectedElement.materialType === "grid" ? (
+            renderSection(
+              "gridConfig",
+              "网格布局配置",
+              <>
+                {renderFieldGroup(
+                  "网格参数",
+                  <div className="grid grid-cols-2 gap-2">
+                    <label className="block space-y-1">
+                      <div>行数</div>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={12}
+                        value={selectedElement.gridRows ?? 2}
+                        onChange={(e) =>
+                          updateElement(selectedElement.id, {
+                            gridRows: Math.max(1, Math.min(12, Number(e.target.value) || 2)),
+                          })
+                        }
+                        className="h-7"
+                      />
+                    </label>
+                    <label className="block space-y-1">
+                      <div>列数</div>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={12}
+                        value={selectedElement.gridCols ?? 3}
+                        onChange={(e) =>
+                          updateElement(selectedElement.id, {
+                            gridCols: Math.max(1, Math.min(12, Number(e.target.value) || 3)),
+                          })
+                        }
+                        className="h-7"
+                      />
+                    </label>
+                    <label className="block space-y-1">
+                      <div>间距（px）</div>
+                      <Input
+                        type="number"
+                        min={0}
+                        max={80}
+                        value={selectedElement.gridGap ?? 8}
+                        onChange={(e) =>
+                          updateElement(selectedElement.id, {
+                            gridGap: Math.max(0, Math.min(80, Number(e.target.value) || 0)),
+                          })
+                        }
+                        className="h-7"
+                      />
+                    </label>
+                    <label className="block space-y-1">
+                      <div>内边距（px）</div>
+                      <Input
+                        type="number"
+                        min={0}
+                        max={100}
+                        value={selectedElement.gridPadding ?? 10}
+                        onChange={(e) =>
+                          updateElement(selectedElement.id, {
+                            gridPadding: Math.max(0, Math.min(100, Number(e.target.value) || 0)),
+                          })
+                        }
+                        className="h-7"
+                      />
+                    </label>
+                    <label className="block space-y-1">
+                      <div>吸附阈值（px）</div>
+                      <Input
+                        type="number"
+                        min={8}
+                        max={120}
+                        value={selectedElement.gridSnapThreshold ?? 36}
+                        onChange={(e) =>
+                          updateElement(selectedElement.id, {
+                            gridSnapThreshold: Math.max(
+                              8,
+                              Math.min(120, Number(e.target.value) || 36)
+                            ),
+                          })
+                        }
+                        className="h-7"
+                      />
+                    </label>
+                  </div>
+                )}
+                <div className="rounded border border-border/60 bg-background px-2 py-1.5 text-[11px] text-muted-foreground">
+                  其他节点拖拽靠近该网格槽位中心时会自动吸附，并在节点树显示为该网格子节点。
+                </div>
+              </>
+            )
           ) : selectedElement.materialType === "reference" ? (
             renderSection(
               "reference",

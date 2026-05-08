@@ -57,6 +57,54 @@ function TextNodeContent({
   );
 }
 
+function GridNodeContent({
+  element,
+  allElements,
+}: {
+  element: PanelElement;
+  allElements: PanelElement[];
+}) {
+  const rows = Math.max(1, Math.floor(element.gridRows ?? 2));
+  const cols = Math.max(1, Math.floor(element.gridCols ?? 3));
+  const gap = Math.max(0, element.gridGap ?? 8);
+  const padding = Math.max(0, element.gridPadding ?? 10);
+  const occupied = useMemo(() => {
+    const set = new Set<number>();
+    allElements.forEach((el) => {
+      if (el.parentGridId !== element.id) return;
+      if (el.gridSlotIndex === undefined) return;
+      set.add(el.gridSlotIndex);
+    });
+    return set;
+  }, [allElements, element.id]);
+  return (
+    <div
+      className="h-full w-full"
+      style={{
+        display: "grid",
+        gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
+        gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))`,
+        gap: `${gap}px`,
+        padding: `${padding}px`,
+        boxSizing: "border-box",
+      }}
+    >
+      {Array.from({ length: rows * cols }).map((_, idx) => (
+        <div
+          key={idx}
+          className={[
+            "rounded border border-dashed",
+            occupied.has(idx)
+              ? "border-primary/70 bg-primary/15"
+              : "border-border/60 bg-muted/20",
+          ].join(" ")}
+          title={`槽位 ${idx + 1}${occupied.has(idx) ? "（已占用）" : "（空）"}`}
+        />
+      ))}
+    </div>
+  );
+}
+
 function ChartNodeContent({ element }: { element: PanelElement }) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<echarts.ECharts | null>(null);
@@ -285,6 +333,8 @@ export function ElementsLayer({
               <ChartNodeContent element={el} />
             ) : el.materialType === "reference" ? (
               <ReferenceNodeContent element={el} allElements={allElements} />
+            ) : el.materialType === "grid" ? (
+              <GridNodeContent element={el} allElements={allElements} />
             ) : el.materialType === "text" ? (
               <TextNodeContent
                 element={el}

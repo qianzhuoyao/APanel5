@@ -37,6 +37,7 @@ const MATERIAL_LABEL_MAP: Record<string, string> = {
   funnel: "漏斗图",
   text: "文本",
   rect: "矩形",
+  grid: "网格布局",
   image: "图片",
   video: "视频",
   audio: "音频",
@@ -236,6 +237,17 @@ function MaterialPreview({ id }: { id: string }) {
       </div>
     );
   }
+  if (id === "grid") {
+    return (
+      <div className={common}>
+        <div className="absolute inset-0 grid grid-cols-3 grid-rows-2 gap-1.5 p-2">
+          {Array.from({ length: 6 }).map((_, idx) => (
+            <div key={idx} className="rounded-sm border border-dashed border-primary/55 bg-primary/10" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return <div className={common} />;
 }
@@ -260,7 +272,7 @@ const defaultCategories: MaterialCategory[] = [
     title: "基础",
     items: [
       { id: "text", title: "文本" },
-      { id: "rect", title: "矩形" },
+      { id: "grid", title: "网格布局" },
       { id: "image", title: "图片" },
       { id: "reference", title: "引用组件" },
     ],
@@ -340,6 +352,21 @@ export function MaterialSidebar({
     }
     return map;
   }, [allElements, layers]);
+  const elementsById = useMemo(() => {
+    const map = new Map<string, PanelElement>();
+    for (const el of allElements) map.set(el.id, el);
+    return map;
+  }, [allElements]);
+  const childrenByGrid = useMemo(() => {
+    const map = new Map<string, PanelElement[]>();
+    for (const el of allElements) {
+      if (!el.parentGridId) continue;
+      const list = map.get(el.parentGridId) ?? [];
+      list.push(el);
+      map.set(el.parentGridId, list);
+    }
+    return map;
+  }, [allElements]);
 
   const getNodeDisplayName = (node: PanelElement) => {
     const customName = node.name?.trim();
@@ -365,13 +392,15 @@ export function MaterialSidebar({
   ) => {
     const selected = selectedIds.includes(node.id);
     const isRef = node.materialType === "reference";
+    const isGrid = node.materialType === "grid";
+    const gridChildren = isGrid ? childrenByGrid.get(node.id) ?? [] : [];
     const children = isRef
       ? node.refCopyMode === "deep"
         ? node.refSnapshot ?? sourceOverride ?? []
         : node.refLayerId
           ? elementsByLayer.get(node.refLayerId) ?? []
           : []
-      : [];
+      : gridChildren;
     const hasChildren = children.length > 0;
     const nextVisited = new Set(visited);
     nextVisited.add(node.id);
@@ -651,6 +680,10 @@ export function MaterialSidebar({
                           </div>
                         ) : (
                           layerNodes
+                            .filter((node) => {
+                              if (!node.parentGridId) return true;
+                              return !elementsById.has(node.parentGridId);
+                            })
                             .filter((node) => !referenceOnlyTree || hasRefInSubtree(node, new Set<string>()))
                             .map((node) =>
                             renderTreeNode(node, 2, `${layer.id}/${node.id}`, new Set<string>())
