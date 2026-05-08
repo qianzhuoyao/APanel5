@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Checkbox,
   Collapsible,
@@ -46,6 +46,7 @@ export function PanelConfigSidebar({
   const [uploadStatus, setUploadStatus] = useState<string>("");
   const [audioStatus, setAudioStatus] = useState<string>("");
   const [videoStatus, setVideoStatus] = useState<string>("");
+  const [configSearch, setConfigSearch] = useState("");
   const textEditorRef = useRef<HTMLDivElement | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const recordStreamRef = useRef<MediaStream | null>(null);
@@ -84,6 +85,8 @@ export function PanelConfigSidebar({
     | "gauge"
     | "funnel"
     | "";
+  const normalizedSearch = useMemo(() => configSearch.trim().toLowerCase(), [configSearch]);
+  const hasSearch = normalizedSearch.length > 0;
 
   useEffect(() => {
     if (!selectedElement) {
@@ -313,10 +316,17 @@ export function PanelConfigSidebar({
     key: string,
     title: string,
     children: React.ReactNode,
-    defaultOpen = true
-  ) => (
+    defaultOpen = true,
+    searchTerms: string[] = []
+  ) => {
+    const hit =
+      !hasSearch ||
+      [title, ...searchTerms].some((term) => term.toLowerCase().includes(normalizedSearch));
+    if (!hit) return null;
+    renderedSectionCount += 1;
+    return (
     <Collapsible
-      open={isSectionExpanded(key, defaultOpen)}
+      open={hasSearch ? true : isSectionExpanded(key, defaultOpen)}
       onOpenChange={(open) => setSectionExpanded(key, open)}
       className="rounded-lg border border-border/80 bg-card/90 shadow-sm"
     >
@@ -335,7 +345,8 @@ export function PanelConfigSidebar({
         {children}
       </CollapsibleContent>
     </Collapsible>
-  );
+    );
+  };
 
   const renderFieldGroup = (title: string, children: React.ReactNode) => (
     <div className="space-y-2 rounded-md border border-border/60 bg-muted/25 p-2">
@@ -377,11 +388,23 @@ export function PanelConfigSidebar({
     }
   };
 
+  let renderedSectionCount = 0;
   return (
     <aside
       className={`h-full overflow-auto border-l border-border bg-muted/[0.18] px-3 py-3 text-foreground ${themedScrollbarClass}`}
     >
       <div className="mb-2 text-xs font-semibold">配置</div>
+      <div className="mb-2 space-y-1">
+        <Input
+          value={configSearch}
+          onChange={(e) => setConfigSearch(e.target.value)}
+          placeholder="搜索配置，如：边框、tooltip、音频、网格..."
+          className="h-7"
+        />
+        {hasSearch ? (
+          <div className="text-[11px] text-muted-foreground">搜索中：{configSearch}</div>
+        ) : null}
+      </div>
       {!selectedElement ? (
         <div className="text-xs leading-6 text-muted-foreground">请选择一个节点后进行配置</div>
       ) : (
@@ -424,7 +447,9 @@ export function PanelConfigSidebar({
               </label>
               <div className="truncate text-muted-foreground">ID: {selectedElement.id}</div>
               <div className="text-muted-foreground">类型: {selectedElement.materialType ?? selectedElement.id}</div>
-            </>
+            </>,
+            true,
+            ["名称", "id", "类型", "锁定", "locked", "name"]
           )}
 
           {renderSection(
@@ -523,7 +548,9 @@ export function PanelConfigSidebar({
                   </label>
                 </div>
               )}
-            </>
+            </>,
+            true,
+            ["背景色", "背景图", "background", "backgroundSize", "backgroundPosition", "布局"]
           )}
 
           {renderSection(
@@ -591,7 +618,9 @@ export function PanelConfigSidebar({
                   )}
                 </div>
               )}
-            </>
+            </>,
+            true,
+            ["边框", "border", "宽度", "圆角", "颜色", "样式"]
           )}
 
           {isChartElement ? (
@@ -973,7 +1002,22 @@ export function PanelConfigSidebar({
                       </>
                     )
                   ) : null}
-                </>
+                </>,
+                true,
+                [
+                  "图表",
+                  "title",
+                  "tooltip",
+                  "x轴",
+                  "y轴",
+                  "axis",
+                  "label",
+                  "刻度线",
+                  "分割线",
+                  "render",
+                  "svg",
+                  "canvas",
+                ]
               )}
 
               {renderSection(
@@ -1029,7 +1073,8 @@ export function PanelConfigSidebar({
                     )
                   ) : null}
                 </>,
-                false
+                false,
+                ["json", "option", "高级", "echarts"]
               )}
             </>
           ) : selectedElement.materialType === "text" ? (
@@ -1212,7 +1257,9 @@ export function PanelConfigSidebar({
                     <span>允许在画布内直接输入（默认开启）</span>
                   </label>
                 )}
-              </>
+              </>,
+              true,
+              ["文本", "富文本", "字体", "颜色", "对齐", "行高", "输入"]
             )
           ) : selectedElement.materialType === "audio" ? (
             renderSection(
@@ -1390,7 +1437,9 @@ export function PanelConfigSidebar({
                     </div>
                   </>
                 )}
-              </>
+              </>,
+              true,
+              ["音频", "url", "上传", "录音", "icon", "占位", "动效", "自动暂停", "media"]
             )
           ) : selectedElement.materialType === "video" ? (
             renderSection(
@@ -1454,7 +1503,9 @@ export function PanelConfigSidebar({
                     </label>
                   </>
                 )}
-              </>
+              </>,
+              true,
+              ["视频", "url", "上传", "预览", "自动暂停", "media"]
             )
           ) : selectedElement.materialType === "grid" ? (
             renderSection(
@@ -1547,7 +1598,9 @@ export function PanelConfigSidebar({
                 <div className="rounded border border-border/60 bg-background px-2 py-1.5 text-[11px] text-muted-foreground">
                   其他节点拖拽靠近该网格槽位中心时会自动吸附，并在节点树显示为该网格子节点。
                 </div>
-              </>
+              </>,
+              true,
+              ["网格", "grid", "行", "列", "间距", "内边距", "吸附", "阈值"]
             )
           ) : selectedElement.materialType === "reference" ? (
             renderSection(
@@ -1610,13 +1663,20 @@ export function PanelConfigSidebar({
                     </div>
                   </>
                 )}
-              </>
+              </>,
+              true,
+              ["引用", "ref", "图层", "浅拷贝", "深拷贝", "snapshot"]
             )
           ) : (
             <div className="text-xs leading-6 text-muted-foreground">
               当前节点不是图表类型，暂无图表配置项。
             </div>
           )}
+          {hasSearch && renderedSectionCount === 0 ? (
+            <div className="rounded border border-border/60 bg-background px-2 py-1.5 text-[11px] text-muted-foreground">
+              未找到匹配项，请尝试更换关键词。
+            </div>
+          ) : null}
             </div>
           </fieldset>
         </div>

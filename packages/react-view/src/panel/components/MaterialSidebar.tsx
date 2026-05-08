@@ -296,6 +296,7 @@ export type MaterialSidebarProps = {
   onSelectNode?: (nodeId: string, layerId: string) => void;
   onDeleteNode?: (nodeId: string) => void;
   onCopyNode?: (nodeId: string, mode?: ReferenceCopyMode) => void;
+  onMoveNodeToLayer?: (nodeId: string, targetLayerId: string) => void;
 };
 
 export function MaterialSidebar({
@@ -307,12 +308,14 @@ export function MaterialSidebar({
   onSelectNode,
   onDeleteNode,
   onCopyNode,
+  onMoveNodeToLayer,
 }: MaterialSidebarProps) {
   const categories = useMemo(() => defaultCategories, []);
   const [leftTab, setLeftTab] = useState<"materials" | "tree">("materials");
   const [activeCategoryId, setActiveCategoryId] =
     useState<MaterialCategoryId>("charts");
   const [keyword, setKeyword] = useState("");
+  const [treeKeyword, setTreeKeyword] = useState("");
   const [referenceOnlyTree, setReferenceOnlyTree] = useState(false);
   const [expandedKeys, setExpandedKeys] = useState<Record<string, boolean>>({
     root: true,
@@ -324,6 +327,8 @@ export function MaterialSidebar({
   );
   const normalizedKeyword = keyword.trim().toLowerCase();
   const isSearching = normalizedKeyword.length > 0;
+  const normalizedTreeKeyword = treeKeyword.trim().toLowerCase();
+  const isTreeSearching = normalizedTreeKeyword.length > 0;
 
   const matchedItems = useMemo(() => {
     if (!isSearching) return [];
@@ -388,6 +393,34 @@ export function MaterialSidebar({
     setExpandedKeys((prev) => ({ ...prev, [key]: next }));
   };
 
+  const getNodeChildren = (node: PanelElement, sourceOverride?: PanelElement[]) => {
+    const isRef = node.materialType === "reference";
+    const isGrid = node.materialType === "grid";
+    const gridChildren = isGrid ? childrenByGrid.get(node.id) ?? [] : [];
+    return isRef
+      ? node.refCopyMode === "deep"
+        ? node.refSnapshot ?? sourceOverride ?? []
+        : node.refLayerId
+          ? elementsByLayer.get(node.refLayerId) ?? []
+          : []
+      : gridChildren;
+  };
+
+  const nodeMatchesTreeSearch = (
+    node: PanelElement,
+    visited: Set<string>,
+    sourceOverride?: PanelElement[]
+  ): boolean => {
+    if (!isTreeSearching) return true;
+    const selfText = `${getNodeDisplayName(node)} ${node.materialType ?? ""} ${node.id}`.toLowerCase();
+    if (selfText.includes(normalizedTreeKeyword)) return true;
+    if (visited.has(node.id)) return false;
+    const nextVisited = new Set(visited);
+    nextVisited.add(node.id);
+    const children = getNodeChildren(node, sourceOverride);
+    return children.some((child) => nodeMatchesTreeSearch(child, nextVisited, node.refSnapshot));
+  };
+
   const renderTreeNode = (
     node: PanelElement,
     level: number,
@@ -396,16 +429,9 @@ export function MaterialSidebar({
     sourceOverride?: PanelElement[]
   ) => {
     const selected = selectedIds.includes(node.id);
+    if (!nodeMatchesTreeSearch(node, visited, sourceOverride)) return null;
     const isRef = node.materialType === "reference";
-    const isGrid = node.materialType === "grid";
-    const gridChildren = isGrid ? childrenByGrid.get(node.id) ?? [] : [];
-    const children = isRef
-      ? node.refCopyMode === "deep"
-        ? node.refSnapshot ?? sourceOverride ?? []
-        : node.refLayerId
-          ? elementsByLayer.get(node.refLayerId) ?? []
-          : []
-      : gridChildren;
+    const children = getNodeChildren(node, sourceOverride);
     const hasChildren = children.length > 0;
     const nextVisited = new Set(visited);
     nextVisited.add(node.id);
@@ -440,6 +466,19 @@ export function MaterialSidebar({
             className="min-w-0 flex-1 truncate text-left"
             onClick={() => onSelectNode?.(node.id, node.layerId)}
             title={getNodeDisplayName(node)}
+            draggable={!node.locked}
+            onDragStart={(e) => {
+              e.stopPropagation();
+              if (node.locked) {
+                e.preventDefault();
+                return;
+              }
+              e.dataTransfer.setData(
+                "application/x-arron-tree-node",
+                JSON.stringify({ nodeId: node.id, sourceLayerId: node.layerId })
+              );
+              e.dataTransfer.effectAllowed = "move";
+            }}
           >
             {getNodeDisplayName(node)}
           </button>
@@ -643,6 +682,14 @@ export function MaterialSidebar({
         </TabsContent>
         <TabsContent value="tree" className="mt-0 min-h-0 flex-1 overflow-hidden">
           <div className={`h-full overflow-auto px-2 py-2 text-xs ${themedScrollbarClass}`}>
+            <div className="mb-2">
+              <Input
+                value={treeKeyword}
+                onChange={(e) => setTreeKeyword(e.target.value)}
+                placeholder="搜索节点（名称 / 类型 / ID）"
+                className="h-8 text-xs"
+              />
+            </div>
             <div className="mb-2 flex items-center justify-between rounded border border-border bg-card px-2 py-1.5">
               <span className="text-[11px] text-muted-foreground">仅看引用子树</span>
               <Switch
@@ -670,6 +717,14 @@ export function MaterialSidebar({
               <CollapsibleContent className="space-y-1 border-t border-border/60 py-1">
                 {layers.map((layer) => {
                   const layerNodes = elementsByLayer.get(layer.id) ?? [];
+                  const rootNodes = layerNodes
+                    .filter((node) => {
+                      if (!node.parentGridId) return true;
+                      return !elementsById.has(node.parentGridId);
+                    })
+                    .filter((node) => !referenceOnlyTree || hasRefInSubtree(node, new Set<string>()))
+                    .filter((node) => nodeMatchesTreeSearch(node, new Set<string>()));
+                  if (isTreeSearching && rootNodes.length === 0) return null;
                   const layerKey = `layer:${layer.id}`;
                   return (
                     <Collapsible
@@ -687,7 +742,7 @@ export function MaterialSidebar({
                           </button>
                         </CollapsibleTrigger>
                         <span className="truncate">
-                          {layer.name}（{layerNodes.length}）
+                          {layer.name}（{rootNodes.length}）
                         </span>
                         {layer.isMapping ? (
                           <span className="rounded border border-primary/40 bg-primary/10 px-1 text-[10px] text-primary">
@@ -695,26 +750,64 @@ export function MaterialSidebar({
                           </span>
                         ) : null}
                       </div>
+                      <div
+                        className="mx-2 mb-1 rounded border border-dashed border-transparent px-2 py-1 text-[10px] text-muted-foreground transition-colors hover:border-border/60 hover:bg-accent/30"
+                        onDragOver={(e) => {
+                          const hasNodeData = e.dataTransfer.types.includes("application/x-arron-tree-node");
+                          if (!hasNodeData) return;
+                          e.preventDefault();
+                          e.dataTransfer.dropEffect = "move";
+                        }}
+                        onDrop={(e) => {
+                          const payload = e.dataTransfer.getData("application/x-arron-tree-node");
+                          if (!payload) return;
+                          e.preventDefault();
+                          try {
+                            const data = JSON.parse(payload) as {
+                              nodeId?: string;
+                              sourceLayerId?: string;
+                            };
+                            if (!data.nodeId || !layer.id) return;
+                            if (data.sourceLayerId === layer.id) return;
+                            onMoveNodeToLayer?.(data.nodeId, layer.id);
+                          } catch {
+                            // ignore invalid payload
+                          }
+                        }}
+                        title="拖拽节点到此图层"
+                      >
+                        拖拽节点到该图层
+                      </div>
                       <CollapsibleContent>
-                        {layerNodes.length === 0 ? (
+                        {rootNodes.length === 0 ? (
                           <div className="py-1 text-[11px] text-muted-foreground" style={{ paddingLeft: 38 }}>
                             空图层
                           </div>
                         ) : (
-                          layerNodes
-                            .filter((node) => {
-                              if (!node.parentGridId) return true;
-                              return !elementsById.has(node.parentGridId);
-                            })
-                            .filter((node) => !referenceOnlyTree || hasRefInSubtree(node, new Set<string>()))
-                            .map((node) =>
+                          rootNodes.map((node) =>
                             renderTreeNode(node, 2, `${layer.id}/${node.id}`, new Set<string>())
-                            )
+                          )
                         )}
                       </CollapsibleContent>
                     </Collapsible>
                   );
                 })}
+                {isTreeSearching &&
+                layers.every((layer) => {
+                  const layerNodes = elementsByLayer.get(layer.id) ?? [];
+                  const rootNodes = layerNodes
+                    .filter((node) => {
+                      if (!node.parentGridId) return true;
+                      return !elementsById.has(node.parentGridId);
+                    })
+                    .filter((node) => !referenceOnlyTree || hasRefInSubtree(node, new Set<string>()))
+                    .filter((node) => nodeMatchesTreeSearch(node, new Set<string>()));
+                  return rootNodes.length === 0;
+                }) ? (
+                  <div className="mx-2 my-2 rounded border border-dashed border-border px-2.5 py-3 text-xs text-muted-foreground">
+                    没有匹配到节点
+                  </div>
+                ) : null}
               </CollapsibleContent>
             </Collapsible>
           </div>

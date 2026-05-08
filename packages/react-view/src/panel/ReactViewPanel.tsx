@@ -750,6 +750,34 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                   setSelectedIds((prev) => prev.filter((id) => id !== nodeId));
                 });
               }}
+              onMoveNodeToLayer={(nodeId, targetLayerId) => {
+                const node = byId.get(nodeId);
+                if (!node) {
+                  showActionHint("未找到节点，可能已被删除");
+                  return;
+                }
+                if (node.locked) {
+                  showActionHint("锁定节点不允许更换图层");
+                  return;
+                }
+                if (node.layerId === targetLayerId) return;
+                const sourceLayer = layerById.get(node.layerId);
+                if (sourceLayer?.locked) {
+                  showActionHint("节点所在图层已锁定，无法更换图层");
+                  return;
+                }
+                const targetLayer = layerById.get(targetLayerId);
+                if (!targetLayer) {
+                  showActionHint("目标图层不存在");
+                  return;
+                }
+                if (targetLayer.locked) {
+                  showActionHint("目标图层已锁定，无法移入");
+                  return;
+                }
+                updateElement(nodeId, { layerId: targetLayerId });
+                if (activeLayerId !== targetLayerId) setActiveLayer(targetLayerId);
+              }}
             />
           </div>
         </ResizablePanel>
