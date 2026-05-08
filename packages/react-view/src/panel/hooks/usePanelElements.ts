@@ -8,6 +8,8 @@ export type PanelLayer = {
   name: string;
   locked: boolean;
   editable: boolean;
+  isMapping?: boolean;
+  mappingBaseLayerId?: string;
   mergeSelected?: boolean;
 };
 
@@ -25,6 +27,8 @@ const DEFAULT_LAYER: PanelLayer = {
   name: "图层1",
   locked: false,
   editable: false,
+  isMapping: false,
+  mappingBaseLayerId: undefined,
 };
 
 function randomId(prefix: string) {
@@ -201,6 +205,49 @@ function getGridSlotLayout(grid: PanelElement) {
     }
   }
   return { slots, rows, cols };
+}
+
+function removeMappingLayersBySourceIds(
+  draft: State,
+  sourceIds: Set<string>,
+  fallbackActiveLayerId: string = DEFAULT_LAYER_ID
+) {
+  if (sourceIds.size === 0) return;
+  const nodes = draft.root.children ?? [];
+  const mappingLayerIds = new Set<string>();
+  nodes.forEach((n) => {
+    if (!isPanelElementNode(n) || !n.props) return;
+    const props = n.props as PanelElement;
+    if (!props.mappingSourceNodeId) return;
+    if (!sourceIds.has(props.mappingSourceNodeId)) return;
+    mappingLayerIds.add(props.layerId);
+  });
+  if (mappingLayerIds.size === 0) return;
+  removeLayersByIds(draft, mappingLayerIds, fallbackActiveLayerId);
+}
+
+function removeLayersByIds(
+  draft: State,
+  layerIds: Set<string>,
+  fallbackActiveLayerId: string = DEFAULT_LAYER_ID
+) {
+  if (layerIds.size === 0) return;
+  const nodes = draft.root.children ?? [];
+
+  draft.root.children = nodes.filter((n) => {
+    if (!isPanelElementNode(n) || !n.props) return true;
+    const props = n.props as PanelElement;
+    return !layerIds.has(props.layerId);
+  });
+
+  draft.variables = draft.variables ?? {};
+  const layers = (draft.variables.layers as PanelLayer[] | undefined) ?? [DEFAULT_LAYER];
+  draft.variables.layers = layers.filter((layer) => !layerIds.has(layer.id));
+  const activeLayerId = (draft.variables.activeLayerId as string | undefined) ?? fallbackActiveLayerId;
+  if (layerIds.has(activeLayerId)) {
+    draft.variables.activeLayerId =
+      (draft.variables.layers[0] as PanelLayer | undefined)?.id ?? fallbackActiveLayerId;
+  }
 }
 
 export function usePanelElements() {
@@ -389,6 +436,33 @@ export function usePanelElements() {
         return;
       }
 
+      const syncSourceId = currentElement.mappingSourceNodeId ?? currentElement.id;
+      const syncPatch = { ...patch } as Partial<PanelElement>;
+      delete (syncPatch as any).id;
+      delete (syncPatch as any).layerId;
+      delete (syncPatch as any).mappingSourceNodeId;
+      delete (syncPatch as any).mappingSourceLayerId;
+      if (Object.keys(syncPatch).length > 0) {
+        store.update(
+          (draft) => {
+            const nodes = draft.root.children ?? [];
+            nodes.forEach((n) => {
+              if (!isPanelElementNode(n) || !n.props) return;
+              const props = n.props as PanelElement;
+              const sameFamily =
+                props.id === syncSourceId || props.mappingSourceNodeId === syncSourceId;
+              if (!sameFamily) return;
+              n.props = { ...props, ...syncPatch };
+            });
+          },
+          {
+            batchId: options?.batchId,
+            meta: { type: "node.update", id, ...(options?.meta ?? {}) },
+          }
+        );
+        return;
+      }
+
       store.updateById(
         id,
         (node) => {
@@ -413,9 +487,33 @@ export function usePanelElements() {
     if (targetLayer?.locked) return;
     store.update(
       (draft) => {
-        draft.root.children = (draft.root.children ?? []).filter(
-          (n) => !(isPanelElementNode(n) && n.id === id)
+        const deletedSourceIds = new Set<string>();
+        const impactedMappingLayerIds = new Set<string>();
+        const deleting = (draft.root.children ?? []).find(
+          (n) => isPanelElementNode(n) && n.id === id
         );
+        if (deleting && isPanelElementNode(deleting) && deleting.props?.id) {
+          const props = deleting.props as PanelElement;
+          deletedSourceIds.add(props.mappingSourceNodeId ?? props.id);
+        }
+        (draft.root.children ?? []).forEach((n) => {
+          if (!isPanelElementNode(n) || !n.props) return;
+          const props = n.props as PanelElement;
+          if (!props.mappingSourceNodeId) return;
+          if (!deletedSourceIds.has(props.mappingSourceNodeId)) return;
+          impactedMappingLayerIds.add(props.layerId);
+        });
+        const familyIds = new Set<string>();
+        (draft.root.children ?? []).forEach((n) => {
+          if (!isPanelElementNode(n) || !n.props) return;
+          const props = n.props as PanelElement;
+          const sourceId = props.mappingSourceNodeId ?? props.id;
+          if (deletedSourceIds.has(sourceId)) familyIds.add(props.id);
+        });
+        draft.root.children = (draft.root.children ?? []).filter(
+          (n) => !(isPanelElementNode(n) && familyIds.has(n.id))
+        );
+        removeLayersByIds(draft, impactedMappingLayerIds);
       },
       { meta: { type: "node.delete", id } }
     );
@@ -432,9 +530,32 @@ export function usePanelElements() {
     if (idSet.size === 0) return;
     store.update(
       (draft) => {
+        const deletedSourceIds = new Set<string>();
+        const impactedMappingLayerIds = new Set<string>();
+        (draft.root.children ?? []).forEach((n) => {
+          if (!isPanelElementNode(n) || !n.props) return;
+          if (!idSet.has(n.id)) return;
+          const props = n.props as PanelElement;
+          deletedSourceIds.add(props.mappingSourceNodeId ?? props.id);
+        });
+        (draft.root.children ?? []).forEach((n) => {
+          if (!isPanelElementNode(n) || !n.props) return;
+          const props = n.props as PanelElement;
+          if (!props.mappingSourceNodeId) return;
+          if (!deletedSourceIds.has(props.mappingSourceNodeId)) return;
+          impactedMappingLayerIds.add(props.layerId);
+        });
+        const familyIds = new Set<string>();
+        (draft.root.children ?? []).forEach((n) => {
+          if (!isPanelElementNode(n) || !n.props) return;
+          const props = n.props as PanelElement;
+          const sourceId = props.mappingSourceNodeId ?? props.id;
+          if (deletedSourceIds.has(sourceId)) familyIds.add(props.id);
+        });
         draft.root.children = (draft.root.children ?? []).filter(
-          (n) => !(isPanelElementNode(n) && idSet.has(n.id))
+          (n) => !(isPanelElementNode(n) && familyIds.has(n.id))
         );
+        removeLayersByIds(draft, impactedMappingLayerIds);
       },
       { meta: { type: "node.batch-delete", ids: Array.from(idSet) } }
     );
@@ -623,6 +744,46 @@ export function usePanelElements() {
       height: size.height,
       rotate: 0,
     };
+    if (layer.isMapping && layer.mappingBaseLayerId) {
+      const sourceId = randomId("el");
+      const sourceNode: PanelElement = {
+        ...next,
+        id: sourceId,
+        layerId: layer.mappingBaseLayerId,
+      };
+      const siblingMappings = currentLayers.filter(
+        (l) => l.isMapping && l.mappingBaseLayerId === layer.mappingBaseLayerId && !l.locked
+      );
+      const clones = siblingMappings.map((mappingLayer) => {
+        const cloneId = randomId("el");
+        return {
+          id: cloneId,
+          type: materialType,
+          props: {
+            ...clonePanelElement(sourceNode),
+            id: cloneId,
+            layerId: mappingLayer.id,
+            mappingSourceNodeId: sourceId,
+            mappingSourceLayerId: layer.mappingBaseLayerId,
+          } as PanelElement,
+          children: [] as Node[],
+        };
+      });
+      store.update(
+        (draft) => {
+          draft.root.children = draft.root.children ?? [];
+          draft.root.children.push({
+            id: sourceId,
+            type: materialType,
+            props: sourceNode,
+            children: [],
+          });
+          clones.forEach((clone) => draft.root.children!.push(clone as unknown as Node));
+        },
+        { meta: { type: "node.add", materialType, id: sourceId } }
+      );
+      return;
+    }
     store.update(
       (draft) => {
         draft.root.children = draft.root.children ?? [];
@@ -689,6 +850,8 @@ export function usePanelElements() {
           name: `图层${list.length + 1}`,
           locked: false,
           editable: true,
+          isMapping: false,
+          mappingBaseLayerId: undefined,
           mergeSelected: false,
         };
         draft.variables.layers = [...list, next];
@@ -696,6 +859,89 @@ export function usePanelElements() {
       },
       { meta: { type: "layer.add" } }
     );
+  }, []);
+
+  const openElementsInNewLayer = useCallback((ids: string[]): PanelActionResult => {
+    const filtered = ids.filter(Boolean);
+    if (filtered.length === 0) return { ok: false, reason: "未选择节点" };
+    const current = store.getState();
+    const currentLayers =
+      (current.variables?.layers as PanelLayer[] | undefined) ?? [DEFAULT_LAYER];
+    const nodeById = new Map(
+      (current.root.children ?? [])
+        .filter((n) => isPanelElementNode(n) && n.props)
+        .map((n) => [n.id, n.props as PanelElement])
+    );
+    const selected = filtered
+      .map((id) => nodeById.get(id))
+      .filter((el): el is PanelElement => !!el);
+    if (selected.length === 0) return { ok: false, reason: "未找到可迁移节点" };
+    const hasLocked = selected.some((el) => {
+      if (el.locked) return true;
+      const layer = currentLayers.find((l) => l.id === el.layerId);
+      return !!layer?.locked;
+    });
+    if (hasLocked) return { ok: false, reason: "选中节点包含锁定内容，无法在新图层打开" };
+
+    const selectedSet = new Set(selected.map((el) => el.id));
+    const idMap = new Map<string, string>();
+    selected.forEach((el) => idMap.set(el.id, randomId("el")));
+    const nextLayerId = randomId("layer");
+    const nextLayer: PanelLayer = {
+      id: nextLayerId,
+      name: `映射图层${currentLayers.length + 1}`,
+      locked: false,
+      editable: true,
+      isMapping: true,
+      mappingBaseLayerId:
+        selected[0]?.mappingSourceLayerId ??
+        selected[0]?.layerId ??
+        (current.variables?.activeLayerId as string | undefined) ??
+        DEFAULT_LAYER_ID,
+      mergeSelected: false,
+    };
+    store.update(
+      (draft) => {
+        draft.variables = draft.variables ?? {};
+        const layers = (draft.variables.layers as PanelLayer[] | undefined) ?? [DEFAULT_LAYER];
+        draft.variables.layers = [...layers, nextLayer];
+        draft.variables.activeLayerId = nextLayerId;
+        const clones: Node[] = [];
+        const all = draft.root.children ?? [];
+        all.forEach((n) => {
+          if (!isPanelElementNode(n) || !n.props || !selectedSet.has(n.id)) return;
+          const props = n.props as PanelElement;
+          const nextId = idMap.get(props.id);
+          if (!nextId) return;
+          const remappedParentGridId = props.parentGridId
+            ? idMap.get(props.parentGridId) ?? props.parentGridId
+            : undefined;
+          const nextProps: PanelElement = {
+            ...clonePanelElement(props),
+            id: nextId,
+            layerId: nextLayerId,
+            parentGridId: remappedParentGridId,
+            mappingSourceNodeId: props.mappingSourceNodeId ?? props.id,
+            mappingSourceLayerId: props.mappingSourceLayerId ?? props.layerId,
+          };
+          clones.push({
+            id: nextId,
+            type: n.type,
+            props: nextProps,
+            children: [],
+          });
+        });
+        draft.root.children = [...all, ...clones];
+      },
+      {
+        meta: {
+          type: "layer.open-selected-mapping",
+          layerId: nextLayerId,
+          nodeCount: selectedSet.size,
+        },
+      }
+    );
+    return { ok: true };
   }, []);
 
   const renameLayer = useCallback((layerId: string, name: string) => {
@@ -747,6 +993,7 @@ export function usePanelElements() {
         .filter((n) => isPanelElementNode(n) && n.props)
         .map((n) => n.props as PanelElement);
       const hasBlockingRef = allElements.some((el) => {
+        if (target.isMapping) return false;
         const willBeDeleted = mode === "remove" && el.layerId === layerId;
         if (willBeDeleted) return false;
         if (el.materialType !== "reference") return false;
@@ -772,9 +1019,16 @@ export function usePanelElements() {
               return n;
             });
           } else {
+            const deletedSourceIds = new Set<string>();
+            (draft.root.children ?? []).forEach((n) => {
+              if (!isPanelElementNode(n) || !n.props) return;
+              if (n.props?.layerId !== layerId) return;
+              deletedSourceIds.add((n.props as PanelElement).id);
+            });
             draft.root.children = (draft.root.children ?? []).filter(
               (n) => !isPanelElementNode(n) || n.props?.layerId !== layerId
             );
+            removeMappingLayersBySourceIds(draft, deletedSourceIds);
           }
 
           if (draft.variables!.activeLayerId === layerId) {
@@ -795,6 +1049,7 @@ export function usePanelElements() {
         const list = (draft.variables?.layers as PanelLayer[] | undefined) ?? [];
         const target = list.find((l) => l.id === layerId);
         if (!target) return;
+        if (target.isMapping) return;
         target.mergeSelected = !target.mergeSelected;
       },
       { meta: { type: "layer.toggle-merge", layerId } }
@@ -806,7 +1061,7 @@ export function usePanelElements() {
       (draft) => {
         draft.variables = draft.variables ?? {};
         const list = ((draft.variables.layers as PanelLayer[] | undefined) ?? []).slice();
-        const selected = list.filter((l) => l.mergeSelected);
+        const selected = list.filter((l) => l.mergeSelected && !l.isMapping);
         if (selected.length < 2) return;
 
         const nextId = randomId("layer");
@@ -815,6 +1070,8 @@ export function usePanelElements() {
           name: name?.trim() || `图层-${Math.random().toString(36).slice(2, 6)}`,
           locked: false,
           editable: true,
+          isMapping: false,
+          mappingBaseLayerId: undefined,
           mergeSelected: false,
         };
         const selectedSet = new Set(selected.map((l) => l.id));
@@ -868,6 +1125,7 @@ export function usePanelElements() {
       "layer.add": "新增图层",
       "layer.rename": "重命名图层",
       "layer.toggle-lock": "切换图层锁定",
+      "layer.open-selected-mapping": "映射图层打开选中节点",
       "layer.delete": "删除图层",
       "layer.toggle-merge": "勾选合并图层",
       "layer.merge": "合并图层",
@@ -924,6 +1182,7 @@ export function usePanelElements() {
     addElementFromMaterial,
     setActiveLayer,
     addLayer,
+    openElementsInNewLayer,
     renameLayer,
     toggleLayerLock,
     deleteLayer,

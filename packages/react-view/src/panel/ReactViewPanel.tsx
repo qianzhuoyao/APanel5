@@ -12,7 +12,21 @@ import { buildChartOption, CHART_TYPES } from "./utils/chartOptionBuilder";
 import { MaterialSidebar } from "./components/MaterialSidebar";
 import { PanelConfigSidebar } from "./components/PanelConfigSidebar";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
   Checkbox,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -266,6 +280,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
     addElementFromMaterial,
     setActiveLayer,
     addLayer,
+    openElementsInNewLayer,
     renameLayer,
     toggleLayerLock,
     deleteLayer,
@@ -308,10 +323,13 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
   const [deleteTargetLayerId, setDeleteTargetLayerId] = useState<string>("");
   const [isMergingLayers, setIsMergingLayers] = useState(false);
   const [mergeLayerName, setMergeLayerName] = useState("");
+  const [mappingDeleteConfirmOpen, setMappingDeleteConfirmOpen] = useState(false);
+  const [mappingDeleteImpactCount, setMappingDeleteImpactCount] = useState(0);
+  const mappingDeleteProceedRef = useRef<(() => void) | null>(null);
   const [isLayerPanelExpanded, setIsLayerPanelExpanded] = useState(false);
   const [productName, setProductName] = useState("未命名产物");
   const [panelFontSize, setPanelFontSize] = useState<"sm" | "md" | "lg">("md");
-  const mergeSelectedCount = layers.filter((l) => l.mergeSelected).length;
+  const mergeSelectedCount = layers.filter((l) => l.mergeSelected && !l.isMapping).length;
   const canMergeLayers = mergeSelectedCount >= 2;
   const panelFontPx = panelFontSize === "sm" ? 12 : panelFontSize === "lg" ? 15 : 13;
   const applyTheme = useCallback((checked: boolean) => {
@@ -423,6 +441,8 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
   const canvasContainer = canvasRef.current;
   const activeLayer = layers.find((l) => l.id === activeLayerId) ?? null;
   const deletingLayer = layers.find((l) => l.id === confirmDeleteLayerId) ?? null;
+  const deletingLayerMode: "move" | "remove" =
+    deletingLayer?.isMapping ? "remove" : deleteMode;
   const deleteTargetCandidates = layers.filter((l) => l.id !== confirmDeleteLayerId);
   const selectedElement = selectedIds.length === 1 ? byId.get(selectedIds[0]) ?? null : null;
   const layerById = useMemo(() => {
@@ -452,6 +472,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
       if (!targetLayer) return "图层不存在";
       if (!targetLayer.editable) return "默认图层不可删除";
       if (targetLayer.locked) return "锁定图层不可删除";
+      if (targetLayer.isMapping) return null;
       const hasBlockingRef = allElements.some((el) => {
         if (el.layerId === layerId) return false;
         if (el.materialType !== "reference") return false;
@@ -462,6 +483,29 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
       return null;
     },
     [allElements, layerById]
+  );
+  const requestDeleteWithMappingImpact = useCallback(
+    (nodeIds: string[], onConfirm: () => void) => {
+      const sourceIds = new Set(nodeIds.filter(Boolean));
+      if (sourceIds.size === 0) {
+        onConfirm();
+        return;
+      }
+      const impactedLayerIds = new Set<string>();
+      allElements.forEach((el) => {
+        if (!el.mappingSourceNodeId) return;
+        if (!sourceIds.has(el.mappingSourceNodeId)) return;
+        impactedLayerIds.add(el.layerId);
+      });
+      if (impactedLayerIds.size === 0) {
+        onConfirm();
+        return;
+      }
+      mappingDeleteProceedRef.current = onConfirm;
+      setMappingDeleteImpactCount(impactedLayerIds.size);
+      setMappingDeleteConfirmOpen(true);
+    },
+    [allElements]
   );
 
   const handleExport = useCallback(() => {
@@ -701,8 +745,10 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                 duplicateElement(nodeId, { referenceCopyMode: mode });
               }}
               onDeleteNode={(nodeId) => {
-                deleteElement(nodeId);
-                setSelectedIds((prev) => prev.filter((id) => id !== nodeId));
+                requestDeleteWithMappingImpact([nodeId], () => {
+                  deleteElement(nodeId);
+                  setSelectedIds((prev) => prev.filter((id) => id !== nodeId));
+                });
               }}
             />
           </div>
@@ -1027,6 +1073,45 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                         >
                           复制节点
                         </DropdownMenuItem>
+                        {contextMenuNodeId &&
+                        byId.get(contextMenuNodeId)?.mappingSourceNodeId ? (
+                          <DropdownMenuItem
+                            onClick={() => {
+                              if (!contextMenuNodeId) return;
+                              const mappingNode = byId.get(contextMenuNodeId);
+                              const sourceNodeId = mappingNode?.mappingSourceNodeId;
+                              if (!sourceNodeId) return;
+                              const sourceNode = byId.get(sourceNodeId);
+                              if (!sourceNode) {
+                                showActionHint("未找到源节点，可能已被删除");
+                                return;
+                              }
+                              if (activeLayerId !== sourceNode.layerId) {
+                                setActiveLayer(sourceNode.layerId);
+                              }
+                              setSelectedIds([sourceNode.id]);
+                              setContextMenuNodeId(null);
+                            }}
+                          >
+                            定位到源节点
+                          </DropdownMenuItem>
+                        ) : null}
+                        <DropdownMenuItem
+                          onClick={() => {
+                            if (!contextMenuNodeId) return;
+                            const shouldOpenBatch =
+                              selectedIds.includes(contextMenuNodeId) && selectedIds.length > 1;
+                            const targetIds = shouldOpenBatch ? selectedIds : [contextMenuNodeId];
+                            const result = openElementsInNewLayer(targetIds);
+                            if (!result.ok) {
+                              showActionHint(result.reason);
+                              return;
+                            }
+                            setContextMenuNodeId(null);
+                          }}
+                        >
+                          在映射图层打开
+                        </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() => {
                             const targetNode = contextMenuNodeId
@@ -1044,6 +1129,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                               selectedIds.includes(contextMenuNodeId) &&
                               selectedIds.length > 1;
                             if (shouldDeleteBatch) {
+                              requestDeleteWithMappingImpact(selectedIds, () => {
                               const hasLockedLayerNode = selectedIds.some((id) => {
                                 const el = byId.get(id);
                                 if (!el) return false;
@@ -1055,11 +1141,15 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                               }
                               deleteElements(selectedIds);
                               setSelectedIds([]);
+                              });
                             } else {
-                              deleteElement(contextMenuNodeId);
-                              setSelectedIds((prev) =>
-                                prev.filter((sid) => sid !== contextMenuNodeId)
-                              );
+                              if (!contextMenuNodeId) return;
+                              requestDeleteWithMappingImpact([contextMenuNodeId], () => {
+                                deleteElement(contextMenuNodeId);
+                                setSelectedIds((prev) =>
+                                  prev.filter((sid) => sid !== contextMenuNodeId)
+                                );
+                              });
                             }
                             setContextMenuNodeId(null);
                           }}
@@ -1163,6 +1253,11 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                           className="flex min-w-[120px] items-center gap-1 px-2 py-1 text-xs"
                         >
                           <span className="truncate">{layer.name}</span>
+                          {layer.isMapping ? (
+                            <span className="rounded border border-primary/40 bg-primary/10 px-1 text-[10px] text-primary">
+                              映射
+                            </span>
+                          ) : null}
                           {layer.locked ? <IconLock locked /> : null}
                         </TabsTrigger>
                       ))}
@@ -1172,6 +1267,11 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                       {activeLayer ? (
                         <div className="flex items-center gap-2 rounded border border-border bg-card px-2 py-1.5 text-xs">
                           <span className="truncate font-medium">{activeLayer.name}</span>
+                          {activeLayer.isMapping ? (
+                            <span className="rounded border border-primary/40 bg-primary/10 px-1 text-[10px] text-primary">
+                              映射图层
+                            </span>
+                          ) : null}
                           <div className="flex-1" />
                           <Tooltip>
                             <TooltipTrigger asChild>
@@ -1219,7 +1319,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                                   setConfirmDeleteLayerId(activeLayer.id);
                                   const firstTarget = layers.find((l) => l.id !== activeLayer.id);
                                   setDeleteTargetLayerId(firstTarget?.id ?? "");
-                                  setDeleteMode("move");
+                                  setDeleteMode(activeLayer.isMapping ? "remove" : "move");
                                 }}
                                 disabled={!activeLayer.editable || activeLayer.locked}
                                 aria-label={
@@ -1253,10 +1353,17 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                               <label key={layer.id} className="flex items-center gap-1.5">
                                 <Checkbox
                                   checked={Boolean(layer.mergeSelected)}
+                                  disabled={layer.isMapping}
                                   className="h-4 w-4 border-2 border-foreground/80 bg-background ring-1 ring-foreground/40 data-[state=checked]:border-primary data-[state=checked]:ring-primary/40"
                                   onCheckedChange={() => toggleLayerMergeSelected(layer.id)}
                                 />
-                                <span className="max-w-[120px] truncate">{layer.name}</span>
+                                <span
+                                  className="max-w-[140px] truncate"
+                                  title={layer.isMapping ? "映射图层不允许合并" : layer.name}
+                                >
+                                  {layer.name}
+                                  {layer.isMapping ? "（不可合并）" : ""}
+                                </span>
                               </label>
                             ))}
                           </div>
@@ -1357,93 +1464,6 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                     </Tooltip>
                   </div>
                 ) : null}
-                {isLayerPanelExpanded && deletingLayer ? (
-                  <div className="mt-2 rounded border border-border bg-card px-2 py-2 text-xs">
-                    <div className="mb-2">
-                      确认删除图层：
-                      <span className="font-semibold">{deletingLayer.name}</span>
-                    </div>
-                    <RadioGroup
-                      value={deleteMode}
-                      onValueChange={(value) => setDeleteMode(value as "move" | "remove")}
-                      className="mb-2 space-y-2"
-                    >
-                      <div className="flex items-center gap-3">
-                        <label className="flex items-center gap-1.5">
-                          <RadioGroupItem value="move" />
-                          节点迁移到
-                        </label>
-                        <Select
-                          value={deleteTargetLayerId || "__none__"}
-                          onValueChange={(value) =>
-                            setDeleteTargetLayerId(value === "__none__" ? "" : value)
-                          }
-                          disabled={deleteMode !== "move" || deleteTargetCandidates.length === 0}
-                        >
-                          <SelectTrigger className="h-7 w-[180px]">
-                            <SelectValue placeholder="选择目标图层" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="__none__">请选择图层</SelectItem>
-                            {deleteTargetCandidates.map((l) => (
-                              <SelectItem key={l.id} value={l.id}>
-                                {l.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <label className="flex items-center gap-1.5">
-                        <RadioGroupItem value="remove" />
-                        同时删除该图层下所有节点
-                      </label>
-                    </RadioGroup>
-                    <div className="flex items-center gap-2">
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const result = deleteLayer(deletingLayer.id, {
-                                mode: deleteMode,
-                                targetLayerId: deleteTargetLayerId || undefined,
-                              });
-                              if (!result.ok) {
-                                showActionHint(result.reason);
-                                return;
-                              }
-                              setConfirmDeleteLayerId(null);
-                              setDeleteMode("move");
-                              setDeleteTargetLayerId("");
-                            }}
-                            aria-label="确认删除图层"
-                            className="rounded border border-border p-1 hover:bg-accent"
-                          >
-                            <IconCheck />
-                          </button>
-                        </TooltipTrigger>
-                        <TooltipContent className="z-[10000]">确认删除</TooltipContent>
-                      </Tooltip>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setConfirmDeleteLayerId(null);
-                              setDeleteMode("move");
-                              setDeleteTargetLayerId("");
-                            }}
-                            aria-label="取消删除图层"
-                            className="rounded border border-border p-1 hover:bg-accent"
-                          >
-                            <IconClose />
-                          </button>
-                        </TooltipTrigger>
-                        <TooltipContent className="z-[10000]">取消删除</TooltipContent>
-                      </Tooltip>
-                    </div>
-                  </div>
-                ) : null}
                 </TooltipProvider>
               </div>
             </div>
@@ -1461,6 +1481,128 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
           </div>
         </ResizablePanel>
       </ResizablePanelGroup>
+      <AlertDialog
+        open={mappingDeleteConfirmOpen}
+        onOpenChange={(open) => {
+          setMappingDeleteConfirmOpen(open);
+          if (!open) mappingDeleteProceedRef.current = null;
+        }}
+      >
+        <AlertDialogContent overlayClassName="bg-transparent pointer-events-none">
+          <AlertDialogHeader>
+            <AlertDialogTitle>确认删除</AlertDialogTitle>
+            <AlertDialogDescription>
+              将删除 {mappingDeleteImpactCount} 个关联映射图层，是否继续？
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                const fn = mappingDeleteProceedRef.current;
+                mappingDeleteProceedRef.current = null;
+                setMappingDeleteConfirmOpen(false);
+                fn?.();
+              }}
+            >
+              继续删除
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <Dialog
+        open={Boolean(deletingLayer)}
+        onOpenChange={(open) => {
+          if (open) return;
+          setConfirmDeleteLayerId(null);
+          setDeleteMode("move");
+          setDeleteTargetLayerId("");
+        }}
+      >
+        <DialogContent
+          className="sm:max-w-[520px]"
+          overlayClassName="bg-transparent pointer-events-none"
+        >
+          <DialogHeader>
+            <DialogTitle>确认删除图层</DialogTitle>
+            <DialogDescription>
+              即将删除图层：{deletingLayer?.name ?? "-"}
+            </DialogDescription>
+          </DialogHeader>
+          {deletingLayer ? (
+            <RadioGroup
+              value={deletingLayerMode}
+              onValueChange={(value) => setDeleteMode(value as "move" | "remove")}
+              className="space-y-2 text-sm"
+            >
+              {!deletingLayer.isMapping ? (
+                <div className="flex items-center gap-3">
+                  <label className="flex items-center gap-1.5">
+                    <RadioGroupItem value="move" />
+                    节点迁移到
+                  </label>
+                  <Select
+                    value={deleteTargetLayerId || "__none__"}
+                    onValueChange={(value) =>
+                      setDeleteTargetLayerId(value === "__none__" ? "" : value)
+                    }
+                    disabled={deletingLayerMode !== "move" || deleteTargetCandidates.length === 0}
+                  >
+                    <SelectTrigger className="h-8 w-[220px]">
+                      <SelectValue placeholder="选择目标图层" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">请选择图层</SelectItem>
+                      {deleteTargetCandidates.map((l) => (
+                        <SelectItem key={l.id} value={l.id}>
+                          {l.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : null}
+              <label className="flex items-center gap-1.5">
+                <RadioGroupItem value="remove" />
+                {deletingLayer.isMapping ? "删除映射图层及其节点" : "同时删除该图层下所有节点"}
+              </label>
+            </RadioGroup>
+          ) : null}
+          <DialogFooter>
+            <button
+              type="button"
+              onClick={() => {
+                setConfirmDeleteLayerId(null);
+                setDeleteMode("move");
+                setDeleteTargetLayerId("");
+              }}
+              className="rounded border border-border px-3 py-1.5 text-sm hover:bg-accent"
+            >
+              取消
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (!deletingLayer) return;
+                const result = deleteLayer(deletingLayer.id, {
+                  mode: deletingLayerMode,
+                  targetLayerId: deleteTargetLayerId || undefined,
+                });
+                if (!result.ok) {
+                  showActionHint(result.reason);
+                  return;
+                }
+                setConfirmDeleteLayerId(null);
+                setDeleteMode("move");
+                setDeleteTargetLayerId("");
+              }}
+              className="rounded bg-primary px-3 py-1.5 text-sm text-primary-foreground hover:bg-primary/90"
+            >
+              确认删除
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <Toaster />
     </div>
   );

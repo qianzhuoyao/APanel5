@@ -357,6 +357,11 @@ export function MaterialSidebar({
     for (const el of allElements) map.set(el.id, el);
     return map;
   }, [allElements]);
+  const layerById = useMemo(() => {
+    const map = new Map<string, PanelLayer>();
+    for (const layer of layers) map.set(layer.id, layer);
+    return map;
+  }, [layers]);
   const childrenByGrid = useMemo(() => {
     const map = new Map<string, PanelElement[]>();
     for (const el of allElements) {
@@ -438,6 +443,18 @@ export function MaterialSidebar({
           >
             {getNodeDisplayName(node)}
           </button>
+          {node.mappingSourceNodeId ? (
+            <span
+              className="inline-flex items-center rounded border border-primary/40 bg-primary/10 px-1 text-[10px] text-primary"
+              title={`映射自节点 ${node.mappingSourceNodeId}${
+                node.mappingSourceLayerId
+                  ? ` / ${layerById.get(node.mappingSourceLayerId)?.name ?? node.mappingSourceLayerId}`
+                  : ""
+              }`}
+            >
+              映射
+            </span>
+          ) : null}
           {node.locked ? (
             <span
               className="inline-flex h-5 w-5 items-center justify-center rounded border border-border/80 bg-background/80 text-muted-foreground"
@@ -672,6 +689,11 @@ export function MaterialSidebar({
                         <span className="truncate">
                           {layer.name}（{layerNodes.length}）
                         </span>
+                        {layer.isMapping ? (
+                          <span className="rounded border border-primary/40 bg-primary/10 px-1 text-[10px] text-primary">
+                            映射
+                          </span>
+                        ) : null}
                       </div>
                       <CollapsibleContent>
                         {layerNodes.length === 0 ? (
