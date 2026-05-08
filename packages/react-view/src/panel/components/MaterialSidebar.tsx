@@ -22,8 +22,12 @@ import {
   TooltipTrigger,
 } from "@arron/ui";
 import type { PanelElement, ReferenceCopyMode } from "../types";
-import type { PanelLayer } from "../hooks/usePanelElements";
+import type { PanelLayer } from "../types";
 import { PANEL_MESSAGES } from "../constants/messages";
+import {
+  concreteGridParentIdForLayer,
+  logicalGridParentIdFromConcrete,
+} from "../utils/mappingLayerOps";
 
 type MaterialCategoryId = "charts" | "basic" | "media";
 
@@ -447,22 +451,54 @@ export function MaterialSidebar({
     for (const layer of layers) map.set(layer.id, layer);
     return map;
   }, [layers]);
-  /** 仅同一图层内的 parentGridId → children，避免映射图层节点挂到源图层的网格下（或反向混淆节点树） */
+
+  /**
+   * 节点树展示用的「本图层父网格 id」：
+   * parentGridId 若指向其它图层的同源克隆网格，仍解析到当前图层上对应的网格，层级与映射同步语义一致。
+   */
+  const effectiveGridParentByElementId = useMemo(() => {
+    const byId = new Map<string, PanelElement>();
+    for (const el of allElements) byId.set(el.id, el);
+    const map = new Map<string, string | undefined>();
+    for (const el of allElements) {
+      const pg = el.parentGridId;
+      if (!pg) {
+        map.set(el.id, undefined);
+        continue;
+      }
+      const parent = byId.get(pg);
+      if (parent?.layerId === el.layerId && parent.materialType === "grid") {
+        map.set(el.id, pg);
+        continue;
+      }
+      const logical = logicalGridParentIdFromConcrete(pg, byId);
+      if (logical !== undefined) {
+        const concrete = concreteGridParentIdForLayer(logical, el.layerId, allElements);
+        map.set(el.id, concrete ?? undefined);
+        continue;
+      }
+      map.set(el.id, undefined);
+    }
+    return map;
+  }, [allElements]);
+
+  /** 网格 → 直接子节点（槽位顺序），键为展示用有效父网格 id */
   const childrenByGridByLayer = useMemo(() => {
     const outer = new Map<string, Map<string, PanelElement[]>>();
     for (const el of allElements) {
-      if (!el.parentGridId) continue;
+      const gridParentId = effectiveGridParentByElementId.get(el.id);
+      if (!gridParentId) continue;
       let inner = outer.get(el.layerId);
       if (!inner) {
         inner = new Map();
         outer.set(el.layerId, inner);
       }
-      const list = inner.get(el.parentGridId) ?? [];
+      const list = inner.get(gridParentId) ?? [];
       list.push(el);
-      inner.set(el.parentGridId, list);
+      inner.set(gridParentId, list);
     }
     return outer;
-  }, [allElements]);
+  }, [allElements, effectiveGridParentByElementId]);
 
   const getNodeDisplayName = (node: PanelElement) => {
     const customName = node.name?.trim();
@@ -592,7 +628,7 @@ export function MaterialSidebar({
           </button>
           {nodeHomeLayer?.isMapping ? (
             <span
-              className="inline-flex shrink-0 items-center rounded border border-violet-500/45 bg-violet-500/12 px-1 text-[10px] text-violet-200"
+              className="inline-flex shrink-0 items-center rounded-md border-2 border-violet-600 bg-violet-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-violet-950 shadow-sm dark:border-violet-400 dark:bg-violet-500/35 dark:text-violet-50 dark:shadow-[0_0_14px_-3px_rgba(167,139,250,0.65)]"
               title={
                 nodeHomeLayer.mappingBaseLayerId
                   ? `映射图层「${nodeHomeLayer.name}」· 基准图层：${
@@ -912,12 +948,7 @@ export function MaterialSidebar({
                   const canDropIntoLayer = Boolean(draggingNode) && !dropBlockReason;
                   const isCurrentDropLayer = dragOverLayerId === layer.id;
                   const rootNodes = layerNodes
-                    .filter((node) => {
-                      if (!node.parentGridId) return true;
-                      const parent = elementsById.get(node.parentGridId);
-                      if (!parent) return true;
-                      return parent.layerId !== layer.id;
-                    })
+                    .filter((node) => !effectiveGridParentByElementId.get(node.id))
                     .filter((node) => !referenceOnlyTree || hasRefInSubtree(node, new Set<string>()))
                     .filter((node) => nodeMatchesTreeSearch(node, new Set<string>()));
                   if (isTreeSearching && rootNodes.length === 0) return null;
@@ -932,7 +963,7 @@ export function MaterialSidebar({
                         className={[
                           "mb-2 overflow-hidden transition-shadow",
                           layer.isMapping
-                            ? "border-violet-500/35 bg-violet-500/[0.04]"
+                            ? "border-2 border-violet-500/70 bg-gradient-to-br from-violet-500/14 via-violet-600/10 to-fuchsia-500/12 shadow-[inset_0_1px_0_0_rgba(139,92,246,0.22)] dark:border-violet-400/65 dark:from-violet-500/20 dark:via-violet-950/35 dark:to-fuchsia-950/25 dark:shadow-[inset_0_0_0_1px_rgba(167,139,250,0.12),0_0_20px_-8px_rgba(139,92,246,0.35)]"
                             : "",
                           isCurrentDropLayer
                             ? canDropIntoLayer
@@ -973,7 +1004,7 @@ export function MaterialSidebar({
                           </span>
                           {layer.isMapping ? (
                             <span
-                              className="shrink-0 rounded border border-violet-500/45 bg-violet-500/12 px-1 py-0.5 text-[10px] text-violet-200"
+                              className="shrink-0 rounded-md border-2 border-violet-600 bg-violet-500/22 px-1.5 py-0.5 text-[10px] font-semibold text-violet-950 shadow-sm dark:border-violet-400 dark:bg-violet-500/35 dark:text-violet-50 dark:shadow-[0_0_12px_-2px_rgba(167,139,250,0.55)]"
                               title={
                                 layer.mappingBaseLayerId
                                   ? `映射图层 · 基准图层：${
@@ -1072,12 +1103,7 @@ export function MaterialSidebar({
                 layers.every((layer) => {
                   const layerNodes = elementsByLayer.get(layer.id) ?? [];
                   const rootNodes = layerNodes
-                    .filter((node) => {
-                      if (!node.parentGridId) return true;
-                      const parent = elementsById.get(node.parentGridId);
-                      if (!parent) return true;
-                      return parent.layerId !== layer.id;
-                    })
+                    .filter((node) => !effectiveGridParentByElementId.get(node.id))
                     .filter((node) => !referenceOnlyTree || hasRefInSubtree(node, new Set<string>()))
                     .filter((node) => nodeMatchesTreeSearch(node, new Set<string>()));
                   return rootNodes.length === 0;

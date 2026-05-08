@@ -31,7 +31,7 @@ import type {
   ReferenceCopyMode,
 } from "../types";
 import { buildChartOption, CHART_TYPES } from "../utils/chartOptionBuilder";
-import type { PanelLayer } from "../hooks/usePanelElements";
+import type { PanelLayer } from "../types";
 import { PANEL_MESSAGES } from "../constants/messages";
 
 type UpdateElement = (
@@ -1830,7 +1830,7 @@ export function PanelConfigSidebar({
           <EmptyTitle>暂无可配置节点</EmptyTitle>
           <EmptyDescription>请先在画布中选中一个节点，再到这里进行配置。</EmptyDescription>
         </Empty>
-      ) : !isMultiSelectMode ? (
+      ) : !isMultiSelectMode && selectedElement ? (
         <div className="space-y-3">
           {!isNodeEditable ? (
             <div className="rounded border border-amber-500/40 bg-amber-500/10 px-2 py-1.5 text-[11px] text-amber-700 dark:text-amber-300">

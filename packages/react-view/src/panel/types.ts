@@ -101,3 +101,23 @@ export type PanelElement = {
   rotate?: number;
 };
 
+export type PanelLayer = {
+  id: string;
+  name: string;
+  locked: boolean;
+  editable: boolean;
+  isPrimary?: boolean;
+  isMapping?: boolean;
+  mappingBaseLayerId?: string;
+  mergeSelected?: boolean;
+};
+
+export type PanelHistoryItem = {
+  index: number;
+  timestamp: number;
+  label: string;
+  active: boolean;
+};
+
+export type PanelActionResult = { ok: true } | { ok: false; reason: string };
+
