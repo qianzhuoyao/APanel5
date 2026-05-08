@@ -58,6 +58,24 @@ export function buildChartOption(element: PanelElement): EChartsOption {
   const yAxisSplitLineShow = element.chart?.yAxisSplitLineShow ?? true;
   const xAxisSplitLineColor = element.chart?.xAxisSplitLineColor ?? "#e2e8f0";
   const yAxisSplitLineColor = element.chart?.yAxisSplitLineColor ?? "#e2e8f0";
+  const xAxisLabelColor = element.chart?.xAxisLabelColor ?? "#64748b";
+  const yAxisLabelColor = element.chart?.yAxisLabelColor ?? "#64748b";
+  const xAxisLabelFontSize = element.chart?.xAxisLabelFontSize ?? 10;
+  const yAxisLabelFontSize = element.chart?.yAxisLabelFontSize ?? 10;
+  const xAxisLabelAutoEllipsis = element.chart?.xAxisLabelAutoEllipsis ?? false;
+  const yAxisLabelAutoEllipsis = element.chart?.yAxisLabelAutoEllipsis ?? false;
+  const tooltipShow = element.chart?.tooltipShow ?? true;
+  const tooltipTrigger = element.chart?.tooltipTrigger ?? (chartType === "pie" || chartType === "funnel" || chartType === "scatter" ? "item" : "axis");
+  const tooltipBackgroundColor = element.chart?.tooltipBackgroundColor ?? "#0f172a";
+  const tooltipTextColor = element.chart?.tooltipTextColor ?? "#f8fafc";
+  const tooltipFormatter = element.chart?.tooltipFormatter;
+  const tooltipOption = {
+    show: tooltipShow,
+    trigger: tooltipTrigger,
+    backgroundColor: tooltipBackgroundColor,
+    textStyle: { color: tooltipTextColor },
+    formatter: tooltipFormatter || undefined,
+  };
 
   if (chartType === "pie") {
     const inner = element.chart?.pieInnerRadius ?? 30;
@@ -66,7 +84,7 @@ export function buildChartOption(element: PanelElement): EChartsOption {
       animation: false,
       title: { text: title, left: "center", top: 6, textStyle: { fontSize: 12 } },
       color: [color],
-      tooltip: { trigger: "item" },
+      tooltip: tooltipOption,
       series: [
         {
           type: "pie",
@@ -85,6 +103,7 @@ export function buildChartOption(element: PanelElement): EChartsOption {
     const baseOption: EChartsOption = {
       animation: false,
       title: { text: title, left: "center", top: 6, textStyle: { fontSize: 12 } },
+      tooltip: tooltipOption,
       series: [
         {
           type: "gauge",
@@ -106,7 +125,7 @@ export function buildChartOption(element: PanelElement): EChartsOption {
     const baseOption: EChartsOption = {
       animation: false,
       title: { text: title, left: "center", top: 6, textStyle: { fontSize: 12 } },
-      tooltip: {},
+      tooltip: tooltipOption,
       radar: { indicator, radius: "60%", center: ["50%", "58%"] },
       series: [
         {
@@ -125,7 +144,7 @@ export function buildChartOption(element: PanelElement): EChartsOption {
     const baseOption: EChartsOption = {
       animation: false,
       title: { text: title, left: "center", top: 6, textStyle: { fontSize: 12 } },
-      tooltip: { trigger: "item" },
+      tooltip: tooltipOption,
       series: [
         {
           type: "funnel",
@@ -152,7 +171,13 @@ export function buildChartOption(element: PanelElement): EChartsOption {
         type: "value",
         name: xAxisName,
         nameTextStyle: { fontSize: 10 },
-        axisLabel: { fontSize: 10 },
+        axisLabel: {
+          fontSize: xAxisLabelFontSize,
+          color: xAxisLabelColor,
+          overflow: xAxisLabelAutoEllipsis ? "truncate" : undefined,
+          hideOverlap: xAxisLabelAutoEllipsis,
+          width: xAxisLabelAutoEllipsis ? 80 : undefined,
+        },
         axisTick: { show: xAxisTickShow, lineStyle: { color: xAxisTickColor } },
         splitLine: { show: xAxisSplitLineShow, lineStyle: { color: xAxisSplitLineColor } },
       },
@@ -160,11 +185,17 @@ export function buildChartOption(element: PanelElement): EChartsOption {
         type: "value",
         name: yAxisName,
         nameTextStyle: { fontSize: 10 },
-        axisLabel: { fontSize: 10 },
+        axisLabel: {
+          fontSize: yAxisLabelFontSize,
+          color: yAxisLabelColor,
+          overflow: yAxisLabelAutoEllipsis ? "truncate" : undefined,
+          hideOverlap: yAxisLabelAutoEllipsis,
+          width: yAxisLabelAutoEllipsis ? 80 : undefined,
+        },
         axisTick: { show: yAxisTickShow, lineStyle: { color: yAxisTickColor } },
         splitLine: { show: yAxisSplitLineShow, lineStyle: { color: yAxisSplitLineColor } },
       },
-      tooltip: { trigger: "item" },
+      tooltip: tooltipOption,
       series: [
         {
           type: "scatter",
@@ -187,7 +218,13 @@ export function buildChartOption(element: PanelElement): EChartsOption {
       name: xAxisName,
       nameTextStyle: { fontSize: 10 },
       data: labels,
-      axisLabel: { fontSize: 10 },
+      axisLabel: {
+        fontSize: xAxisLabelFontSize,
+        color: xAxisLabelColor,
+        overflow: xAxisLabelAutoEllipsis ? "truncate" : undefined,
+        hideOverlap: xAxisLabelAutoEllipsis,
+        width: xAxisLabelAutoEllipsis ? 80 : undefined,
+      },
       axisTick: { show: xAxisTickShow, lineStyle: { color: xAxisTickColor } },
       splitLine: { show: xAxisSplitLineShow, lineStyle: { color: xAxisSplitLineColor } },
     },
@@ -195,11 +232,17 @@ export function buildChartOption(element: PanelElement): EChartsOption {
       type: "value",
       name: yAxisName,
       nameTextStyle: { fontSize: 10 },
-      axisLabel: { fontSize: 10 },
+      axisLabel: {
+        fontSize: yAxisLabelFontSize,
+        color: yAxisLabelColor,
+        overflow: yAxisLabelAutoEllipsis ? "truncate" : undefined,
+        hideOverlap: yAxisLabelAutoEllipsis,
+        width: yAxisLabelAutoEllipsis ? 80 : undefined,
+      },
       axisTick: { show: yAxisTickShow, lineStyle: { color: yAxisTickColor } },
       splitLine: { show: yAxisSplitLineShow, lineStyle: { color: yAxisSplitLineColor } },
     },
-    tooltip: { trigger: "axis" },
+    tooltip: tooltipOption,
     series: [
       {
         type: seriesType,

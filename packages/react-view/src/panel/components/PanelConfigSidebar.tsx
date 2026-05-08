@@ -373,6 +373,75 @@ export function PanelConfigSidebar({
                     selectedElement.chart?.color ?? "#3b82f6",
                     (next) => updateSelectedChart({ color: next || "#3b82f6" })
                   )}
+                  <div className="grid grid-cols-2 gap-2">
+                    <label className="flex items-center gap-2">
+                      <Checkbox
+                        checked={selectedElement.chart?.tooltipShow ?? true}
+                        className="h-4 w-4 border-2 border-foreground/80 bg-background ring-1 ring-foreground/40 data-[state=checked]:border-primary data-[state=checked]:ring-primary/40"
+                        onCheckedChange={(checked) =>
+                          updateSelectedChart({ tooltipShow: checked === true })
+                        }
+                      />
+                      <span>显示 Tooltip</span>
+                    </label>
+                    <label className="block">
+                      <div className="mb-1">Tooltip 触发方式</div>
+                      <Select
+                        value={selectedElement.chart?.tooltipTrigger ?? "axis"}
+                        onValueChange={(value) =>
+                          updateSelectedChart({ tooltipTrigger: value as "axis" | "item" })
+                        }
+                      >
+                        <SelectTrigger className="h-7">
+                          <SelectValue placeholder="请选择触发方式" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="axis">axis</SelectItem>
+                          <SelectItem value="item">item</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </label>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {renderColorField(
+                      "Tooltip 背景色",
+                      selectedElement.chart?.tooltipBackgroundColor ?? "#0f172a",
+                      (next) => updateSelectedChart({ tooltipBackgroundColor: next || "#0f172a" })
+                    )}
+                    {renderColorField(
+                      "Tooltip 文字色",
+                      selectedElement.chart?.tooltipTextColor ?? "#f8fafc",
+                      (next) => updateSelectedChart({ tooltipTextColor: next || "#f8fafc" })
+                    )}
+                  </div>
+                  <label className="block">
+                    <div className="mb-1">Tooltip Formatter（可选）</div>
+                    <Input
+                      value={selectedElement.chart?.tooltipFormatter ?? ""}
+                      onChange={(e) =>
+                        updateSelectedChart({ tooltipFormatter: e.target.value || undefined })
+                      }
+                      placeholder="例如：{b}: {c}"
+                      className="h-7"
+                    />
+                  </label>
+                  <label className="block">
+                    <div className="mb-1">显示模式</div>
+                    <Select
+                      value={selectedElement.chart?.renderMode ?? "canvas"}
+                      onValueChange={(value) =>
+                        updateSelectedChart({ renderMode: value as "canvas" | "svg" })
+                      }
+                    >
+                      <SelectTrigger className="h-7">
+                        <SelectValue placeholder="请选择显示模式" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="canvas">Canvas</SelectItem>
+                        <SelectItem value="svg">SVG</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </label>
 
                   <label className="block">
                     <div className="mb-1">类目（逗号分隔）</div>
@@ -498,6 +567,72 @@ export function PanelConfigSidebar({
                           selectedElement.chart?.yAxisSplitLineColor ?? "#e2e8f0",
                           (next) => updateSelectedChart({ yAxisSplitLineColor: next || "#e2e8f0" })
                         )}
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        {renderColorField(
+                          "X 轴标签颜色",
+                          selectedElement.chart?.xAxisLabelColor ?? "#64748b",
+                          (next) => updateSelectedChart({ xAxisLabelColor: next || "#64748b" })
+                        )}
+                        {renderColorField(
+                          "Y 轴标签颜色",
+                          selectedElement.chart?.yAxisLabelColor ?? "#64748b",
+                          (next) => updateSelectedChart({ yAxisLabelColor: next || "#64748b" })
+                        )}
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <label className="block">
+                          <div className="mb-1">X 轴标签字号</div>
+                          <Input
+                            type="number"
+                            min={8}
+                            max={48}
+                            value={selectedElement.chart?.xAxisLabelFontSize ?? 10}
+                            onChange={(e) =>
+                              updateSelectedChart({
+                                xAxisLabelFontSize: Math.max(8, Math.min(48, Number(e.target.value) || 10)),
+                              })
+                            }
+                            className="h-7"
+                          />
+                        </label>
+                        <label className="block">
+                          <div className="mb-1">Y 轴标签字号</div>
+                          <Input
+                            type="number"
+                            min={8}
+                            max={48}
+                            value={selectedElement.chart?.yAxisLabelFontSize ?? 10}
+                            onChange={(e) =>
+                              updateSelectedChart({
+                                yAxisLabelFontSize: Math.max(8, Math.min(48, Number(e.target.value) || 10)),
+                              })
+                            }
+                            className="h-7"
+                          />
+                        </label>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <label className="flex items-center gap-2">
+                          <Checkbox
+                            checked={selectedElement.chart?.xAxisLabelAutoEllipsis ?? false}
+                            className="h-4 w-4 border-2 border-foreground/80 bg-background ring-1 ring-foreground/40 data-[state=checked]:border-primary data-[state=checked]:ring-primary/40"
+                            onCheckedChange={(checked) =>
+                              updateSelectedChart({ xAxisLabelAutoEllipsis: checked === true })
+                            }
+                          />
+                          <span>X 轴标签自动缩略</span>
+                        </label>
+                        <label className="flex items-center gap-2">
+                          <Checkbox
+                            checked={selectedElement.chart?.yAxisLabelAutoEllipsis ?? false}
+                            className="h-4 w-4 border-2 border-foreground/80 bg-background ring-1 ring-foreground/40 data-[state=checked]:border-primary data-[state=checked]:ring-primary/40"
+                            onCheckedChange={(checked) =>
+                              updateSelectedChart({ yAxisLabelAutoEllipsis: checked === true })
+                            }
+                          />
+                          <span>Y 轴标签自动缩略</span>
+                        </label>
                       </div>
                     </>
                   ) : null}

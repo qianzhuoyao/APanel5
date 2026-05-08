@@ -1,6 +1,7 @@
 export type PanelChartConfig = {
   title?: string;
   color?: string;
+  renderMode?: "canvas" | "svg";
   xAxisName?: string;
   yAxisName?: string;
   xAxisTickShow?: boolean;
@@ -11,6 +12,17 @@ export type PanelChartConfig = {
   yAxisSplitLineShow?: boolean;
   xAxisSplitLineColor?: string;
   yAxisSplitLineColor?: string;
+  xAxisLabelColor?: string;
+  yAxisLabelColor?: string;
+  xAxisLabelFontSize?: number;
+  yAxisLabelFontSize?: number;
+  xAxisLabelAutoEllipsis?: boolean;
+  yAxisLabelAutoEllipsis?: boolean;
+  tooltipShow?: boolean;
+  tooltipTrigger?: "axis" | "item";
+  tooltipBackgroundColor?: string;
+  tooltipTextColor?: string;
+  tooltipFormatter?: string;
   labels?: string[];
   values?: number[];
   smooth?: boolean;

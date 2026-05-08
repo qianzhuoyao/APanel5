@@ -464,6 +464,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
       styleText: serializeStyle(el, minX, minY),
       title: CHART_TYPES.has(el.materialType ?? "") ? (el.chart?.title ?? "") : (el.materialType || el.id),
       isChart: CHART_TYPES.has(el.materialType ?? ""),
+      renderer: el.chart?.renderMode ?? "canvas",
       option: CHART_TYPES.has(el.materialType ?? "")
         ? buildChartOption(el)
         : null,
@@ -515,7 +516,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
           if (!n.isChart) return;
           var host = document.querySelector("#node-" + n.id + " > div");
           if (!host || !window.echarts) return;
-          var chart = window.echarts.init(host);
+          var chart = window.echarts.init(host, null, { renderer: n.renderer || "canvas" });
           chart.setOption(n.option || {}, true);
           chart.resize();
           window.addEventListener("resize", function () { chart.resize(); });

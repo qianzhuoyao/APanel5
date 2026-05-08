@@ -55,6 +55,7 @@ function getDefaultChartConfig(materialType: string): PanelChartConfig | undefin
   if (!["bar", "line", "pie", "area", "scatter", "radar", "gauge", "funnel"].includes(materialType)) return undefined;
   const common = {
     color: "#3b82f6",
+    renderMode: "canvas" as const,
     labels: ["A", "B", "C", "D"],
     values: [12, 18, 9, 24],
   };
@@ -95,6 +96,7 @@ function getDefaultChartConfig(materialType: string): PanelChartConfig | undefin
     return {
       title: "仪表盘",
       color: "#3b82f6",
+      renderMode: "canvas",
       values: [68],
     };
   }

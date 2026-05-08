@@ -13,19 +13,23 @@ export type ElementsLayerProps = {
 function ChartNodeContent({ element }: { element: PanelElement }) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<echarts.ECharts | null>(null);
+  const rendererRef = useRef<"canvas" | "svg">("canvas");
   const option = useMemo(() => buildChartOption(element), [element]);
+  const renderer = (element.chart?.renderMode ?? "canvas") as "canvas" | "svg";
 
   useEffect(() => {
     if (!hostRef.current) return;
-    if (!chartRef.current) {
-      chartRef.current = echarts.init(hostRef.current);
+    if (!chartRef.current || rendererRef.current !== renderer) {
+      chartRef.current?.dispose();
+      chartRef.current = echarts.init(hostRef.current, undefined, { renderer });
+      rendererRef.current = renderer;
     }
     chartRef.current.setOption(option as echarts.EChartsOption, true);
     chartRef.current.resize();
     const obs = new ResizeObserver(() => chartRef.current?.resize());
     obs.observe(hostRef.current);
     return () => obs.disconnect();
-  }, [option]);
+  }, [option, renderer]);
 
   useEffect(() => {
     return () => {
