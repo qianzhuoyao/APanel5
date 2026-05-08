@@ -8,6 +8,7 @@ export type PanelLayer = {
   name: string;
   locked: boolean;
   editable: boolean;
+  isPrimary?: boolean;
   isMapping?: boolean;
   mappingBaseLayerId?: string;
   mergeSelected?: boolean;
@@ -49,9 +50,20 @@ const DEFAULT_LAYER: PanelLayer = {
   name: "图层1",
   locked: false,
   editable: false,
+  isPrimary: true,
   isMapping: false,
   mappingBaseLayerId: undefined,
 };
+
+function normalizePrimaryLayer(layers: PanelLayer[]): PanelLayer[] {
+  if (layers.length === 0) return [DEFAULT_LAYER];
+  const explicitPrimary = layers.find((layer) => layer.isPrimary);
+  const primaryId = explicitPrimary?.id ?? layers[0].id;
+  return layers.map((layer, index) => {
+    if (layer.id === primaryId) return { ...layer, isPrimary: true };
+    return { ...layer, isPrimary: false };
+  });
+}
 
 function randomId(prefix: string) {
   return `${prefix}-${Math.random().toString(36).slice(2, 8)}`;
@@ -295,7 +307,8 @@ export function usePanelElements() {
     () => store.getState(),
     () => store.getState()
   ) as State;
-  const layers = (state.variables?.layers as PanelLayer[] | undefined) ?? [DEFAULT_LAYER];
+  const rawLayers = (state.variables?.layers as PanelLayer[] | undefined) ?? [DEFAULT_LAYER];
+  const layers = useMemo(() => normalizePrimaryLayer(rawLayers), [rawLayers]);
   const activeLayerId =
     (state.variables?.activeLayerId as string | undefined) ?? DEFAULT_LAYER_ID;
   const canUndo = store.getHistoryCursorIndex() > 0;
@@ -311,7 +324,9 @@ export function usePanelElements() {
 
     store.update((draft) => {
       draft.variables = draft.variables ?? {};
-      draft.variables.layers = hasLayers ? draft.variables.layers : [DEFAULT_LAYER];
+      draft.variables.layers = hasLayers
+        ? normalizePrimaryLayer((draft.variables.layers as PanelLayer[] | undefined) ?? [DEFAULT_LAYER])
+        : [DEFAULT_LAYER];
       draft.variables.activeLayerId = hasActive
         ? draft.variables.activeLayerId
         : DEFAULT_LAYER_ID;
@@ -920,6 +935,7 @@ export function usePanelElements() {
           name: `图层${list.length + 1}`,
           locked: false,
           editable: true,
+          isPrimary: false,
           isMapping: false,
           mappingBaseLayerId: undefined,
           mergeSelected: false,
@@ -962,6 +978,7 @@ export function usePanelElements() {
       name: `映射图层${currentLayers.length + 1}`,
       locked: false,
       editable: true,
+      isPrimary: false,
       isMapping: true,
       mappingBaseLayerId:
         selected[0]?.mappingSourceLayerId ??
@@ -974,7 +991,7 @@ export function usePanelElements() {
       (draft) => {
         draft.variables = draft.variables ?? {};
         const layers = (draft.variables.layers as PanelLayer[] | undefined) ?? [DEFAULT_LAYER];
-        draft.variables.layers = [...layers, nextLayer];
+        draft.variables.layers = normalizePrimaryLayer([...layers, nextLayer]);
         draft.variables.activeLayerId = nextLayerId;
         const clones: Node[] = [];
         const all = draft.root.children ?? [];
@@ -1076,10 +1093,10 @@ export function usePanelElements() {
 
       store.update(
         (draft) => {
-          draft.variables!.layers = remainingLayers.map((l) => ({
+          draft.variables!.layers = normalizePrimaryLayer(remainingLayers.map((l) => ({
             ...l,
             mergeSelected: false,
-          }));
+          })));
 
           if (mode === "move" && moveTarget) {
             draft.root.children = (draft.root.children ?? []).map((n) => {
@@ -1140,6 +1157,7 @@ export function usePanelElements() {
           name: name?.trim() || `图层-${Math.random().toString(36).slice(2, 6)}`,
           locked: false,
           editable: true,
+          isPrimary: false,
           isMapping: false,
           mappingBaseLayerId: undefined,
           mergeSelected: false,
@@ -1153,15 +1171,29 @@ export function usePanelElements() {
           return n;
         });
 
-        draft.variables.layers = [
+        draft.variables.layers = normalizePrimaryLayer([
           ...list
             .filter((l) => !selectedSet.has(l.id))
             .map((l) => ({ ...l, mergeSelected: false })),
           nextLayer,
-        ];
+        ]);
         draft.variables.activeLayerId = nextId;
       },
       { meta: { type: "layer.merge", name } }
+    );
+  }, []);
+
+  const setPrimaryLayer = useCallback((layerId: string) => {
+    store.update(
+      (draft) => {
+        const list = (draft.variables?.layers as PanelLayer[] | undefined) ?? [];
+        if (list.length === 0) return;
+        draft.variables!.layers = list.map((layer) => ({
+          ...layer,
+          isPrimary: layer.id === layerId,
+        }));
+      },
+      { meta: { type: "layer.set-primary", layerId } }
     );
   }, []);
 
@@ -1202,6 +1234,7 @@ export function usePanelElements() {
       "layer.delete": "删除图层",
       "layer.toggle-merge": "勾选合并图层",
       "layer.merge": "合并图层",
+      "layer.set-primary": "设置主图层",
       "panel.import": "导入面板",
     };
     return entries.map((entry, index) => {
@@ -1229,6 +1262,7 @@ export function usePanelElements() {
     if (!Array.isArray(nextState.variables.layers)) {
       nextState.variables.layers = [DEFAULT_LAYER];
     }
+    nextState.variables.layers = normalizePrimaryLayer(nextState.variables.layers as PanelLayer[]);
     if (typeof nextState.variables.activeLayerId !== "string") {
       nextState.variables.activeLayerId =
         (nextState.variables.layers[0] as PanelLayer | undefined)?.id ?? DEFAULT_LAYER_ID;
@@ -1261,6 +1295,7 @@ export function usePanelElements() {
     deleteLayer,
     toggleLayerMergeSelected,
     mergeSelectedLayers,
+    setPrimaryLayer,
     undo,
     redo,
     goToHistory,

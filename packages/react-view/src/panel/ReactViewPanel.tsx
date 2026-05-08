@@ -315,6 +315,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
     deleteLayer,
     toggleLayerMergeSelected,
     mergeSelectedLayers,
+    setPrimaryLayer,
     undo,
     redo,
     goToHistory,
@@ -366,6 +367,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
   const [titleIconDataUrl, setTitleIconDataUrl] = useState<string>("");
   const [titleIconPreviewOpen, setTitleIconPreviewOpen] = useState(false);
   const [titleIconZoom, setTitleIconZoom] = useState(1.6);
+  const [pendingPreviewLayerId, setPendingPreviewLayerId] = useState<string | null>(null);
   const [panelFontSize, setPanelFontSize] = useState<"sm" | "md" | "lg">("md");
   const [ellipsisTooltip, setEllipsisTooltip] = useState<{
     open: boolean;
@@ -607,6 +609,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
 
   const canvasContainer = canvasRef.current;
   const activeLayer = layers.find((l) => l.id === activeLayerId) ?? null;
+  const primaryLayer = layers.find((l) => l.isPrimary) ?? layers[0] ?? null;
   const deletingLayer = layers.find((l) => l.id === confirmDeleteLayerId) ?? null;
   const deletingLayerMode: "move" | "remove" =
     deletingLayer?.isMapping ? "remove" : deleteMode;
@@ -775,17 +778,19 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
     });
   }, []);
 
-  const handlePreviewLayer = useCallback(() => {
-    const targetLayer = layers.find((l) => l.id === activeLayerId);
-    const layerElements = allElements.filter((el) => el.layerId === activeLayerId);
+  const buildPreviewForLayer = useCallback((targetLayerId: string, retryCount = 0) => {
+    const targetLayer = layers.find((l) => l.id === targetLayerId);
+    const layerElements = allElements.filter((el) => el.layerId === targetLayerId);
     const getAABB = (el: PanelElement) => {
+      const w = Math.max(1, el.width);
+      const h = Math.max(1, el.height);
       const rad = ((el.rotate ?? 0) * Math.PI) / 180;
       const absCos = Math.abs(Math.cos(rad));
       const absSin = Math.abs(Math.sin(rad));
-      const bw = el.width * absCos + el.height * absSin;
-      const bh = el.width * absSin + el.height * absCos;
-      const cx = el.x + el.width / 2;
-      const cy = el.y + el.height / 2;
+      const bw = w * absCos + h * absSin;
+      const bh = w * absSin + h * absCos;
+      const cx = el.x + w / 2;
+      const cy = el.y + h / 2;
       return {
         left: cx - bw / 2,
         top: cy - bh / 2,
@@ -793,14 +798,19 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
         bottom: cy + bh / 2,
       };
     };
-    const boxes = layerElements.map(getAABB);
-    const minX = boxes.length ? Math.min(...boxes.map((b) => b.left)) : 0;
-    const minY = boxes.length ? Math.min(...boxes.map((b) => b.top)) : 0;
-    const maxX = boxes.length ? Math.max(...boxes.map((b) => b.right)) : 1;
-    const maxY = boxes.length ? Math.max(...boxes.map((b) => b.bottom)) : 1;
+    const fallbackBoxes = layerElements.map(getAABB);
+    // 使用节点几何边界（含旋转）作为统一坐标系，避免视口缩放/平移导致预览范围偏移
+    const minX = fallbackBoxes.length ? Math.min(...fallbackBoxes.map((b) => b.left)) : 0;
+    const minY = fallbackBoxes.length ? Math.min(...fallbackBoxes.map((b) => b.top)) : 0;
+    const maxX = fallbackBoxes.length ? Math.max(...fallbackBoxes.map((b) => b.right)) : 1;
+    const maxY = fallbackBoxes.length ? Math.max(...fallbackBoxes.map((b) => b.bottom)) : 1;
     const sceneWidth = Math.max(1, maxX - minX);
     const sceneHeight = Math.max(1, maxY - minY);
-    const serializeNodeDom = (sourceNode: HTMLElement, isChartNode: boolean): string => {
+    const serializeNodeDom = (
+      sourceNode: HTMLElement,
+      sourceElement: PanelElement,
+      isChartNode: boolean
+    ): string => {
       const clone = sourceNode.cloneNode(true) as HTMLElement;
       // 去掉编辑态选中 ring 等视觉痕迹，避免预览出现 Moveable/编辑辅助效果
       clone.className = clone.className
@@ -808,6 +818,9 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
         .filter((cls) => cls && !cls.startsWith("ring-"))
         .join(" ");
       clone.removeAttribute("data-moveable-target");
+      // 以整体包围盒左上角为 (0,0) 做归一化，保证“整块内容”完整进入预览
+      clone.style.left = `${sourceElement.x - minX}px`;
+      clone.style.top = `${sourceElement.y - minY}px`;
       const sourceCanvases = Array.from(sourceNode.querySelectorAll("canvas"));
       const cloneCanvases = Array.from(clone.querySelectorAll("canvas"));
       if (isChartNode) return clone.outerHTML;
@@ -830,14 +843,30 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
       return clone.outerHTML;
     };
 
-    const previewNodesHtml = layerElements
-      .map((el) => {
-        const node = canvasRef.current?.querySelector<HTMLElement>(`[data-element-id="${el.id}"]`);
-        if (!node) return "";
-        return serializeNodeDom(node, CHART_TYPES.has(el.materialType ?? ""));
+    const mountedNodes = layerElements.map((el) => ({
+      el,
+      node: canvasRef.current?.querySelector<HTMLElement>(`[data-element-id="${el.id}"]`) ?? null,
+    }));
+    const mountedCount = mountedNodes.filter((item) => !!item.node).length;
+    const previewNodesHtml = mountedNodes
+      .map((item) => {
+        if (!item.node) return "";
+        return serializeNodeDom(item.node, item.el, CHART_TYPES.has(item.el.materialType ?? ""));
       })
       .filter(Boolean)
       .join("");
+    if (mountedCount < layerElements.length && layerElements.length > 0 && retryCount < 20) {
+      window.setTimeout(() => {
+        buildPreviewForLayer(targetLayerId, retryCount + 1);
+      }, 80);
+      return;
+    }
+    if (!previewNodesHtml && layerElements.length > 0 && retryCount < 20) {
+      window.setTimeout(() => {
+        buildPreviewForLayer(targetLayerId, retryCount + 1);
+      }, 80);
+      return;
+    }
     const previewMeta = JSON.stringify({
       gridNodeIds: layerElements.filter((el) => el.materialType === "grid").map((el) => el.id),
       chartNodes: layerElements
@@ -877,8 +906,10 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
     <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
   </head>
   <body style="margin:0;background:#fff;overflow:hidden;">
-    <div id="preview-root" style="position:absolute;left:${-minX}px;top:${-minY}px;width:${sceneWidth}px;height:${sceneHeight}px;transform-origin:left top;">
-      ${previewNodesHtml}
+    <div id="preview-root" style="position:fixed;left:0;top:0;width:100vw;height:100vh;overflow:hidden;">
+      <div id="preview-scene" style="position:absolute;left:0;top:0;width:${sceneWidth}px;height:${sceneHeight}px;transform-origin:left top;">
+        ${previewNodesHtml}
+      </div>
     </div>
     <script id="preview-meta" type="application/json">${previewMeta}</script>
     <script>
@@ -901,17 +932,17 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
             document.head.appendChild(link);
           });
         }
-        var scene = document.getElementById("preview-root");
+        var scene = document.getElementById("preview-scene");
         function fitScene() {
           if (!scene) return;
           var vw = window.innerWidth || 1;
           var vh = window.innerHeight || 1;
           var sw = ${sceneWidth} || 1;
           var sh = ${sceneHeight} || 1;
-          var scale = Math.min(vw / sw, vh / sh);
-          var ox = (vw - sw * scale) / 2;
-          var oy = (vh - sh * scale) / 2;
-          scene.style.transform = "translate(" + ox + "px," + oy + "px) scale(" + scale + ")";
+          // 铺满预览窗口：宽高分别缩放，保证内容贴住四边
+          var scaleX = vw / sw;
+          var scaleY = vh / sh;
+          scene.style.transform = "translate(0px,0px) scale(" + scaleX + "," + scaleY + ")";
         }
         fitScene();
         window.addEventListener("resize", fitScene);
@@ -948,7 +979,34 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
     win.document.write(html);
     win.document.close();
     win.document.title = previewTitle;
-  }, [activeLayerId, allElements, layers, productName, titleIconDataUrl]);
+  }, [allElements, layers, productName, titleIconDataUrl]);
+
+  const handlePreviewLayer = useCallback(() => {
+    const previewLayer = primaryLayer;
+    if (!previewLayer) return;
+    if (activeLayerId !== previewLayer.id) {
+      setPendingPreviewLayerId(previewLayer.id);
+      setActiveLayer(previewLayer.id);
+      return;
+    }
+    buildPreviewForLayer(previewLayer.id);
+  }, [activeLayerId, buildPreviewForLayer, primaryLayer, setActiveLayer]);
+
+  useEffect(() => {
+    if (!pendingPreviewLayerId) return;
+    if (activeLayerId !== pendingPreviewLayerId) return;
+    let cancelled = false;
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        if (cancelled) return;
+        buildPreviewForLayer(pendingPreviewLayerId);
+        setPendingPreviewLayerId(null);
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeLayerId, buildPreviewForLayer, pendingPreviewLayerId]);
 
   return (
     <div
@@ -1188,33 +1246,26 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                       <TooltipContent className="z-[10000]">清除 title 图标</TooltipContent>
                     </Tooltip>
                   ) : null}
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      {titleIconDataUrl ? (
+                  {titleIconDataUrl ? (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
                         <button
                           type="button"
                           onClick={() => setTitleIconPreviewOpen(true)}
-                          className="flex min-w-[92px] items-center gap-1.5 rounded border border-border bg-muted/30 px-2 py-1 hover:bg-accent/40"
+                          className="h-7 shrink-0 flex min-w-[92px] items-center gap-1.5 rounded border border-border bg-muted/30 px-2 py-1 hover:bg-accent/40"
                           aria-label="查看 title 图标大图"
                         >
                           <img
                             src={titleIconDataUrl}
                             alt="title 图标缩略图"
-                            className="h-6 w-6 rounded border border-border/60 object-cover"
+                            className="h-5 w-5 shrink-0 rounded border border-border/60 object-cover"
                           />
                           <span className="text-[10px] text-muted-foreground">Title Icon</span>
                         </button>
-                      ) : (
-                        <div className="flex min-w-[92px] items-center gap-1.5 rounded border border-border bg-muted/30 px-2 py-1">
-                          <div className="h-6 w-6 rounded border border-dashed border-border/70 bg-background" />
-                          <span className="text-[10px] text-muted-foreground">Title Icon</span>
-                        </div>
-                      )}
-                    </TooltipTrigger>
-                    <TooltipContent className="z-[10000]">
-                      {titleIconDataUrl ? "点击查看 title 图标大图" : "当前未上传 title 图标"}
-                    </TooltipContent>
-                  </Tooltip>
+                      </TooltipTrigger>
+                      <TooltipContent className="z-[10000]">点击查看 title 图标大图</TooltipContent>
+                    </Tooltip>
+                  ) : null}
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <button
@@ -1862,6 +1913,11 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                               映射
                             </span>
                           ) : null}
+                          {layer.isPrimary ? (
+                            <span className="rounded border border-emerald-500/40 bg-emerald-500/10 px-1 text-[10px] text-emerald-600">
+                              主
+                            </span>
+                          ) : null}
                           {layer.locked ? <IconLock locked /> : null}
                         </TabsTrigger>
                       ))}
@@ -1900,7 +1956,33 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                               映射图层
                             </span>
                           ) : null}
+                          {activeLayer.isPrimary ? (
+                            <span className="rounded border border-emerald-500/40 bg-emerald-500/10 px-1 text-[10px] text-emerald-600">
+                              主图层
+                            </span>
+                          ) : null}
                           <div className="flex-1" />
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button
+                                type="button"
+                                onClick={() => setPrimaryLayer(activeLayer.id)}
+                                disabled={activeLayer.isPrimary}
+                                aria-label={activeLayer.isPrimary ? "当前主图层" : "设为主图层"}
+                                className={[
+                                  "rounded border px-2 py-1 text-[11px] disabled:cursor-not-allowed disabled:opacity-60",
+                                  activeLayer.isPrimary
+                                    ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-600"
+                                    : "border-border hover:bg-accent",
+                                ].join(" ")}
+                              >
+                                {activeLayer.isPrimary ? "当前主图层" : "设为主图层"}
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent className="z-[10000]">
+                              {activeLayer.isPrimary ? "当前主图层（预览使用）" : "设为主图层（预览使用）"}
+                            </TooltipContent>
+                          </Tooltip>
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <button
