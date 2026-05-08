@@ -47,6 +47,28 @@ export function buildChartOption(element: PanelElement): EChartsOption {
   const labels = element.chart?.labels?.length ? element.chart.labels : ["A", "B", "C", "D"];
   const values = element.chart?.values?.length ? element.chart.values : [12, 18, 9, 24];
   const color = element.chart?.color || "#3b82f6";
+  const gradientFrom = element.chart?.gradientFrom || color;
+  const gradientTo = element.chart?.gradientTo || "#22d3ee";
+  const gradientDirection = element.chart?.gradientDirection ?? "to-right";
+  const useGradient = element.chart?.colorMode === "gradient";
+  const gradientMeta =
+    gradientDirection === "to-bottom"
+      ? { x: 0, y: 0, x2: 0, y2: 1 }
+      : gradientDirection === "to-bottom-right"
+        ? { x: 0, y: 0, x2: 1, y2: 1 }
+        : gradientDirection === "to-top-right"
+          ? { x: 0, y: 1, x2: 1, y2: 0 }
+          : { x: 0, y: 0, x2: 1, y2: 0 };
+  const chartColor = useGradient
+    ? ({
+        type: "linear",
+        ...gradientMeta,
+        colorStops: [
+          { offset: 0, color: gradientFrom },
+          { offset: 1, color: gradientTo },
+        ],
+      } as const)
+    : color;
   const title = element.chart?.title ?? "";
   const xAxisName = element.chart?.xAxisName ?? "";
   const yAxisName = element.chart?.yAxisName ?? "";
@@ -83,7 +105,7 @@ export function buildChartOption(element: PanelElement): EChartsOption {
     const baseOption: EChartsOption = {
       animation: false,
       title: { text: title, left: "center", top: 6, textStyle: { fontSize: 12 } },
-      color: [color],
+      color: [chartColor as any],
       tooltip: tooltipOption,
       series: [
         {
@@ -113,7 +135,7 @@ export function buildChartOption(element: PanelElement): EChartsOption {
           axisLine: { lineStyle: { width: 10 } },
           detail: { valueAnimation: false, formatter: "{value}%" },
           data: [{ value: gaugeValue, name: title }],
-          itemStyle: { color },
+          itemStyle: { color: chartColor as any },
         },
       ],
     };
@@ -132,8 +154,8 @@ export function buildChartOption(element: PanelElement): EChartsOption {
           type: "radar",
           data: [{ value: values, name: title }],
           areaStyle: { opacity: 0.25 },
-          lineStyle: { color },
-          itemStyle: { color },
+          lineStyle: { color: chartColor as any },
+          itemStyle: { color: chartColor as any },
         },
       ],
     };
@@ -155,7 +177,7 @@ export function buildChartOption(element: PanelElement): EChartsOption {
           sort: "descending",
           data: labels.map((name, i) => ({ name, value: values[i] ?? 0 })),
           label: { fontSize: 10 },
-          itemStyle: { color },
+          itemStyle: { color: chartColor as any },
         },
       ],
     };
@@ -200,7 +222,7 @@ export function buildChartOption(element: PanelElement): EChartsOption {
         {
           type: "scatter",
           data: values.map((v, i) => [i + 1, v]),
-          itemStyle: { color },
+          itemStyle: { color: chartColor as any },
           symbolSize: 10,
         },
       ],
@@ -253,8 +275,8 @@ export function buildChartOption(element: PanelElement): EChartsOption {
             : undefined,
         barWidth: chartType === "bar" ? (element.chart?.barWidth ?? 24) : undefined,
         areaStyle: chartType === "area" ? { opacity: 0.25 } : undefined,
-        itemStyle: { color },
-        lineStyle: { color },
+        itemStyle: { color: chartColor as any },
+        lineStyle: { color: chartColor as any },
       },
     ],
   };

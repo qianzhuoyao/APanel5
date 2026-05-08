@@ -1,6 +1,10 @@
 export type PanelChartConfig = {
   title?: string;
   color?: string;
+  colorMode?: "solid" | "gradient";
+  gradientFrom?: string;
+  gradientTo?: string;
+  gradientDirection?: "to-right" | "to-bottom" | "to-bottom-right" | "to-top-right";
   renderMode?: "canvas" | "svg";
   xAxisName?: string;
   yAxisName?: string;

@@ -742,6 +742,88 @@ export function PanelConfigSidebar({
                           }
                         />
                       </label>
+                      <label className="flex items-center gap-2">
+                        <Checkbox
+                          checked={el.chart?.colorMode === "gradient"}
+                          onCheckedChange={(checked) =>
+                            updateElement(el.id, {
+                              chart: { ...(el.chart ?? {}), colorMode: checked ? "gradient" : "solid" },
+                            })
+                          }
+                        />
+                        <span>主色渐变</span>
+                      </label>
+                      {el.chart?.colorMode === "gradient" ? (
+                        <>
+                          <label className="block space-y-1">
+                            <div>渐变起始色</div>
+                            <Input
+                              className="h-7"
+                              value={el.chart?.gradientFrom ?? el.chart?.color ?? "#3b82f6"}
+                              onChange={(e) =>
+                                updateElement(el.id, {
+                                  chart: { ...(el.chart ?? {}), gradientFrom: e.target.value || "#3b82f6" },
+                                })
+                              }
+                            />
+                          </label>
+                          <label className="block space-y-1">
+                            <div>渐变结束色</div>
+                            <Input
+                              className="h-7"
+                              value={el.chart?.gradientTo ?? "#22d3ee"}
+                              onChange={(e) =>
+                                updateElement(el.id, {
+                                  chart: { ...(el.chart ?? {}), gradientTo: e.target.value || "#22d3ee" },
+                                })
+                              }
+                            />
+                          </label>
+                          <label className="block space-y-1 col-span-2">
+                            <div>渐变方向</div>
+                            <Select
+                              value={el.chart?.gradientDirection ?? "to-right"}
+                              onValueChange={(value) =>
+                                updateElement(el.id, {
+                                  chart: {
+                                    ...(el.chart ?? {}),
+                                    gradientDirection: value as
+                                      | "to-right"
+                                      | "to-bottom"
+                                      | "to-bottom-right"
+                                      | "to-top-right",
+                                  },
+                                })
+                              }
+                            >
+                              <SelectTrigger className="h-7"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="to-right">左 → 右</SelectItem>
+                                <SelectItem value="to-bottom">上 → 下</SelectItem>
+                                <SelectItem value="to-bottom-right">左上 → 右下</SelectItem>
+                                <SelectItem value="to-top-right">左下 → 右上</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </label>
+                          <div className="col-span-2 space-y-1">
+                            <div className="text-[11px] text-muted-foreground">渐变预览</div>
+                            <div
+                              className="h-6 rounded border border-border/60"
+                              style={{
+                                backgroundImage: `linear-gradient(${
+                                  (el.chart?.gradientDirection ?? "to-right") === "to-bottom"
+                                    ? "to bottom"
+                                    : (el.chart?.gradientDirection ?? "to-right") === "to-bottom-right"
+                                      ? "to bottom right"
+                                      : (el.chart?.gradientDirection ?? "to-right") === "to-top-right"
+                                        ? "to top right"
+                                        : "to right"
+                                }, ${el.chart?.gradientFrom ?? el.chart?.color ?? "#3b82f6"}, ${el.chart?.gradientTo ?? "#22d3ee"})`,
+                              }}
+                            />
+                          </div>
+                        </>
+                      ) : null}
                       <label className="block space-y-1">
                         <div>渲染</div>
                         <Select
@@ -760,6 +842,437 @@ export function PanelConfigSidebar({
                             <SelectItem value="svg">svg</SelectItem>
                           </SelectContent>
                         </Select>
+                      </label>
+                      <label className="block space-y-1">
+                        <div>Tooltip 背景</div>
+                        <Input
+                          className="h-7"
+                          value={el.chart?.tooltipBackgroundColor ?? ""}
+                          placeholder="#0f172a"
+                          onChange={(e) =>
+                            updateElement(el.id, {
+                              chart: {
+                                ...(el.chart ?? {}),
+                                tooltipBackgroundColor: e.target.value || undefined,
+                              },
+                            })
+                          }
+                        />
+                      </label>
+                      <label className="flex items-center gap-2">
+                        <Checkbox
+                          checked={el.chart?.tooltipShow ?? true}
+                          onCheckedChange={(checked) =>
+                            updateElement(el.id, {
+                              chart: { ...(el.chart ?? {}), tooltipShow: checked === true },
+                            })
+                          }
+                        />
+                        <span>显示 Tooltip</span>
+                      </label>
+                      <label className="block space-y-1">
+                        <div>Tooltip 触发方式</div>
+                        <Select
+                          value={el.chart?.tooltipTrigger ?? "axis"}
+                          onValueChange={(value) =>
+                            updateElement(el.id, {
+                              chart: { ...(el.chart ?? {}), tooltipTrigger: value as "axis" | "item" },
+                            })
+                          }
+                        >
+                          <SelectTrigger className="h-7"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="axis">axis</SelectItem>
+                            <SelectItem value="item">item</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </label>
+                      <label className="block space-y-1">
+                        <div>Tooltip 文字色</div>
+                        <Input
+                          className="h-7"
+                          value={el.chart?.tooltipTextColor ?? ""}
+                          placeholder="#f8fafc"
+                          onChange={(e) =>
+                            updateElement(el.id, {
+                              chart: {
+                                ...(el.chart ?? {}),
+                                tooltipTextColor: e.target.value || undefined,
+                              },
+                            })
+                          }
+                        />
+                      </label>
+                      <label className="block space-y-1 col-span-2">
+                        <div>Tooltip Formatter</div>
+                        <Input
+                          className="h-7"
+                          value={el.chart?.tooltipFormatter ?? ""}
+                          placeholder="{b}: {c}"
+                          onChange={(e) =>
+                            updateElement(el.id, {
+                              chart: {
+                                ...(el.chart ?? {}),
+                                tooltipFormatter: e.target.value || undefined,
+                              },
+                            })
+                          }
+                        />
+                      </label>
+                      <label className="block space-y-1 col-span-2">
+                        <div>类目（逗号分隔）</div>
+                        <Input
+                          className="h-7"
+                          value={(el.chart?.labels ?? []).join(",")}
+                          onChange={(e) =>
+                            updateElement(el.id, {
+                              chart: {
+                                ...(el.chart ?? {}),
+                                labels: e.target.value
+                                  .split(",")
+                                  .map((s) => s.trim())
+                                  .filter(Boolean),
+                              },
+                            })
+                          }
+                        />
+                      </label>
+                      <label className="block space-y-1 col-span-2">
+                        <div>数值（逗号分隔）</div>
+                        <Input
+                          className="h-7"
+                          value={(el.chart?.values ?? []).join(",")}
+                          onChange={(e) =>
+                            updateElement(el.id, {
+                              chart: {
+                                ...(el.chart ?? {}),
+                                values: e.target.value
+                                  .split(",")
+                                  .map((s) => Number(s.trim()))
+                                  .filter((n) => Number.isFinite(n)),
+                              },
+                            })
+                          }
+                        />
+                      </label>
+                      {["bar", "line", "area", "scatter"].includes(el.materialType ?? "") ? (
+                        <>
+                          <label className="block space-y-1">
+                            <div>X 轴名称</div>
+                            <Input
+                              className="h-7"
+                              value={el.chart?.xAxisName ?? ""}
+                              onChange={(e) =>
+                                updateElement(el.id, {
+                                  chart: { ...(el.chart ?? {}), xAxisName: e.target.value },
+                                })
+                              }
+                            />
+                          </label>
+                          <label className="block space-y-1">
+                            <div>Y 轴名称</div>
+                            <Input
+                              className="h-7"
+                              value={el.chart?.yAxisName ?? ""}
+                              onChange={(e) =>
+                                updateElement(el.id, {
+                                  chart: { ...(el.chart ?? {}), yAxisName: e.target.value },
+                                })
+                              }
+                            />
+                          </label>
+                          <label className="block space-y-1">
+                            <div>X 轴标签颜色</div>
+                            <Input
+                              className="h-7"
+                              value={el.chart?.xAxisLabelColor ?? ""}
+                              placeholder="#64748b"
+                              onChange={(e) =>
+                                updateElement(el.id, {
+                                  chart: { ...(el.chart ?? {}), xAxisLabelColor: e.target.value || undefined },
+                                })
+                              }
+                            />
+                          </label>
+                          <label className="block space-y-1">
+                            <div>Y 轴标签颜色</div>
+                            <Input
+                              className="h-7"
+                              value={el.chart?.yAxisLabelColor ?? ""}
+                              placeholder="#64748b"
+                              onChange={(e) =>
+                                updateElement(el.id, {
+                                  chart: { ...(el.chart ?? {}), yAxisLabelColor: e.target.value || undefined },
+                                })
+                              }
+                            />
+                          </label>
+                          <label className="block space-y-1">
+                            <div>X 轴标签字号</div>
+                            <Input
+                              className="h-7"
+                              type="number"
+                              min={8}
+                              max={48}
+                              value={el.chart?.xAxisLabelFontSize ?? 10}
+                              onChange={(e) =>
+                                updateElement(el.id, {
+                                  chart: {
+                                    ...(el.chart ?? {}),
+                                    xAxisLabelFontSize: Math.max(8, Math.min(48, Number(e.target.value) || 10)),
+                                  },
+                                })
+                              }
+                            />
+                          </label>
+                          <label className="block space-y-1">
+                            <div>Y 轴标签字号</div>
+                            <Input
+                              className="h-7"
+                              type="number"
+                              min={8}
+                              max={48}
+                              value={el.chart?.yAxisLabelFontSize ?? 10}
+                              onChange={(e) =>
+                                updateElement(el.id, {
+                                  chart: {
+                                    ...(el.chart ?? {}),
+                                    yAxisLabelFontSize: Math.max(8, Math.min(48, Number(e.target.value) || 10)),
+                                  },
+                                })
+                              }
+                            />
+                          </label>
+                          <label className="flex items-center gap-2">
+                            <Checkbox
+                              checked={el.chart?.xAxisLabelAutoEllipsis ?? false}
+                              onCheckedChange={(checked) =>
+                                updateElement(el.id, {
+                                  chart: { ...(el.chart ?? {}), xAxisLabelAutoEllipsis: checked === true },
+                                })
+                              }
+                            />
+                            <span>X 轴标签自动缩略</span>
+                          </label>
+                          <label className="flex items-center gap-2">
+                            <Checkbox
+                              checked={el.chart?.yAxisLabelAutoEllipsis ?? false}
+                              onCheckedChange={(checked) =>
+                                updateElement(el.id, {
+                                  chart: { ...(el.chart ?? {}), yAxisLabelAutoEllipsis: checked === true },
+                                })
+                              }
+                            />
+                            <span>Y 轴标签自动缩略</span>
+                          </label>
+                          <label className="flex items-center gap-2">
+                            <Checkbox
+                              checked={el.chart?.xAxisTickShow ?? true}
+                              onCheckedChange={(checked) =>
+                                updateElement(el.id, {
+                                  chart: { ...(el.chart ?? {}), xAxisTickShow: checked === true },
+                                })
+                              }
+                            />
+                            <span>X 轴刻度线</span>
+                          </label>
+                          <label className="flex items-center gap-2">
+                            <Checkbox
+                              checked={el.chart?.yAxisTickShow ?? true}
+                              onCheckedChange={(checked) =>
+                                updateElement(el.id, {
+                                  chart: { ...(el.chart ?? {}), yAxisTickShow: checked === true },
+                                })
+                              }
+                            />
+                            <span>Y 轴刻度线</span>
+                          </label>
+                          <label className="block space-y-1">
+                            <div>X 轴刻度线颜色</div>
+                            <Input
+                              className="h-7"
+                              value={el.chart?.xAxisTickColor ?? ""}
+                              placeholder="#94a3b8"
+                              onChange={(e) =>
+                                updateElement(el.id, {
+                                  chart: { ...(el.chart ?? {}), xAxisTickColor: e.target.value || undefined },
+                                })
+                              }
+                            />
+                          </label>
+                          <label className="block space-y-1">
+                            <div>Y 轴刻度线颜色</div>
+                            <Input
+                              className="h-7"
+                              value={el.chart?.yAxisTickColor ?? ""}
+                              placeholder="#94a3b8"
+                              onChange={(e) =>
+                                updateElement(el.id, {
+                                  chart: { ...(el.chart ?? {}), yAxisTickColor: e.target.value || undefined },
+                                })
+                              }
+                            />
+                          </label>
+                          <label className="flex items-center gap-2">
+                            <Checkbox
+                              checked={el.chart?.xAxisSplitLineShow ?? false}
+                              onCheckedChange={(checked) =>
+                                updateElement(el.id, {
+                                  chart: { ...(el.chart ?? {}), xAxisSplitLineShow: checked === true },
+                                })
+                              }
+                            />
+                            <span>X 轴分割线</span>
+                          </label>
+                          <label className="flex items-center gap-2">
+                            <Checkbox
+                              checked={el.chart?.yAxisSplitLineShow ?? true}
+                              onCheckedChange={(checked) =>
+                                updateElement(el.id, {
+                                  chart: { ...(el.chart ?? {}), yAxisSplitLineShow: checked === true },
+                                })
+                              }
+                            />
+                            <span>Y 轴分割线</span>
+                          </label>
+                          <label className="block space-y-1">
+                            <div>X 轴分割线颜色</div>
+                            <Input
+                              className="h-7"
+                              value={el.chart?.xAxisSplitLineColor ?? ""}
+                              placeholder="#e2e8f0"
+                              onChange={(e) =>
+                                updateElement(el.id, {
+                                  chart: { ...(el.chart ?? {}), xAxisSplitLineColor: e.target.value || undefined },
+                                })
+                              }
+                            />
+                          </label>
+                          <label className="block space-y-1">
+                            <div>Y 轴分割线颜色</div>
+                            <Input
+                              className="h-7"
+                              value={el.chart?.yAxisSplitLineColor ?? ""}
+                              placeholder="#e2e8f0"
+                              onChange={(e) =>
+                                updateElement(el.id, {
+                                  chart: { ...(el.chart ?? {}), yAxisSplitLineColor: e.target.value || undefined },
+                                })
+                              }
+                            />
+                          </label>
+                        </>
+                      ) : null}
+                      {el.materialType === "gauge" ? (
+                        <label className="block space-y-1">
+                          <div>仪表盘值</div>
+                          <Input
+                            className="h-7"
+                            type="number"
+                            value={el.chart?.values?.[0] ?? 0}
+                            onChange={(e) =>
+                              updateElement(el.id, {
+                                chart: {
+                                  ...(el.chart ?? {}),
+                                  values: [Number(e.target.value) || 0],
+                                },
+                              })
+                            }
+                          />
+                        </label>
+                      ) : null}
+                      {el.materialType === "bar" ? (
+                        <label className="block space-y-1">
+                          <div>柱宽</div>
+                          <Input
+                            className="h-7"
+                            type="number"
+                            min={1}
+                            value={el.chart?.barWidth ?? 24}
+                            onChange={(e) =>
+                              updateElement(el.id, {
+                                chart: {
+                                  ...(el.chart ?? {}),
+                                  barWidth: Math.max(1, Number(e.target.value) || 1),
+                                },
+                              })
+                            }
+                          />
+                        </label>
+                      ) : null}
+                      {(el.materialType === "line" || el.materialType === "area") ? (
+                        <label className="flex items-center gap-2">
+                          <Checkbox
+                            checked={el.chart?.smooth ?? true}
+                            onCheckedChange={(checked) =>
+                              updateElement(el.id, {
+                                chart: { ...(el.chart ?? {}), smooth: checked === true },
+                              })
+                            }
+                          />
+                          <span>平滑曲线</span>
+                        </label>
+                      ) : null}
+                      {el.materialType === "pie" ? (
+                        <>
+                          <label className="block space-y-1">
+                            <div>内半径</div>
+                            <Input
+                              className="h-7"
+                              type="number"
+                              min={0}
+                              max={99}
+                              value={el.chart?.pieInnerRadius ?? 30}
+                              onChange={(e) =>
+                                updateElement(el.id, {
+                                  chart: {
+                                    ...(el.chart ?? {}),
+                                    pieInnerRadius: Math.max(0, Math.min(99, Number(e.target.value) || 0)),
+                                  },
+                                })
+                              }
+                            />
+                          </label>
+                          <label className="block space-y-1">
+                            <div>外半径</div>
+                            <Input
+                              className="h-7"
+                              type="number"
+                              min={1}
+                              max={100}
+                              value={el.chart?.pieOuterRadius ?? 65}
+                              onChange={(e) =>
+                                updateElement(el.id, {
+                                  chart: {
+                                    ...(el.chart ?? {}),
+                                    pieOuterRadius: Math.max(1, Math.min(100, Number(e.target.value) || 1)),
+                                  },
+                                })
+                              }
+                            />
+                          </label>
+                        </>
+                      ) : null}
+                      <label className="block space-y-1 col-span-2">
+                        <div>高级 option JSON（覆盖基础配置）</div>
+                        <Textarea
+                          className="h-28 font-mono text-[11px]"
+                          defaultValue={JSON.stringify(el.chart?.option ?? {}, null, 2)}
+                          placeholder='例如：{"grid":{"left":24}}'
+                          onBlur={(e) => {
+                            const nextText = e.target.value.trim();
+                            if (!nextText) {
+                              updateElement(el.id, { chart: { ...(el.chart ?? {}), option: undefined } });
+                              return;
+                            }
+                            try {
+                              const parsed = JSON.parse(nextText) as Record<string, unknown>;
+                              updateElement(el.id, { chart: { ...(el.chart ?? {}), option: parsed } });
+                            } catch {
+                              // ignore invalid json input on blur
+                            }
+                          }}
+                        />
                       </label>
                     </div>
                       ) : null}
@@ -1276,6 +1789,71 @@ export function PanelConfigSidebar({
                         selectedElement.chart?.color ?? "#3b82f6",
                         (next) => updateSelectedChart({ color: next || "#3b82f6" })
                       )}
+                      <label className="flex items-center gap-2">
+                        <Checkbox
+                          checked={selectedElement.chart?.colorMode === "gradient"}
+                          onCheckedChange={(checked) =>
+                            updateSelectedChart({ colorMode: checked ? "gradient" : "solid" })
+                          }
+                        />
+                        <span>主色使用渐变</span>
+                      </label>
+                      {selectedElement.chart?.colorMode === "gradient" ? (
+                        <div className="grid grid-cols-2 gap-2">
+                          {renderColorField(
+                            "渐变起始色",
+                            selectedElement.chart?.gradientFrom ?? selectedElement.chart?.color ?? "#3b82f6",
+                            (next) => updateSelectedChart({ gradientFrom: next || "#3b82f6" })
+                          )}
+                          {renderColorField(
+                            "渐变结束色",
+                            selectedElement.chart?.gradientTo ?? "#22d3ee",
+                            (next) => updateSelectedChart({ gradientTo: next || "#22d3ee" })
+                          )}
+                          <label className="block space-y-1 col-span-2">
+                            <div>渐变方向</div>
+                            <Select
+                              value={selectedElement.chart?.gradientDirection ?? "to-right"}
+                              onValueChange={(value) =>
+                                updateSelectedChart({
+                                  gradientDirection: value as
+                                    | "to-right"
+                                    | "to-bottom"
+                                    | "to-bottom-right"
+                                    | "to-top-right",
+                                })
+                              }
+                            >
+                              <SelectTrigger className="h-7">
+                                <SelectValue placeholder="请选择渐变方向" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="to-right">左 → 右</SelectItem>
+                                <SelectItem value="to-bottom">上 → 下</SelectItem>
+                                <SelectItem value="to-bottom-right">左上 → 右下</SelectItem>
+                                <SelectItem value="to-top-right">左下 → 右上</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </label>
+                          <div className="col-span-2 space-y-1">
+                            <div className="text-[11px] text-muted-foreground">渐变预览</div>
+                            <div
+                              className="h-6 rounded border border-border/60"
+                              style={{
+                                backgroundImage: `linear-gradient(${
+                                  (selectedElement.chart?.gradientDirection ?? "to-right") === "to-bottom"
+                                    ? "to bottom"
+                                    : (selectedElement.chart?.gradientDirection ?? "to-right") === "to-bottom-right"
+                                      ? "to bottom right"
+                                      : (selectedElement.chart?.gradientDirection ?? "to-right") === "to-top-right"
+                                        ? "to top right"
+                                        : "to right"
+                                }, ${selectedElement.chart?.gradientFrom ?? selectedElement.chart?.color ?? "#3b82f6"}, ${selectedElement.chart?.gradientTo ?? "#22d3ee"})`,
+                              }}
+                            />
+                          </div>
+                        </div>
+                      ) : null}
                       <label className="block space-y-1">
                         <div>显示模式</div>
                         <Select
