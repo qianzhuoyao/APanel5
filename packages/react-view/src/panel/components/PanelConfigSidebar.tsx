@@ -1,5 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
   Checkbox,
   Collapsible,
   CollapsibleContent,
@@ -34,6 +38,7 @@ type UpdateElement = (
 
 export type PanelConfigSidebarProps = {
   selectedElement: PanelElement | null;
+  selectedElements?: PanelElement[];
   layers: PanelLayer[];
   updateElement: UpdateElement;
   setReferenceCopyMode?: (id: string, mode: ReferenceCopyMode) => void;
@@ -46,6 +51,7 @@ export type PanelConfigSidebarProps = {
 
 export function PanelConfigSidebar({
   selectedElement,
+  selectedElements = [],
   layers,
   updateElement,
   setReferenceCopyMode,
@@ -102,6 +108,11 @@ export function PanelConfigSidebar({
     | "";
   const normalizedSearch = useMemo(() => configSearch.trim().toLowerCase(), [configSearch]);
   const hasSearch = normalizedSearch.length > 0;
+  const effectiveSelectedElements = useMemo(() => {
+    if (selectedElements.length > 0) return selectedElements;
+    return selectedElement ? [selectedElement] : [];
+  }, [selectedElement, selectedElements]);
+  const isMultiSelectMode = effectiveSelectedElements.length > 1;
 
   useEffect(() => {
     if (!selectedElement) {
@@ -442,7 +453,410 @@ export function PanelConfigSidebar({
           </div>
         ) : null}
       </div>
-      {!selectedElement ? (
+      {isMultiSelectMode ? (
+        <div className="space-y-3">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xs">批量设置（{effectiveSelectedElements.length} 个）</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 text-xs">
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  className="rounded border border-border bg-background px-2 py-1 hover:bg-accent"
+                  onClick={() => effectiveSelectedElements.forEach((el) => updateElement(el.id, { locked: true }))}
+                >
+                  全部锁定
+                </button>
+                <button
+                  type="button"
+                  className="rounded border border-border bg-background px-2 py-1 hover:bg-accent"
+                  onClick={() => effectiveSelectedElements.forEach((el) => updateElement(el.id, { locked: false }))}
+                >
+                  全部解锁
+                </button>
+                <button
+                  type="button"
+                  className="rounded border border-border bg-background px-2 py-1 hover:bg-accent"
+                  onClick={() =>
+                    effectiveSelectedElements.forEach((el) =>
+                      onAdjustNodeZOrder?.(el.id, "bringForward")
+                    )
+                  }
+                >
+                  全部上移一层
+                </button>
+                <button
+                  type="button"
+                  className="rounded border border-border bg-background px-2 py-1 hover:bg-accent"
+                  onClick={() =>
+                    effectiveSelectedElements.forEach((el) =>
+                      onAdjustNodeZOrder?.(el.id, "sendBackward")
+                    )
+                  }
+                >
+                  全部下移一层
+                </button>
+                <button
+                  type="button"
+                  className="rounded border border-border bg-background px-2 py-1 hover:bg-accent"
+                  onClick={() =>
+                    effectiveSelectedElements.forEach((el) =>
+                      updateElement(el.id, { zIndex: 1 })
+                    )
+                  }
+                >
+                  全部 zIndex 设为 1
+                </button>
+                <button
+                  type="button"
+                  className="rounded border border-border bg-background px-2 py-1 hover:bg-accent"
+                  onClick={() =>
+                    effectiveSelectedElements.forEach((el) =>
+                      updateElement(el.id, {
+                        style: {
+                          ...(el.style ?? {}),
+                          backgroundColor: "#3b82f6",
+                        },
+                      })
+                    )
+                  }
+                >
+                  全部背景色设为蓝色
+                </button>
+              </div>
+            </CardContent>
+          </Card>
+          {effectiveSelectedElements
+            .filter((el) => {
+              if (!hasSearch) return true;
+              const text = `${el.name ?? ""} ${el.id} ${el.materialType ?? ""} zIndex style layer`
+                .toLowerCase();
+              return text.includes(normalizedSearch);
+            })
+            .map((el) => (
+              <Card key={el.id}>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-xs truncate">
+                    {el.name?.trim() || el.materialType || "节点"} · {el.id}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2 text-xs">
+                  <label className="block space-y-1">
+                    <div>名称</div>
+                    <Input
+                      className="h-7"
+                      value={el.name ?? ""}
+                      onChange={(e) => updateElement(el.id, { name: e.target.value || undefined })}
+                    />
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <label className="block space-y-1">
+                      <div>zIndex</div>
+                      <Input
+                        className="h-7"
+                        type="number"
+                        value={el.zIndex ?? 1}
+                        onChange={(e) =>
+                          updateElement(el.id, { zIndex: Number(e.target.value) || 1 })
+                        }
+                      />
+                    </label>
+                    <label className="block space-y-1">
+                      <div>图层</div>
+                      <Select
+                        value={el.layerId}
+                        onValueChange={(value) => updateElement(el.id, { layerId: value })}
+                      >
+                        <SelectTrigger className="h-7">
+                          <SelectValue placeholder="选择图层" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {layers.map((layer) => (
+                            <SelectItem key={layer.id} value={layer.id}>
+                              {layer.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </label>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <label className="block space-y-1">
+                      <div>X</div>
+                      <Input
+                        className="h-7"
+                        type="number"
+                        value={el.x}
+                        onChange={(e) => updateElement(el.id, { x: Number(e.target.value) || 0 })}
+                      />
+                    </label>
+                    <label className="block space-y-1">
+                      <div>Y</div>
+                      <Input
+                        className="h-7"
+                        type="number"
+                        value={el.y}
+                        onChange={(e) => updateElement(el.id, { y: Number(e.target.value) || 0 })}
+                      />
+                    </label>
+                    <label className="block space-y-1">
+                      <div>宽</div>
+                      <Input
+                        className="h-7"
+                        type="number"
+                        min={1}
+                        value={el.width}
+                        onChange={(e) =>
+                          updateElement(el.id, { width: Math.max(1, Number(e.target.value) || 1) })
+                        }
+                      />
+                    </label>
+                    <label className="block space-y-1">
+                      <div>高</div>
+                      <Input
+                        className="h-7"
+                        type="number"
+                        min={1}
+                        value={el.height}
+                        onChange={(e) =>
+                          updateElement(el.id, { height: Math.max(1, Number(e.target.value) || 1) })
+                        }
+                      />
+                    </label>
+                  </div>
+                  <label className="flex items-center gap-2">
+                    <Checkbox
+                      checked={el.locked === true}
+                      onCheckedChange={(checked) => updateElement(el.id, { locked: checked === true })}
+                    />
+                    <span>锁定节点</span>
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <label className="block space-y-1">
+                      <div>背景色</div>
+                      <Input
+                        className="h-7"
+                        value={el.style?.backgroundColor ?? ""}
+                        placeholder="#000000"
+                        onChange={(e) =>
+                          updateElement(el.id, {
+                            style: {
+                              ...(el.style ?? {}),
+                              backgroundColor: e.target.value || undefined,
+                            },
+                          })
+                        }
+                      />
+                    </label>
+                    <label className="block space-y-1">
+                      <div>边框色</div>
+                      <Input
+                        className="h-7"
+                        value={el.style?.borderColor ?? ""}
+                        placeholder="#000000"
+                        onChange={(e) =>
+                          updateElement(el.id, {
+                            style: {
+                              ...(el.style ?? {}),
+                              borderColor: e.target.value || undefined,
+                            },
+                          })
+                        }
+                      />
+                    </label>
+                  </div>
+                  {CHART_TYPES.has(el.materialType ?? "") ? (
+                    <div className="grid grid-cols-2 gap-2">
+                      <label className="block space-y-1 col-span-2">
+                        <div>图表标题</div>
+                        <Input
+                          className="h-7"
+                          value={el.chart?.title ?? ""}
+                          onChange={(e) =>
+                            updateElement(el.id, {
+                              chart: { ...(el.chart ?? {}), title: e.target.value },
+                            })
+                          }
+                        />
+                      </label>
+                      <label className="block space-y-1">
+                        <div>主色</div>
+                        <Input
+                          className="h-7"
+                          value={el.chart?.color ?? ""}
+                          onChange={(e) =>
+                            updateElement(el.id, {
+                              chart: { ...(el.chart ?? {}), color: e.target.value || undefined },
+                            })
+                          }
+                        />
+                      </label>
+                      <label className="block space-y-1">
+                        <div>渲染</div>
+                        <Select
+                          value={el.chart?.renderMode ?? "canvas"}
+                          onValueChange={(value) =>
+                            updateElement(el.id, {
+                              chart: { ...(el.chart ?? {}), renderMode: value as "canvas" | "svg" },
+                            })
+                          }
+                        >
+                          <SelectTrigger className="h-7">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="canvas">canvas</SelectItem>
+                            <SelectItem value="svg">svg</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </label>
+                    </div>
+                  ) : null}
+                  {el.materialType === "text" ? (
+                    <div className="grid grid-cols-2 gap-2">
+                      <label className="block space-y-1 col-span-2">
+                        <div>文本内容(HTML)</div>
+                        <Textarea
+                          className="h-24"
+                          value={el.textHtml ?? ""}
+                          onChange={(e) => updateElement(el.id, { textHtml: e.target.value || "<p><br/></p>" })}
+                        />
+                      </label>
+                      <label className="block space-y-1">
+                        <div>字体大小</div>
+                        <Input
+                          className="h-7"
+                          type="number"
+                          min={8}
+                          value={el.textFontSize ?? 14}
+                          onChange={(e) => updateElement(el.id, { textFontSize: Math.max(8, Number(e.target.value) || 14) })}
+                        />
+                      </label>
+                      <label className="block space-y-1">
+                        <div>文字颜色</div>
+                        <Input
+                          className="h-7"
+                          value={el.textColor ?? ""}
+                          onChange={(e) => updateElement(el.id, { textColor: e.target.value || undefined })}
+                        />
+                      </label>
+                    </div>
+                  ) : null}
+                  {el.materialType === "audio" ? (
+                    <div className="grid grid-cols-2 gap-2">
+                      <label className="block space-y-1 col-span-2">
+                        <div>音频 URL</div>
+                        <Input
+                          className="h-7"
+                          value={el.audioRemoteUrl ?? ""}
+                          onChange={(e) => updateElement(el.id, { audioRemoteUrl: e.target.value || undefined })}
+                        />
+                      </label>
+                      <label className="block space-y-1">
+                        <div>动效</div>
+                        <Select
+                          value={el.audioVisualEffect ?? "pulse"}
+                          onValueChange={(value) =>
+                            updateElement(el.id, { audioVisualEffect: value as "none" | "pulse" | "ripple" })
+                          }
+                        >
+                          <SelectTrigger className="h-7"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">none</SelectItem>
+                            <SelectItem value="pulse">pulse</SelectItem>
+                            <SelectItem value="ripple">ripple</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </label>
+                      <label className="block space-y-1">
+                        <div>速度</div>
+                        <Select
+                          value={el.audioVisualSpeed ?? "normal"}
+                          onValueChange={(value) =>
+                            updateElement(el.id, { audioVisualSpeed: value as "slow" | "normal" | "fast" })
+                          }
+                        >
+                          <SelectTrigger className="h-7"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="slow">slow</SelectItem>
+                            <SelectItem value="normal">normal</SelectItem>
+                            <SelectItem value="fast">fast</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </label>
+                    </div>
+                  ) : null}
+                  {el.materialType === "video" ? (
+                    <label className="block space-y-1">
+                      <div>视频 URL</div>
+                      <Input
+                        className="h-7"
+                        value={el.videoRemoteUrl ?? ""}
+                        onChange={(e) => updateElement(el.id, { videoRemoteUrl: e.target.value || undefined })}
+                      />
+                    </label>
+                  ) : null}
+                  {el.materialType === "grid" ? (
+                    <div className="grid grid-cols-2 gap-2">
+                      <label className="block space-y-1">
+                        <div>行</div>
+                        <Input className="h-7" type="number" min={1} value={el.gridRows ?? 2} onChange={(e) => updateElement(el.id, { gridRows: Math.max(1, Number(e.target.value) || 2) })} />
+                      </label>
+                      <label className="block space-y-1">
+                        <div>列</div>
+                        <Input className="h-7" type="number" min={1} value={el.gridCols ?? 3} onChange={(e) => updateElement(el.id, { gridCols: Math.max(1, Number(e.target.value) || 3) })} />
+                      </label>
+                    </div>
+                  ) : null}
+                  {el.materialType === "reference" ? (
+                    <div className="grid grid-cols-2 gap-2">
+                      <label className="block space-y-1">
+                        <div>引用图层</div>
+                        <Select
+                          value={el.refLayerId ?? "__none__"}
+                          onValueChange={(value) => updateElement(el.id, { refLayerId: value === "__none__" ? undefined : value })}
+                        >
+                          <SelectTrigger className="h-7"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__none__">无</SelectItem>
+                            {layers.filter((l) => l.id !== el.layerId).map((l) => (
+                              <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </label>
+                      <label className="block space-y-1">
+                        <div>拷贝</div>
+                        <Select
+                          value={el.refCopyMode ?? "shallow"}
+                          onValueChange={(value) => setReferenceCopyMode?.(el.id, value as ReferenceCopyMode)}
+                        >
+                          <SelectTrigger className="h-7"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="shallow">shallow</SelectItem>
+                            <SelectItem value="deep">deep</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </label>
+                    </div>
+                  ) : null}
+                </CardContent>
+              </Card>
+            ))}
+          {hasSearch &&
+          effectiveSelectedElements.every((el) => {
+            const text = `${el.name ?? ""} ${el.id} ${el.materialType ?? ""} zIndex style layer`
+              .toLowerCase();
+            return !text.includes(normalizedSearch);
+          }) ? (
+            <div className="rounded border border-border/60 bg-background px-2 py-1.5 text-[11px] text-muted-foreground">
+              未匹配到可编辑节点，请更换关键词。
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+      {!isMultiSelectMode && !selectedElement ? (
         <Empty className="py-7">
           <EmptyIcon>
             <svg
@@ -460,7 +874,7 @@ export function PanelConfigSidebar({
           <EmptyTitle>暂无可配置节点</EmptyTitle>
           <EmptyDescription>请先在画布中选中一个节点，再到这里进行配置。</EmptyDescription>
         </Empty>
-      ) : (
+      ) : !isMultiSelectMode ? (
         <div className="space-y-3">
           {!isNodeEditable ? (
             <div className="rounded border border-amber-500/40 bg-amber-500/10 px-2 py-1.5 text-[11px] text-amber-700 dark:text-amber-300">
@@ -1772,7 +2186,7 @@ export function PanelConfigSidebar({
             </div>
           </fieldset>
         </div>
-      )}
+      ) : null}
     </aside>
   );
 }

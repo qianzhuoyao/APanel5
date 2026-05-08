@@ -365,8 +365,8 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
         pinch={{ disabled: true }}
         wheel={{ step: 0.008, disabled: false, wheelDisabled: false }}
         centerZoomedOut={false}
-        onWheel={(ref) => {
-          const next = Number(ref.state.scale.toFixed(4));
+        onWheel={(instance) => {
+          const next = Number(instance.state.scale.toFixed(4));
           if (syncingZoomRef.current) return;
           onZoomChange(next);
         }}

@@ -95,10 +95,15 @@ export function MoveableLayer({
   refreshToken,
 }: MoveableLayerProps) {
   const moveableRef = useRef<any>(null);
-  const targets = useMemo(
-    () => (selectedTargets.length ? selectedTargets : null),
-    [selectedTargets]
-  );
+  const targets = useMemo(() => {
+    const validTargets = selectedTargets.filter(
+      (target) =>
+        !!target &&
+        target.isConnected &&
+        !!target.closest("[data-panel-canvas]")
+    );
+    return validTargets.length ? validTargets : null;
+  }, [selectedTargets]);
 
   const getId = useCallback((target: HTMLElement) => {
     const el = target.closest<HTMLElement>(".rv-selectable");
@@ -223,6 +228,18 @@ export function MoveableLayer({
   }, [refreshToken, targets, updateRectNextFrame]);
 
   if (!targets) return null;
+  if (hasLockedSelected) {
+    return lockBadgeAnchor ? (
+      <div
+        className="pointer-events-none absolute z-[80] inline-flex select-none items-center gap-1 rounded border border-border bg-background/95 px-1.5 py-0.5 text-[11px] text-foreground shadow-sm"
+        style={{ left: lockBadgeAnchor.x + 6, top: lockBadgeAnchor.y - 22 }}
+        title="节点已锁定"
+      >
+        <LockGlyph />
+        <span>已锁定</span>
+      </div>
+    ) : null;
+  }
 
   return (
     <>
@@ -251,6 +268,7 @@ export function MoveableLayer({
         e.datas.__startY = data.y;
       }}
       onDrag={(e: any) => {
+        if (!e?.target?.style) return;
         const sx = e.datas.__startX ?? 0;
         const sy = e.datas.__startY ?? 0;
         const tx = e.beforeTranslate?.[0] ?? 0;
@@ -271,6 +289,7 @@ export function MoveableLayer({
       }}
       onDragGroup={(e: any) => {
         e.events.forEach((ev: any) => {
+          if (!ev?.target?.style) return;
           const sx = ev.datas.__startX ?? 0;
           const sy = ev.datas.__startY ?? 0;
           const tx = ev.beforeTranslate?.[0] ?? 0;
@@ -290,6 +309,7 @@ export function MoveableLayer({
         e.datas.__startY = data.y;
       }}
       onResize={(e: any) => {
+        if (!e?.target?.style) return;
         e.target.style.width = `${e.width}px`;
         e.target.style.height = `${e.height}px`;
         const sx = e.datas.__startX ?? 0;
@@ -313,6 +333,7 @@ export function MoveableLayer({
       }}
       onResizeGroup={(e: any) => {
         e.events.forEach((ev: any) => {
+          if (!ev?.target?.style) return;
           ev.target.style.width = `${ev.width}px`;
           ev.target.style.height = `${ev.height}px`;
           const sx = ev.datas.__startX ?? 0;
@@ -331,10 +352,12 @@ export function MoveableLayer({
         e.set(data.rotate ?? 0);
       }}
       onRotate={(e: any) => {
+        if (!e?.target?.style) return;
         e.target.style.transform = `rotate(${e.beforeRotate}deg)`;
       }}
       onRotateGroup={(e: any) => {
         e.events.forEach((ev: any) => {
+          if (!ev?.target?.style) return;
           ev.target.style.transform = `rotate(${ev.beforeRotate}deg)`;
         });
       }}
@@ -471,16 +494,7 @@ export function MoveableLayer({
         updateRectNextFrame();
       }}
       />
-      {hasLockedSelected && lockBadgeAnchor ? (
-        <div
-          className="pointer-events-none absolute z-[80] inline-flex select-none items-center gap-1 rounded border border-border bg-background/95 px-1.5 py-0.5 text-[11px] text-foreground shadow-sm"
-          style={{ left: lockBadgeAnchor.x + 6, top: lockBadgeAnchor.y - 22 }}
-          title="节点已锁定"
-        >
-          <LockGlyph />
-          <span>已锁定</span>
-        </div>
-      ) : null}
+      {null}
     </>
   );
 }

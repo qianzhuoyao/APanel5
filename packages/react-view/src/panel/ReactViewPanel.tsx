@@ -474,6 +474,10 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
     deletingLayer?.isMapping ? "remove" : deleteMode;
   const deleteTargetCandidates = layers.filter((l) => l.id !== confirmDeleteLayerId);
   const selectedElement = selectedIds.length === 1 ? byId.get(selectedIds[0]) ?? null : null;
+  const selectedElements = useMemo(
+    () => selectedIds.map((id) => byId.get(id)).filter((el): el is PanelElement => !!el),
+    [byId, selectedIds]
+  );
   const selectedNodeZOrderLabel = useMemo(() => {
     if (!selectedElement) return "-";
     return String(selectedElement.zIndex ?? 1);
@@ -1746,6 +1750,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
           <div className="panel-font-root h-full">
             <PanelConfigSidebar
               selectedElement={selectedElement}
+              selectedElements={selectedElements}
               layers={layers}
               updateElement={updateElement}
               setReferenceCopyMode={setReferenceCopyMode}
