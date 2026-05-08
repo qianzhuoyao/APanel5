@@ -130,6 +130,30 @@ export function MoveableLayer({
     });
     return unlocked.length ? unlocked : null;
   }, [elementsById, getId, targets]);
+  const movableIds = useMemo(
+    () =>
+      (movableTargets ?? [])
+        .map((target) => getId(target))
+        .filter((id): id is string => !!id),
+    [getId, movableTargets]
+  );
+  const resolveSingleEventId = useCallback(
+    (target: HTMLElement | undefined | null) => {
+      const id = target ? getId(target) : null;
+      if (id) return id;
+      // 过滤锁定后只剩一个可移动节点时，Moveable 某些事件 target 可能不是节点本身
+      if (movableIds.length === 1) return movableIds[0] ?? null;
+      return null;
+    },
+    [getId, movableIds]
+  );
+  const toCanvasDelta = useCallback(
+    (delta: number) => {
+      const safeZoom = zoom > 0 ? zoom : 1;
+      return delta / safeZoom;
+    },
+    [zoom]
+  );
   const lockBadgeAnchor = useMemo(() => {
     const id = lockedSelected[0];
     if (!id) return null;
@@ -256,8 +280,8 @@ export function MoveableLayer({
         ref={moveableRef}
       // Moveable 支持单个 HTMLElement 或 HTMLElement[]
       target={movableTargets as unknown as HTMLElement[]}
-      // 让节点跟随画布缩放，但控制框保持近似固定像素大小
-      zoom={zoom > 0 ? 1 / zoom : 1}
+      // Moveable 的 zoom 应与画布缩放同向，才能保证拖拽/缩放位移与鼠标一致
+      zoom={zoom > 0 ? zoom : 1}
       // 允许在控制框内部区域拖动（不必必须点到某个节点本体）
       dragArea
       draggable
@@ -268,7 +292,7 @@ export function MoveableLayer({
       throttleResize={0}
       throttleRotate={0}
       onDragStart={(e: any) => {
-        const id = e.target ? getId(e.target) : null;
+        const id = resolveSingleEventId(e.target as HTMLElement | null);
         if (!id) return;
         const data = elementsById.get(id);
         if (!data) return;
@@ -278,10 +302,11 @@ export function MoveableLayer({
       }}
       onDrag={(e: any) => {
         if (!e?.target?.style) return;
+        if (e.datas.__startX === undefined || e.datas.__startY === undefined) return;
         const sx = e.datas.__startX ?? 0;
         const sy = e.datas.__startY ?? 0;
-        const tx = e.beforeTranslate?.[0] ?? 0;
-        const ty = e.beforeTranslate?.[1] ?? 0;
+        const tx = toCanvasDelta(e.beforeTranslate?.[0] ?? 0);
+        const ty = toCanvasDelta(e.beforeTranslate?.[1] ?? 0);
         e.target.style.left = `${sx + tx}px`;
         e.target.style.top = `${sy + ty}px`;
       }}
@@ -301,14 +326,14 @@ export function MoveableLayer({
           if (!ev?.target?.style) return;
           const sx = ev.datas.__startX ?? 0;
           const sy = ev.datas.__startY ?? 0;
-          const tx = ev.beforeTranslate?.[0] ?? 0;
-          const ty = ev.beforeTranslate?.[1] ?? 0;
+          const tx = toCanvasDelta(ev.beforeTranslate?.[0] ?? 0);
+          const ty = toCanvasDelta(ev.beforeTranslate?.[1] ?? 0);
           ev.target.style.left = `${sx + tx}px`;
           ev.target.style.top = `${sy + ty}px`;
         });
       }}
       onResizeStart={(e: any) => {
-        const id = e.target ? getId(e.target) : null;
+        const id = resolveSingleEventId(e.target as HTMLElement | null);
         if (!id) return;
         const data = elementsById.get(id);
         if (!data) return;
@@ -319,12 +344,13 @@ export function MoveableLayer({
       }}
       onResize={(e: any) => {
         if (!e?.target?.style) return;
+        if (e.datas.__startX === undefined || e.datas.__startY === undefined) return;
         e.target.style.width = `${e.width}px`;
         e.target.style.height = `${e.height}px`;
         const sx = e.datas.__startX ?? 0;
         const sy = e.datas.__startY ?? 0;
-        const tx = e.drag.beforeTranslate?.[0] ?? 0;
-        const ty = e.drag.beforeTranslate?.[1] ?? 0;
+        const tx = toCanvasDelta(e.drag.beforeTranslate?.[0] ?? 0);
+        const ty = toCanvasDelta(e.drag.beforeTranslate?.[1] ?? 0);
         e.target.style.left = `${sx + tx}px`;
         e.target.style.top = `${sy + ty}px`;
       }}
@@ -347,14 +373,14 @@ export function MoveableLayer({
           ev.target.style.height = `${ev.height}px`;
           const sx = ev.datas.__startX ?? 0;
           const sy = ev.datas.__startY ?? 0;
-          const tx = ev.drag.beforeTranslate?.[0] ?? 0;
-          const ty = ev.drag.beforeTranslate?.[1] ?? 0;
+          const tx = toCanvasDelta(ev.drag.beforeTranslate?.[0] ?? 0);
+          const ty = toCanvasDelta(ev.drag.beforeTranslate?.[1] ?? 0);
           ev.target.style.left = `${sx + tx}px`;
           ev.target.style.top = `${sy + ty}px`;
         });
       }}
       onRotateStart={(e: any) => {
-        const id = e.target ? getId(e.target) : null;
+        const id = resolveSingleEventId(e.target as HTMLElement | null);
         if (!id) return;
         const data = elementsById.get(id);
         if (!data) return;
@@ -371,14 +397,14 @@ export function MoveableLayer({
         });
       }}
       onDragEnd={(e: any) => {
-        const id = e.target ? getId(e.target) : null;
+        const id = resolveSingleEventId(e.target as HTMLElement | null);
         if (!id) return;
         const data = elementsById.get(id);
         if (!data) return;
         const sx = e.datas.__startX ?? data.x;
         const sy = e.datas.__startY ?? data.y;
-        const tx = e.lastEvent?.beforeTranslate?.[0] ?? 0;
-        const ty = e.lastEvent?.beforeTranslate?.[1] ?? 0;
+        const tx = toCanvasDelta(e.lastEvent?.beforeTranslate?.[0] ?? 0);
+        const ty = toCanvasDelta(e.lastEvent?.beforeTranslate?.[1] ?? 0);
         const nextX = sx + tx;
         const nextY = sy + ty;
         const patch = getSnapPatch(id, nextX, nextY, data.width, data.height);
@@ -415,8 +441,8 @@ export function MoveableLayer({
           if (!data) return;
           const sx = ev.datas.__startX ?? data.x;
           const sy = ev.datas.__startY ?? data.y;
-          const tx = ev.lastEvent?.beforeTranslate?.[0] ?? 0;
-          const ty = ev.lastEvent?.beforeTranslate?.[1] ?? 0;
+          const tx = toCanvasDelta(ev.lastEvent?.beforeTranslate?.[0] ?? 0);
+          const ty = toCanvasDelta(ev.lastEvent?.beforeTranslate?.[1] ?? 0);
           const nextX = sx + tx;
           const nextY = sy + ty;
           const patch = getSnapPatch(id, nextX, nextY, data.width, data.height);
@@ -447,14 +473,14 @@ export function MoveableLayer({
         updateRectNextFrame();
       }}
       onResizeEnd={(e: any) => {
-        const id = e.target ? getId(e.target) : null;
+        const id = resolveSingleEventId(e.target as HTMLElement | null);
         if (!id) return;
         const data = elementsById.get(id);
         if (!data) return;
         const width = e.lastEvent?.width ?? data.width;
         const height = e.lastEvent?.height ?? data.height;
-        const tx = e.lastEvent?.drag?.beforeTranslate?.[0] ?? 0;
-        const ty = e.lastEvent?.drag?.beforeTranslate?.[1] ?? 0;
+        const tx = toCanvasDelta(e.lastEvent?.drag?.beforeTranslate?.[0] ?? 0);
+        const ty = toCanvasDelta(e.lastEvent?.drag?.beforeTranslate?.[1] ?? 0);
         const sx = e.datas.__startX ?? data.x;
         const sy = e.datas.__startY ?? data.y;
         updateElement(id, { width, height, x: sx + tx, y: sy + ty });
@@ -469,8 +495,8 @@ export function MoveableLayer({
           if (!data) return;
           const width = ev.lastEvent?.width ?? data.width;
           const height = ev.lastEvent?.height ?? data.height;
-          const tx = ev.lastEvent?.drag?.beforeTranslate?.[0] ?? 0;
-          const ty = ev.lastEvent?.drag?.beforeTranslate?.[1] ?? 0;
+          const tx = toCanvasDelta(ev.lastEvent?.drag?.beforeTranslate?.[0] ?? 0);
+          const ty = toCanvasDelta(ev.lastEvent?.drag?.beforeTranslate?.[1] ?? 0);
           const sx = ev.datas.__startX ?? data.x;
           const sy = ev.datas.__startY ?? data.y;
           updateElement(
@@ -482,7 +508,7 @@ export function MoveableLayer({
         updateRectNextFrame();
       }}
       onRotateEnd={(e: any) => {
-        const id = e.target ? getId(e.target) : null;
+        const id = resolveSingleEventId(e.target as HTMLElement | null);
         if (!id) return;
         const data = elementsById.get(id);
         if (!data) return;
