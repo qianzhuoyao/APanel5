@@ -258,25 +258,12 @@ export function MoveableLayer({
       moveableRef.current?.updateRect?.();
     });
   }, []);
-  const getGridDescendants = useCallback(
+  const getGridDirectChildren = useCallback(
     (gridId: string) => {
-      const byParent = new Map<string, PanelElement[]>();
-      for (const el of elementsById.values()) {
-        if (!el.parentGridId) continue;
-        const list = byParent.get(el.parentGridId) ?? [];
-        list.push(el);
-        byParent.set(el.parentGridId, list);
-      }
       const result: PanelElement[] = [];
-      const queue = [...(byParent.get(gridId) ?? [])];
-      const visited = new Set<string>();
-      while (queue.length > 0) {
-        const cur = queue.shift()!;
-        if (visited.has(cur.id)) continue;
-        visited.add(cur.id);
-        result.push(cur);
-        const children = byParent.get(cur.id) ?? [];
-        children.forEach((child) => queue.push(child));
+      for (const el of elementsById.values()) {
+        if (el.parentGridId !== gridId) continue;
+        result.push(el);
       }
       return result;
     },
@@ -586,9 +573,9 @@ export function MoveableLayer({
           const dx = nextX - data.x;
           const dy = nextY - data.y;
           if (Math.abs(dx) > 0.001 || Math.abs(dy) > 0.001) {
-            const descendants = getGridDescendants(id);
+            const children = getGridDirectChildren(id);
             const batchId = `move-grid-children-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-            descendants.forEach((child) => {
+            children.forEach((child) => {
               updateElement(
                 child.id,
                 { x: child.x + dx, y: child.y + dy },
@@ -646,8 +633,8 @@ export function MoveableLayer({
           }
         });
         for (const [gridId, delta] of gridDeltaMap.entries()) {
-          const descendants = getGridDescendants(gridId);
-          descendants.forEach((child) => {
+          const children = getGridDirectChildren(gridId);
+          children.forEach((child) => {
             if (selectedSet.has(child.id)) return;
             updateElement(
               child.id,

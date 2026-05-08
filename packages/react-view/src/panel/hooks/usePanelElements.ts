@@ -281,6 +281,214 @@ function inferSpanBySize(size: number, cellSize: number, gap: number, maxSpan: n
   return Math.max(1, Math.min(safeMax, promoted));
 }
 
+function getGridSpanCellsForSnap(
+  rows: number,
+  cols: number,
+  slotIndex: number,
+  colSpan: number,
+  rowSpan: number
+) {
+  const total = rows * cols;
+  const safeIndex = Math.max(0, Math.min(total - 1, Math.floor(slotIndex || 0)));
+  const startRow = Math.floor(safeIndex / cols);
+  const startCol = safeIndex % cols;
+  const safeColSpan = Math.max(1, Math.min(cols - startCol, Math.floor(colSpan || 1)));
+  const safeRowSpan = Math.max(1, Math.min(rows - startRow, Math.floor(rowSpan || 1)));
+  const indices: number[] = [];
+  for (let r = startRow; r < startRow + safeRowSpan; r++) {
+    for (let c = startCol; c < startCol + safeColSpan; c++) {
+      indices.push(r * cols + c);
+    }
+  }
+  return {
+    safeIndex,
+    startRow,
+    startCol,
+    colSpan: safeColSpan,
+    rowSpan: safeRowSpan,
+    indices,
+  };
+}
+
+function getOccupiedSlotsForGrid(
+  elementsById: Map<string, PanelElement>,
+  gridId: string,
+  excludeId: string | undefined,
+  layerId: string
+) {
+  const occupied = new Set<number>();
+  const grid = elementsById.get(gridId);
+  if (!grid || grid.materialType !== "grid") return occupied;
+  const { rows, cols } = getGridSlotLayout(grid);
+  for (const el of elementsById.values()) {
+    if (excludeId && el.id === excludeId) continue;
+    if (el.layerId !== layerId) continue;
+    if (el.parentGridId !== gridId) continue;
+    if (el.gridSlotIndex === undefined) continue;
+    const span = getGridSpanCellsForSnap(
+      rows,
+      cols,
+      el.gridSlotIndex,
+      el.gridColSpan ?? 1,
+      el.gridRowSpan ?? 1
+    );
+    span.indices.forEach((idx) => occupied.add(idx));
+  }
+  return occupied;
+}
+
+/** 新建节点落点吸附到指定图层上的网格（与 Moveable 吸附规则对齐） */
+function computeSnapPatchForNewElementOnLayer(
+  elementsById: Map<string, PanelElement>,
+  layerId: string,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  excludeElementId?: string
+): Partial<PanelElement> {
+  const centerX = x + width / 2;
+  const centerY = y + height / 2;
+  let nearest: {
+    gridId: string;
+    slotIndex: number;
+    slotX: number;
+    slotY: number;
+    width: number;
+    height: number;
+    colSpan: number;
+    rowSpan: number;
+    distance: number;
+  } | null = null;
+
+  for (const [, el] of elementsById.entries()) {
+    if (el.materialType !== "grid" || el.layerId !== layerId) continue;
+    const layout = getGridSlotLayout(el);
+    const { slots, cellWidth, cellHeight, rows, cols, gap } = layout;
+    const occupiedSlots = getOccupiedSlotsForGrid(elementsById, el.id, excludeElementId, layerId);
+    const threshold = Math.max(8, el.gridSnapThreshold ?? 36);
+    const inferredColSpan = inferSpanBySize(width, cellWidth, gap, cols);
+    const inferredRowSpan = inferSpanBySize(height, cellHeight, gap, rows);
+    const movingColSpan = Math.max(1, inferredColSpan);
+    const movingRowSpan = Math.max(1, inferredRowSpan);
+    const insideGridBounds =
+      centerX >= el.x &&
+      centerX <= el.x + Math.max(1, el.width) &&
+      centerY >= el.y &&
+      centerY <= el.y + Math.max(1, el.height);
+
+    for (const slot of slots) {
+      const spanCells = getGridSpanCellsForSnap(
+        rows,
+        cols,
+        slot.index,
+        movingColSpan,
+        movingRowSpan
+      );
+      if (spanCells.colSpan !== movingColSpan || spanCells.rowSpan !== movingRowSpan) continue;
+      const blocked = spanCells.indices.some((idx) => occupiedSlots.has(idx));
+      if (blocked) continue;
+      const slotCenterX = slot.x + cellWidth / 2;
+      const slotCenterY = slot.y + cellHeight / 2;
+      const distance = Math.hypot(slotCenterX - centerX, slotCenterY - centerY);
+      if (!insideGridBounds && distance > threshold) continue;
+      if (!nearest || distance < nearest.distance) {
+        const spanWidth = spanCells.colSpan * cellWidth + (spanCells.colSpan - 1) * gap;
+        const spanHeight = spanCells.rowSpan * cellHeight + (spanCells.rowSpan - 1) * gap;
+        nearest = {
+          gridId: el.id,
+          slotIndex: spanCells.safeIndex,
+          slotX: slot.x,
+          slotY: slot.y,
+          width: spanWidth,
+          height: spanHeight,
+          colSpan: spanCells.colSpan,
+          rowSpan: spanCells.rowSpan,
+          distance,
+        };
+      }
+    }
+  }
+
+  if (!nearest) return {};
+  return {
+    x: nearest.slotX,
+    y: nearest.slotY,
+    parentGridId: nearest.gridId,
+    gridSlotIndex: nearest.slotIndex,
+    gridColSpan: nearest.colSpan,
+    gridRowSpan: nearest.rowSpan,
+    width: nearest.width,
+    height: nearest.height,
+  };
+}
+
+/** 映射图层克隆节点：源上网格的 id → 该映射图层上与之源对应的节点 id */
+function findCloneIdForSourceNodeOnMappingLayer(
+  sourceElementId: string,
+  mappingLayerId: string,
+  elementsById: Map<string, PanelElement>
+): string | undefined {
+  for (const el of elementsById.values()) {
+    if (el.layerId !== mappingLayerId) continue;
+    if (el.mappingSourceNodeId !== sourceElementId) continue;
+    return el.id;
+  }
+  return undefined;
+}
+
+/** 克隆网格 id → 逻辑上的「源图层网格」id（用于跨图层同步 parentGridId） */
+function logicalGridParentIdFromConcrete(
+  concreteParentGridId: string | undefined,
+  elementById: Map<string, PanelElement>
+): string | undefined {
+  if (!concreteParentGridId) return undefined;
+  const g = elementById.get(concreteParentGridId);
+  if (!g || g.materialType !== "grid") return concreteParentGridId;
+  return g.mappingSourceNodeId ?? g.id;
+}
+
+/** 逻辑源网格 id → 在指定图层上的那张网格实例 id */
+function concreteGridParentIdForLayer(
+  logicalSourceGridId: string | undefined,
+  targetLayerId: string,
+  elements: Iterable<PanelElement>
+): string | undefined {
+  if (!logicalSourceGridId) return undefined;
+  for (const el of elements) {
+    if (el.layerId !== targetLayerId || el.materialType !== "grid") continue;
+    if ((el.mappingSourceNodeId ?? el.id) === logicalSourceGridId) return el.id;
+  }
+  return undefined;
+}
+
+/** 打开映射图层时：把选中节点在同图层内的网格子树一并纳入，避免出现「父网格+兄弟节点已克隆、中间嵌套网格丢失」的断层结构 */
+function expandMappingSeedsWithGridDescendants(
+  nodeById: Map<string, PanelElement>,
+  seedIds: string[]
+): string[] {
+  const expanded = new Set<string>();
+  const queue: string[] = [];
+  for (const id of seedIds) {
+    if (!id || !nodeById.has(id)) continue;
+    expanded.add(id);
+    queue.push(id);
+  }
+  while (queue.length > 0) {
+    const id = queue.shift()!;
+    const anchor = nodeById.get(id);
+    const layerId = anchor?.layerId;
+    for (const el of nodeById.values()) {
+      if (el.parentGridId !== id) continue;
+      if (layerId !== undefined && el.layerId !== layerId) continue;
+      if (expanded.has(el.id)) continue;
+      expanded.add(el.id);
+      queue.push(el.id);
+    }
+  }
+  return [...expanded];
+}
+
 function removeMappingLayersBySourceIds(
   draft: State,
   sourceIds: Set<string>,
@@ -556,11 +764,23 @@ export function usePanelElements() {
         "x" in patch ||
         "y" in patch;
       if (isGridNode && hasGridLayoutPatch) {
+        // 同源映射：外层网格在源图层改动时必须连带映射图层克隆网格一起重排，
+        // 否则会跳过 syncPatch 分支，嵌套的 inner grid（按克隆 parentGridId 挂载）不同步。
+        const logicalGridSourceId =
+          currentElement.mappingSourceNodeId ?? currentElement.id;
         store.update(
           (draft) => {
             const nodes = draft.root.children ?? [];
-            const targetNode = nodes.find((n) => isPanelElementNode(n) && n.id === id);
-            if (!targetNode?.props) return;
+            const gridTargets = nodes.filter((n) => {
+              if (!isPanelElementNode(n) || !n.props) return false;
+              const p = n.props as PanelElement;
+              if (p.materialType !== "grid") return false;
+              return (
+                p.id === logicalGridSourceId ||
+                p.mappingSourceNodeId === logicalGridSourceId
+              );
+            });
+            if (gridTargets.length === 0) return;
             const byParent = new Map<string, PanelElement[]>();
             nodes.forEach((n) => {
               if (!isPanelElementNode(n) || !n.props) return;
@@ -604,9 +824,15 @@ export function usePanelElements() {
                 }
               });
             };
-            const nextGrid = { ...(targetNode.props as PanelElement), ...patch } as PanelElement;
-            targetNode.props = nextGrid;
-            reflowGridDescendants(nextGrid);
+            gridTargets.forEach((targetNode) => {
+              if (!targetNode.props) return;
+              const nextGrid = {
+                ...(targetNode.props as PanelElement),
+                ...patch,
+              } as PanelElement;
+              targetNode.props = nextGrid;
+              reflowGridDescendants(nextGrid);
+            });
           },
           {
             batchId: options?.batchId,
@@ -626,13 +852,72 @@ export function usePanelElements() {
         store.update(
           (draft) => {
             const nodes = draft.root.children ?? [];
+            const byId = new Map<string, PanelElement>();
+            nodes.forEach((n) => {
+              if (!isPanelElementNode(n) || !n.props) return;
+              const p = n.props as PanelElement;
+              byId.set(p.id, p);
+            });
+            const allFlat = [...byId.values()];
             nodes.forEach((n) => {
               if (!isPanelElementNode(n) || !n.props) return;
               const props = n.props as PanelElement;
               const sameFamily =
                 props.id === syncSourceId || props.mappingSourceNodeId === syncSourceId;
               if (!sameFamily) return;
-              n.props = { ...props, ...syncPatch };
+
+              const merged = { ...props, ...syncPatch } as PanelElement;
+
+              if ("parentGridId" in patch && patch.parentGridId === undefined) {
+                merged.parentGridId = undefined;
+                merged.gridSlotIndex = undefined;
+                n.props = merged;
+                byId.set(merged.id, merged);
+                return;
+              }
+
+              const logicalParent =
+                patch.parentGridId !== undefined
+                  ? logicalGridParentIdFromConcrete(patch.parentGridId, byId)
+                  : props.parentGridId !== undefined
+                    ? logicalGridParentIdFromConcrete(props.parentGridId, byId)
+                    : undefined;
+
+              const touchesGridPlacement =
+                ("parentGridId" in patch && patch.parentGridId !== undefined) ||
+                "gridSlotIndex" in patch ||
+                "gridColSpan" in patch ||
+                "gridRowSpan" in patch;
+
+              if (touchesGridPlacement && logicalParent !== undefined) {
+                const concreteParent = concreteGridParentIdForLayer(
+                  logicalParent,
+                  props.layerId,
+                  allFlat
+                );
+                if (concreteParent) {
+                  const parentEl = byId.get(concreteParent);
+                  if (parentEl?.materialType === "grid") {
+                    merged.parentGridId = concreteParent;
+                    const spanRect = getGridChildSpanRect(
+                      parentEl,
+                      merged.gridSlotIndex ?? 0,
+                      merged.gridColSpan ?? 1,
+                      merged.gridRowSpan ?? 1
+                    );
+                    merged.gridSlotIndex = spanRect.index;
+                    merged.gridColSpan = spanRect.colSpan;
+                    merged.gridRowSpan = spanRect.rowSpan;
+                    merged.x = spanRect.x;
+                    merged.y = spanRect.y;
+                    merged.width = spanRect.width;
+                    merged.height = spanRect.height;
+                  }
+                }
+              }
+
+              n.props = merged;
+              byId.set(merged.id, merged);
             });
           },
           {
@@ -669,7 +954,6 @@ export function usePanelElements() {
     store.update(
       (draft) => {
         const deletedSourceIds = new Set<string>();
-        const impactedMappingLayerIds = new Set<string>();
         const deleting = (draft.root.children ?? []).find(
           (n) => isPanelElementNode(n) && n.id === id
         );
@@ -677,13 +961,6 @@ export function usePanelElements() {
           const props = deleting.props as PanelElement;
           deletedSourceIds.add(props.mappingSourceNodeId ?? props.id);
         }
-        (draft.root.children ?? []).forEach((n) => {
-          if (!isPanelElementNode(n) || !n.props) return;
-          const props = n.props as PanelElement;
-          if (!props.mappingSourceNodeId) return;
-          if (!deletedSourceIds.has(props.mappingSourceNodeId)) return;
-          impactedMappingLayerIds.add(props.layerId);
-        });
         const familyIds = new Set<string>();
         (draft.root.children ?? []).forEach((n) => {
           if (!isPanelElementNode(n) || !n.props) return;
@@ -694,7 +971,7 @@ export function usePanelElements() {
         draft.root.children = (draft.root.children ?? []).filter(
           (n) => !(isPanelElementNode(n) && familyIds.has(n.id))
         );
-        removeLayersByIds(draft, impactedMappingLayerIds);
+        // 映射图层只能通过图层栏删除或删除源节点等方式移除，不得在删除单个映射节点时整层删掉
       },
       { meta: { type: "node.delete", id } }
     );
@@ -713,19 +990,11 @@ export function usePanelElements() {
     store.update(
       (draft) => {
         const deletedSourceIds = new Set<string>();
-        const impactedMappingLayerIds = new Set<string>();
         (draft.root.children ?? []).forEach((n) => {
           if (!isPanelElementNode(n) || !n.props) return;
           if (!idSet.has(n.id)) return;
           const props = n.props as PanelElement;
           deletedSourceIds.add(props.mappingSourceNodeId ?? props.id);
-        });
-        (draft.root.children ?? []).forEach((n) => {
-          if (!isPanelElementNode(n) || !n.props) return;
-          const props = n.props as PanelElement;
-          if (!props.mappingSourceNodeId) return;
-          if (!deletedSourceIds.has(props.mappingSourceNodeId)) return;
-          impactedMappingLayerIds.add(props.layerId);
         });
         const familyIds = new Set<string>();
         (draft.root.children ?? []).forEach((n) => {
@@ -737,7 +1006,6 @@ export function usePanelElements() {
         draft.root.children = (draft.root.children ?? []).filter(
           (n) => !(isPanelElementNode(n) && familyIds.has(n.id))
         );
-        removeLayersByIds(draft, impactedMappingLayerIds);
       },
       { meta: { type: "node.batch-delete", ids: Array.from(idSet) } }
     );
@@ -956,9 +1224,26 @@ export function usePanelElements() {
       rotate: 0,
     };
     if (layer.isMapping && layer.mappingBaseLayerId) {
+      const fullById = new Map<string, PanelElement>();
+      for (const n of current.root.children ?? []) {
+        if (!isPanelElementNode(n) || !n.props) continue;
+        const p = n.props as PanelElement;
+        fullById.set(p.id, p);
+      }
+      // 映射图层里落点时：基准图层上的源节点也要写入 parentGridId/slot，否则节点树里源侧的 C 不会挂在网格 B 下
+      const snapPatch = computeSnapPatchForNewElementOnLayer(
+        fullById,
+        layer.mappingBaseLayerId,
+        next.x,
+        next.y,
+        next.width,
+        next.height,
+        undefined
+      );
       const sourceId = randomId("el");
       const sourceNode: PanelElement = {
         ...next,
+        ...snapPatch,
         id: sourceId,
         layerId: layer.mappingBaseLayerId,
       };
@@ -967,6 +1252,14 @@ export function usePanelElements() {
       );
       const clones = siblingMappings.map((mappingLayer) => {
         const cloneId = randomId("el");
+        const mappedParentGridId =
+          sourceNode.parentGridId !== undefined
+            ? findCloneIdForSourceNodeOnMappingLayer(
+                sourceNode.parentGridId,
+                mappingLayer.id,
+                fullById
+              )
+            : undefined;
         return {
           id: cloneId,
           type: materialType,
@@ -976,6 +1269,10 @@ export function usePanelElements() {
             layerId: mappingLayer.id,
             mappingSourceNodeId: sourceId,
             mappingSourceLayerId: layer.mappingBaseLayerId,
+            parentGridId:
+              sourceNode.parentGridId === undefined
+                ? undefined
+                : mappedParentGridId ?? sourceNode.parentGridId,
           } as PanelElement,
           children: [] as Node[],
         };
@@ -1084,10 +1381,12 @@ export function usePanelElements() {
         .filter((n) => isPanelElementNode(n) && n.props)
         .map((n) => [n.id, n.props as PanelElement])
     );
-    const selected = filtered
+    const expandedIds = expandMappingSeedsWithGridDescendants(nodeById, filtered);
+    const selected = expandedIds
       .map((id) => nodeById.get(id))
       .filter((el): el is PanelElement => !!el);
     if (selected.length === 0) return { ok: false, reason: "未找到可迁移节点" };
+    const anchorEl = nodeById.get(filtered[0]!) ?? selected[0];
     const hasLocked = selected.some((el) => {
       if (el.locked) return true;
       const layer = currentLayers.find((l) => l.id === el.layerId);
@@ -1107,8 +1406,8 @@ export function usePanelElements() {
       isPrimary: false,
       isMapping: true,
       mappingBaseLayerId:
-        selected[0]?.mappingSourceLayerId ??
-        selected[0]?.layerId ??
+        anchorEl?.mappingSourceLayerId ??
+        anchorEl?.layerId ??
         (current.variables?.activeLayerId as string | undefined) ??
         DEFAULT_LAYER_ID,
       mergeSelected: false,

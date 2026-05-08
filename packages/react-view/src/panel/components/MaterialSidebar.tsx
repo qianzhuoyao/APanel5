@@ -1,5 +1,8 @@
 import React, { useMemo, useState } from "react";
 import {
+  Card,
+  CardContent,
+  CardHeader,
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
@@ -34,6 +37,14 @@ type MaterialCategory = {
   title: string;
   items: MaterialItem[];
 };
+
+/** 节点树中网格子节点顺序：与画布槽位一致，嵌套任意深度一致 */
+function compareGridTreeChildOrder(a: PanelElement, b: PanelElement): number {
+  const ai = typeof a.gridSlotIndex === "number" ? a.gridSlotIndex : 0;
+  const bi = typeof b.gridSlotIndex === "number" ? b.gridSlotIndex : 0;
+  if (ai !== bi) return ai - bi;
+  return a.id.localeCompare(b.id);
+}
 
 const MATERIAL_LABEL_MAP: Record<string, string> = {
   bar: "柱状图",
@@ -436,15 +447,21 @@ export function MaterialSidebar({
     for (const layer of layers) map.set(layer.id, layer);
     return map;
   }, [layers]);
-  const childrenByGrid = useMemo(() => {
-    const map = new Map<string, PanelElement[]>();
+  /** 仅同一图层内的 parentGridId → children，避免映射图层节点挂到源图层的网格下（或反向混淆节点树） */
+  const childrenByGridByLayer = useMemo(() => {
+    const outer = new Map<string, Map<string, PanelElement[]>>();
     for (const el of allElements) {
       if (!el.parentGridId) continue;
-      const list = map.get(el.parentGridId) ?? [];
+      let inner = outer.get(el.layerId);
+      if (!inner) {
+        inner = new Map();
+        outer.set(el.layerId, inner);
+      }
+      const list = inner.get(el.parentGridId) ?? [];
       list.push(el);
-      map.set(el.parentGridId, list);
+      inner.set(el.parentGridId, list);
     }
-    return map;
+    return outer;
   }, [allElements]);
 
   const getNodeDisplayName = (node: PanelElement) => {
@@ -462,7 +479,12 @@ export function MaterialSidebar({
   const getNodeChildren = (node: PanelElement, sourceOverride?: PanelElement[]) => {
     const isRef = node.materialType === "reference";
     const isGrid = node.materialType === "grid";
-    const gridChildren = isGrid ? childrenByGrid.get(node.id) ?? [] : [];
+    // 必须用节点自身所在图层查找子节点；外层传入的 layerId 在深嵌套/引用子树中会错位，导致子节点不显示在对应网格下
+    const gridChildren = isGrid
+      ? [...(childrenByGridByLayer.get(node.layerId)?.get(node.id) ?? [])].sort(
+          compareGridTreeChildOrder
+        )
+      : [];
     return isRef
       ? node.refCopyMode === "deep"
         ? node.refSnapshot ?? sourceOverride ?? []
@@ -484,7 +506,9 @@ export function MaterialSidebar({
     const nextVisited = new Set(visited);
     nextVisited.add(node.id);
     const children = getNodeChildren(node, sourceOverride);
-    return children.some((child) => nodeMatchesTreeSearch(child, nextVisited, node.refSnapshot));
+    return children.some((child) =>
+      nodeMatchesTreeSearch(child, nextVisited, node.refSnapshot)
+    );
   };
 
   const renderTreeNode = (
@@ -500,6 +524,7 @@ export function MaterialSidebar({
     const refMode = node.refCopyMode ?? "shallow";
     const isDeepRef = isRef && refMode === "deep";
     const children = getNodeChildren(node, sourceOverride);
+    const nodeHomeLayer = layerById.get(node.layerId);
     const hasChildren = children.length > 0;
     const nextVisited = new Set(visited);
     nextVisited.add(node.id);
@@ -565,16 +590,31 @@ export function MaterialSidebar({
           >
             {getNodeDisplayName(node)}
           </button>
+          {nodeHomeLayer?.isMapping ? (
+            <span
+              className="inline-flex shrink-0 items-center rounded border border-violet-500/45 bg-violet-500/12 px-1 text-[10px] text-violet-200"
+              title={
+                nodeHomeLayer.mappingBaseLayerId
+                  ? `映射图层「${nodeHomeLayer.name}」· 基准图层：${
+                      layerById.get(nodeHomeLayer.mappingBaseLayerId)?.name ??
+                      nodeHomeLayer.mappingBaseLayerId
+                    }`
+                  : `映射图层「${nodeHomeLayer.name}」`
+              }
+            >
+              映射图层节点
+            </span>
+          ) : null}
           {node.mappingSourceNodeId ? (
             <span
-              className="inline-flex items-center rounded border border-primary/40 bg-primary/10 px-1 text-[10px] text-primary"
-              title={`映射自节点 ${node.mappingSourceNodeId}${
+              className="inline-flex shrink-0 items-center rounded border border-primary/40 bg-primary/10 px-1 text-[10px] text-primary"
+              title={`同源节点 ${node.mappingSourceNodeId}${
                 node.mappingSourceLayerId
-                  ? ` / ${layerById.get(node.mappingSourceLayerId)?.name ?? node.mappingSourceLayerId}`
+                  ? ` · ${layerById.get(node.mappingSourceLayerId)?.name ?? node.mappingSourceLayerId}`
                   : ""
               }`}
             >
-              映射
+              同源
             </span>
           ) : null}
           {node.locked ? (
@@ -874,7 +914,9 @@ export function MaterialSidebar({
                   const rootNodes = layerNodes
                     .filter((node) => {
                       if (!node.parentGridId) return true;
-                      return !elementsById.has(node.parentGridId);
+                      const parent = elementsById.get(node.parentGridId);
+                      if (!parent) return true;
+                      return parent.layerId !== layer.id;
                     })
                     .filter((node) => !referenceOnlyTree || hasRefInSubtree(node, new Set<string>()))
                     .filter((node) => nodeMatchesTreeSearch(node, new Set<string>()));
@@ -886,125 +928,143 @@ export function MaterialSidebar({
                       open={isExpanded(layerKey, true)}
                       onOpenChange={(open) => setExpanded(layerKey, open)}
                     >
-                      <div
+                      <Card
                         className={[
-                          "mx-1 rounded transition-colors",
-                          isCurrentDropLayer
-                            ? canDropIntoLayer
-                              ? "bg-primary/10 ring-1 ring-primary/40"
-                              : "bg-destructive/10 ring-1 ring-destructive/40"
+                          "mb-2 overflow-hidden transition-shadow",
+                          layer.isMapping
+                            ? "border-violet-500/35 bg-violet-500/[0.04]"
                             : "",
-                        ].join(" ")}
-                      >
-                        <div
-                          className="flex items-center gap-1 py-1 text-muted-foreground"
-                          style={{ paddingLeft: 20 }}
-                        >
-                        {isCurrentDropLayer ? (
-                          <span
-                            className={[
-                              "inline-flex h-5 w-5 items-center justify-center rounded text-[11px]",
-                              canDropIntoLayer
-                                ? "bg-primary/15 text-primary"
-                                : "bg-destructive/15 text-destructive",
-                            ].join(" ")}
-                            title={canDropIntoLayer ? "目标图层" : dropBlockReason}
-                          >
-                            ➜
-                          </span>
-                        ) : null}
-                        <CollapsibleTrigger asChild>
-                          <button
-                            type="button"
-                            className="flex h-7 w-7 items-center justify-center rounded text-sm hover:bg-accent"
-                          >
-                            {isExpanded(layerKey, true) ? "▾" : "▸"}
-                          </button>
-                        </CollapsibleTrigger>
-                        <span className="truncate">
-                          {layer.name}（{rootNodes.length}）
-                        </span>
-                        {layer.isMapping ? (
-                          <span className="rounded border border-primary/40 bg-primary/10 px-1 text-[10px] text-primary">
-                            映射
-                          </span>
-                        ) : null}
-                        {isCurrentDropLayer ? (
-                          <span
-                            className={[
-                              "ml-auto mr-2 rounded px-1.5 py-0.5 text-[10px]",
-                              canDropIntoLayer
-                                ? "bg-primary/15 text-primary"
-                                : "bg-destructive/15 text-destructive",
-                            ].join(" ")}
-                          >
-                            {canDropIntoLayer ? "将移动到该图层" : dropBlockReason}
-                          </span>
-                        ) : null}
-                        </div>
-                      <div
-                        className={[
-                          "mx-2 mb-1 rounded border border-dashed px-2 py-1 text-[10px] transition-colors",
                           isCurrentDropLayer
                             ? canDropIntoLayer
-                              ? "border-primary/50 bg-primary/10 text-primary"
-                              : "border-destructive/50 bg-destructive/10 text-destructive"
-                            : "border-transparent text-muted-foreground hover:border-border/60 hover:bg-accent/30",
-                        ].join(" ")}
-                        onDragOver={(e) => {
-                          const hasNodeData = e.dataTransfer.types.includes("application/x-arron-tree-node");
-                          if (!hasNodeData) return;
-                          if (canDropIntoLayer) {
-                            e.preventDefault();
-                            e.dataTransfer.dropEffect = "move";
-                          } else {
-                            e.dataTransfer.dropEffect = "none";
-                          }
-                          if (dragOverLayerId !== layer.id) setDragOverLayerId(layer.id);
-                        }}
-                        onDragLeave={() => {
-                          if (dragOverLayerId === layer.id) setDragOverLayerId(null);
-                        }}
-                        onDrop={(e) => {
-                          const payload = e.dataTransfer.getData("application/x-arron-tree-node");
-                          if (!payload) return;
-                          e.preventDefault();
-                          try {
-                            const data = JSON.parse(payload) as {
-                              nodeId?: string;
-                              sourceLayerId?: string;
-                            };
-                            if (!data.nodeId || !layer.id) return;
-                            if (!canDropIntoLayer) return;
-                            if (data.sourceLayerId === layer.id) return;
-                            onMoveNodeToLayer?.(data.nodeId, layer.id);
-                          } catch {
-                            // ignore invalid payload
-                          } finally {
-                            setDraggingTreeNodeId(null);
-                            setDragOverLayerId(null);
-                          }
-                        }}
-                        title="拖拽节点到此图层"
+                              ? "ring-2 ring-primary/45 ring-offset-2 ring-offset-background"
+                              : "ring-2 ring-destructive/45 ring-offset-2 ring-offset-background"
+                            : "",
+                        ]
+                          .filter(Boolean)
+                          .join(" ")}
                       >
-                        {draggingTreeNodeId
-                          ? canDropIntoLayer
-                            ? "释放以移动到该图层"
-                            : dropBlockReason || "不可移动到该图层"
-                          : "拖拽节点到该图层"}
-                      </div>
-                      <CollapsibleContent>
-                        {rootNodes.length === 0 ? (
-                          <div className="py-1 text-[11px] text-muted-foreground" style={{ paddingLeft: 38 }}>
-                            空图层
+                        <CardHeader className="flex flex-row flex-wrap items-center gap-1 space-y-0 p-2.5 pb-1.5">
+                          {isCurrentDropLayer ? (
+                            <span
+                              className={[
+                                "inline-flex h-5 w-5 shrink-0 items-center justify-center rounded text-[11px]",
+                                canDropIntoLayer
+                                  ? "bg-primary/15 text-primary"
+                                  : "bg-destructive/15 text-destructive",
+                              ].join(" ")}
+                              title={canDropIntoLayer ? "目标图层" : dropBlockReason}
+                            >
+                              ➜
+                            </span>
+                          ) : null}
+                          <CollapsibleTrigger asChild>
+                            <button
+                              type="button"
+                              className="flex h-7 w-7 shrink-0 items-center justify-center rounded text-sm text-muted-foreground hover:bg-accent"
+                            >
+                              {isExpanded(layerKey, true) ? "▾" : "▸"}
+                            </button>
+                          </CollapsibleTrigger>
+                          <span className="min-w-0 flex-1 truncate text-xs font-medium text-foreground">
+                            {layer.name}
+                            <span className="font-normal text-muted-foreground">
+                              （{rootNodes.length}）
+                            </span>
+                          </span>
+                          {layer.isMapping ? (
+                            <span
+                              className="shrink-0 rounded border border-violet-500/45 bg-violet-500/12 px-1 py-0.5 text-[10px] text-violet-200"
+                              title={
+                                layer.mappingBaseLayerId
+                                  ? `映射图层 · 基准图层：${
+                                      layerById.get(layer.mappingBaseLayerId)?.name ??
+                                      layer.mappingBaseLayerId
+                                    }`
+                                  : "映射图层"
+                              }
+                            >
+                              映射图层
+                            </span>
+                          ) : null}
+                          {isCurrentDropLayer ? (
+                            <span
+                              className={[
+                                "ml-auto shrink-0 rounded px-1.5 py-0.5 text-[10px]",
+                                canDropIntoLayer
+                                  ? "bg-primary/15 text-primary"
+                                  : "bg-destructive/15 text-destructive",
+                              ].join(" ")}
+                            >
+                              {canDropIntoLayer ? "将移动到该图层" : dropBlockReason}
+                            </span>
+                          ) : null}
+                        </CardHeader>
+                        <CardContent className="space-y-1.5 p-2.5 pt-0">
+                          <div
+                            className={[
+                              "rounded-md border border-dashed px-2 py-1.5 text-[10px] transition-colors",
+                              isCurrentDropLayer
+                                ? canDropIntoLayer
+                                  ? "border-primary/50 bg-primary/10 text-primary"
+                                  : "border-destructive/50 bg-destructive/10 text-destructive"
+                                : "border-border/50 bg-muted/20 text-muted-foreground hover:border-border hover:bg-muted/35",
+                            ].join(" ")}
+                            onDragOver={(e) => {
+                              const hasNodeData =
+                                e.dataTransfer.types.includes("application/x-arron-tree-node");
+                              if (!hasNodeData) return;
+                              if (canDropIntoLayer) {
+                                e.preventDefault();
+                                e.dataTransfer.dropEffect = "move";
+                              } else {
+                                e.dataTransfer.dropEffect = "none";
+                              }
+                              if (dragOverLayerId !== layer.id) setDragOverLayerId(layer.id);
+                            }}
+                            onDragLeave={() => {
+                              if (dragOverLayerId === layer.id) setDragOverLayerId(null);
+                            }}
+                            onDrop={(e) => {
+                              const payload = e.dataTransfer.getData("application/x-arron-tree-node");
+                              if (!payload) return;
+                              e.preventDefault();
+                              try {
+                                const data = JSON.parse(payload) as {
+                                  nodeId?: string;
+                                  sourceLayerId?: string;
+                                };
+                                if (!data.nodeId || !layer.id) return;
+                                if (!canDropIntoLayer) return;
+                                if (data.sourceLayerId === layer.id) return;
+                                onMoveNodeToLayer?.(data.nodeId, layer.id);
+                              } catch {
+                                // ignore invalid payload
+                              } finally {
+                                setDraggingTreeNodeId(null);
+                                setDragOverLayerId(null);
+                              }
+                            }}
+                            title="拖拽节点到此图层"
+                          >
+                            {draggingTreeNodeId
+                              ? canDropIntoLayer
+                                ? "释放以移动到该图层"
+                                : dropBlockReason || "不可移动到该图层"
+                              : "拖拽节点到该图层"}
                           </div>
-                        ) : (
-                          rootNodes.map((node) =>
-                            renderTreeNode(node, 2, `${layer.id}/${node.id}`, new Set<string>())
-                          )
-                        )}
-                      </CollapsibleContent>
-                      </div>
+                          <CollapsibleContent>
+                            {rootNodes.length === 0 ? (
+                              <div className="rounded border border-border/40 bg-muted/15 py-2 pl-3 text-[11px] text-muted-foreground">
+                                空图层
+                              </div>
+                            ) : (
+                              rootNodes.map((node) =>
+                                renderTreeNode(node, 2, `${layer.id}/${node.id}`, new Set<string>())
+                              )
+                            )}
+                          </CollapsibleContent>
+                        </CardContent>
+                      </Card>
                     </Collapsible>
                   );
                 })}
@@ -1014,7 +1074,9 @@ export function MaterialSidebar({
                   const rootNodes = layerNodes
                     .filter((node) => {
                       if (!node.parentGridId) return true;
-                      return !elementsById.has(node.parentGridId);
+                      const parent = elementsById.get(node.parentGridId);
+                      if (!parent) return true;
+                      return parent.layerId !== layer.id;
                     })
                     .filter((node) => !referenceOnlyTree || hasRefInSubtree(node, new Set<string>()))
                     .filter((node) => nodeMatchesTreeSearch(node, new Set<string>()));
