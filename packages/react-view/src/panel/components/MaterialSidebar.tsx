@@ -12,6 +12,7 @@ import {
 } from "@arron/ui";
 import type { PanelElement, ReferenceCopyMode } from "../types";
 import type { PanelLayer } from "../hooks/usePanelElements";
+import { PANEL_MESSAGES } from "../constants/messages";
 
 type MaterialCategoryId = "charts" | "basic" | "media";
 
@@ -317,6 +318,8 @@ export function MaterialSidebar({
   const [keyword, setKeyword] = useState("");
   const [treeKeyword, setTreeKeyword] = useState("");
   const [referenceOnlyTree, setReferenceOnlyTree] = useState(false);
+  const [draggingTreeNodeId, setDraggingTreeNodeId] = useState<string | null>(null);
+  const [dragOverLayerId, setDragOverLayerId] = useState<string | null>(null);
   const [expandedKeys, setExpandedKeys] = useState<Record<string, boolean>>({
     root: true,
   });
@@ -473,11 +476,16 @@ export function MaterialSidebar({
                 e.preventDefault();
                 return;
               }
+              setDraggingTreeNodeId(node.id);
               e.dataTransfer.setData(
                 "application/x-arron-tree-node",
                 JSON.stringify({ nodeId: node.id, sourceLayerId: node.layerId })
               );
               e.dataTransfer.effectAllowed = "move";
+            }}
+            onDragEnd={() => {
+              setDraggingTreeNodeId(null);
+              setDragOverLayerId(null);
             }}
           >
             {getNodeDisplayName(node)}
@@ -539,11 +547,14 @@ export function MaterialSidebar({
           )}
           <button
             type="button"
-            className="rounded border border-border px-1 text-[10px] hover:bg-accent"
+            disabled={node.locked}
+            className="rounded border border-border px-1 text-[10px] hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40"
             onClick={(e) => {
               e.stopPropagation();
+              if (node.locked) return;
               onDeleteNode?.(node.id);
             }}
+            title={node.locked ? "锁定节点不可删除" : "删除节点"}
           >
             删除
           </button>
@@ -717,6 +728,23 @@ export function MaterialSidebar({
               <CollapsibleContent className="space-y-1 border-t border-border/60 py-1">
                 {layers.map((layer) => {
                   const layerNodes = elementsByLayer.get(layer.id) ?? [];
+                  const draggingNode = draggingTreeNodeId ? elementsById.get(draggingTreeNodeId) ?? null : null;
+                  const draggingSourceLayer = draggingNode
+                    ? (layerById.get(draggingNode.layerId) ?? null)
+                    : null;
+                  const dropBlockReason = !draggingNode
+                    ? ""
+                    : draggingNode.locked
+                      ? PANEL_MESSAGES.nodeMoveLocked
+                      : draggingSourceLayer?.locked
+                        ? PANEL_MESSAGES.nodeMoveSourceLayerLocked
+                        : layer.locked
+                          ? PANEL_MESSAGES.nodeMoveTargetLayerLocked
+                          : draggingNode.layerId === layer.id
+                            ? PANEL_MESSAGES.nodeMoveSameLayer
+                            : "";
+                  const canDropIntoLayer = Boolean(draggingNode) && !dropBlockReason;
+                  const isCurrentDropLayer = dragOverLayerId === layer.id;
                   const rootNodes = layerNodes
                     .filter((node) => {
                       if (!node.parentGridId) return true;
@@ -732,7 +760,33 @@ export function MaterialSidebar({
                       open={isExpanded(layerKey, true)}
                       onOpenChange={(open) => setExpanded(layerKey, open)}
                     >
-                      <div className="flex items-center gap-1 py-1 text-muted-foreground" style={{ paddingLeft: 20 }}>
+                      <div
+                        className={[
+                          "mx-1 rounded transition-colors",
+                          isCurrentDropLayer
+                            ? canDropIntoLayer
+                              ? "bg-primary/10 ring-1 ring-primary/40"
+                              : "bg-destructive/10 ring-1 ring-destructive/40"
+                            : "",
+                        ].join(" ")}
+                      >
+                        <div
+                          className="flex items-center gap-1 py-1 text-muted-foreground"
+                          style={{ paddingLeft: 20 }}
+                        >
+                        {isCurrentDropLayer ? (
+                          <span
+                            className={[
+                              "inline-flex h-5 w-5 items-center justify-center rounded text-[11px]",
+                              canDropIntoLayer
+                                ? "bg-primary/15 text-primary"
+                                : "bg-destructive/15 text-destructive",
+                            ].join(" ")}
+                            title={canDropIntoLayer ? "目标图层" : dropBlockReason}
+                          >
+                            ➜
+                          </span>
+                        ) : null}
                         <CollapsibleTrigger asChild>
                           <button
                             type="button"
@@ -749,14 +803,41 @@ export function MaterialSidebar({
                             映射
                           </span>
                         ) : null}
-                      </div>
+                        {isCurrentDropLayer ? (
+                          <span
+                            className={[
+                              "ml-auto mr-2 rounded px-1.5 py-0.5 text-[10px]",
+                              canDropIntoLayer
+                                ? "bg-primary/15 text-primary"
+                                : "bg-destructive/15 text-destructive",
+                            ].join(" ")}
+                          >
+                            {canDropIntoLayer ? "将移动到该图层" : dropBlockReason}
+                          </span>
+                        ) : null}
+                        </div>
                       <div
-                        className="mx-2 mb-1 rounded border border-dashed border-transparent px-2 py-1 text-[10px] text-muted-foreground transition-colors hover:border-border/60 hover:bg-accent/30"
+                        className={[
+                          "mx-2 mb-1 rounded border border-dashed px-2 py-1 text-[10px] transition-colors",
+                          isCurrentDropLayer
+                            ? canDropIntoLayer
+                              ? "border-primary/50 bg-primary/10 text-primary"
+                              : "border-destructive/50 bg-destructive/10 text-destructive"
+                            : "border-transparent text-muted-foreground hover:border-border/60 hover:bg-accent/30",
+                        ].join(" ")}
                         onDragOver={(e) => {
                           const hasNodeData = e.dataTransfer.types.includes("application/x-arron-tree-node");
                           if (!hasNodeData) return;
-                          e.preventDefault();
-                          e.dataTransfer.dropEffect = "move";
+                          if (canDropIntoLayer) {
+                            e.preventDefault();
+                            e.dataTransfer.dropEffect = "move";
+                          } else {
+                            e.dataTransfer.dropEffect = "none";
+                          }
+                          if (dragOverLayerId !== layer.id) setDragOverLayerId(layer.id);
+                        }}
+                        onDragLeave={() => {
+                          if (dragOverLayerId === layer.id) setDragOverLayerId(null);
                         }}
                         onDrop={(e) => {
                           const payload = e.dataTransfer.getData("application/x-arron-tree-node");
@@ -768,15 +849,23 @@ export function MaterialSidebar({
                               sourceLayerId?: string;
                             };
                             if (!data.nodeId || !layer.id) return;
+                            if (!canDropIntoLayer) return;
                             if (data.sourceLayerId === layer.id) return;
                             onMoveNodeToLayer?.(data.nodeId, layer.id);
                           } catch {
                             // ignore invalid payload
+                          } finally {
+                            setDraggingTreeNodeId(null);
+                            setDragOverLayerId(null);
                           }
                         }}
                         title="拖拽节点到此图层"
                       >
-                        拖拽节点到该图层
+                        {draggingTreeNodeId
+                          ? canDropIntoLayer
+                            ? "释放以移动到该图层"
+                            : dropBlockReason || "不可移动到该图层"
+                          : "拖拽节点到该图层"}
                       </div>
                       <CollapsibleContent>
                         {rootNodes.length === 0 ? (
@@ -789,6 +878,7 @@ export function MaterialSidebar({
                           )
                         )}
                       </CollapsibleContent>
+                      </div>
                     </Collapsible>
                   );
                 })}

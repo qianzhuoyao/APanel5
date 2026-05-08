@@ -484,6 +484,7 @@ export function usePanelElements() {
     const currentLayers =
       (current.variables?.layers as PanelLayer[] | undefined) ?? [DEFAULT_LAYER];
     const targetLayer = currentLayers.find((l) => l.id === target.props?.layerId);
+    if ((target.props as PanelElement).locked) return;
     if (targetLayer?.locked) return;
     store.update(
       (draft) => {
@@ -523,6 +524,7 @@ export function usePanelElements() {
     const unlockedIds = ids.filter((id) => {
       const el = byId.get(id);
       if (!id || !el) return false;
+      if (el.locked) return false;
       const layer = layerById.get(el.layerId);
       return !layer?.locked;
     });

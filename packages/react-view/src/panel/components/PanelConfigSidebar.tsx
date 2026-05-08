@@ -20,6 +20,7 @@ import type {
 } from "../types";
 import { buildChartOption, CHART_TYPES } from "../utils/chartOptionBuilder";
 import type { PanelLayer } from "../hooks/usePanelElements";
+import { PANEL_MESSAGES } from "../constants/messages";
 
 type UpdateElement = (
   id: string,
@@ -67,13 +68,14 @@ export function PanelConfigSidebar({
   const selectedLayer = selectedElement
     ? layers.find((layer) => layer.id === selectedElement.layerId) ?? null
     : null;
+  const canToggleNodeLock = !!selectedElement && !selectedLayer?.locked;
   const isNodeEditable = !!selectedElement && !selectedElement.locked && !selectedLayer?.locked;
   const readonlyReason = !selectedElement
     ? ""
     : selectedElement.locked
-      ? "当前节点已锁定，配置项不可编辑。"
+      ? PANEL_MESSAGES.nodeConfigLocked
       : selectedLayer?.locked
-        ? "当前节点所在图层已锁定，配置项不可编辑。"
+        ? PANEL_MESSAGES.nodeConfigLayerLocked
         : "";
   const selectedChartType = (selectedElement?.materialType ?? "") as
     | "bar"
@@ -158,7 +160,7 @@ export function PanelConfigSidebar({
       const base64 = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve(String(reader.result ?? ""));
-        reader.onerror = () => reject(new Error("读取图片失败"));
+        reader.onerror = () => reject(new Error(PANEL_MESSAGES.readImageFailed));
         reader.readAsDataURL(file);
       });
       updateSelectedStyle({
@@ -194,11 +196,11 @@ export function PanelConfigSidebar({
       const base64 = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve(String(reader.result ?? ""));
-        reader.onerror = () => reject(new Error("读取音频失败"));
+        reader.onerror = () => reject(new Error(PANEL_MESSAGES.readAudioFailed));
         reader.readAsDataURL(file);
       });
       updateSelectedAudio({ audioSrc: base64 });
-      setAudioStatus("已写入本地音频（base64）");
+      setAudioStatus(PANEL_MESSAGES.audioLocalSaved);
       try {
         const form = new FormData();
         form.append("file", file);
@@ -207,10 +209,10 @@ export function PanelConfigSidebar({
         const data = (await resp.json()) as { url?: string };
         if (data.url) {
           updateSelectedAudio({ audioRemoteUrl: data.url });
-          setAudioStatus("已上传服务器并更新远程链接");
+          setAudioStatus(PANEL_MESSAGES.audioRemoteUploaded);
         }
       } catch {
-        setAudioStatus("服务器上传失败，仅保留本地音频");
+        setAudioStatus(PANEL_MESSAGES.audioServerUploadFailed);
       }
     },
     [selectedElement, updateSelectedAudio]
@@ -221,11 +223,11 @@ export function PanelConfigSidebar({
       const base64 = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve(String(reader.result ?? ""));
-        reader.onerror = () => reject(new Error("读取图片失败"));
+        reader.onerror = () => reject(new Error(PANEL_MESSAGES.readImageFailed));
         reader.readAsDataURL(file);
       });
       updateSelectedAudio({ audioPosterImage: base64 });
-      setAudioStatus("已设置音频占位图");
+      setAudioStatus(PANEL_MESSAGES.audioPosterSet);
     },
     [selectedElement, updateSelectedAudio]
   );
@@ -235,7 +237,7 @@ export function PanelConfigSidebar({
   const startRecordingAudio = useCallback(async () => {
     if (!selectedElement || selectedElement.materialType !== "audio") return;
     if (!navigator.mediaDevices?.getUserMedia) {
-      setAudioStatus("当前环境不支持录音");
+      setAudioStatus(PANEL_MESSAGES.audioRecordUnsupported);
       return;
     }
     try {
@@ -252,11 +254,11 @@ export function PanelConfigSidebar({
         const dataUrl = await new Promise<string>((resolve, reject) => {
           const reader = new FileReader();
           reader.onload = () => resolve(String(reader.result ?? ""));
-          reader.onerror = () => reject(new Error("录音读取失败"));
+          reader.onerror = () => reject(new Error(PANEL_MESSAGES.readRecordAudioFailed));
           reader.readAsDataURL(blob);
         });
         updateSelectedAudio({ audioSrc: dataUrl });
-        setAudioStatus("录音已保存，可直接播放");
+        setAudioStatus(PANEL_MESSAGES.audioRecordSaved);
         recordStreamRef.current?.getTracks().forEach((track) => track.stop());
         recordStreamRef.current = null;
         recorderRef.current = null;
@@ -264,9 +266,9 @@ export function PanelConfigSidebar({
       };
       recorder.start();
       setIsRecordingAudio(true);
-      setAudioStatus("录音中...");
+      setAudioStatus(PANEL_MESSAGES.audioRecording);
     } catch {
-      setAudioStatus("无法开始录音，请检查麦克风权限");
+      setAudioStatus(PANEL_MESSAGES.audioRecordStartFailed);
       setIsRecordingAudio(false);
     }
   }, [selectedElement, updateSelectedAudio]);
@@ -283,11 +285,11 @@ export function PanelConfigSidebar({
       const base64 = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve(String(reader.result ?? ""));
-        reader.onerror = () => reject(new Error("读取视频失败"));
+        reader.onerror = () => reject(new Error(PANEL_MESSAGES.readVideoFailed));
         reader.readAsDataURL(file);
       });
       updateSelectedVideo({ videoSrc: base64 });
-      setVideoStatus("已写入本地视频（base64）");
+      setVideoStatus(PANEL_MESSAGES.videoLocalSaved);
       try {
         const form = new FormData();
         form.append("file", file);
@@ -296,10 +298,10 @@ export function PanelConfigSidebar({
         const data = (await resp.json()) as { url?: string };
         if (data.url) {
           updateSelectedVideo({ videoRemoteUrl: data.url });
-          setVideoStatus("已上传服务器并更新远程链接");
+          setVideoStatus(PANEL_MESSAGES.videoRemoteUploaded);
         }
       } catch {
-        setVideoStatus("服务器上传失败，仅保留本地视频");
+        setVideoStatus(PANEL_MESSAGES.videoServerUploadFailed);
       }
     },
     [selectedElement, updateSelectedVideo]
@@ -414,6 +416,21 @@ export function PanelConfigSidebar({
               {readonlyReason}
             </div>
           ) : null}
+          <div className="rounded border border-border/60 bg-card/70 px-2 py-1.5 text-xs">
+            <label className="flex items-center gap-2">
+              <Checkbox
+                checked={selectedElement.locked === true}
+                disabled={!canToggleNodeLock}
+                className="h-4 w-4 border-2 border-foreground/80 bg-background ring-1 ring-foreground/40 data-[state=checked]:border-primary data-[state=checked]:ring-primary/40"
+                onCheckedChange={(checked) =>
+                  updateElement(selectedElement.id, {
+                    locked: checked === true,
+                  })
+                }
+              />
+              <span>锁定节点（禁止层级/位置/大小/旋转）</span>
+            </label>
+          </div>
           <fieldset disabled={!isNodeEditable} className={!isNodeEditable ? "opacity-60" : ""}>
             <div className="space-y-3 text-xs">
               {renderSection(
@@ -432,18 +449,6 @@ export function PanelConfigSidebar({
                   placeholder="自定义节点名称（显示在节点树）"
                   className="h-7"
                 />
-              </label>
-              <label className="flex items-center gap-2">
-                <Checkbox
-                  checked={selectedElement.locked === true}
-                  className="h-4 w-4 border-2 border-foreground/80 bg-background ring-1 ring-foreground/40 data-[state=checked]:border-primary data-[state=checked]:ring-primary/40"
-                  onCheckedChange={(checked) =>
-                    updateElement(selectedElement.id, {
-                      locked: checked === true,
-                    })
-                  }
-                />
-                <span>锁定节点（禁止层级/位置/大小/旋转）</span>
               </label>
               <div className="truncate text-muted-foreground">ID: {selectedElement.id}</div>
               <div className="text-muted-foreground">类型: {selectedElement.materialType ?? selectedElement.id}</div>

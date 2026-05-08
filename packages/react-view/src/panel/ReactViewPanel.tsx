@@ -11,6 +11,7 @@ import { MoveableLayer } from "./components/MoveableLayer";
 import { buildChartOption, CHART_TYPES } from "./utils/chartOptionBuilder";
 import { MaterialSidebar } from "./components/MaterialSidebar";
 import { PanelConfigSidebar } from "./components/PanelConfigSidebar";
+import { PANEL_MESSAGES } from "./constants/messages";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -466,6 +467,30 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
       description: message,
     });
   }, []);
+  const hintUnlockNodeForDelete = useCallback(() => {
+    showActionHint(PANEL_MESSAGES.nodeDeleteLocked);
+  }, [showActionHint]);
+  const hintUnlockLayerForDelete = useCallback(() => {
+    showActionHint(PANEL_MESSAGES.nodeDeleteLayerLocked);
+  }, [showActionHint]);
+  const hintLockedNodesInBatchDelete = useCallback(() => {
+    showActionHint(PANEL_MESSAGES.nodeBatchDeleteContainsLocked);
+  }, [showActionHint]);
+  const hintNodeNotFound = useCallback(() => {
+    showActionHint(PANEL_MESSAGES.nodeNotFound);
+  }, [showActionHint]);
+  const hintUnlockNodeForMove = useCallback(() => {
+    showActionHint(PANEL_MESSAGES.nodeMoveLocked);
+  }, [showActionHint]);
+  const hintUnlockSourceLayerForMove = useCallback(() => {
+    showActionHint(PANEL_MESSAGES.nodeMoveSourceLayerLocked);
+  }, [showActionHint]);
+  const hintTargetLayerNotFound = useCallback(() => {
+    showActionHint(PANEL_MESSAGES.targetLayerNotFound);
+  }, [showActionHint]);
+  const hintUnlockTargetLayerForMove = useCallback(() => {
+    showActionHint(PANEL_MESSAGES.nodeMoveTargetLayerLocked);
+  }, [showActionHint]);
   const getLayerDeleteBlockReason = useCallback(
     (layerId: string) => {
       const targetLayer = layerById.get(layerId);
@@ -745,6 +770,19 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                 duplicateElement(nodeId, { referenceCopyMode: mode });
               }}
               onDeleteNode={(nodeId) => {
+                const node = byId.get(nodeId);
+                if (!node) {
+                  hintNodeNotFound();
+                  return;
+                }
+                if (node.locked) {
+                  hintUnlockNodeForDelete();
+                  return;
+                }
+                if (layerById.get(node.layerId)?.locked) {
+                  hintUnlockLayerForDelete();
+                  return;
+                }
                 requestDeleteWithMappingImpact([nodeId], () => {
                   deleteElement(nodeId);
                   setSelectedIds((prev) => prev.filter((id) => id !== nodeId));
@@ -753,26 +791,26 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
               onMoveNodeToLayer={(nodeId, targetLayerId) => {
                 const node = byId.get(nodeId);
                 if (!node) {
-                  showActionHint("未找到节点，可能已被删除");
+                  hintNodeNotFound();
                   return;
                 }
                 if (node.locked) {
-                  showActionHint("锁定节点不允许更换图层");
+                  hintUnlockNodeForMove();
                   return;
                 }
                 if (node.layerId === targetLayerId) return;
                 const sourceLayer = layerById.get(node.layerId);
                 if (sourceLayer?.locked) {
-                  showActionHint("节点所在图层已锁定，无法更换图层");
+                  hintUnlockSourceLayerForMove();
                   return;
                 }
                 const targetLayer = layerById.get(targetLayerId);
                 if (!targetLayer) {
-                  showActionHint("目标图层不存在");
+                  hintTargetLayerNotFound();
                   return;
                 }
                 if (targetLayer.locked) {
-                  showActionHint("目标图层已锁定，无法移入");
+                  hintUnlockTargetLayerForMove();
                   return;
                 }
                 updateElement(nodeId, { layerId: targetLayerId });
@@ -1036,7 +1074,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                     }}
                     onDropMaterial={({ materialId, x, y }) => {
                       if (activeLayer?.locked) {
-                        showActionHint("当前图层已锁定，无法新增节点");
+                        showActionHint(PANEL_MESSAGES.activeLayerLockedCannotAdd);
                         return;
                       }
                       addElementFromMaterial(materialId, x, y);
@@ -1093,7 +1131,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                             if (!node) return;
                             const layer = layerById.get(node.layerId);
                             if (layer?.locked) {
-                              showActionHint("当前节点所在图层已锁定，无法复制");
+                              showActionHint(PANEL_MESSAGES.nodeLayerLockedCannotCopy);
                               return;
                             }
                             setCopiedNodeId(contextMenuNodeId);
@@ -1111,7 +1149,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                               if (!sourceNodeId) return;
                               const sourceNode = byId.get(sourceNodeId);
                               if (!sourceNode) {
-                                showActionHint("未找到源节点，可能已被删除");
+                                showActionHint(PANEL_MESSAGES.sourceNodeNotFound);
                                 return;
                               }
                               if (activeLayerId !== sourceNode.layerId) {
@@ -1149,7 +1187,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                               ? layerById.get(targetNode.layerId)
                               : null;
                             if (targetLayer?.locked) {
-                              showActionHint("当前节点所在图层已锁定，无法删除");
+                              hintUnlockLayerForDelete();
                               return;
                             }
                             const shouldDeleteBatch =
@@ -1158,13 +1196,18 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                               selectedIds.length > 1;
                             if (shouldDeleteBatch) {
                               requestDeleteWithMappingImpact(selectedIds, () => {
+                              const hasLockedNode = selectedIds.some((id) => byId.get(id)?.locked);
+                              if (hasLockedNode) {
+                                hintLockedNodesInBatchDelete();
+                                return;
+                              }
                               const hasLockedLayerNode = selectedIds.some((id) => {
                                 const el = byId.get(id);
                                 if (!el) return false;
                                 return !!layerById.get(el.layerId)?.locked;
                               });
                               if (hasLockedLayerNode) {
-                                showActionHint("选中节点包含锁定图层内容，无法批量删除");
+                                showActionHint(PANEL_MESSAGES.selectionContainsLockedLayerNode);
                                 return;
                               }
                               deleteElements(selectedIds);
@@ -1173,6 +1216,11 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                             } else {
                               if (!contextMenuNodeId) return;
                               requestDeleteWithMappingImpact([contextMenuNodeId], () => {
+                                const target = byId.get(contextMenuNodeId);
+                                if (target?.locked) {
+                                  hintUnlockNodeForDelete();
+                                  return;
+                                }
                                 deleteElement(contextMenuNodeId);
                                 setSelectedIds((prev) =>
                                   prev.filter((sid) => sid !== contextMenuNodeId)
@@ -1195,7 +1243,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                             if (!copiedNodeId) return;
                             const sourceNode = byId.get(copiedNodeId);
                             if (sourceNode && layerById.get(sourceNode.layerId)?.locked) {
-                              showActionHint("复制源节点所在图层已锁定，无法粘贴");
+                              showActionHint(PANEL_MESSAGES.sourceLayerLockedCannotPaste);
                               return;
                             }
                             duplicateElement(copiedNodeId);
