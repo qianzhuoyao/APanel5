@@ -17,6 +17,7 @@ export type PanelHistoryItem = {
   label: string;
   active: boolean;
 };
+export type PanelActionResult = { ok: true } | { ok: false; reason: string };
 
 const DEFAULT_LAYER_ID = "layer-1";
 const DEFAULT_LAYER: PanelLayer = {
@@ -245,6 +246,11 @@ export function usePanelElements() {
     for (const el of allElements) map.set(el.id, el);
     return map;
   }, [allElements]);
+  const layerById = useMemo(() => {
+    const map = new Map<string, PanelLayer>();
+    for (const layer of layers) map.set(layer.id, layer);
+    return map;
+  }, [layers]);
 
   const updateElement = useCallback(
     (
@@ -283,6 +289,13 @@ export function usePanelElements() {
   );
 
   const deleteElement = useCallback((id: string) => {
+    const current = store.getState();
+    const target = current.root.children?.find((n) => isPanelElementNode(n) && n.id === id);
+    if (!target?.props) return;
+    const currentLayers =
+      (current.variables?.layers as PanelLayer[] | undefined) ?? [DEFAULT_LAYER];
+    const targetLayer = currentLayers.find((l) => l.id === target.props?.layerId);
+    if (targetLayer?.locked) return;
     store.update(
       (draft) => {
         draft.root.children = (draft.root.children ?? []).filter(
@@ -294,7 +307,13 @@ export function usePanelElements() {
   }, []);
 
   const deleteElements = useCallback((ids: string[]) => {
-    const idSet = new Set(ids.filter(Boolean));
+    const unlockedIds = ids.filter((id) => {
+      const el = byId.get(id);
+      if (!id || !el) return false;
+      const layer = layerById.get(el.layerId);
+      return !layer?.locked;
+    });
+    const idSet = new Set(unlockedIds);
     if (idSet.size === 0) return;
     store.update(
       (draft) => {
@@ -304,12 +323,14 @@ export function usePanelElements() {
       },
       { meta: { type: "node.batch-delete", ids: Array.from(idSet) } }
     );
-  }, []);
+  }, [byId, layerById]);
 
   const bringElementsToFront = useCallback((ids: string[]) => {
     const unlocked = ids.filter((id) => {
       const el = byId.get(id);
-      return !!id && !!el && !el.locked;
+      if (!id || !el || el.locked) return false;
+      const layer = layerById.get(el.layerId);
+      return !layer?.locked;
     });
     const idSet = new Set(unlocked);
     if (idSet.size === 0) return;
@@ -329,12 +350,14 @@ export function usePanelElements() {
       },
       { meta: { type: "node.z.front", ids: Array.from(idSet) } }
     );
-  }, [byId]);
+  }, [byId, layerById]);
 
   const sendElementsToBack = useCallback((ids: string[]) => {
     const unlocked = ids.filter((id) => {
       const el = byId.get(id);
-      return !!id && !!el && !el.locked;
+      if (!id || !el || el.locked) return false;
+      const layer = layerById.get(el.layerId);
+      return !layer?.locked;
     });
     const idSet = new Set(unlocked);
     if (idSet.size === 0) return;
@@ -354,12 +377,14 @@ export function usePanelElements() {
       },
       { meta: { type: "node.z.back", ids: Array.from(idSet) } }
     );
-  }, [byId]);
+  }, [byId, layerById]);
 
   const bringElementsForward = useCallback((ids: string[]) => {
     const unlocked = ids.filter((id) => {
       const el = byId.get(id);
-      return !!id && !!el && !el.locked;
+      if (!id || !el || el.locked) return false;
+      const layer = layerById.get(el.layerId);
+      return !layer?.locked;
     });
     const idSet = new Set(unlocked);
     if (idSet.size === 0) return;
@@ -379,12 +404,14 @@ export function usePanelElements() {
       },
       { meta: { type: "node.z.up", ids: Array.from(idSet) } }
     );
-  }, [byId]);
+  }, [byId, layerById]);
 
   const sendElementsBackward = useCallback((ids: string[]) => {
     const unlocked = ids.filter((id) => {
       const el = byId.get(id);
-      return !!id && !!el && !el.locked;
+      if (!id || !el || el.locked) return false;
+      const layer = layerById.get(el.layerId);
+      return !layer?.locked;
     });
     const idSet = new Set(unlocked);
     if (idSet.size === 0) return;
@@ -404,7 +431,7 @@ export function usePanelElements() {
       },
       { meta: { type: "node.z.down", ids: Array.from(idSet) } }
     );
-  }, [byId]);
+  }, [byId, layerById]);
 
   const duplicateElement = useCallback(
     (
@@ -501,6 +528,10 @@ export function usePanelElements() {
         .map((n) => n.props as PanelElement);
       const target = all.find((el) => el.id === id);
       if (!target || target.materialType !== "reference") return;
+      const currentLayers =
+        (current.variables?.layers as PanelLayer[] | undefined) ?? [DEFAULT_LAYER];
+      const layer = currentLayers.find((l) => l.id === target.layerId);
+      if (layer?.locked) return;
       store.updateById(
         id,
         (node) => {
@@ -578,19 +609,39 @@ export function usePanelElements() {
     (
       layerId: string,
       options?: { mode?: "remove" | "move"; targetLayerId?: string }
-    ) => {
+    ): PanelActionResult => {
       const mode = options?.mode ?? "remove";
       const targetLayerId = options?.targetLayerId;
+      const current = store.getState();
+      const list = (current.variables?.layers as PanelLayer[] | undefined) ?? [];
+      const target = list.find((l) => l.id === layerId);
+      if (!target) return { ok: false, reason: "图层不存在" };
+      if (!target.editable) return { ok: false, reason: "默认图层不可删除" };
+      if (target.locked) return { ok: false, reason: "锁定图层不可删除" };
+      if (mode === "move" && !targetLayerId) {
+        return { ok: false, reason: "请选择目标图层" };
+      }
+      const remainingLayers = list.filter((l) => l.id !== layerId);
+      const moveTarget = remainingLayers.find((l) => l.id === targetLayerId);
+      if (mode === "move" && !moveTarget) {
+        return { ok: false, reason: "目标图层不存在" };
+      }
+      const allElements = (current.root.children ?? [])
+        .filter((n) => isPanelElementNode(n) && n.props)
+        .map((n) => n.props as PanelElement);
+      const hasBlockingRef = allElements.some((el) => {
+        const willBeDeleted = mode === "remove" && el.layerId === layerId;
+        if (willBeDeleted) return false;
+        if (el.materialType !== "reference") return false;
+        if (el.refLayerId !== layerId) return false;
+        return (el.refCopyMode ?? "shallow") !== "deep";
+      });
+      if (hasBlockingRef) {
+        return { ok: false, reason: "该图层仍被浅拷贝引用，请先删除引用节点或改为深拷贝" };
+      }
 
       store.update(
         (draft) => {
-          const list = (draft.variables?.layers as PanelLayer[] | undefined) ?? [];
-          const target = list.find((l) => l.id === layerId);
-          if (!target || !target.editable) return;
-
-          const remainingLayers = list.filter((l) => l.id !== layerId);
-          const moveTarget = remainingLayers.find((l) => l.id === targetLayerId);
-
           draft.variables!.layers = remainingLayers.map((l) => ({
             ...l,
             mergeSelected: false,
@@ -616,6 +667,7 @@ export function usePanelElements() {
         },
         { meta: { type: "layer.delete", layerId, mode } }
       );
+      return { ok: true };
     },
     []
   );

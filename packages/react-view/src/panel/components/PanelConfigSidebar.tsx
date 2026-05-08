@@ -56,6 +56,17 @@ export function PanelConfigSidebar({
   });
 
   const isChartElement = !!selectedElement && CHART_TYPES.has(selectedElement.materialType ?? "");
+  const selectedLayer = selectedElement
+    ? layers.find((layer) => layer.id === selectedElement.layerId) ?? null
+    : null;
+  const isNodeEditable = !!selectedElement && !selectedElement.locked && !selectedLayer?.locked;
+  const readonlyReason = !selectedElement
+    ? ""
+    : selectedElement.locked
+      ? "当前节点已锁定，配置项不可编辑。"
+      : selectedLayer?.locked
+        ? "当前节点所在图层已锁定，配置项不可编辑。"
+        : "";
   const selectedChartType = (selectedElement?.materialType ?? "") as
     | "bar"
     | "line"
@@ -215,8 +226,15 @@ export function PanelConfigSidebar({
       {!selectedElement ? (
         <div className="text-xs leading-6 text-muted-foreground">请选择一个节点后进行配置</div>
       ) : (
-        <div className="space-y-3 text-xs">
-          {renderSection(
+        <div className="space-y-2">
+          {!isNodeEditable ? (
+            <div className="rounded border border-amber-500/40 bg-amber-500/10 px-2 py-1.5 text-[11px] text-amber-700 dark:text-amber-300">
+              {readonlyReason}
+            </div>
+          ) : null}
+          <fieldset disabled={!isNodeEditable} className={!isNodeEditable ? "opacity-60" : ""}>
+            <div className="space-y-3 text-xs">
+              {renderSection(
             "nodeInfo",
             "节点信息",
             <>
@@ -892,6 +910,8 @@ export function PanelConfigSidebar({
               当前节点不是图表类型，暂无图表配置项。
             </div>
           )}
+            </div>
+          </fieldset>
         </div>
       )}
     </aside>

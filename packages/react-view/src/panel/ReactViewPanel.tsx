@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { State } from "../../../rx-store/src/types";
 import type { PanelElement } from "./types";
 
@@ -41,10 +41,12 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
+  Toaster,
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
+  toast,
 } from "@arron/ui";
 
 function IconPlus() {
@@ -423,11 +425,44 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
   const deletingLayer = layers.find((l) => l.id === confirmDeleteLayerId) ?? null;
   const deleteTargetCandidates = layers.filter((l) => l.id !== confirmDeleteLayerId);
   const selectedElement = selectedIds.length === 1 ? byId.get(selectedIds[0]) ?? null : null;
+  const layerById = useMemo(() => {
+    const map = new Map<string, (typeof layers)[number]>();
+    for (const layer of layers) map.set(layer.id, layer);
+    return map;
+  }, [layers]);
 
   const isRightLikePointer = (e: React.PointerEvent<HTMLElement>) =>
     e.button === 2 || (e.button === 0 && e.ctrlKey);
   const hasSelection = selectedIds.length > 0;
-  const hasUnlockedSelection = selectedIds.some((id) => !byId.get(id)?.locked);
+  const hasUnlockedSelection = selectedIds.some((id) => {
+    const el = byId.get(id);
+    if (!el || el.locked) return false;
+    const layer = layerById.get(el.layerId);
+    return !layer?.locked;
+  });
+  const showActionHint = useCallback((message: string) => {
+    toast({
+      title: "操作受限",
+      description: message,
+    });
+  }, []);
+  const getLayerDeleteBlockReason = useCallback(
+    (layerId: string) => {
+      const targetLayer = layerById.get(layerId);
+      if (!targetLayer) return "图层不存在";
+      if (!targetLayer.editable) return "默认图层不可删除";
+      if (targetLayer.locked) return "锁定图层不可删除";
+      const hasBlockingRef = allElements.some((el) => {
+        if (el.layerId === layerId) return false;
+        if (el.materialType !== "reference") return false;
+        if (el.refLayerId !== layerId) return false;
+        return (el.refCopyMode ?? "shallow") !== "deep";
+      });
+      if (hasBlockingRef) return "该图层仍被浅拷贝引用，请先删除引用节点或改为深拷贝";
+      return null;
+    },
+    [allElements, layerById]
+  );
 
   const handleExport = useCallback(() => {
     const data = exportPanelData();
@@ -926,6 +961,10 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                       clearSelection();
                     }}
                     onDropMaterial={({ materialId, x, y }) => {
+                      if (activeLayer?.locked) {
+                        showActionHint("当前图层已锁定，无法新增节点");
+                        return;
+                      }
                       addElementFromMaterial(materialId, x, y);
                     }}
                     className="h-full w-full"
@@ -973,6 +1012,14 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                       <>
                         <DropdownMenuItem
                           onClick={() => {
+                            if (!contextMenuNodeId) return;
+                            const node = byId.get(contextMenuNodeId);
+                            if (!node) return;
+                            const layer = layerById.get(node.layerId);
+                            if (layer?.locked) {
+                              showActionHint("当前节点所在图层已锁定，无法复制");
+                              return;
+                            }
                             setCopiedNodeId(contextMenuNodeId);
                           }}
                         >
@@ -980,11 +1027,30 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() => {
+                            const targetNode = contextMenuNodeId
+                              ? byId.get(contextMenuNodeId)
+                              : null;
+                            const targetLayer = targetNode
+                              ? layerById.get(targetNode.layerId)
+                              : null;
+                            if (targetLayer?.locked) {
+                              showActionHint("当前节点所在图层已锁定，无法删除");
+                              return;
+                            }
                             const shouldDeleteBatch =
                               !!contextMenuNodeId &&
                               selectedIds.includes(contextMenuNodeId) &&
                               selectedIds.length > 1;
                             if (shouldDeleteBatch) {
+                              const hasLockedLayerNode = selectedIds.some((id) => {
+                                const el = byId.get(id);
+                                if (!el) return false;
+                                return !!layerById.get(el.layerId)?.locked;
+                              });
+                              if (hasLockedLayerNode) {
+                                showActionHint("选中节点包含锁定图层内容，无法批量删除");
+                                return;
+                              }
                               deleteElements(selectedIds);
                               setSelectedIds([]);
                             } else {
@@ -1007,6 +1073,11 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                           disabled={!copiedNodeId}
                           onClick={() => {
                             if (!copiedNodeId) return;
+                            const sourceNode = byId.get(copiedNodeId);
+                            if (sourceNode && layerById.get(sourceNode.layerId)?.locked) {
+                              showActionHint("复制源节点所在图层已锁定，无法粘贴");
+                              return;
+                            }
                             duplicateElement(copiedNodeId);
                           }}
                         >
@@ -1138,14 +1209,23 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                               <button
                                 type="button"
                                 onClick={() => {
+                                  const blockReason = getLayerDeleteBlockReason(activeLayer.id);
+                                  if (blockReason) {
+                                    showActionHint(blockReason);
+                                    return;
+                                  }
                                   setConfirmDeleteLayerId(activeLayer.id);
                                   const firstTarget = layers.find((l) => l.id !== activeLayer.id);
                                   setDeleteTargetLayerId(firstTarget?.id ?? "");
                                   setDeleteMode("move");
                                 }}
-                                disabled={!activeLayer.editable}
+                                disabled={!activeLayer.editable || activeLayer.locked}
                                 aria-label={
-                                  activeLayer.editable ? "删除图层" : "默认图层不可删除"
+                                  !activeLayer.editable
+                                    ? "默认图层不可删除"
+                                    : activeLayer.locked
+                                      ? "锁定图层不可删除"
+                                      : "删除图层"
                                 }
                                 className="rounded border border-border p-1 disabled:opacity-40"
                               >
@@ -1153,7 +1233,11 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                               </button>
                             </TooltipTrigger>
                             <TooltipContent className="z-[10000]">
-                              {activeLayer.editable ? "删除图层" : "默认图层不可删除"}
+                              {!activeLayer.editable
+                                ? "默认图层不可删除"
+                                : activeLayer.locked
+                                  ? "锁定图层不可删除"
+                                  : "删除图层"}
                             </TooltipContent>
                           </Tooltip>
                         </div>
@@ -1318,10 +1402,14 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                           <button
                             type="button"
                             onClick={() => {
-                              deleteLayer(deletingLayer.id, {
+                              const result = deleteLayer(deletingLayer.id, {
                                 mode: deleteMode,
                                 targetLayerId: deleteTargetLayerId || undefined,
                               });
+                              if (!result.ok) {
+                                showActionHint(result.reason);
+                                return;
+                              }
                               setConfirmDeleteLayerId(null);
                               setDeleteMode("move");
                               setDeleteTargetLayerId("");
@@ -1371,6 +1459,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
           </div>
         </ResizablePanel>
       </ResizablePanelGroup>
+      <Toaster />
     </div>
   );
 }
