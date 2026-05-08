@@ -37,6 +37,11 @@ export type PanelConfigSidebarProps = {
   layers: PanelLayer[];
   updateElement: UpdateElement;
   setReferenceCopyMode?: (id: string, mode: ReferenceCopyMode) => void;
+  nodeZOrderLabel?: string;
+  onAdjustNodeZOrder?: (
+    nodeId: string,
+    action: "bringForward" | "sendBackward" | "bringToFront" | "sendToBack"
+  ) => void;
 };
 
 export function PanelConfigSidebar({
@@ -44,6 +49,8 @@ export function PanelConfigSidebar({
   layers,
   updateElement,
   setReferenceCopyMode,
+  nodeZOrderLabel,
+  onAdjustNodeZOrder,
 }: PanelConfigSidebarProps) {
   const [isAdvancedOptionMode, setIsAdvancedOptionMode] = useState(false);
   const [optionJsonText, setOptionJsonText] = useState("{}");
@@ -494,6 +501,42 @@ export function PanelConfigSidebar({
                   className="h-7"
                 />
               </label>
+              <div className="space-y-1.5">
+                <div className="text-[11px] text-muted-foreground">节点层级</div>
+                <div className="text-[11px] text-muted-foreground/90">
+                  当前 zIndex：{nodeZOrderLabel ?? "-"}
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    className="rounded border border-border bg-background px-2 py-1 text-[11px] hover:bg-accent"
+                    onClick={() => onAdjustNodeZOrder?.(selectedElement.id, "bringForward")}
+                  >
+                    上移一层
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded border border-border bg-background px-2 py-1 text-[11px] hover:bg-accent"
+                    onClick={() => onAdjustNodeZOrder?.(selectedElement.id, "sendBackward")}
+                  >
+                    下移一层
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded border border-border bg-background px-2 py-1 text-[11px] hover:bg-accent"
+                    onClick={() => onAdjustNodeZOrder?.(selectedElement.id, "bringToFront")}
+                  >
+                    置顶
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded border border-border bg-background px-2 py-1 text-[11px] hover:bg-accent"
+                    onClick={() => onAdjustNodeZOrder?.(selectedElement.id, "sendToBack")}
+                  >
+                    置底
+                  </button>
+                </div>
+              </div>
               <div className="truncate text-muted-foreground">ID: {selectedElement.id}</div>
               <div className="text-muted-foreground">类型: {selectedElement.materialType ?? selectedElement.id}</div>
             </>,

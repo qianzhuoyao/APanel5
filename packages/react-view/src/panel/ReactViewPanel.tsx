@@ -474,6 +474,10 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
     deletingLayer?.isMapping ? "remove" : deleteMode;
   const deleteTargetCandidates = layers.filter((l) => l.id !== confirmDeleteLayerId);
   const selectedElement = selectedIds.length === 1 ? byId.get(selectedIds[0]) ?? null : null;
+  const selectedNodeZOrderLabel = useMemo(() => {
+    if (!selectedElement) return "-";
+    return String(selectedElement.zIndex ?? 1);
+  }, [selectedElement]);
   const layerById = useMemo(() => {
     const map = new Map<string, (typeof layers)[number]>();
     for (const layer of layers) map.set(layer.id, layer);
@@ -602,6 +606,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
         `width:${el.width}px`,
         `height:${el.height}px`,
         `position:absolute`,
+        `z-index:${el.zIndex ?? 1}`,
         `transform:rotate(${el.rotate ?? 0}deg)`,
         s.backgroundColor ? `background-color:${s.backgroundColor}` : "",
         s.backgroundImage ? `background-image:${s.backgroundImage}` : "",
@@ -793,6 +798,15 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
               onSelectNode={(nodeId, layerId) => {
                 if (activeLayerId !== layerId) setActiveLayer(layerId);
                 setSelectedIds([nodeId]);
+              }}
+              onNodeContextMenu={({ nodeId, x, y }) => {
+                setDropdownOpen(false);
+                requestAnimationFrame(() => {
+                  setContextMenuNodeId(nodeId);
+                  setDropdownPoint({ x, y });
+                  setDropdownEpoch((v) => v + 1);
+                  setDropdownOpen(true);
+                });
               }}
               onCopyNode={(nodeId, mode) => {
                 duplicateElement(nodeId, { referenceCopyMode: mode });
@@ -1735,6 +1749,22 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
               layers={layers}
               updateElement={updateElement}
               setReferenceCopyMode={setReferenceCopyMode}
+              nodeZOrderLabel={selectedNodeZOrderLabel}
+              onAdjustNodeZOrder={(nodeId, action) => {
+                if (action === "bringForward") {
+                  bringElementsForward([nodeId]);
+                  return;
+                }
+                if (action === "sendBackward") {
+                  sendElementsBackward([nodeId]);
+                  return;
+                }
+                if (action === "bringToFront") {
+                  bringElementsToFront([nodeId]);
+                  return;
+                }
+                sendElementsToBack([nodeId]);
+              }}
             />
           </div>
         </ResizablePanel>

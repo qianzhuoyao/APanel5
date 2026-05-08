@@ -271,6 +271,18 @@ function removeLayersByIds(
   }
 }
 
+function getMaxZIndexByLayer(nodes: Node[], layerId: string): number {
+  let maxZ = 0;
+  nodes.forEach((n) => {
+    if (!isPanelElementNode(n) || !n.props) return;
+    const props = n.props as PanelElement;
+    if (props.layerId !== layerId) return;
+    const z = typeof props.zIndex === "number" ? props.zIndex : 1;
+    if (z > maxZ) maxZ = z;
+  });
+  return maxZ;
+}
+
 export function usePanelElements() {
   const state = useSyncExternalStore(
     (cb) => {
@@ -352,7 +364,10 @@ export function usePanelElements() {
     const nodes = state.root.children ?? [];
     return nodes
       .filter((n) => isPanelElementNode(n) && n.props)
-      .map((n) => n.props as PanelElement);
+      .map((n) => {
+        const props = n.props as PanelElement;
+        return { ...props, zIndex: typeof props.zIndex === "number" ? props.zIndex : 1 };
+      });
   }, [state.root.children]);
 
   const elements = useMemo(
@@ -596,16 +611,27 @@ export function usePanelElements() {
     store.update(
       (draft) => {
         const list = draft.root.children ?? [];
-        const selected: Node[] = [];
-        const rest: Node[] = [];
-        for (const n of list) {
-          if (isPanelElementNode(n) && idSet.has(n.id)) {
-            selected.push(n);
-          } else {
-            rest.push(n);
-          }
-        }
-        draft.root.children = [...rest, ...selected];
+        const selectedByLayer = new Map<string, PanelElement[]>();
+        list.forEach((n) => {
+          if (!isPanelElementNode(n) || !n.props || !idSet.has(n.id)) return;
+          const props = n.props as PanelElement;
+          const group = selectedByLayer.get(props.layerId) ?? [];
+          group.push({
+            ...props,
+            zIndex: typeof props.zIndex === "number" ? props.zIndex : 1,
+          });
+          selectedByLayer.set(props.layerId, group);
+        });
+        selectedByLayer.forEach((selected, layerId) => {
+          const maxZ = getMaxZIndexByLayer(list, layerId);
+          selected
+            .sort((a, b) => (a.zIndex ?? 1) - (b.zIndex ?? 1))
+            .forEach((node, offset) => {
+              const target = list.find((n) => n.id === node.id);
+              if (!target?.props) return;
+              target.props = { ...(target.props as PanelElement), zIndex: maxZ + offset + 1 };
+            });
+        });
       },
       { meta: { type: "node.z.front", ids: Array.from(idSet) } }
     );
@@ -623,16 +649,36 @@ export function usePanelElements() {
     store.update(
       (draft) => {
         const list = draft.root.children ?? [];
-        const selected: Node[] = [];
-        const rest: Node[] = [];
-        for (const n of list) {
-          if (isPanelElementNode(n) && idSet.has(n.id)) {
-            selected.push(n);
-          } else {
-            rest.push(n);
-          }
-        }
-        draft.root.children = [...selected, ...rest];
+        const selectedByLayer = new Map<string, PanelElement[]>();
+        list.forEach((n) => {
+          if (!isPanelElementNode(n) || !n.props || !idSet.has(n.id)) return;
+          const props = n.props as PanelElement;
+          const group = selectedByLayer.get(props.layerId) ?? [];
+          group.push({
+            ...props,
+            zIndex: typeof props.zIndex === "number" ? props.zIndex : 1,
+          });
+          selectedByLayer.set(props.layerId, group);
+        });
+        selectedByLayer.forEach((selected, layerId) => {
+          let minZ = Number.POSITIVE_INFINITY;
+          list.forEach((n) => {
+            if (!isPanelElementNode(n) || !n.props) return;
+            const props = n.props as PanelElement;
+            if (props.layerId !== layerId) return;
+            const z = typeof props.zIndex === "number" ? props.zIndex : 1;
+            if (z < minZ) minZ = z;
+          });
+          if (!Number.isFinite(minZ)) minZ = 1;
+          const start = minZ - selected.length;
+          selected
+            .sort((a, b) => (a.zIndex ?? 1) - (b.zIndex ?? 1))
+            .forEach((node, offset) => {
+              const target = list.find((n) => n.id === node.id);
+              if (!target?.props) return;
+              target.props = { ...(target.props as PanelElement), zIndex: start + offset };
+            });
+        });
       },
       { meta: { type: "node.z.back", ids: Array.from(idSet) } }
     );
@@ -650,16 +696,12 @@ export function usePanelElements() {
     store.update(
       (draft) => {
         const list = draft.root.children ?? [];
-        for (let i = list.length - 2; i >= 0; i--) {
-          const cur = list[i];
-          const next = list[i + 1];
-          const curSelected = isPanelElementNode(cur) && idSet.has(cur.id);
-          const nextSelected = isPanelElementNode(next) && idSet.has(next.id);
-          if (curSelected && !nextSelected) {
-            list[i] = next;
-            list[i + 1] = cur;
-          }
-        }
+        list.forEach((n) => {
+          if (!isPanelElementNode(n) || !n.props || !idSet.has(n.id)) return;
+          const props = n.props as PanelElement;
+          const z = typeof props.zIndex === "number" ? props.zIndex : 1;
+          n.props = { ...props, zIndex: z + 1 };
+        });
       },
       { meta: { type: "node.z.up", ids: Array.from(idSet) } }
     );
@@ -677,16 +719,12 @@ export function usePanelElements() {
     store.update(
       (draft) => {
         const list = draft.root.children ?? [];
-        for (let i = 1; i < list.length; i++) {
-          const cur = list[i];
-          const prev = list[i - 1];
-          const curSelected = isPanelElementNode(cur) && idSet.has(cur.id);
-          const prevSelected = isPanelElementNode(prev) && idSet.has(prev.id);
-          if (curSelected && !prevSelected) {
-            list[i] = prev;
-            list[i - 1] = cur;
-          }
-        }
+        list.forEach((n) => {
+          if (!isPanelElementNode(n) || !n.props || !idSet.has(n.id)) return;
+          const props = n.props as PanelElement;
+          const z = typeof props.zIndex === "number" ? props.zIndex : 1;
+          n.props = { ...props, zIndex: z - 1 };
+        });
       },
       { meta: { type: "node.z.down", ids: Array.from(idSet) } }
     );
@@ -712,6 +750,7 @@ export function usePanelElements() {
       id: nextId,
       x: Math.round(options?.position?.x ?? ((node.props.x ?? 0) + 20)),
       y: Math.round(options?.position?.y ?? ((node.props.y ?? 0) + 20)),
+      zIndex: 1,
     };
     const all = (current.root.children ?? [])
       .filter((n) => isPanelElementNode(n) && n.props)
@@ -756,6 +795,7 @@ export function usePanelElements() {
     const next: PanelElement = {
       id,
       layerId: currentLayerId,
+      zIndex: 1,
       materialType,
       name: getDefaultNodeName(materialType),
       ...getDefaultTextContent(materialType),

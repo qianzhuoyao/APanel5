@@ -49,6 +49,7 @@ export type ReferenceCopyMode = "shallow" | "deep";
 export type PanelElement = {
   id: string;
   layerId: string;
+  zIndex?: number;
   name?: string;
   locked?: boolean;
   materialType?: string;

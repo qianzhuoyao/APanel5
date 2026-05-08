@@ -299,6 +299,7 @@ export type MaterialSidebarProps = {
   allElements?: PanelElement[];
   selectedIds?: string[];
   onSelectNode?: (nodeId: string, layerId: string) => void;
+  onNodeContextMenu?: (payload: { nodeId: string; layerId: string; x: number; y: number }) => void;
   onDeleteNode?: (nodeId: string) => void;
   onCopyNode?: (nodeId: string, mode?: ReferenceCopyMode) => void;
   onMoveNodeToLayer?: (nodeId: string, targetLayerId: string) => void;
@@ -311,6 +312,7 @@ export function MaterialSidebar({
   allElements = [],
   selectedIds = [],
   onSelectNode,
+  onNodeContextMenu,
   onDeleteNode,
   onCopyNode,
   onMoveNodeToLayer,
@@ -469,6 +471,16 @@ export function MaterialSidebar({
             type="button"
             className="min-w-0 flex-1 truncate text-left"
             onClick={() => onSelectNode?.(node.id, node.layerId)}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onNodeContextMenu?.({
+                nodeId: node.id,
+                layerId: node.layerId,
+                x: e.clientX,
+                y: e.clientY,
+              });
+            }}
             title={getNodeDisplayName(node)}
             draggable={!node.locked}
             onDragStart={(e) => {

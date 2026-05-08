@@ -553,9 +553,17 @@ export function ElementsLayer({
   updateElement,
   layerLocked = false,
 }: ElementsLayerProps) {
+  const sortedElements = useMemo(() => {
+    return [...elements].sort((a, b) => {
+      const za = a.zIndex ?? 1;
+      const zb = b.zIndex ?? 1;
+      if (za !== zb) return za - zb;
+      return a.id.localeCompare(b.id);
+    });
+  }, [elements]);
   return (
     <>
-      {elements.map((el) => {
+      {sortedElements.map((el) => {
         const isSelected = selectedIds.includes(el.id);
         return (
           <div
@@ -583,6 +591,7 @@ export function ElementsLayer({
               top: el.y,
               width: el.width,
               height: el.height,
+              zIndex: el.zIndex ?? 1,
               transform: `rotate(${el.rotate ?? 0}deg)`,
               boxSizing: "border-box",
               ...getNodeVisualStyle(el),
