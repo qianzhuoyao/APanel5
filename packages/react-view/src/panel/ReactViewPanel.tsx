@@ -602,30 +602,6 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
   const handlePreviewLayer = useCallback(() => {
     const targetLayer = layers.find((l) => l.id === activeLayerId);
     const layerElements = allElements.filter((el) => el.layerId === activeLayerId);
-    const serializeStyle = (el: PanelElement, offsetX: number, offsetY: number) => {
-      const s = el.style ?? {};
-      return [
-        `left:${el.x - offsetX}px`,
-        `top:${el.y - offsetY}px`,
-        `width:${el.width}px`,
-        `height:${el.height}px`,
-        `position:absolute`,
-        `z-index:${el.zIndex ?? 1}`,
-        `transform:rotate(${el.rotate ?? 0}deg)`,
-        s.backgroundColor ? `background-color:${s.backgroundColor}` : "",
-        s.backgroundImage ? `background-image:${s.backgroundImage}` : "",
-        s.backgroundSize ? `background-size:${s.backgroundSize}` : "",
-        s.backgroundPosition ? `background-position:${s.backgroundPosition}` : "",
-        s.borderWidth !== undefined ? `border-width:${s.borderWidth}px` : "",
-        s.borderStyle ? `border-style:${s.borderStyle}` : "",
-        s.borderColor ? `border-color:${s.borderColor}` : "",
-        s.borderRadius !== undefined ? `border-radius:${s.borderRadius}px` : "",
-        "box-sizing:border-box",
-        "overflow:hidden",
-      ]
-        .filter(Boolean)
-        .join(";");
-    };
     const getAABB = (el: PanelElement) => {
       const rad = ((el.rotate ?? 0) * Math.PI) / 180;
       const absCos = Math.abs(Math.cos(rad));
@@ -648,39 +624,55 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
     const maxY = boxes.length ? Math.max(...boxes.map((b) => b.bottom)) : 1;
     const sceneWidth = Math.max(1, maxX - minX);
     const sceneHeight = Math.max(1, maxY - minY);
-    const previewNodes = layerElements.map((el) => ({
-      id: el.id,
-      styleText: serializeStyle(el, minX, minY),
-      title: CHART_TYPES.has(el.materialType ?? "") ? (el.chart?.title ?? "") : (el.materialType || el.id),
-      isChart: CHART_TYPES.has(el.materialType ?? ""),
-      renderer: el.chart?.renderMode ?? "canvas",
-      option: CHART_TYPES.has(el.materialType ?? "")
-        ? buildChartOption(el)
-        : null,
-    }));
-    const payload = JSON.stringify(previewNodes).replace(/<\//g, "<\\/");
+    const serializeNodeDom = (sourceNode: HTMLElement): string => {
+      const clone = sourceNode.cloneNode(true) as HTMLElement;
+      const sourceCanvases = Array.from(sourceNode.querySelectorAll("canvas"));
+      const cloneCanvases = Array.from(clone.querySelectorAll("canvas"));
+      sourceCanvases.forEach((srcCanvas, idx) => {
+        const clonedCanvas = cloneCanvases[idx];
+        if (!clonedCanvas) return;
+        try {
+          const dataUrl = srcCanvas.toDataURL("image/png");
+          const img = document.createElement("img");
+          img.src = dataUrl;
+          img.style.width = "100%";
+          img.style.height = "100%";
+          img.style.objectFit = "fill";
+          img.style.display = "block";
+          clonedCanvas.replaceWith(img);
+        } catch {
+          // ignore tainted canvas
+        }
+      });
+      return clone.outerHTML;
+    };
+
+    const previewNodesHtml = layerElements
+      .map((el) => {
+        const node = canvasRef.current?.querySelector<HTMLElement>(`[data-element-id="${el.id}"]`);
+        if (!node) return "";
+        return serializeNodeDom(node);
+      })
+      .filter(Boolean)
+      .join("");
+
+    const headStyles = Array.from(
+      document.querySelectorAll('style, link[rel="stylesheet"]')
+    )
+      .map((el) => el.outerHTML)
+      .join("\n");
+
     const html = `<!doctype html>
 <html>
   <head>
     <meta charset="utf-8"/>
     <title>Preview</title>
-    <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+    ${headStyles}
   </head>
   <body style="margin:0;background:#fff;overflow:hidden;">
-    <div id="preview-root" style="position:absolute;left:0;top:0;width:${sceneWidth}px;height:${sceneHeight}px;transform-origin:left top;">
-      ${previewNodes
-        .map(
-          (n) => `<div id="node-${n.id}" style="${n.styleText}">
-            ${
-              n.isChart
-                ? `<div style="width:100%;height:100%"></div>`
-                : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:12px;color:#64748b;">${n.title}</div>`
-            }
-          </div>`
-        )
-        .join("")}
+    <div id="preview-root" style="position:absolute;left:${-minX}px;top:${-minY}px;width:${sceneWidth}px;height:${sceneHeight}px;transform-origin:left top;">
+      ${previewNodesHtml}
     </div>
-    <script id="preview-data" type="application/json">${payload}</script>
     <script>
       (function () {
         var scene = document.getElementById("preview-root");
@@ -697,19 +689,6 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
         }
         fitScene();
         window.addEventListener("resize", fitScene);
-        var raw = document.getElementById("preview-data");
-        if (!raw) return;
-        var nodes = [];
-        try { nodes = JSON.parse(raw.textContent || "[]"); } catch (e) { return; }
-        nodes.forEach(function (n) {
-          if (!n.isChart) return;
-          var host = document.querySelector("#node-" + n.id + " > div");
-          if (!host || !window.echarts) return;
-          var chart = window.echarts.init(host, null, { renderer: n.renderer || "canvas" });
-          chart.setOption(n.option || {}, true);
-          chart.resize();
-          window.addEventListener("resize", function () { chart.resize(); });
-        });
       })();
     </script>
   </body>
@@ -737,6 +716,19 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
         .panel-font-root :is(input, textarea):focus-visible {
           outline: none !important;
           box-shadow: none !important;
+        }
+        .panel-font-root button[role="combobox"] {
+          border-width: 1px !important;
+          border-color: hsl(var(--foreground) / 0.35) !important;
+          background: hsl(var(--background)) !important;
+          box-shadow: 0 0 0 1px hsl(var(--foreground) / 0.12) inset !important;
+        }
+        .panel-font-root button[role="combobox"]:focus,
+        .panel-font-root button[role="combobox"]:focus-visible,
+        .panel-font-root button[role="combobox"][data-state="open"] {
+          outline: none !important;
+          box-shadow: 0 0 0 1px hsl(var(--foreground) / 0.12) inset !important;
+          border-color: hsl(var(--foreground) / 0.35) !important;
         }
         .panel-font-root button[role="checkbox"] {
           border-width: 2px !important;

@@ -364,6 +364,126 @@ function EmptyNodePlaceholder({ element }: { element: PanelElement }) {
   );
 }
 
+function GeometryNodeContent({ element }: { element: PanelElement }) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const shape = element.geometryShape ?? "rect";
+  const color = element.geometryColor ?? "#3b82f6";
+  const script = element.geometryScript ?? "";
+  const sketch = element.geometrySketchDataUrl ?? "";
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const draw = () => {
+      const dpr = window.devicePixelRatio || 1;
+      const width = Math.max(1, canvas.clientWidth);
+      const height = Math.max(1, canvas.clientHeight);
+      canvas.width = Math.round(width * dpr);
+      canvas.height = Math.round(height * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, width, height);
+
+      const drawShapePath = () => {
+        const cx = width / 2;
+        const cy = height / 2;
+        const r = Math.max(10, Math.min(width, height) * 0.42);
+        ctx.beginPath();
+        if (shape === "circle") {
+          ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        } else if (shape === "triangle") {
+          ctx.moveTo(cx, cy - r);
+          ctx.lineTo(cx + r * 0.9, cy + r * 0.8);
+          ctx.lineTo(cx - r * 0.9, cy + r * 0.8);
+          ctx.closePath();
+        } else if (shape === "diamond") {
+          ctx.moveTo(cx, cy - r);
+          ctx.lineTo(cx + r, cy);
+          ctx.lineTo(cx, cy + r);
+          ctx.lineTo(cx - r, cy);
+          ctx.closePath();
+        } else if (shape === "hexagon") {
+          for (let i = 0; i < 6; i += 1) {
+            const a = (Math.PI / 3) * i - Math.PI / 6;
+            const x = cx + r * Math.cos(a);
+            const y = cy + r * Math.sin(a);
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+          }
+          ctx.closePath();
+        } else if (shape === "star") {
+          const inner = r * 0.45;
+          for (let i = 0; i < 10; i += 1) {
+            const rr = i % 2 === 0 ? r : inner;
+            const a = (Math.PI / 5) * i - Math.PI / 2;
+            const x = cx + rr * Math.cos(a);
+            const y = cy + rr * Math.sin(a);
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+          }
+          ctx.closePath();
+        } else if (shape === "heart") {
+          const top = cy - r * 0.2;
+          ctx.moveTo(cx, cy + r * 0.9);
+          ctx.bezierCurveTo(cx - r * 1.2, cy + r * 0.25, cx - r * 0.9, top - r * 0.8, cx, top);
+          ctx.bezierCurveTo(cx + r * 0.9, top - r * 0.8, cx + r * 1.2, cy + r * 0.25, cx, cy + r * 0.9);
+          ctx.closePath();
+        } else {
+          const rr = Math.max(4, Math.min(width, height) * 0.08);
+          const x = width * 0.08;
+          const y = height * 0.08;
+          const w = width * 0.84;
+          const h = height * 0.84;
+          ctx.moveTo(x + rr, y);
+          ctx.lineTo(x + w - rr, y);
+          ctx.quadraticCurveTo(x + w, y, x + w, y + rr);
+          ctx.lineTo(x + w, y + h - rr);
+          ctx.quadraticCurveTo(x + w, y + h, x + w - rr, y + h);
+          ctx.lineTo(x + rr, y + h);
+          ctx.quadraticCurveTo(x, y + h, x, y + h - rr);
+          ctx.lineTo(x, y + rr);
+          ctx.quadraticCurveTo(x, y, x + rr, y);
+          ctx.closePath();
+        }
+      };
+
+      drawShapePath();
+      ctx.fillStyle = color;
+      ctx.fill();
+
+      if (sketch) {
+        const img = new Image();
+        img.onload = () => {
+          ctx.save();
+          drawShapePath();
+          ctx.clip();
+          ctx.drawImage(img, 0, 0, width, height);
+          ctx.restore();
+        };
+        img.src = sketch;
+      }
+
+      if (script.trim()) {
+        try {
+          const fn = new Function("ctx", "width", "height", "element", script);
+          fn(ctx, width, height, element);
+        } catch {
+          // ignore invalid script to avoid breaking render
+        }
+      }
+    };
+
+    draw();
+    const obs = new ResizeObserver(draw);
+    obs.observe(canvas);
+    return () => obs.disconnect();
+  }, [color, element, script, shape, sketch]);
+
+  return <canvas ref={canvasRef} className="h-full w-full" />;
+}
+
 function ChartNodeContent({ element }: { element: PanelElement }) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<echarts.ECharts | null>(null);
@@ -534,6 +654,8 @@ function ReferenceNodeContent({
                   snapshotSource={node.refSnapshot}
                   visitedIds={[...visitedIds, element.id]}
                 />
+              ) : node.materialType === "geometry" ? (
+                <GeometryNodeContent element={node} />
               ) : (
                 <div className="h-full w-full" />
               )}
@@ -615,6 +737,8 @@ export function ElementsLayer({
               <AudioNodeContent element={el} selected={isSelected} />
             ) : el.materialType === "video" ? (
               <VideoNodeContent element={el} selected={isSelected} />
+            ) : el.materialType === "geometry" ? (
+              <GeometryNodeContent element={el} />
             ) : (
               <EmptyNodePlaceholder element={el} />
             )}

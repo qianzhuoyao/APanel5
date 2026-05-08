@@ -47,6 +47,7 @@ const MATERIAL_LABEL_MAP: Record<string, string> = {
   video: "视频",
   audio: "音频",
   reference: "引用组件",
+  geometry: "几何",
 };
 
 function LockGlyph({ className = "h-3.5 w-3.5" }: { className?: string }) {
@@ -191,6 +192,20 @@ function MaterialPreview({ id }: { id: string }) {
     );
   }
 
+  if (id === "geometry") {
+    return (
+      <div className={common}>
+        <svg viewBox="0 0 80 60" className="h-full w-full">
+          <circle cx="22" cy="18" r="8" className="fill-primary/75" />
+          <rect x="36" y="10" width="16" height="16" rx="3" className="fill-primary/55" />
+          <polygon points="62,10 70,26 54,26" className="fill-primary/65" />
+          <polygon points="24,36 34,42 24,48 14,42" className="fill-primary/50" />
+          <polygon points="50,36 54,42 50,48 42,48 38,42 42,36" className="fill-primary/70" />
+        </svg>
+      </div>
+    );
+  }
+
   if (id === "reference") {
     return (
       <div className={common}>
@@ -277,6 +292,7 @@ const defaultCategories: MaterialCategory[] = [
     title: "基础",
     items: [
       { id: "text", title: "文本" },
+      { id: "geometry", title: "几何" },
       { id: "grid", title: "网格布局" },
       { id: "image", title: "图片" },
       { id: "reference", title: "引用组件" },

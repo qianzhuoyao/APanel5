@@ -38,6 +38,7 @@ const DEFAULT_NODE_NAME_MAP: Record<string, string> = {
   video: "视频",
   audio: "音频",
   reference: "引用组件",
+  geometry: "几何",
 };
 
 function getDefaultNodeName(materialType: string): string {
@@ -74,6 +75,8 @@ function getDefaultSizeByMaterial(materialType: string) {
       return { width: 260, height: 180 };
     case "reference":
       return { width: 280, height: 180 };
+    case "geometry":
+      return { width: 220, height: 220 };
     default:
       return { width: 220, height: 130 };
   }
@@ -802,6 +805,9 @@ export function usePanelElements() {
       ...getDefaultGridConfig(materialType),
       refCopyMode: materialType === "reference" ? "shallow" : undefined,
       chart: getDefaultChartConfig(materialType),
+      geometryShape: materialType === "geometry" ? "rect" : undefined,
+      geometryColor: materialType === "geometry" ? "#3b82f6" : undefined,
+      geometryScript: undefined,
       x: Math.round(x - size.width / 2),
       y: Math.round(y - size.height / 2),
       width: size.width,

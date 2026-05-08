@@ -70,10 +70,15 @@ export function PanelConfigSidebar({
   const [uploadStatus, setUploadStatus] = useState<string>("");
   const [audioStatus, setAudioStatus] = useState<string>("");
   const [videoStatus, setVideoStatus] = useState<string>("");
+  const [geometryDrawPenColor, setGeometryDrawPenColor] = useState("#111827");
+  const [geometryDrawPenWidth, setGeometryDrawPenWidth] = useState(3);
+  const [isGeometryDrawing, setIsGeometryDrawing] = useState(false);
   const [configSearch, setConfigSearch] = useState("");
   const [isSearchCollapsed, setIsSearchCollapsed] = useState(false);
   const SEARCH_COLLAPSE_STORAGE_KEY = "panel:config-search-collapsed";
   const textEditorRef = useRef<HTMLDivElement | null>(null);
+  const geometryDrawCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const geometryLastPointRef = useRef<{ x: number; y: number } | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const recordStreamRef = useRef<MediaStream | null>(null);
   const audioChunksRef = useRef<BlobPart[]>([]);
@@ -196,6 +201,37 @@ export function PanelConfigSidebar({
     },
     [selectedElement, updateElement]
   );
+  const updateSelectedGeometry = useCallback(
+    (patch: Partial<PanelElement>) => {
+      if (!selectedElement || selectedElement.materialType !== "geometry") return;
+      updateElement(selectedElement.id, patch);
+    },
+    [selectedElement, updateElement]
+  );
+
+  const redrawGeometryPadFromElement = useCallback(() => {
+    const canvas = geometryDrawCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const width = canvas.width;
+    const height = canvas.height;
+    ctx.clearRect(0, 0, width, height);
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, width, height);
+    const sketch = selectedElement?.geometrySketchDataUrl;
+    if (!sketch) return;
+    const img = new Image();
+    img.onload = () => {
+      ctx.drawImage(img, 0, 0, width, height);
+    };
+    img.src = sketch;
+  }, [selectedElement?.geometrySketchDataUrl]);
+
+  useEffect(() => {
+    if (!selectedElement || selectedElement.materialType !== "geometry") return;
+    redrawGeometryPadFromElement();
+  }, [redrawGeometryPadFromElement, selectedElement?.id, selectedElement?.materialType]);
 
   const handleUploadBackgroundImage = useCallback(
     async (file: File) => {
@@ -1691,6 +1727,38 @@ export function PanelConfigSidebar({
                       <label className="block space-y-1.5">
                         <div>列</div>
                         <Input className="h-7" type="number" min={1} value={el.gridCols ?? 3} onChange={(e) => updateElement(el.id, { gridCols: Math.max(1, Number(e.target.value) || 3) })} />
+                      </label>
+                    </div>
+                      ) : null}
+                      {el.materialType === "geometry" ? (
+                    <div className="grid grid-cols-2 gap-2 rounded-lg border border-border/60 bg-muted/20 p-3">
+                      <label className="block space-y-1.5">
+                        <div>形状</div>
+                        <Select
+                          value={el.geometryShape ?? "rect"}
+                          onValueChange={(value) =>
+                            updateElement(el.id, { geometryShape: value as PanelElement["geometryShape"] })
+                          }
+                        >
+                          <SelectTrigger className="h-7"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="rect">矩形</SelectItem>
+                            <SelectItem value="circle">圆形</SelectItem>
+                            <SelectItem value="triangle">三角形</SelectItem>
+                            <SelectItem value="diamond">菱形</SelectItem>
+                            <SelectItem value="hexagon">六边形</SelectItem>
+                            <SelectItem value="star">星形</SelectItem>
+                            <SelectItem value="heart">爱心</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </label>
+                      <label className="block space-y-1.5">
+                        <div>颜色</div>
+                        <Input
+                          className="h-7"
+                          value={el.geometryColor ?? "#3b82f6"}
+                          onChange={(e) => updateElement(el.id, { geometryColor: e.target.value || "#3b82f6" })}
+                        />
                       </label>
                     </div>
                       ) : null}
@@ -3212,6 +3280,161 @@ export function PanelConfigSidebar({
               </>,
               true,
               ["视频", "url", "上传", "预览", "自动暂停", "media"]
+            )
+          ) : selectedElement.materialType === "geometry" ? (
+            renderSection(
+              "geometryConfig",
+              "几何配置",
+              <>
+                {renderFieldGroup(
+                  "基础形状",
+                  <>
+                    <label className="block space-y-1">
+                      <div>形状</div>
+                      <Select
+                        value={selectedElement.geometryShape ?? "rect"}
+                        onValueChange={(value) =>
+                          updateSelectedGeometry({
+                            geometryShape: value as PanelElement["geometryShape"],
+                          })
+                        }
+                      >
+                        <SelectTrigger className="h-7">
+                          <SelectValue placeholder="选择形状" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="rect">矩形</SelectItem>
+                          <SelectItem value="circle">圆形</SelectItem>
+                          <SelectItem value="triangle">三角形</SelectItem>
+                          <SelectItem value="diamond">菱形</SelectItem>
+                          <SelectItem value="hexagon">六边形</SelectItem>
+                          <SelectItem value="star">星形</SelectItem>
+                          <SelectItem value="heart">爱心</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </label>
+                    {renderColorField(
+                      "几何颜色",
+                      selectedElement.geometryColor ?? "#3b82f6",
+                      (next) => updateSelectedGeometry({ geometryColor: next || "#3b82f6" })
+                    )}
+                  </>
+                )}
+                {renderFieldGroup(
+                  "高级（Canvas 脚本）",
+                  <>
+                    <div className="rounded border border-border/60 bg-background px-2 py-1.5 text-[11px] text-muted-foreground">
+                      可输入 Canvas 绘制逻辑，变量：ctx、width、height、element。脚本异常会被安全忽略。
+                    </div>
+                    <Textarea
+                      value={selectedElement.geometryScript ?? ""}
+                      onChange={(e) => updateSelectedGeometry({ geometryScript: e.target.value || undefined })}
+                      spellCheck={false}
+                      className="h-36 font-mono text-[11px]"
+                      placeholder="// 例: ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fillRect(8,8,width-16,height-16);"
+                    />
+                  </>
+                )}
+                {renderFieldGroup(
+                  "手绘叠加",
+                  <>
+                    <div className="flex items-center gap-2">
+                      <label className="block space-y-1">
+                        <div className="text-[11px]">画笔颜色</div>
+                        <Input
+                          type="color"
+                          value={geometryDrawPenColor}
+                          onChange={(e) => setGeometryDrawPenColor(e.target.value)}
+                          className="h-7 w-10 p-1"
+                        />
+                      </label>
+                      <label className="block space-y-1">
+                        <div className="text-[11px]">画笔粗细</div>
+                        <Input
+                          type="number"
+                          min={1}
+                          max={24}
+                          value={geometryDrawPenWidth}
+                          onChange={(e) => setGeometryDrawPenWidth(Math.max(1, Math.min(24, Number(e.target.value) || 1)))}
+                          className="h-7 w-20"
+                        />
+                      </label>
+                    </div>
+                    <div className="rounded border border-border/60 bg-white p-2">
+                      <canvas
+                        ref={geometryDrawCanvasRef}
+                        width={320}
+                        height={180}
+                        className="h-[180px] w-full cursor-crosshair rounded border border-border/60"
+                        onPointerDown={(e) => {
+                          const canvas = geometryDrawCanvasRef.current;
+                          if (!canvas) return;
+                          const ctx = canvas.getContext("2d");
+                          if (!ctx) return;
+                          const rect = canvas.getBoundingClientRect();
+                          const x = ((e.clientX - rect.left) / rect.width) * canvas.width;
+                          const y = ((e.clientY - rect.top) / rect.height) * canvas.height;
+                          geometryLastPointRef.current = { x, y };
+                          setIsGeometryDrawing(true);
+                          ctx.lineCap = "round";
+                          ctx.lineJoin = "round";
+                          ctx.strokeStyle = geometryDrawPenColor;
+                          ctx.lineWidth = geometryDrawPenWidth;
+                          ctx.beginPath();
+                          ctx.moveTo(x, y);
+                        }}
+                        onPointerMove={(e) => {
+                          if (!isGeometryDrawing) return;
+                          const canvas = geometryDrawCanvasRef.current;
+                          const last = geometryLastPointRef.current;
+                          if (!canvas || !last) return;
+                          const ctx = canvas.getContext("2d");
+                          if (!ctx) return;
+                          const rect = canvas.getBoundingClientRect();
+                          const x = ((e.clientX - rect.left) / rect.width) * canvas.width;
+                          const y = ((e.clientY - rect.top) / rect.height) * canvas.height;
+                          ctx.lineTo(x, y);
+                          ctx.stroke();
+                          geometryLastPointRef.current = { x, y };
+                        }}
+                        onPointerUp={() => {
+                          setIsGeometryDrawing(false);
+                          geometryLastPointRef.current = null;
+                        }}
+                        onPointerLeave={() => {
+                          setIsGeometryDrawing(false);
+                          geometryLastPointRef.current = null;
+                        }}
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        className="rounded border border-border px-2 py-1 text-[11px] hover:bg-accent"
+                        onClick={() => {
+                          const canvas = geometryDrawCanvasRef.current;
+                          if (!canvas) return;
+                          updateSelectedGeometry({ geometrySketchDataUrl: canvas.toDataURL("image/png") });
+                        }}
+                      >
+                        应用手绘到节点
+                      </button>
+                      <button
+                        type="button"
+                        className="rounded border border-border px-2 py-1 text-[11px] hover:bg-accent"
+                        onClick={() => {
+                          updateSelectedGeometry({ geometrySketchDataUrl: undefined });
+                          redrawGeometryPadFromElement();
+                        }}
+                      >
+                        清空手绘
+                      </button>
+                    </div>
+                  </>
+                )}
+              </>,
+              true,
+              ["几何", "geometry", "形状", "canvas", "脚本", "手绘"]
             )
           ) : selectedElement.materialType === "grid" ? (
             renderSection(

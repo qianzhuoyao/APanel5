@@ -87,6 +87,10 @@ export type PanelElement = {
   mediaAutoPauseOnEdit?: boolean;
   videoSrc?: string;
   videoRemoteUrl?: string;
+  geometryShape?: "rect" | "circle" | "triangle" | "diamond" | "hexagon" | "star" | "heart";
+  geometryColor?: string;
+  geometryScript?: string;
+  geometrySketchDataUrl?: string;
   style?: PanelElementStyle;
   x: number;
   y: number;
