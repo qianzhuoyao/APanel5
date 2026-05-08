@@ -206,7 +206,7 @@ export function ElementsLayer({
             key={el.id}
             className={[
               "rv-selectable absolute select-none rounded-lg",
-              isSelected ? "border-2 border-blue-500/90" : "border-none",
+              isSelected ? "ring-2 ring-blue-500/90 ring-offset-0" : "",
             ].join(" ")}
             data-element-id={el.id}
             onMouseDown={(e) => {
