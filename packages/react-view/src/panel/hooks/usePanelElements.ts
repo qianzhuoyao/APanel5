@@ -240,7 +240,45 @@ function getGridSlotLayout(grid: PanelElement) {
       });
     }
   }
-  return { slots, rows, cols };
+  return { slots, rows, cols, cellWidth, cellHeight, gap };
+}
+
+function getGridChildSpanRect(
+  grid: PanelElement,
+  slotIndex: number,
+  colSpan: number,
+  rowSpan: number
+) {
+  const { rows, cols, cellWidth, cellHeight, gap, slots } = getGridSlotLayout(grid);
+  const total = rows * cols;
+  const safeIndex = Math.max(0, Math.min(total - 1, Math.floor(slotIndex || 0)));
+  const baseRow = Math.floor(safeIndex / cols);
+  const baseCol = safeIndex % cols;
+  const safeColSpan = Math.max(1, Math.min(cols - baseCol, Math.floor(colSpan || 1)));
+  const safeRowSpan = Math.max(1, Math.min(rows - baseRow, Math.floor(rowSpan || 1)));
+  const baseSlot = slots[safeIndex];
+  const width = safeColSpan * cellWidth + (safeColSpan - 1) * gap;
+  const height = safeRowSpan * cellHeight + (safeRowSpan - 1) * gap;
+  return {
+    index: safeIndex,
+    x: baseSlot?.x ?? grid.x,
+    y: baseSlot?.y ?? grid.y,
+    width: Math.max(1, width),
+    height: Math.max(1, height),
+    colSpan: safeColSpan,
+    rowSpan: safeRowSpan,
+  };
+}
+
+function inferSpanBySize(size: number, cellSize: number, gap: number, maxSpan: number) {
+  const safeMax = Math.max(1, Math.floor(maxSpan));
+  const unit = Math.max(1, cellSize + gap);
+  const ratio = (Math.max(1, size) + gap) / unit;
+  const whole = Math.floor(ratio);
+  const fraction = ratio - whole;
+  // 接近下一格时提前进位，减少“几乎铺满但仍显示上一档”的跳变感
+  const promoted = fraction >= 0.72 ? whole + 1 : Math.max(1, whole);
+  return Math.max(1, Math.min(safeMax, promoted));
 }
 
 function removeMappingLayersBySourceIds(
@@ -417,6 +455,88 @@ export function usePanelElements() {
       const layer = list.find((l) => l.id === layerId);
       if (layer?.locked) return;
       const currentElement = (target?.props ?? {}) as PanelElement;
+      const parentGrid =
+        currentElement.parentGridId
+          ? (current.root.children ?? [])
+              .filter((n) => isPanelElementNode(n) && n.props)
+              .map((n) => n.props as PanelElement)
+              .find((el) => el.id === currentElement.parentGridId && el.materialType === "grid")
+          : undefined;
+      const detachFromGrid = "parentGridId" in patch && patch.parentGridId === undefined;
+      const hasResizePatch = "width" in patch || "height" in patch;
+      if (parentGrid && hasResizePatch && !detachFromGrid) {
+        const parentLayout = getGridSlotLayout(parentGrid);
+        const nextWidth =
+          typeof patch.width === "number" ? patch.width : currentElement.width;
+        const nextHeight =
+          typeof patch.height === "number" ? patch.height : currentElement.height;
+        const inferredColSpan = inferSpanBySize(
+          nextWidth,
+          parentLayout.cellWidth,
+          parentLayout.gap,
+          parentLayout.cols
+        );
+        const inferredRowSpan = inferSpanBySize(
+          nextHeight,
+          parentLayout.cellHeight,
+          parentLayout.gap,
+          parentLayout.rows
+        );
+        const total = parentLayout.rows * parentLayout.cols;
+        const baseSlot = Math.max(
+          0,
+          Math.min(
+            total - 1,
+            Math.floor(
+              patch.gridSlotIndex !== undefined
+                ? patch.gridSlotIndex
+                : currentElement.gridSlotIndex ?? 0
+            )
+          )
+        );
+        const currentRow = Math.floor(baseSlot / parentLayout.cols);
+        const currentCol = baseSlot % parentLayout.cols;
+        const nextStartCol = Math.max(
+          0,
+          Math.min(parentLayout.cols - inferredColSpan, currentCol)
+        );
+        const nextStartRow = Math.max(
+          0,
+          Math.min(parentLayout.rows - inferredRowSpan, currentRow)
+        );
+        const nextSlotIndex = nextStartRow * parentLayout.cols + nextStartCol;
+        patch = {
+          ...patch,
+          gridSlotIndex: nextSlotIndex,
+          gridColSpan: inferredColSpan,
+          gridRowSpan: inferredRowSpan,
+        };
+      }
+      const hasGridChildSlotPatch =
+        "gridSlotIndex" in patch || "gridColSpan" in patch || "gridRowSpan" in patch;
+      if (currentElement.parentGridId && hasGridChildSlotPatch && !detachFromGrid) {
+        if (parentGrid) {
+          const nextSlotIndex =
+            patch.gridSlotIndex !== undefined
+              ? patch.gridSlotIndex
+              : currentElement.gridSlotIndex ?? 0;
+          const nextColSpan =
+            patch.gridColSpan !== undefined ? patch.gridColSpan : currentElement.gridColSpan ?? 1;
+          const nextRowSpan =
+            patch.gridRowSpan !== undefined ? patch.gridRowSpan : currentElement.gridRowSpan ?? 1;
+          const spanRect = getGridChildSpanRect(parentGrid, nextSlotIndex, nextColSpan, nextRowSpan);
+          patch = {
+            ...patch,
+            gridSlotIndex: spanRect.index,
+            gridColSpan: spanRect.colSpan,
+            gridRowSpan: spanRect.rowSpan,
+            x: spanRect.x,
+            y: spanRect.y,
+            width: spanRect.width,
+            height: spanRect.height,
+          };
+        }
+      }
       const hasTransformPatch =
         "x" in patch ||
         "y" in patch ||
@@ -464,13 +584,19 @@ export function usePanelElements() {
                   child.gridSlotIndex !== undefined
                     ? Math.max(0, Math.floor(child.gridSlotIndex))
                     : 0;
-                const slot = slots[slotIndex % slots.length];
-                if (!slot) return;
-                child.gridSlotIndex = slot.index;
-                child.x = slot.x;
-                child.y = slot.y;
-                child.width = slot.width;
-                child.height = slot.height;
+                const spanRect = getGridChildSpanRect(
+                  grid,
+                  slotIndex % slots.length,
+                  child.gridColSpan ?? 1,
+                  child.gridRowSpan ?? 1
+                );
+                child.gridSlotIndex = spanRect.index;
+                child.gridColSpan = spanRect.colSpan;
+                child.gridRowSpan = spanRect.rowSpan;
+                child.x = spanRect.x;
+                child.y = spanRect.y;
+                child.width = spanRect.width;
+                child.height = spanRect.height;
                 const childNode = byIdNode.get(child.id);
                 if (childNode) childNode.props = child;
                 if (child.materialType === "grid") {

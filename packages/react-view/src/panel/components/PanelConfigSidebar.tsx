@@ -3282,7 +3282,58 @@ export function PanelConfigSidebar({
               true,
               ["视频", "url", "上传", "预览", "自动暂停", "media"]
             )
-          ) : selectedElement.materialType === "geometry" ? (
+          ) : null}
+          {selectedElement
+            ? selectedElement.parentGridId
+              ? renderSection(
+                "gridChildSpan",
+                "网格子节点占位",
+                <>
+                  {renderFieldGroup(
+                    "跨槽位",
+                    <div className="grid grid-cols-2 gap-2">
+                      <label className="block space-y-1">
+                        <div>跨列（colSpan）</div>
+                        <Input
+                          type="number"
+                          min={1}
+                          max={12}
+                          value={selectedElement.gridColSpan ?? 1}
+                          onChange={(e) =>
+                            updateElement(selectedElement.id, {
+                              gridColSpan: Math.max(1, Math.min(12, Number(e.target.value) || 1)),
+                            })
+                          }
+                          className="h-7"
+                        />
+                      </label>
+                      <label className="block space-y-1">
+                        <div>跨行（rowSpan）</div>
+                        <Input
+                          type="number"
+                          min={1}
+                          max={12}
+                          value={selectedElement.gridRowSpan ?? 1}
+                          onChange={(e) =>
+                            updateElement(selectedElement.id, {
+                              gridRowSpan: Math.max(1, Math.min(12, Number(e.target.value) || 1)),
+                            })
+                          }
+                          className="h-7"
+                        />
+                      </label>
+                    </div>
+                  )}
+                  <div className="rounded border border-border/60 bg-background px-2 py-1.5 text-[11px] text-muted-foreground">
+                    网格子节点可跨越多格，占据更大区域，便于复杂布局。
+                  </div>
+                </>,
+                true,
+                ["网格", "跨列", "跨行", "span", "slot"]
+              )
+              : null
+            : null}
+          {selectedElement.materialType === "geometry" ? (
             renderSection(
               "geometryConfig",
               "几何配置",

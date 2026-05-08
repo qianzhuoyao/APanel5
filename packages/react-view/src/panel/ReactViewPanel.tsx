@@ -883,8 +883,13 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
     )
       .map((el) => el.outerHTML)
       .join("\n");
-    const previewFaviconLink = titleIconDataUrl
-      ? `<link rel="icon" href="${titleIconDataUrl}" /><link rel="shortcut icon" href="${titleIconDataUrl}" />`
+    const faviconHrefWithVersion = titleIconDataUrl
+      ? titleIconDataUrl.startsWith("data:")
+        ? titleIconDataUrl
+        : `${titleIconDataUrl}${titleIconDataUrl.includes("?") ? "&" : "?"}v=${Date.now()}`
+      : "";
+    const previewFaviconLink = faviconHrefWithVersion
+      ? `<link rel="icon" type="image/png" href="${faviconHrefWithVersion}" /><link rel="shortcut icon" type="image/png" href="${faviconHrefWithVersion}" />`
       : "";
     const previewTitle = productName.trim() || "未命名产物";
     const escapedPreviewTitle = previewTitle
@@ -894,7 +899,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
       .replace(/"/g, "&quot;")
       .replace(/'/g, "&#39;");
 
-    const faviconJson = JSON.stringify(titleIconDataUrl || "");
+    const faviconJson = JSON.stringify(faviconHrefWithVersion || "");
     const titleJson = JSON.stringify(previewTitle);
     const html = `<!doctype html>
 <html>
@@ -928,6 +933,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
             }
             var link = document.createElement("link");
             link.rel = rel;
+            link.type = "image/png";
             link.href = faviconHref;
             document.head.appendChild(link);
           });
@@ -979,6 +985,17 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
     win.document.write(html);
     win.document.close();
     win.document.title = previewTitle;
+    if (faviconHrefWithVersion) {
+      ["icon", "shortcut icon"].forEach((rel) => {
+        const existing = win.document.querySelector(`link[rel='${rel}']`);
+        if (existing?.parentNode) existing.parentNode.removeChild(existing);
+        const link = win.document.createElement("link");
+        link.rel = rel;
+        link.type = "image/png";
+        link.href = faviconHrefWithVersion;
+        win.document.head.appendChild(link);
+      });
+    }
   }, [allElements, layers, productName, titleIconDataUrl]);
 
   const handlePreviewLayer = useCallback(() => {

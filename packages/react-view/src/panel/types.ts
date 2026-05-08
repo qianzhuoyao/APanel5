@@ -76,6 +76,8 @@ export type PanelElement = {
   gridSnapThreshold?: number;
   parentGridId?: string;
   gridSlotIndex?: number;
+  gridColSpan?: number;
+  gridRowSpan?: number;
   mappingSourceNodeId?: string;
   mappingSourceLayerId?: string;
   audioSrc?: string;

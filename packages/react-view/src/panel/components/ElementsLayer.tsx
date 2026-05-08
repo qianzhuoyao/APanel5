@@ -72,35 +72,92 @@ function GridNodeContent({
     const set = new Set<number>();
     allElements.forEach((el) => {
       if (el.parentGridId !== element.id) return;
+      if (el.layerId !== element.layerId) return;
       if (el.gridSlotIndex === undefined) return;
-      set.add(el.gridSlotIndex);
+      const start = Math.max(0, Math.floor(el.gridSlotIndex));
+      const baseRow = Math.floor(start / cols);
+      const baseCol = start % cols;
+      const rowSpan = Math.max(1, Math.min(rows - baseRow, Math.floor(el.gridRowSpan ?? 1)));
+      const colSpan = Math.max(1, Math.min(cols - baseCol, Math.floor(el.gridColSpan ?? 1)));
+      for (let r = baseRow; r < baseRow + rowSpan; r++) {
+        for (let c = baseCol; c < baseCol + colSpan; c++) {
+          set.add(r * cols + c);
+        }
+      }
     });
     return set;
-  }, [allElements, element.id]);
+  }, [allElements, cols, element.id, element.layerId, rows]);
+  const occupiedBlocks = useMemo(() => {
+    return allElements
+      .filter(
+        (el) =>
+          el.parentGridId === element.id &&
+          el.layerId === element.layerId &&
+          el.gridSlotIndex !== undefined
+      )
+      .map((el) => {
+        const start = Math.max(0, Math.floor(el.gridSlotIndex ?? 0));
+        const baseRow = Math.floor(start / cols);
+        const baseCol = start % cols;
+        const rowSpan = Math.max(1, Math.min(rows - baseRow, Math.floor(el.gridRowSpan ?? 1)));
+        const colSpan = Math.max(1, Math.min(cols - baseCol, Math.floor(el.gridColSpan ?? 1)));
+        return {
+          id: el.id,
+          rowStart: baseRow + 1,
+          rowEnd: baseRow + rowSpan + 1,
+          colStart: baseCol + 1,
+          colEnd: baseCol + colSpan + 1,
+        };
+      });
+  }, [allElements, cols, element.id, element.layerId, rows]);
   return (
-    <div
-      className="h-full w-full"
-      style={{
-        display: "grid",
-        gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
-        gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))`,
-        gap: `${gap}px`,
-        padding: `${padding}px`,
-        boxSizing: "border-box",
-      }}
-    >
-      {Array.from({ length: rows * cols }).map((_, idx) => (
-        <div
-          key={idx}
-          className={[
-            "rounded border border-dashed",
-            occupied.has(idx)
-              ? "border-primary/70 bg-primary/15"
-              : "border-border/60 bg-muted/20",
-          ].join(" ")}
-          title={`槽位 ${idx + 1}${occupied.has(idx) ? "（已占用）" : "（空）"}`}
-        />
-      ))}
+    <div className="relative h-full w-full">
+      <div
+        className="h-full w-full"
+        style={{
+          display: "grid",
+          gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
+          gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))`,
+          gap: `${gap}px`,
+          padding: `${padding}px`,
+          boxSizing: "border-box",
+        }}
+      >
+        {Array.from({ length: rows * cols }).map((_, idx) => (
+          <div
+            key={idx}
+            className={[
+              "rounded border border-dashed",
+              occupied.has(idx)
+                ? "border-primary/70 bg-primary/10"
+                : "border-border/60 bg-muted/20",
+            ].join(" ")}
+            title={`槽位 ${idx + 1}${occupied.has(idx) ? "（已占用）" : "（空）"}`}
+          />
+        ))}
+      </div>
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{
+          display: "grid",
+          gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
+          gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))`,
+          gap: `${gap}px`,
+          padding: `${padding}px`,
+          boxSizing: "border-box",
+        }}
+      >
+        {occupiedBlocks.map((block) => (
+          <div
+            key={block.id}
+            className="rounded border border-primary/70 bg-primary/20"
+            style={{
+              gridColumn: `${block.colStart} / ${block.colEnd}`,
+              gridRow: `${block.rowStart} / ${block.rowEnd}`,
+            }}
+          />
+        ))}
+      </div>
     </div>
   );
 }
