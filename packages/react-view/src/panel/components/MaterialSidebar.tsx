@@ -13,6 +13,10 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
 } from "@arron/ui";
 import type { PanelElement, ReferenceCopyMode } from "../types";
 import type { PanelLayer } from "../hooks/usePanelElements";
@@ -65,6 +69,46 @@ function LockGlyph({ className = "h-3.5 w-3.5" }: { className?: string }) {
       <rect x="4.5" y="10.5" width="15" height="10" rx="2.5" />
       <path d="M8 10.5V8a4 4 0 0 1 8 0v2.5" />
       <circle cx="12" cy="15.5" r="1.2" />
+    </svg>
+  );
+}
+
+function IconCopy({ className = "h-3.5 w-3.5" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" className={className}>
+      <rect x="9" y="9" width="10" height="10" rx="2" />
+      <rect x="5" y="5" width="10" height="10" rx="2" />
+    </svg>
+  );
+}
+
+function IconDelete({ className = "h-3.5 w-3.5" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" className={className}>
+      <path d="M4 7h16" />
+      <path d="M9 7V5h6v2" />
+      <path d="M7 7l1 12h8l1-12" />
+      <path d="M10 11v5M14 11v5" />
+    </svg>
+  );
+}
+
+function IconShallowCopy({ className = "h-3.5 w-3.5" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" className={className}>
+      <rect x="8.5" y="8.5" width="10" height="10" rx="2" />
+      <rect x="5.5" y="5.5" width="10" height="10" rx="2" />
+      <path d="M7.5 16.5 16.5 7.5" strokeDasharray="2 2" />
+    </svg>
+  );
+}
+
+function IconDeepCopy({ className = "h-3.5 w-3.5" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" className={className}>
+      <rect x="4.5" y="4.5" width="15" height="4.2" rx="1.6" />
+      <rect x="4.5" y="9.9" width="15" height="4.2" rx="1.6" />
+      <rect x="4.5" y="15.3" width="15" height="4.2" rx="1.6" />
     </svg>
   );
 }
@@ -453,6 +497,8 @@ export function MaterialSidebar({
     const selected = selectedIds.includes(node.id);
     if (!nodeMatchesTreeSearch(node, visited, sourceOverride)) return null;
     const isRef = node.materialType === "reference";
+    const refMode = node.refCopyMode ?? "shallow";
+    const isDeepRef = isRef && refMode === "deep";
     const children = getNodeChildren(node, sourceOverride);
     const hasChildren = children.length > 0;
     const nextVisited = new Set(visited);
@@ -541,52 +587,86 @@ export function MaterialSidebar({
           ) : null}
           {isRef ? (
             <>
-              <button
-                type="button"
-                className="rounded border border-border px-1 text-[10px] hover:bg-accent"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onCopyNode?.(node.id, "shallow");
-                }}
+              <span
+                className={[
+                  "rounded border px-1 text-[10px]",
+                  isDeepRef
+                    ? "border-violet-500/50 bg-violet-500/15 text-violet-300"
+                    : "border-sky-500/40 bg-sky-500/10 text-sky-300",
+                ].join(" ")}
+                title={isDeepRef ? "深拷贝引用（冻结快照）" : "浅拷贝引用（跟随源变化）"}
               >
-                浅拷
-              </button>
-              <button
-                type="button"
-                className="rounded border border-border px-1 text-[10px] hover:bg-accent"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onCopyNode?.(node.id, "deep");
-                }}
-              >
-                深拷
-              </button>
+                {isDeepRef ? "深拷贝" : "浅拷贝"}
+              </span>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    className="inline-flex h-5 w-5 items-center justify-center rounded border border-border hover:bg-accent"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onCopyNode?.(node.id, "shallow");
+                    }}
+                    aria-label="浅拷贝"
+                  >
+                    <IconShallowCopy />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>浅拷贝</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    className="inline-flex h-5 w-5 items-center justify-center rounded border border-border hover:bg-accent"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onCopyNode?.(node.id, "deep");
+                    }}
+                    aria-label="深拷贝"
+                  >
+                    <IconDeepCopy />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>深拷贝</TooltipContent>
+              </Tooltip>
             </>
           ) : (
-            <button
-              type="button"
-              className="rounded border border-border px-1 text-[10px] hover:bg-accent"
-              onClick={(e) => {
-                e.stopPropagation();
-                onCopyNode?.(node.id);
-              }}
-            >
-              复制
-            </button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  className="inline-flex h-5 w-5 items-center justify-center rounded border border-border hover:bg-accent"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onCopyNode?.(node.id);
+                  }}
+                  aria-label="复制节点"
+                >
+                  <IconCopy />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>复制节点</TooltipContent>
+            </Tooltip>
           )}
-          <button
-            type="button"
-            disabled={node.locked}
-            className="rounded border border-border px-1 text-[10px] hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40"
-            onClick={(e) => {
-              e.stopPropagation();
-              if (node.locked) return;
-              onDeleteNode?.(node.id);
-            }}
-            title={node.locked ? "锁定节点不可删除" : "删除节点"}
-          >
-            删除
-          </button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                disabled={node.locked}
+                className="inline-flex h-5 w-5 items-center justify-center rounded border border-border hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (node.locked) return;
+                  onDeleteNode?.(node.id);
+                }}
+                aria-label={node.locked ? "锁定节点不可删除" : "删除节点"}
+              >
+                <IconDelete />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>{node.locked ? "锁定节点不可删除" : "删除节点"}</TooltipContent>
+          </Tooltip>
         </div>
         {hasChildren ? (
           <CollapsibleContent>
@@ -628,6 +708,7 @@ export function MaterialSidebar({
   };
 
   return (
+    <TooltipProvider delayDuration={120}>
     <aside
       className={[
         "grid h-full w-full border-r border-border bg-muted/30 text-foreground",
@@ -967,6 +1048,7 @@ export function MaterialSidebar({
         </TabsContent>
       </Tabs>
     </aside>
+    </TooltipProvider>
   );
 }
 

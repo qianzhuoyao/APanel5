@@ -1918,12 +1918,13 @@ export function PanelConfigSidebar({
                   <Input
                     type="number"
                     min={1}
-                    value={selectedElement.width}
-                    onChange={(e) =>
+                    value={selectedElement?.width ?? 1}
+                    onChange={(e) => {
+                      if (!selectedElement) return;
                       updateElement(selectedElement.id, {
                         width: Math.max(1, Number(e.target.value) || 1),
-                      })
-                    }
+                      });
+                    }}
                     className="h-7"
                   />
                 </label>

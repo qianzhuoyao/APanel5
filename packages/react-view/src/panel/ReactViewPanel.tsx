@@ -218,6 +218,16 @@ function IconLayers() {
   );
 }
 
+function IconImage() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <circle cx="9" cy="10" r="1.5" />
+      <path d="m21 16-5.5-5.5L7 19" />
+    </svg>
+  );
+}
+
 function formatRelativeTime(timestamp: number, now: number): string {
   const diff = Math.max(0, now - timestamp);
   const sec = Math.floor(diff / 1000);
@@ -278,6 +288,7 @@ export type ReactViewPanelProps = {
 
 export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelProps) {
   const THEME_STORAGE_KEY = "panel:theme";
+  const TITLE_ICON_STORAGE_KEY = "panel:titleIconDataUrl";
   const themedScrollbarClass =
     "scrollbar-thin [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-muted/40 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border/80 [&::-webkit-scrollbar-thumb]:hover:bg-border";
   const {
@@ -317,6 +328,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLDivElement | null>(null);
+  const panelRootRef = useRef<HTMLDivElement | null>(null);
   const [zoom, setZoom] = useState(initialZoom);
   const [scroll, setScroll] = useState({ left: 0, top: 0 });
 
@@ -335,6 +347,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
   const [copiedNodeId, setCopiedNodeId] = useState<string | null>(null);
   const [isDark, setIsDark] = useState(false);
   const importInputRef = useRef<HTMLInputElement | null>(null);
+  const titleIconInputRef = useRef<HTMLInputElement | null>(null);
   const [editingLayerId, setEditingLayerId] = useState<string | null>(null);
   const [editingLayerName, setEditingLayerName] = useState("");
   const [confirmDeleteLayerId, setConfirmDeleteLayerId] = useState<string | null>(null);
@@ -350,7 +363,21 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
   const [historyNow, setHistoryNow] = useState(Date.now());
   const [historyKeyword, setHistoryKeyword] = useState("");
   const [productName, setProductName] = useState("未命名产物");
+  const [titleIconDataUrl, setTitleIconDataUrl] = useState<string>("");
+  const [titleIconPreviewOpen, setTitleIconPreviewOpen] = useState(false);
+  const [titleIconZoom, setTitleIconZoom] = useState(1.6);
   const [panelFontSize, setPanelFontSize] = useState<"sm" | "md" | "lg">("md");
+  const [ellipsisTooltip, setEllipsisTooltip] = useState<{
+    open: boolean;
+    text: string;
+    x: number;
+    y: number;
+  }>({
+    open: false,
+    text: "",
+    x: 0,
+    y: 0,
+  });
   const mergeSelectedCount = layers.filter((l) => l.mergeSelected && !l.isMapping).length;
   const canMergeLayers = mergeSelectedCount >= 2;
   const panelFontPx = panelFontSize === "sm" ? 12 : panelFontSize === "lg" ? 15 : 13;
@@ -416,6 +443,117 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
       // ignore storage errors
     }
   }, [panelFontSize]);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(TITLE_ICON_STORAGE_KEY) ?? "";
+      if (stored) setTitleIconDataUrl(stored);
+    } catch {
+      // ignore storage errors
+    }
+  }, [TITLE_ICON_STORAGE_KEY]);
+
+  useEffect(() => {
+    try {
+      if (titleIconDataUrl) {
+        localStorage.setItem(TITLE_ICON_STORAGE_KEY, titleIconDataUrl);
+      } else {
+        localStorage.removeItem(TITLE_ICON_STORAGE_KEY);
+      }
+    } catch {
+      // ignore storage errors
+    }
+  }, [TITLE_ICON_STORAGE_KEY, titleIconDataUrl]);
+
+  useEffect(() => {
+    if (!titleIconPreviewOpen) return;
+    setTitleIconZoom(1.6);
+  }, [titleIconPreviewOpen, titleIconDataUrl]);
+
+  useEffect(() => {
+    const root = panelRootRef.current;
+    if (!root) return;
+    let rafId = 0;
+    const schedule = () => {
+      if (rafId) return;
+      rafId = window.requestAnimationFrame(() => {
+        rafId = 0;
+        const candidates = root.querySelectorAll<HTMLElement>(
+          ".truncate, .line-clamp-1, .line-clamp-2, .line-clamp-3"
+        );
+        candidates.forEach((el) => {
+          const text = (el.textContent ?? "").trim();
+          if (!text) {
+            delete el.dataset.ellipsisOverflow;
+            delete el.dataset.ellipsisTooltipText;
+            return;
+          }
+          const overflowed =
+            el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1;
+          if (overflowed) {
+            el.dataset.ellipsisOverflow = "1";
+            el.dataset.ellipsisTooltipText = text;
+          } else {
+            delete el.dataset.ellipsisOverflow;
+            delete el.dataset.ellipsisTooltipText;
+          }
+        });
+      });
+    };
+
+    schedule();
+    const mutationObserver = new MutationObserver(schedule);
+    mutationObserver.observe(root, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+      attributes: true,
+      attributeFilter: ["class", "style"],
+    });
+    const resizeObserver = new ResizeObserver(schedule);
+    resizeObserver.observe(root);
+    window.addEventListener("resize", schedule);
+    return () => {
+      if (rafId) window.cancelAnimationFrame(rafId);
+      mutationObserver.disconnect();
+      resizeObserver.disconnect();
+      window.removeEventListener("resize", schedule);
+    };
+  }, []);
+
+  useEffect(() => {
+    const root = panelRootRef.current;
+    if (!root) return;
+    const hide = () =>
+      setEllipsisTooltip((prev) => (prev.open ? { ...prev, open: false } : prev));
+    const onPointerMove = (e: PointerEvent) => {
+      const target = e.target as HTMLElement | null;
+      const holder = target?.closest<HTMLElement>("[data-ellipsis-overflow='1']");
+      if (!holder) {
+        hide();
+        return;
+      }
+      const text = holder.dataset.ellipsisTooltipText ?? holder.textContent?.trim() ?? "";
+      if (!text) {
+        hide();
+        return;
+      }
+      setEllipsisTooltip({
+        open: true,
+        text,
+        x: e.clientX + 8,
+        y: e.clientY + 14,
+      });
+    };
+    root.addEventListener("pointermove", onPointerMove, true);
+    root.addEventListener("pointerleave", hide, true);
+    root.addEventListener("scroll", hide, true);
+    return () => {
+      root.removeEventListener("pointermove", onPointerMove, true);
+      root.removeEventListener("pointerleave", hide, true);
+      root.removeEventListener("scroll", hide, true);
+    };
+  }, []);
 
   const clearSelection = useCallback(() => {
     setSelectedIds([]);
@@ -599,6 +737,44 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
     [importPanelData]
   );
 
+  const normalizeTitleIconFile = useCallback((file: File) => {
+    return new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error("read-failed"));
+      reader.onload = () => {
+        const src = typeof reader.result === "string" ? reader.result : "";
+        if (!src) {
+          reject(new Error("empty-data"));
+          return;
+        }
+        const img = new Image();
+        img.onload = () => {
+          const size = 64;
+          const canvas = document.createElement("canvas");
+          canvas.width = size;
+          canvas.height = size;
+          const ctx = canvas.getContext("2d");
+          if (!ctx) {
+            reject(new Error("canvas-context-failed"));
+            return;
+          }
+          ctx.clearRect(0, 0, size, size);
+          // 保持长宽比居中绘制，统一导出 PNG，提升 favicon 兼容性
+          const scale = Math.min(size / img.width, size / img.height);
+          const drawW = img.width * scale;
+          const drawH = img.height * scale;
+          const dx = (size - drawW) / 2;
+          const dy = (size - drawH) / 2;
+          ctx.drawImage(img, dx, dy, drawW, drawH);
+          resolve(canvas.toDataURL("image/png"));
+        };
+        img.onerror = () => reject(new Error("image-decode-failed"));
+        img.src = src;
+      };
+      reader.readAsDataURL(file);
+    });
+  }, []);
+
   const handlePreviewLayer = useCallback(() => {
     const targetLayer = layers.find((l) => l.id === activeLayerId);
     const layerElements = allElements.filter((el) => el.layerId === activeLayerId);
@@ -624,10 +800,17 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
     const maxY = boxes.length ? Math.max(...boxes.map((b) => b.bottom)) : 1;
     const sceneWidth = Math.max(1, maxX - minX);
     const sceneHeight = Math.max(1, maxY - minY);
-    const serializeNodeDom = (sourceNode: HTMLElement): string => {
+    const serializeNodeDom = (sourceNode: HTMLElement, isChartNode: boolean): string => {
       const clone = sourceNode.cloneNode(true) as HTMLElement;
+      // 去掉编辑态选中 ring 等视觉痕迹，避免预览出现 Moveable/编辑辅助效果
+      clone.className = clone.className
+        .split(/\s+/)
+        .filter((cls) => cls && !cls.startsWith("ring-"))
+        .join(" ");
+      clone.removeAttribute("data-moveable-target");
       const sourceCanvases = Array.from(sourceNode.querySelectorAll("canvas"));
       const cloneCanvases = Array.from(clone.querySelectorAll("canvas"));
+      if (isChartNode) return clone.outerHTML;
       sourceCanvases.forEach((srcCanvas, idx) => {
         const clonedCanvas = cloneCanvases[idx];
         if (!clonedCanvas) return;
@@ -651,30 +834,73 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
       .map((el) => {
         const node = canvasRef.current?.querySelector<HTMLElement>(`[data-element-id="${el.id}"]`);
         if (!node) return "";
-        return serializeNodeDom(node);
+        return serializeNodeDom(node, CHART_TYPES.has(el.materialType ?? ""));
       })
       .filter(Boolean)
       .join("");
+    const previewMeta = JSON.stringify({
+      gridNodeIds: layerElements.filter((el) => el.materialType === "grid").map((el) => el.id),
+      chartNodes: layerElements
+        .filter((el) => CHART_TYPES.has(el.materialType ?? ""))
+        .map((el) => ({
+          id: el.id,
+          renderer: el.chart?.renderMode ?? "canvas",
+          option: buildChartOption(el),
+        })),
+    }).replace(/<\//g, "<\\/");
 
     const headStyles = Array.from(
       document.querySelectorAll('style, link[rel="stylesheet"]')
     )
       .map((el) => el.outerHTML)
       .join("\n");
+    const previewFaviconLink = titleIconDataUrl
+      ? `<link rel="icon" href="${titleIconDataUrl}" /><link rel="shortcut icon" href="${titleIconDataUrl}" />`
+      : "";
+    const previewTitle = productName.trim() || "未命名产物";
+    const escapedPreviewTitle = previewTitle
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
 
+    const faviconJson = JSON.stringify(titleIconDataUrl || "");
+    const titleJson = JSON.stringify(previewTitle);
     const html = `<!doctype html>
 <html>
   <head>
     <meta charset="utf-8"/>
-    <title>Preview</title>
+    <title>${escapedPreviewTitle}</title>
     ${headStyles}
+    ${previewFaviconLink}
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
   </head>
   <body style="margin:0;background:#fff;overflow:hidden;">
     <div id="preview-root" style="position:absolute;left:${-minX}px;top:${-minY}px;width:${sceneWidth}px;height:${sceneHeight}px;transform-origin:left top;">
       ${previewNodesHtml}
     </div>
+    <script id="preview-meta" type="application/json">${previewMeta}</script>
     <script>
       (function () {
+        var faviconHref = ${faviconJson};
+        var previewTitle = ${titleJson};
+        if (previewTitle) {
+          document.title = previewTitle;
+        }
+        if (faviconHref) {
+          var rels = ["icon", "shortcut icon"];
+          rels.forEach(function (rel) {
+            var existing = document.querySelector("link[rel='" + rel + "']");
+            if (existing && existing.parentNode) {
+              existing.parentNode.removeChild(existing);
+            }
+            var link = document.createElement("link");
+            link.rel = rel;
+            link.href = faviconHref;
+            document.head.appendChild(link);
+          });
+        }
         var scene = document.getElementById("preview-root");
         function fitScene() {
           if (!scene) return;
@@ -689,6 +915,30 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
         }
         fitScene();
         window.addEventListener("resize", fitScene);
+        var metaRaw = document.getElementById("preview-meta");
+        var meta = {};
+        try { meta = JSON.parse((metaRaw && metaRaw.textContent) || "{}"); } catch (e) {}
+        var gridNodeIds = Array.isArray(meta.gridNodeIds) ? meta.gridNodeIds : [];
+        var chartNodes = Array.isArray(meta.chartNodes) ? meta.chartNodes : [];
+        gridNodeIds.forEach(function (id) {
+          var gridNode = document.querySelector("[data-element-id='" + id + "']");
+          if (!gridNode) return;
+          var content = gridNode.firstElementChild;
+          if (content) {
+            // 预览中隐藏网格编辑态占位格，仅保留内部真实节点呈现
+            content.innerHTML = "";
+            content.removeAttribute("style");
+          }
+        });
+        chartNodes.forEach(function (n) {
+          var host = document.querySelector("[data-element-id='" + n.id + "'] > div");
+          if (!host || !window.echarts) return;
+          host.innerHTML = "";
+          var chart = window.echarts.init(host, null, { renderer: n.renderer || "canvas" });
+          chart.setOption(n.option || {}, true);
+          chart.resize();
+          window.addEventListener("resize", function () { chart.resize(); });
+        });
       })();
     </script>
   </body>
@@ -697,17 +947,32 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
     if (!win) return;
     win.document.write(html);
     win.document.close();
-    win.document.title = `预览 - ${targetLayer?.name ?? "图层"}`;
-  }, [activeLayerId, allElements, layers]);
+    win.document.title = previewTitle;
+  }, [activeLayerId, allElements, layers, productName, titleIconDataUrl]);
 
   return (
     <div
+      ref={panelRootRef}
       className={[
         "relative flex h-full min-h-0 w-full flex-col overflow-hidden bg-background text-foreground",
         className ?? "",
       ].join(" ")}
       style={{ ["--panel-font-px" as string]: `${panelFontPx}px` }}
     >
+      <TooltipProvider delayDuration={120}>
+        <Tooltip open={ellipsisTooltip.open}>
+          <TooltipTrigger asChild>
+            <span
+              aria-hidden="true"
+              className="pointer-events-none fixed z-[10000] h-0 w-0"
+              style={{ left: ellipsisTooltip.x, top: ellipsisTooltip.y }}
+            />
+          </TooltipTrigger>
+          <TooltipContent side="top" align="start" className="max-w-[420px] break-words text-[11px]">
+            {ellipsisTooltip.text}
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
       <style>{`
         .panel-font-root :is(span, label, p, strong, button, input, textarea, select, option, a, li) {
           font-size: var(--panel-font-px) !important;
@@ -895,6 +1160,61 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                 />
                 <span className="text-[11px] text-muted-foreground">产物名称</span>
                 <TooltipProvider delayDuration={150}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        onClick={() => titleIconInputRef.current?.click()}
+                        className="rounded border border-border p-1 hover:bg-accent"
+                        aria-label="上传 title 图标"
+                      >
+                        <IconImage />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent className="z-[10000]">上传 title 图标</TooltipContent>
+                  </Tooltip>
+                  {titleIconDataUrl ? (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          onClick={() => setTitleIconDataUrl("")}
+                          className="rounded border border-border p-1 hover:bg-accent"
+                          aria-label="清除 title 图标"
+                        >
+                          <IconClose />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent className="z-[10000]">清除 title 图标</TooltipContent>
+                    </Tooltip>
+                  ) : null}
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      {titleIconDataUrl ? (
+                        <button
+                          type="button"
+                          onClick={() => setTitleIconPreviewOpen(true)}
+                          className="flex min-w-[92px] items-center gap-1.5 rounded border border-border bg-muted/30 px-2 py-1 hover:bg-accent/40"
+                          aria-label="查看 title 图标大图"
+                        >
+                          <img
+                            src={titleIconDataUrl}
+                            alt="title 图标缩略图"
+                            className="h-6 w-6 rounded border border-border/60 object-cover"
+                          />
+                          <span className="text-[10px] text-muted-foreground">Title Icon</span>
+                        </button>
+                      ) : (
+                        <div className="flex min-w-[92px] items-center gap-1.5 rounded border border-border bg-muted/30 px-2 py-1">
+                          <div className="h-6 w-6 rounded border border-dashed border-border/70 bg-background" />
+                          <span className="text-[10px] text-muted-foreground">Title Icon</span>
+                        </div>
+                      )}
+                    </TooltipTrigger>
+                    <TooltipContent className="z-[10000]">
+                      {titleIconDataUrl ? "点击查看 title 图标大图" : "当前未上传 title 图标"}
+                    </TooltipContent>
+                  </Tooltip>
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <button
@@ -1168,6 +1488,23 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                     await handleImportFile(file);
                   } catch {
                     window.alert("导入失败：JSON 解析错误");
+                  }
+                }}
+              />
+              <Input
+                ref={titleIconInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  e.currentTarget.value = "";
+                  if (!file) return;
+                  try {
+                    const normalizedDataUrl = await normalizeTitleIconFile(file);
+                    setTitleIconDataUrl(normalizedDataUrl);
+                  } catch {
+                    window.alert("图标读取失败，请重试");
                   }
                 }}
               />
@@ -1907,6 +2244,73 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
               确认删除
             </button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog
+        open={titleIconPreviewOpen}
+        onOpenChange={setTitleIconPreviewOpen}
+      >
+        <DialogContent
+          className="sm:max-w-[860px]"
+          overlayClassName="bg-transparent pointer-events-none"
+        >
+          <DialogHeader>
+            <DialogTitle>Title 图标预览</DialogTitle>
+            <DialogDescription>用于预览页标签页 icon 的当前图片</DialogDescription>
+          </DialogHeader>
+          <div className="flex items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setTitleIconZoom((z) => Math.max(0.5, Number((z - 0.1).toFixed(2))))}
+              className="rounded border border-border px-2 py-1 text-xs hover:bg-accent"
+            >
+              -
+            </button>
+            <span className="w-14 text-center text-xs text-muted-foreground">
+              {(titleIconZoom * 100).toFixed(0)}%
+            </span>
+            <button
+              type="button"
+              onClick={() => setTitleIconZoom((z) => Math.min(8, Number((z + 0.1).toFixed(2))))}
+              className="rounded border border-border px-2 py-1 text-xs hover:bg-accent"
+            >
+              +
+            </button>
+            <button
+              type="button"
+              onClick={() => setTitleIconZoom(1.6)}
+              className="rounded border border-border px-2 py-1 text-xs text-muted-foreground hover:bg-accent"
+            >
+              重置
+            </button>
+          </div>
+          {titleIconDataUrl ? (
+            <div
+              className="max-h-[78vh] overflow-auto rounded border border-border bg-muted/20 p-4"
+              onWheel={(e) => {
+                e.preventDefault();
+                const delta = e.deltaY > 0 ? -0.1 : 0.1;
+                setTitleIconZoom((z) => {
+                  const next = Number((z + delta).toFixed(2));
+                  return Math.min(8, Math.max(0.5, next));
+                });
+              }}
+            >
+              <img
+                src={titleIconDataUrl}
+                alt="title 图标大图预览"
+                className="mx-auto rounded border border-border/70 object-contain"
+                style={{
+                  width: 200,
+                  height: 200,
+                  maxWidth: "none",
+                  maxHeight: "none",
+                  transform: `scale(${titleIconZoom})`,
+                  transformOrigin: "center center",
+                }}
+              />
+            </div>
+          ) : null}
         </DialogContent>
       </Dialog>
       <Toaster />
