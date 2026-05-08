@@ -42,6 +42,7 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
   const [isPanning, setIsPanning] = useState(false);
   const lastScrollRef = useRef({ left: 0, top: 0 });
   const zoomRef = useRef(zoom);
+  const [viewport, setViewport] = useState({ width: 0, height: 0 });
   useEffect(() => {
     zoomRef.current = zoom;
   }, [zoom]);
@@ -77,6 +78,56 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
   }, []);
 
   useEffect(() => clearWindowPanListeners, [clearWindowPanListeners]);
+
+  useEffect(() => {
+    const el = viewportRef.current;
+    if (!el) return;
+
+    const onWheelZoom = (e: WheelEvent) => {
+      const api = transformRef.current;
+      if (!api) return;
+      const viewer = viewerRef.current as any;
+      if (!viewer) return;
+      const target = e.target as HTMLElement | null;
+      if (
+        target?.closest("input, textarea, select, [contenteditable='true']") ||
+        target?.closest("[role='dialog']")
+      ) {
+        return;
+      }
+      e.preventDefault();
+      const rect = el.getBoundingClientRect();
+      const pointerX = e.clientX - rect.left;
+      const pointerY = e.clientY - rect.top;
+      const currentScale = Number(api.state?.scale ?? 1);
+      const currentScrollLeft = Number(lastScrollRef.current.left ?? 0);
+      const currentScrollTop = Number(lastScrollRef.current.top ?? 0);
+
+      const direction = e.deltaY > 0 ? -1 : 1;
+      const zoomStep = direction > 0 ? 1.08 : 0.92;
+      const nextScale = Math.min(4, Math.max(0.25, currentScale * zoomStep));
+      if (Math.abs(nextScale - currentScale) < 0.0001) return;
+
+      // 以鼠标点为锚点缩放：通过滚动补偿实现，避免 transform 平移破坏 Ruler 对齐
+      const worldX = (pointerX + currentScrollLeft) / Math.max(0.0001, currentScale);
+      const worldY = (pointerY + currentScrollTop) / Math.max(0.0001, currentScale);
+      const nextScrollLeft = worldX * nextScale - pointerX;
+      const nextScrollTop = worldY * nextScale - pointerY;
+
+      syncingZoomRef.current = true;
+      api.setTransform(0, 0, nextScale, 0, "linear");
+      viewer.scrollTo(nextScrollLeft, nextScrollTop);
+      onZoomChange(Number(nextScale.toFixed(4)));
+      requestAnimationFrame(() => {
+        syncingZoomRef.current = false;
+      });
+    };
+
+    el.addEventListener("wheel", onWheelZoom, { passive: false, capture: true });
+    return () => {
+      el.removeEventListener("wheel", onWheelZoom, true);
+    };
+  }, [onZoomChange, viewport.width, viewport.height]);
 
   useEffect(() => {
     const api = transformRef.current;
@@ -154,8 +205,6 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
 
     return () => cancelAnimationFrame(id);
   }, []);
-
-  const [viewport, setViewport] = useState({ width: 0, height: 0 });
 
   useEffect(() => {
     const el = viewportRef.current;
@@ -363,13 +412,8 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
         panning={{ disabled: true }}
         doubleClick={{ disabled: true }}
         pinch={{ disabled: true }}
-        wheel={{ step: 0.008, disabled: false, wheelDisabled: false }}
+        wheel={{ step: 0.008, disabled: true, wheelDisabled: true }}
         centerZoomedOut={false}
-        onWheel={(instance) => {
-          const next = Number(instance.state.scale.toFixed(4));
-          if (syncingZoomRef.current) return;
-          onZoomChange(next);
-        }}
       >
         <TransformComponent
           // 始终占满操作容器，但不在这一层裁切放大后的内容

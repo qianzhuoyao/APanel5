@@ -46,6 +46,9 @@ export function PanelRulers({
 
   const unit = useMemo(() => getAdaptiveUnit(zoom), [zoom]);
   const segment = useMemo(() => (unit >= 100 ? 5 : 10), [unit]);
+  // 标尺可视区域相对画布有 size 的内缩，需要加回滚动补偿，确保刻度与节点 x/y 对齐
+  const rulerScrollLeft = scrollLeft + size;
+  const rulerScrollTop = scrollTop + size;
 
   const commonProps = useMemo(
     () => ({
@@ -74,7 +77,7 @@ export function PanelRulers({
         <Ruler
           type="horizontal"
           {...commonProps}
-          scrollPos={scrollLeft}
+          scrollPos={rulerScrollLeft}
         />
       </div>
 
@@ -85,7 +88,7 @@ export function PanelRulers({
         <Ruler
           type="vertical"
           {...commonProps}
-          scrollPos={scrollTop}
+          scrollPos={rulerScrollTop}
         />
       </div>
 
@@ -96,7 +99,7 @@ export function PanelRulers({
         <Ruler
           type="horizontal"
           {...commonProps}
-          scrollPos={scrollLeft}
+          scrollPos={rulerScrollLeft}
         />
       </div>
 
@@ -107,7 +110,7 @@ export function PanelRulers({
         <Ruler
           type="vertical"
           {...commonProps}
-          scrollPos={scrollTop}
+          scrollPos={rulerScrollTop}
         />
       </div>
 
