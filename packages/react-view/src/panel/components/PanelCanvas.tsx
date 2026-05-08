@@ -36,6 +36,7 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const viewerRef = useRef<any>(null);
   const transformRef = useRef<any>(null);
+  const canvasElRef = useRef<HTMLDivElement | null>(null);
   const syncingZoomRef = useRef(false);
   const didAutoCenterRef = useRef(false);
   const [isPanning, setIsPanning] = useState(false);
@@ -102,6 +103,7 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
 
   const syncCanvasElement = useCallback(
     (el: HTMLDivElement | null) => {
+      canvasElRef.current = el;
       if (!canvasRef) return;
       if (typeof canvasRef === "function") canvasRef(el);
       else (canvasRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
@@ -282,25 +284,12 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
           localX <= viewportRect.width &&
           localY <= viewportRect.height;
         if (!isInsideViewport) return;
+        const canvasEl = canvasElRef.current;
+        if (!canvasEl) return;
+        const canvasRect = canvasEl.getBoundingClientRect();
         const currentZoom = Math.max(0.0001, zoomRef.current);
-        const viewer = viewerRef.current as
-          | {
-              getScrollLeft?: () => number;
-              getScrollTop?: () => number;
-            }
-          | null;
-        const viewerScrollLeft = viewer?.getScrollLeft?.();
-        const viewerScrollTop = viewer?.getScrollTop?.();
-        const currentScrollLeft =
-          (typeof viewerScrollLeft === "number" ? viewerScrollLeft : undefined) ??
-          viewportEl.scrollLeft ??
-          lastScrollRef.current.left;
-        const currentScrollTop =
-          (typeof viewerScrollTop === "number" ? viewerScrollTop : undefined) ??
-          viewportEl.scrollTop ??
-          lastScrollRef.current.top;
-        const x = (currentScrollLeft + localX) / currentZoom;
-        const y = (currentScrollTop + localY) / currentZoom;
+        const x = (clientX - canvasRect.left) / currentZoom;
+        const y = (clientY - canvasRect.top) / currentZoom;
         onDropMaterial?.({ materialId: material.id, x, y });
       } catch {
         // ignore invalid payload
