@@ -44,7 +44,13 @@ export function PanelConfigSidebar({
   const [optionJsonText, setOptionJsonText] = useState("{}");
   const [optionJsonError, setOptionJsonError] = useState<string | null>(null);
   const [uploadStatus, setUploadStatus] = useState<string>("");
+  const [audioStatus, setAudioStatus] = useState<string>("");
+  const [videoStatus, setVideoStatus] = useState<string>("");
   const textEditorRef = useRef<HTMLDivElement | null>(null);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const recordStreamRef = useRef<MediaStream | null>(null);
+  const audioChunksRef = useRef<BlobPart[]>([]);
+  const [isRecordingAudio, setIsRecordingAudio] = useState(false);
   const themedScrollbarClass =
     "scrollbar-thin [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-muted/40 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border/80 [&::-webkit-scrollbar-thumb]:hover:bg-border";
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
@@ -109,6 +115,12 @@ export function PanelConfigSidebar({
       textEditorRef.current.innerHTML = nextHtml;
     }
   }, [selectedElement?.id, selectedElement?.materialType, selectedElement?.textHtml]);
+  useEffect(
+    () => () => {
+      recordStreamRef.current?.getTracks().forEach((track) => track.stop());
+    },
+    []
+  );
 
   const updateSelectedChart = useCallback(
     (patch: Partial<PanelChartConfig>) => {
@@ -165,6 +177,129 @@ export function PanelConfigSidebar({
       }
     },
     [selectedElement, updateSelectedStyle]
+  );
+  const updateSelectedAudio = useCallback(
+    (patch: Partial<PanelElement>) => {
+      if (!selectedElement || selectedElement.materialType !== "audio") return;
+      updateElement(selectedElement.id, patch);
+    },
+    [selectedElement, updateElement]
+  );
+  const handleUploadAudioFile = useCallback(
+    async (file: File) => {
+      if (!selectedElement || selectedElement.materialType !== "audio") return;
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result ?? ""));
+        reader.onerror = () => reject(new Error("读取音频失败"));
+        reader.readAsDataURL(file);
+      });
+      updateSelectedAudio({ audioSrc: base64 });
+      setAudioStatus("已写入本地音频（base64）");
+      try {
+        const form = new FormData();
+        form.append("file", file);
+        const resp = await fetch("/api/upload", { method: "POST", body: form });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const data = (await resp.json()) as { url?: string };
+        if (data.url) {
+          updateSelectedAudio({ audioRemoteUrl: data.url });
+          setAudioStatus("已上传服务器并更新远程链接");
+        }
+      } catch {
+        setAudioStatus("服务器上传失败，仅保留本地音频");
+      }
+    },
+    [selectedElement, updateSelectedAudio]
+  );
+  const handleUploadAudioPoster = useCallback(
+    async (file: File) => {
+      if (!selectedElement || selectedElement.materialType !== "audio") return;
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result ?? ""));
+        reader.onerror = () => reject(new Error("读取图片失败"));
+        reader.readAsDataURL(file);
+      });
+      updateSelectedAudio({ audioPosterImage: base64 });
+      setAudioStatus("已设置音频占位图");
+    },
+    [selectedElement, updateSelectedAudio]
+  );
+  const stopRecordingAudio = useCallback(() => {
+    recorderRef.current?.stop();
+  }, []);
+  const startRecordingAudio = useCallback(async () => {
+    if (!selectedElement || selectedElement.materialType !== "audio") return;
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setAudioStatus("当前环境不支持录音");
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      recordStreamRef.current = stream;
+      const recorder = new MediaRecorder(stream);
+      recorderRef.current = recorder;
+      audioChunksRef.current = [];
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) audioChunksRef.current.push(event.data);
+      };
+      recorder.onstop = async () => {
+        const blob = new Blob(audioChunksRef.current, { type: recorder.mimeType || "audio/webm" });
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result ?? ""));
+          reader.onerror = () => reject(new Error("录音读取失败"));
+          reader.readAsDataURL(blob);
+        });
+        updateSelectedAudio({ audioSrc: dataUrl });
+        setAudioStatus("录音已保存，可直接播放");
+        recordStreamRef.current?.getTracks().forEach((track) => track.stop());
+        recordStreamRef.current = null;
+        recorderRef.current = null;
+        setIsRecordingAudio(false);
+      };
+      recorder.start();
+      setIsRecordingAudio(true);
+      setAudioStatus("录音中...");
+    } catch {
+      setAudioStatus("无法开始录音，请检查麦克风权限");
+      setIsRecordingAudio(false);
+    }
+  }, [selectedElement, updateSelectedAudio]);
+  const updateSelectedVideo = useCallback(
+    (patch: Partial<PanelElement>) => {
+      if (!selectedElement || selectedElement.materialType !== "video") return;
+      updateElement(selectedElement.id, patch);
+    },
+    [selectedElement, updateElement]
+  );
+  const handleUploadVideoFile = useCallback(
+    async (file: File) => {
+      if (!selectedElement || selectedElement.materialType !== "video") return;
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result ?? ""));
+        reader.onerror = () => reject(new Error("读取视频失败"));
+        reader.readAsDataURL(file);
+      });
+      updateSelectedVideo({ videoSrc: base64 });
+      setVideoStatus("已写入本地视频（base64）");
+      try {
+        const form = new FormData();
+        form.append("file", file);
+        const resp = await fetch("/api/upload", { method: "POST", body: form });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const data = (await resp.json()) as { url?: string };
+        if (data.url) {
+          updateSelectedVideo({ videoRemoteUrl: data.url });
+          setVideoStatus("已上传服务器并更新远程链接");
+        }
+      } catch {
+        setVideoStatus("服务器上传失败，仅保留本地视频");
+      }
+    },
+    [selectedElement, updateSelectedVideo]
   );
 
   const isSectionExpanded = (key: string, defaultValue = true) =>
@@ -339,21 +474,52 @@ export function PanelConfigSidebar({
                 <div className="grid grid-cols-2 gap-2">
                   <label className="block space-y-1">
                     <div>背景尺寸</div>
-                    <Input
-                      value={selectedElement.style?.backgroundSize ?? ""}
-                      onChange={(e) => updateSelectedStyle({ backgroundSize: e.target.value || undefined })}
-                      placeholder="cover"
-                      className="h-7"
-                    />
+                    <Select
+                      value={selectedElement.style?.backgroundSize ?? "__none__"}
+                      onValueChange={(value) =>
+                        updateSelectedStyle({
+                          backgroundSize: value === "__none__" ? undefined : value,
+                        })
+                      }
+                    >
+                      <SelectTrigger className="h-7">
+                        <SelectValue placeholder="选择背景尺寸" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">默认</SelectItem>
+                        <SelectItem value="cover">cover</SelectItem>
+                        <SelectItem value="contain">contain</SelectItem>
+                        <SelectItem value="100% 100%">100% 100%</SelectItem>
+                        <SelectItem value="auto">auto</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </label>
                   <label className="block space-y-1">
                     <div>背景位置</div>
-                    <Input
-                      value={selectedElement.style?.backgroundPosition ?? ""}
-                      onChange={(e) => updateSelectedStyle({ backgroundPosition: e.target.value || undefined })}
-                      placeholder="center"
-                      className="h-7"
-                    />
+                    <Select
+                      value={selectedElement.style?.backgroundPosition ?? "__none__"}
+                      onValueChange={(value) =>
+                        updateSelectedStyle({
+                          backgroundPosition: value === "__none__" ? undefined : value,
+                        })
+                      }
+                    >
+                      <SelectTrigger className="h-7">
+                        <SelectValue placeholder="选择背景位置" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">默认</SelectItem>
+                        <SelectItem value="center">center</SelectItem>
+                        <SelectItem value="top">top</SelectItem>
+                        <SelectItem value="bottom">bottom</SelectItem>
+                        <SelectItem value="left">left</SelectItem>
+                        <SelectItem value="right">right</SelectItem>
+                        <SelectItem value="top left">top left</SelectItem>
+                        <SelectItem value="top right">top right</SelectItem>
+                        <SelectItem value="bottom left">bottom left</SelectItem>
+                        <SelectItem value="bottom right">bottom right</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </label>
                 </div>
               )}
@@ -1045,6 +1211,248 @@ export function PanelConfigSidebar({
                     />
                     <span>允许在画布内直接输入（默认开启）</span>
                   </label>
+                )}
+              </>
+            )
+          ) : selectedElement.materialType === "audio" ? (
+            renderSection(
+              "audioConfig",
+              "音频配置",
+              <>
+                {renderFieldGroup(
+                  "音频来源",
+                  <>
+                    <label className="block space-y-1">
+                      <div>音频 URL</div>
+                      <Input
+                        value={selectedElement.audioRemoteUrl ?? ""}
+                        onChange={(e) =>
+                          updateSelectedAudio({
+                            audioRemoteUrl: e.target.value || undefined,
+                            audioSrc: e.target.value || selectedElement.audioSrc,
+                          })
+                        }
+                        placeholder="https://example.com/audio.mp3"
+                        className="h-7"
+                      />
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <label className="inline-flex cursor-pointer items-center rounded border border-border px-2 py-1 text-[11px] hover:bg-accent">
+                        上传音频
+                        <Input
+                          type="file"
+                          accept="audio/*"
+                          className="hidden"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            e.currentTarget.value = "";
+                            if (!file) return;
+                            await handleUploadAudioFile(file);
+                          }}
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        className="rounded border border-border px-2 py-1 text-[11px] hover:bg-accent disabled:opacity-50"
+                        onClick={isRecordingAudio ? stopRecordingAudio : startRecordingAudio}
+                      >
+                        {isRecordingAudio ? "停止录音" : "开始录音"}
+                      </button>
+                    </div>
+                    {audioStatus ? (
+                      <div className="rounded border border-border/60 bg-background px-2 py-1.5 text-[11px] text-muted-foreground">
+                        {audioStatus}
+                      </div>
+                    ) : null}
+                    <audio
+                      controls
+                      className="h-8 w-full"
+                      src={selectedElement.audioSrc || selectedElement.audioRemoteUrl || ""}
+                    />
+                  </>
+                )}
+                {renderFieldGroup(
+                  "展示样式",
+                  <>
+                    <label className="flex items-center gap-2">
+                      <Checkbox
+                        checked={selectedElement.mediaAutoPauseOnEdit !== false}
+                        className="h-4 w-4 border-2 border-foreground/80 bg-background ring-1 ring-foreground/40 data-[state=checked]:border-primary data-[state=checked]:ring-primary/40"
+                        onCheckedChange={(checked) =>
+                          updateSelectedAudio({
+                            mediaAutoPauseOnEdit: checked !== false,
+                          })
+                        }
+                      />
+                      <span>编辑时自动暂停媒体</span>
+                    </label>
+                    <label className="block space-y-1">
+                      <div>预设喇叭图标</div>
+                      <Select
+                        value={selectedElement.audioIconPreset ?? "__none__"}
+                        onValueChange={(value) =>
+                          updateSelectedAudio({
+                            audioIconPreset:
+                              value === "__none__"
+                                ? undefined
+                                : (value as "speaker" | "music" | "headphone" | "wave"),
+                          })
+                        }
+                      >
+                        <SelectTrigger className="h-7">
+                          <SelectValue placeholder="选择图标" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__none__">默认（显示进度条）</SelectItem>
+                          <SelectItem value="speaker">喇叭</SelectItem>
+                          <SelectItem value="music">音符</SelectItem>
+                          <SelectItem value="headphone">耳机</SelectItem>
+                          <SelectItem value="wave">声波</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </label>
+                    <label className="block space-y-1">
+                      <div>播放动效</div>
+                      <Select
+                        value={selectedElement.audioVisualEffect ?? "pulse"}
+                        onValueChange={(value) =>
+                          updateSelectedAudio({
+                            audioVisualEffect: value as "none" | "pulse" | "ripple",
+                          })
+                        }
+                      >
+                        <SelectTrigger className="h-7">
+                          <SelectValue placeholder="选择动效" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">无动效</SelectItem>
+                          <SelectItem value="pulse">呼吸高亮</SelectItem>
+                          <SelectItem value="ripple">波纹扩散</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </label>
+                    <label className="block space-y-1">
+                      <div>动效速度</div>
+                      <Select
+                        value={selectedElement.audioVisualSpeed ?? "normal"}
+                        onValueChange={(value) =>
+                          updateSelectedAudio({
+                            audioVisualSpeed: value as "slow" | "normal" | "fast",
+                          })
+                        }
+                      >
+                        <SelectTrigger className="h-7">
+                          <SelectValue placeholder="选择速度" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="slow">慢</SelectItem>
+                          <SelectItem value="normal">中</SelectItem>
+                          <SelectItem value="fast">快</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <label className="inline-flex cursor-pointer items-center rounded border border-border px-2 py-1 text-[11px] hover:bg-accent">
+                        上传占位图
+                        <Input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            e.currentTarget.value = "";
+                            if (!file) return;
+                            await handleUploadAudioPoster(file);
+                          }}
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        className="rounded border border-border px-2 py-1 text-[11px] hover:bg-accent"
+                        onClick={() =>
+                          updateSelectedAudio({
+                            audioPosterImage: undefined,
+                          })
+                        }
+                      >
+                        清空占位图
+                      </button>
+                    </div>
+                    {selectedElement.audioPosterImage ? (
+                      <img
+                        src={selectedElement.audioPosterImage}
+                        alt="音频占位图预览"
+                        className="h-20 w-full rounded border border-border/60 object-cover"
+                      />
+                    ) : null}
+                    <div className="text-[11px] text-muted-foreground">
+                      设置占位图或图标后，节点上将隐藏进度条，改为点击图标播放/暂停。
+                    </div>
+                  </>
+                )}
+              </>
+            )
+          ) : selectedElement.materialType === "video" ? (
+            renderSection(
+              "videoConfig",
+              "视频配置",
+              <>
+                {renderFieldGroup(
+                  "视频来源",
+                  <>
+                    <label className="block space-y-1">
+                      <div>视频 URL</div>
+                      <Input
+                        value={selectedElement.videoRemoteUrl ?? ""}
+                        onChange={(e) =>
+                          updateSelectedVideo({
+                            videoRemoteUrl: e.target.value || undefined,
+                            videoSrc: e.target.value || selectedElement.videoSrc,
+                          })
+                        }
+                        placeholder="https://example.com/video.mp4"
+                        className="h-7"
+                      />
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <label className="inline-flex cursor-pointer items-center rounded border border-border px-2 py-1 text-[11px] hover:bg-accent">
+                        上传视频
+                        <Input
+                          type="file"
+                          accept="video/*"
+                          className="hidden"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            e.currentTarget.value = "";
+                            if (!file) return;
+                            await handleUploadVideoFile(file);
+                          }}
+                        />
+                      </label>
+                    </div>
+                    {videoStatus ? (
+                      <div className="rounded border border-border/60 bg-background px-2 py-1.5 text-[11px] text-muted-foreground">
+                        {videoStatus}
+                      </div>
+                    ) : null}
+                    <video
+                      controls
+                      className="h-36 w-full rounded border border-border/60 bg-black/80 object-contain"
+                      src={selectedElement.videoSrc || selectedElement.videoRemoteUrl || ""}
+                    />
+                    <label className="flex items-center gap-2">
+                      <Checkbox
+                        checked={selectedElement.mediaAutoPauseOnEdit !== false}
+                        className="h-4 w-4 border-2 border-foreground/80 bg-background ring-1 ring-foreground/40 data-[state=checked]:border-primary data-[state=checked]:ring-primary/40"
+                        onCheckedChange={(checked) =>
+                          updateSelectedVideo({
+                            mediaAutoPauseOnEdit: checked !== false,
+                          })
+                        }
+                      />
+                      <span>编辑时自动暂停媒体</span>
+                    </label>
+                  </>
                 )}
               </>
             )

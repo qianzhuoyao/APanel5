@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import * as echarts from "echarts";
 import type { PanelElement } from "../types";
 import { buildChartOption, CHART_TYPES } from "../utils/chartOptionBuilder";
@@ -101,6 +101,265 @@ function GridNodeContent({
           title={`槽位 ${idx + 1}${occupied.has(idx) ? "（已占用）" : "（空）"}`}
         />
       ))}
+    </div>
+  );
+}
+
+function AudioNodeContent({
+  element,
+  selected = false,
+}: {
+  element: PanelElement;
+  selected?: boolean;
+}) {
+  const src = element.audioSrc || element.audioRemoteUrl || "";
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [playing, setPlaying] = useState(false);
+  const poster = element.audioPosterImage;
+  const iconPreset = element.audioIconPreset;
+  const iconMode = Boolean(poster || iconPreset);
+  const visualEffect = element.audioVisualEffect ?? "pulse";
+  const visualSpeed = element.audioVisualSpeed ?? "normal";
+  const speedMs = visualSpeed === "fast" ? 900 : visualSpeed === "slow" ? 1800 : 1300;
+  const shouldAnimate = Boolean(src) && playing && visualEffect !== "none";
+  useEffect(() => {
+    const el = audioRef.current;
+    if (!el) return;
+    const onPlay = () => setPlaying(true);
+    const onPause = () => setPlaying(false);
+    const onEnded = () => setPlaying(false);
+    el.addEventListener("play", onPlay);
+    el.addEventListener("pause", onPause);
+    el.addEventListener("ended", onEnded);
+    return () => {
+      el.removeEventListener("play", onPlay);
+      el.removeEventListener("pause", onPause);
+      el.removeEventListener("ended", onEnded);
+    };
+  }, []);
+  useEffect(() => {
+    if (!selected || element.mediaAutoPauseOnEdit === false) return;
+    const el = audioRef.current;
+    if (!el) return;
+    if (!el.paused) el.pause();
+  }, [selected, element.mediaAutoPauseOnEdit]);
+  const renderIcon = () => {
+    const common = "h-8 w-8 text-foreground/90";
+    switch (iconPreset) {
+      case "music":
+        return (
+          <svg viewBox="0 0 24 24" className={common} fill="none" stroke="currentColor" strokeWidth="1.8">
+            <path d="M9 18a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0Zm11-2a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0Z" />
+            <path d="M9 18V7l11-2v11" />
+          </svg>
+        );
+      case "headphone":
+        return (
+          <svg viewBox="0 0 24 24" className={common} fill="none" stroke="currentColor" strokeWidth="1.8">
+            <path d="M4 12a8 8 0 1 1 16 0" />
+            <rect x="3" y="12" width="4" height="7" rx="2" />
+            <rect x="17" y="12" width="4" height="7" rx="2" />
+          </svg>
+        );
+      case "wave":
+        return (
+          <svg viewBox="0 0 24 24" className={common} fill="none" stroke="currentColor" strokeWidth="1.8">
+            <path d="M4 14v-4M8 17V7M12 20V4M16 17V7M20 14v-4" />
+          </svg>
+        );
+      default:
+        return (
+          <svg viewBox="0 0 24 24" className={common} fill="none" stroke="currentColor" strokeWidth="1.8">
+            <path d="M11 5 6 9H3v6h3l5 4V5Z" />
+            <path d="M15 9a4 4 0 0 1 0 6" />
+            <path d="M17.5 6.5a7 7 0 0 1 0 11" />
+          </svg>
+        );
+    }
+  };
+  if (iconMode) {
+    return (
+      <div
+        className={[
+          "relative flex h-full w-full items-center justify-center overflow-hidden rounded border border-border/60 bg-muted/10",
+          shouldAnimate && visualEffect === "pulse" ? "animate-pulse ring-2 ring-primary/50" : "",
+        ].join(" ")}
+        style={shouldAnimate && visualEffect === "pulse" ? { animationDuration: `${speedMs}ms` } : undefined}
+      >
+        {poster ? (
+          <button
+            type="button"
+            className="h-full w-full"
+            onMouseDown={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={() => {
+              if (!src) return;
+              const el = audioRef.current;
+              if (!el) return;
+              if (el.paused) {
+                void el.play();
+              } else {
+                el.pause();
+              }
+            }}
+            title={!src ? "请先配置音频源" : playing ? "点击暂停" : "点击播放"}
+          >
+            <img
+              src={poster}
+              alt="音频占位图"
+              className="h-full w-full object-cover"
+              draggable={false}
+              onDragStart={(e) => e.preventDefault()}
+            />
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="flex h-full w-full items-center justify-center"
+            onMouseDown={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={() => {
+              if (!src) return;
+              const el = audioRef.current;
+              if (!el) return;
+              if (el.paused) {
+                void el.play();
+              } else {
+                el.pause();
+              }
+            }}
+            title={!src ? "请先配置音频源" : playing ? "点击暂停" : "点击播放"}
+          >
+            {renderIcon()}
+          </button>
+        )}
+        {shouldAnimate && visualEffect === "ripple" ? (
+          <>
+            <span
+              className="pointer-events-none absolute h-16 w-16 rounded-full border border-primary/70 animate-ping"
+              style={{ animationDuration: `${speedMs}ms` }}
+            />
+            <span
+              className="pointer-events-none absolute h-24 w-24 rounded-full border border-primary/40 animate-ping"
+              style={{ animationDuration: `${speedMs}ms`, animationDelay: `${Math.round(speedMs / 3)}ms` }}
+            />
+          </>
+        ) : null}
+        <span className="pointer-events-none absolute right-2 top-2 rounded bg-black/55 px-1.5 py-0.5 text-[10px] text-white">
+          {!src ? "未配置音频" : playing ? "暂停" : "播放"}
+        </span>
+        <audio ref={audioRef} src={src} preload="metadata" className="hidden" />
+      </div>
+    );
+  }
+  if (!src) {
+    return (
+      <div className="flex h-full w-full items-center justify-center rounded border border-dashed border-border/70 bg-muted/15 px-2 text-[11px] text-muted-foreground">
+        音频占位
+      </div>
+    );
+  }
+  return (
+    <div className="relative flex h-full w-full items-center justify-center rounded border border-border/60 bg-muted/10 px-2">
+      <div className="pointer-events-none text-[11px] text-muted-foreground">
+        {playing ? "音频播放中" : "音频已就绪"}
+      </div>
+      <button
+        type="button"
+        className="absolute right-2 top-2 rounded bg-black/55 px-1.5 py-0.5 text-[10px] text-white"
+        onMouseDown={(e) => e.stopPropagation()}
+        onPointerDown={(e) => e.stopPropagation()}
+        onClick={() => {
+          const el = audioRef.current;
+          if (!el) return;
+          if (el.paused) {
+            void el.play();
+          } else {
+            el.pause();
+          }
+        }}
+        title={playing ? "点击暂停" : "点击播放"}
+      >
+        {playing ? "暂停" : "播放"}
+      </button>
+      <audio ref={audioRef} src={src} preload="metadata" className="hidden" />
+    </div>
+  );
+}
+
+function VideoNodeContent({
+  element,
+  selected = false,
+}: {
+  element: PanelElement;
+  selected?: boolean;
+}) {
+  const src = element.videoSrc || element.videoRemoteUrl || "";
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [playing, setPlaying] = useState(false);
+  useEffect(() => {
+    const el = videoRef.current;
+    if (!el) return;
+    const onPlay = () => setPlaying(true);
+    const onPause = () => setPlaying(false);
+    const onEnded = () => setPlaying(false);
+    el.addEventListener("play", onPlay);
+    el.addEventListener("pause", onPause);
+    el.addEventListener("ended", onEnded);
+    return () => {
+      el.removeEventListener("play", onPlay);
+      el.removeEventListener("pause", onPause);
+      el.removeEventListener("ended", onEnded);
+    };
+  }, []);
+  useEffect(() => {
+    if (!selected || element.mediaAutoPauseOnEdit === false) return;
+    const el = videoRef.current;
+    if (!el) return;
+    if (!el.paused) el.pause();
+  }, [selected, element.mediaAutoPauseOnEdit]);
+  if (!src) {
+    return (
+      <div className="flex h-full w-full items-center justify-center rounded border border-dashed border-border/70 bg-muted/15 px-2 text-[11px] text-muted-foreground">
+        视频占位
+      </div>
+    );
+  }
+  return (
+    <div className="relative h-full w-full p-1">
+      <video ref={videoRef} src={src} className="h-full w-full rounded object-contain pointer-events-none" />
+      <button
+        type="button"
+        className="absolute right-2 top-2 rounded bg-black/55 px-1.5 py-0.5 text-[10px] text-white"
+        onMouseDown={(e) => e.stopPropagation()}
+        onPointerDown={(e) => e.stopPropagation()}
+        onClick={() => {
+          const el = videoRef.current;
+          if (!el) return;
+          if (el.paused) {
+            void el.play();
+          } else {
+            el.pause();
+          }
+        }}
+        title={playing ? "点击暂停" : "点击播放"}
+      >
+        {playing ? "暂停" : "播放"}
+      </button>
+    </div>
+  );
+}
+
+function EmptyNodePlaceholder({ element }: { element: PanelElement }) {
+  const labelMap: Record<string, string> = {
+    image: "图片占位",
+    video: "视频占位",
+    audio: "音频占位",
+  };
+  const label = labelMap[element.materialType ?? ""] ?? `${element.materialType ?? "节点"} 占位`;
+  return (
+    <div className="flex h-full w-full items-center justify-center rounded border border-dashed border-border/70 bg-muted/15 px-2 text-[11px] text-muted-foreground">
+      {label}
     </div>
   );
 }
@@ -302,7 +561,7 @@ export function ElementsLayer({
           <div
             key={el.id}
             className={[
-              "rv-selectable absolute select-none rounded-lg",
+              "rv-selectable absolute select-none",
               isSelected ? "ring-2 ring-blue-500/90 ring-offset-0" : "",
             ].join(" ")}
             data-element-id={el.id}
@@ -343,8 +602,12 @@ export function ElementsLayer({
                   updateElement(el.id, { textHtml: nextHtml });
                 }}
               />
+            ) : el.materialType === "audio" ? (
+              <AudioNodeContent element={el} selected={isSelected} />
+            ) : el.materialType === "video" ? (
+              <VideoNodeContent element={el} selected={isSelected} />
             ) : (
-              <div className="h-full w-full" />
+              <EmptyNodePlaceholder element={el} />
             )}
           </div>
         );

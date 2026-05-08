@@ -73,6 +73,15 @@ export type PanelElement = {
   gridSlotIndex?: number;
   mappingSourceNodeId?: string;
   mappingSourceLayerId?: string;
+  audioSrc?: string;
+  audioRemoteUrl?: string;
+  audioPosterImage?: string;
+  audioIconPreset?: "speaker" | "music" | "headphone" | "wave";
+  audioVisualEffect?: "none" | "pulse" | "ripple";
+  audioVisualSpeed?: "slow" | "normal" | "fast";
+  mediaAutoPauseOnEdit?: boolean;
+  videoSrc?: string;
+  videoRemoteUrl?: string;
   style?: PanelElementStyle;
   x: number;
   y: number;
