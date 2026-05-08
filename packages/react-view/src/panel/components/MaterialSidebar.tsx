@@ -3,6 +3,10 @@ import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
+  Empty,
+  EmptyDescription,
+  EmptyIcon,
+  EmptyTitle,
   Input,
   Switch,
   Tabs,
@@ -680,9 +684,25 @@ export function MaterialSidebar({
                   </button>
                 ))}
                 {isSearching && matchedItems.length === 0 ? (
-                  <div className="rounded-lg border border-dashed border-border px-2.5 py-3 text-xs text-muted-foreground">
-                    没有匹配到物料
-                  </div>
+                  <Empty className="py-5">
+                    <EmptyIcon className="h-8 w-8">
+                      <svg
+                        viewBox="0 0 24 24"
+                        className="h-4 w-4"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.8"
+                        aria-hidden="true"
+                      >
+                        <circle cx="11" cy="11" r="7" />
+                        <path d="m20 20-3.5-3.5" />
+                      </svg>
+                    </EmptyIcon>
+                    <EmptyTitle className="text-xs">未匹配到物料</EmptyTitle>
+                    <EmptyDescription className="text-[11px]">
+                      尝试更换关键词，或切换分类后再搜索。
+                    </EmptyDescription>
+                  </Empty>
                 ) : null}
               </div>
             </div>
@@ -891,8 +911,26 @@ export function MaterialSidebar({
                     .filter((node) => nodeMatchesTreeSearch(node, new Set<string>()));
                   return rootNodes.length === 0;
                 }) ? (
-                  <div className="mx-2 my-2 rounded border border-dashed border-border px-2.5 py-3 text-xs text-muted-foreground">
-                    没有匹配到节点
+                  <div className="mx-2 my-2">
+                    <Empty className="py-5">
+                      <EmptyIcon className="h-8 w-8">
+                        <svg
+                          viewBox="0 0 24 24"
+                          className="h-4 w-4"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="1.8"
+                          aria-hidden="true"
+                        >
+                          <rect x="4" y="4" width="16" height="16" rx="2.5" />
+                          <path d="M8 10h8M8 14h5" />
+                        </svg>
+                      </EmptyIcon>
+                      <EmptyTitle className="text-xs">未匹配到节点</EmptyTitle>
+                      <EmptyDescription className="text-[11px]">
+                        试试节点名称、类型或 ID 关键词。
+                      </EmptyDescription>
+                    </Empty>
                   </div>
                 ) : null}
               </CollapsibleContent>

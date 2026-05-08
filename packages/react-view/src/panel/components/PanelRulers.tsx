@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import Ruler from "@scena/react-ruler";
+import { PANEL_Z_INDEX } from "../constants/zIndex";
 
 function getAdaptiveUnit(zoom: number) {
   // 让主刻度在屏幕上大致保持 70~110px，避免缩放大后标签过密
@@ -63,8 +64,8 @@ export function PanelRulers({
 
   return (
     <div
-      className="pointer-events-none absolute inset-0 z-[999]"
-      style={{ ["--rv-ruler-size" as any]: `${size}px` }}
+      className="pointer-events-none absolute inset-0"
+      style={{ ["--rv-ruler-size" as any]: `${size}px`, zIndex: PANEL_Z_INDEX.ruler }}
     >
       {/* Top */}
       <div

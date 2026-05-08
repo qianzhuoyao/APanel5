@@ -12,6 +12,7 @@ import { buildChartOption, CHART_TYPES } from "./utils/chartOptionBuilder";
 import { MaterialSidebar } from "./components/MaterialSidebar";
 import { PanelConfigSidebar } from "./components/PanelConfigSidebar";
 import { PANEL_MESSAGES } from "./constants/messages";
+import { PANEL_Z_INDEX } from "./constants/zIndex";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,6 +33,10 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  Empty,
+  EmptyDescription,
+  EmptyIcon,
+  EmptyTitle,
   Input,
   Menubar,
   MenubarContent,
@@ -213,6 +218,18 @@ function IconLayers() {
   );
 }
 
+function formatRelativeTime(timestamp: number, now: number): string {
+  const diff = Math.max(0, now - timestamp);
+  const sec = Math.floor(diff / 1000);
+  if (sec < 60) return `${sec}秒前`;
+  const min = Math.floor(sec / 60);
+  if (min < 60) return `${min}分钟前`;
+  const hour = Math.floor(min / 60);
+  if (hour < 24) return `${hour}小时前`;
+  const day = Math.floor(hour / 24);
+  return `${day}天前`;
+}
+
 function getSelectedTargetsFromIds(
   container: HTMLElement | null,
   ids: string[],
@@ -289,6 +306,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
     mergeSelectedLayers,
     undo,
     redo,
+    goToHistory,
     canUndo,
     canRedo,
     historyCursor,
@@ -328,11 +346,21 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
   const [mappingDeleteImpactCount, setMappingDeleteImpactCount] = useState(0);
   const mappingDeleteProceedRef = useRef<(() => void) | null>(null);
   const [isLayerPanelExpanded, setIsLayerPanelExpanded] = useState(false);
+  const [isHistoryPanelExpanded, setIsHistoryPanelExpanded] = useState(false);
+  const [historyNow, setHistoryNow] = useState(Date.now());
+  const [historyKeyword, setHistoryKeyword] = useState("");
   const [productName, setProductName] = useState("未命名产物");
   const [panelFontSize, setPanelFontSize] = useState<"sm" | "md" | "lg">("md");
   const mergeSelectedCount = layers.filter((l) => l.mergeSelected && !l.isMapping).length;
   const canMergeLayers = mergeSelectedCount >= 2;
   const panelFontPx = panelFontSize === "sm" ? 12 : panelFontSize === "lg" ? 15 : 13;
+  const normalizedHistoryKeyword = historyKeyword.trim().toLowerCase();
+  useEffect(() => {
+    if (!isHistoryPanelExpanded) return;
+    setHistoryNow(Date.now());
+    const timer = window.setInterval(() => setHistoryNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [isHistoryPanelExpanded]);
   const applyTheme = useCallback((checked: boolean) => {
     const root = document.documentElement;
     root.classList.toggle("dark", checked);
@@ -832,7 +860,10 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
             }}
           >
             <div className="relative flex h-full flex-col overflow-hidden border border-border bg-background">
-              <div className="relative z-20 flex items-center gap-2 border-b border-border bg-background/90 px-3 py-1.5 text-foreground">
+              <div
+                className="relative flex items-center gap-2 border-b border-border bg-background/90 px-3 py-1.5 text-foreground"
+                style={{ zIndex: PANEL_Z_INDEX.toolbar }}
+              >
                 <Input
                   value={productName}
                   onChange={(e) => setProductName(e.target.value)}
@@ -868,6 +899,122 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                       </button>
                     </TooltipTrigger>
                     <TooltipContent className="z-[10000]">重做（Cmd/Ctrl + Shift + Z）</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="relative">
+                        <button
+                          type="button"
+                          onClick={() => setIsHistoryPanelExpanded((prev) => !prev)}
+                          className={[
+                            "rounded border border-border p-1 hover:bg-accent",
+                            isHistoryPanelExpanded ? "bg-accent/60" : "",
+                          ].join(" ")}
+                          aria-label={isHistoryPanelExpanded ? "收起操作历史" : "展开操作历史"}
+                        >
+                          <IconHistory />
+                        </button>
+                        {isHistoryPanelExpanded ? (
+                          <div
+                            className="absolute left-1/2 top-[calc(100%+6px)] w-[280px] -translate-x-1/2 rounded-lg border border-border bg-card/95 p-2 shadow-lg backdrop-blur"
+                            style={{ zIndex: PANEL_Z_INDEX.historyPopover }}
+                          >
+                            <div className="mb-1 flex items-center justify-between">
+                              <span className="text-[11px] font-semibold text-muted-foreground">操作历史</span>
+                              <span className="text-[11px] text-muted-foreground">
+                                {history.length > 0 ? `${historyCursor + 1}/${history.length}` : "0/0"}
+                              </span>
+                            </div>
+                            <Input
+                              value={historyKeyword}
+                              onChange={(e) => setHistoryKeyword(e.target.value)}
+                              placeholder="搜索历史，如：删除、图层、缩放..."
+                              className="mb-2 h-7 text-xs"
+                            />
+                            <div
+                              className={`max-h-52 space-y-1 overflow-auto pr-1 text-[11px] ${themedScrollbarClass}`}
+                            >
+                              {history.length === 0 ? (
+                                <Empty className="py-4">
+                                  <EmptyIcon className="h-8 w-8">
+                                    <IconHistory />
+                                  </EmptyIcon>
+                                  <EmptyTitle className="text-xs">暂无操作历史</EmptyTitle>
+                                  <EmptyDescription className="text-[11px]">
+                                    进行一次操作后，这里会展示历史记录。
+                                  </EmptyDescription>
+                                </Empty>
+                              ) : (
+                                history
+                                  .slice(Math.max(0, history.length - 20))
+                                  .reverse()
+                                  .filter((item) =>
+                                    !normalizedHistoryKeyword
+                                      ? true
+                                      : item.label.toLowerCase().includes(normalizedHistoryKeyword)
+                                  )
+                                  .map((item) => (
+                                    <button
+                                      key={`${item.index}-${item.timestamp}`}
+                                      type="button"
+                                      className={[
+                                        "w-full rounded border px-2 py-1 text-left transition-colors",
+                                        item.active
+                                          ? "border-primary/50 bg-primary/10 text-foreground"
+                                          : "border-border/60 bg-background/70 text-muted-foreground hover:bg-accent/50",
+                                      ].join(" ")}
+                                      title={new Date(item.timestamp).toLocaleString()}
+                                      onClick={() => {
+                                        if (item.active) return;
+                                        goToHistory(item.index);
+                                      }}
+                                    >
+                                      <div className="flex items-center justify-between gap-2">
+                                        <span className="truncate">{item.label}</span>
+                                        <span className="shrink-0 text-[10px] text-muted-foreground">
+                                          {formatRelativeTime(item.timestamp, historyNow)}
+                                        </span>
+                                      </div>
+                                    </button>
+                                  ))
+                              )}
+                              {history.length > 0 &&
+                              history
+                                .slice(Math.max(0, history.length - 20))
+                                .reverse()
+                                .filter((item) =>
+                                  !normalizedHistoryKeyword
+                                    ? true
+                                    : item.label.toLowerCase().includes(normalizedHistoryKeyword)
+                                ).length === 0 ? (
+                                <Empty className="py-4">
+                                  <EmptyIcon className="h-8 w-8">
+                                    <svg
+                                      viewBox="0 0 24 24"
+                                      className="h-4 w-4"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      strokeWidth="1.8"
+                                      aria-hidden="true"
+                                    >
+                                      <circle cx="11" cy="11" r="7" />
+                                      <path d="m20 20-3.5-3.5" />
+                                    </svg>
+                                  </EmptyIcon>
+                                  <EmptyTitle className="text-xs">未匹配到历史项</EmptyTitle>
+                                  <EmptyDescription className="text-[11px]">
+                                    尝试更换关键词，例如删除、图层、缩放。
+                                  </EmptyDescription>
+                                </Empty>
+                              ) : null}
+                            </div>
+                          </div>
+                        ) : null}
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent className="z-[10000]">
+                      {isHistoryPanelExpanded ? "收起操作历史" : "展开操作历史"}
+                    </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
                 <DropdownMenu>
@@ -1246,7 +1393,28 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                               showActionHint(PANEL_MESSAGES.sourceLayerLockedCannotPaste);
                               return;
                             }
-                            duplicateElement(copiedNodeId);
+                            const canvasEl = canvasRef.current;
+                            const viewportEl = scrollRef.current;
+                            const currentZoom = Math.max(0.0001, zoom);
+                            let targetX: number | undefined;
+                            let targetY: number | undefined;
+                            if (canvasEl) {
+                              const canvasRect = canvasEl.getBoundingClientRect();
+                              targetX = (dropdownPoint.x - canvasRect.left) / currentZoom;
+                              targetY = (dropdownPoint.y - canvasRect.top) / currentZoom;
+                            } else if (viewportEl) {
+                              const rect = viewportEl.getBoundingClientRect();
+                              const centerX = rect.left + rect.width / 2;
+                              const centerY = rect.top + rect.height / 2;
+                              targetX = (centerX - rect.left + scroll.left) / currentZoom;
+                              targetY = (centerY - rect.top + scroll.top) / currentZoom;
+                            }
+                            duplicateElement(
+                              copiedNodeId,
+                              targetX !== undefined && targetY !== undefined
+                                ? { position: { x: targetX, y: targetY } }
+                                : undefined
+                            );
                           }}
                         >
                           粘贴节点
@@ -1342,7 +1510,31 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                     <TabsContent value={activeLayerId} className="mt-2 space-y-2">
                       {activeLayer ? (
                         <div className="flex items-center gap-2 rounded border border-border bg-card px-2 py-1.5 text-xs">
-                          <span className="truncate font-medium">{activeLayer.name}</span>
+                          {editingLayerId === activeLayer.id ? (
+                            <Input
+                              value={editingLayerName}
+                              onChange={(e) => setEditingLayerName(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  e.preventDefault();
+                                  renameLayer(editingLayerId, editingLayerName);
+                                  setEditingLayerId(null);
+                                  setEditingLayerName("");
+                                  return;
+                                }
+                                if (e.key === "Escape") {
+                                  e.preventDefault();
+                                  setEditingLayerId(null);
+                                  setEditingLayerName("");
+                                }
+                              }}
+                              className="h-7 min-w-0 flex-1"
+                              placeholder="请输入图层名称"
+                              autoFocus
+                            />
+                          ) : (
+                            <span className="truncate font-medium">{activeLayer.name}</span>
+                          )}
                           {activeLayer.isMapping ? (
                             <span className="rounded border border-primary/40 bg-primary/10 px-1 text-[10px] text-primary">
                               映射图层
@@ -1367,21 +1559,56 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                           </Tooltip>
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setEditingLayerId(activeLayer.id);
-                                  setEditingLayerName(activeLayer.name);
-                                }}
-                                disabled={!activeLayer.editable}
-                                aria-label="重命名图层"
-                                className="rounded border border-border p-1 disabled:opacity-40"
-                              >
-                                <IconEdit />
-                              </button>
+                              {editingLayerId === activeLayer.id ? (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    renameLayer(editingLayerId, editingLayerName);
+                                    setEditingLayerId(null);
+                                    setEditingLayerName("");
+                                  }}
+                                  aria-label="保存图层名称"
+                                  className="rounded border border-border p-1 hover:bg-accent"
+                                >
+                                  <IconCheck />
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setEditingLayerId(activeLayer.id);
+                                    setEditingLayerName(activeLayer.name);
+                                  }}
+                                  disabled={!activeLayer.editable}
+                                  aria-label="重命名图层"
+                                  className="rounded border border-border p-1 disabled:opacity-40"
+                                >
+                                  <IconEdit />
+                                </button>
+                              )}
                             </TooltipTrigger>
-                            <TooltipContent className="z-[10000]">重命名图层</TooltipContent>
+                            <TooltipContent className="z-[10000]">
+                              {editingLayerId === activeLayer.id ? "保存图层名称" : "重命名图层"}
+                            </TooltipContent>
                           </Tooltip>
+                          {editingLayerId === activeLayer.id ? (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setEditingLayerId(null);
+                                    setEditingLayerName("");
+                                  }}
+                                  aria-label="取消编辑图层名称"
+                                  className="rounded border border-border p-1 hover:bg-accent"
+                                >
+                                  <IconClose />
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent className="z-[10000]">取消编辑</TooltipContent>
+                            </Tooltip>
+                          ) : null}
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <button
@@ -1448,51 +1675,6 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                     </TabsContent>
                   </Tabs>
 
-                {isLayerPanelExpanded && editingLayerId ? (
-                  <div className="mt-2 flex items-center gap-2 rounded border border-border bg-card px-2 py-1.5 text-xs">
-                    <span className="text-muted-foreground">编辑图层名</span>
-                    <Input
-                      value={editingLayerName}
-                      onChange={(e) => setEditingLayerName(e.target.value)}
-                      className="h-7 min-w-0 flex-1"
-                      placeholder="请输入图层名称"
-                      autoFocus
-                    />
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            renameLayer(editingLayerId, editingLayerName);
-                            setEditingLayerId(null);
-                            setEditingLayerName("");
-                          }}
-                          aria-label="保存图层名称"
-                          className="rounded border border-border p-1 hover:bg-accent"
-                        >
-                          <IconCheck />
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent className="z-[10000]">保存图层名称</TooltipContent>
-                    </Tooltip>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setEditingLayerId(null);
-                            setEditingLayerName("");
-                          }}
-                          aria-label="取消编辑图层名称"
-                          className="rounded border border-border p-1 hover:bg-accent"
-                        >
-                          <IconClose />
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent className="z-[10000]">取消编辑</TooltipContent>
-                    </Tooltip>
-                  </div>
-                ) : null}
                 {isLayerPanelExpanded && isMergingLayers ? (
                   <div className="mt-2 flex items-center gap-2 rounded border border-border bg-card px-2 py-1.5 text-xs">
                     <span className="text-muted-foreground">合并后图层名</span>

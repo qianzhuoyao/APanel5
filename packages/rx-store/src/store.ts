@@ -176,6 +176,11 @@ export class RxStore {
     if (state) this.state$.next(state);
   }
 
+  goToHistory(index: number) {
+    const state = this.history.jumpTo(index);
+    if (state) this.state$.next(state);
+  }
+
   canUndo$ = this.history.canUndo$;
   canRedo$ = this.history.canRedo$;
   getHistoryEntries() {

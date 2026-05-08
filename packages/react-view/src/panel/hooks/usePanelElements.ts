@@ -695,7 +695,7 @@ export function usePanelElements() {
   const duplicateElement = useCallback(
     (
       id: string,
-      options?: { referenceCopyMode?: ReferenceCopyMode }
+      options?: { referenceCopyMode?: ReferenceCopyMode; position?: { x: number; y: number } }
     ) => {
     const current = store.getState();
     const node = current.root.children?.find((n) => isPanelElementNode(n) && n.id === id);
@@ -710,8 +710,8 @@ export function usePanelElements() {
     const nextProps: PanelElement = {
       ...(node.props as PanelElement),
       id: nextId,
-      x: Math.round((node.props.x ?? 0) + 20),
-      y: Math.round((node.props.y ?? 0) + 20),
+      x: Math.round(options?.position?.x ?? ((node.props.x ?? 0) + 20)),
+      y: Math.round(options?.position?.y ?? ((node.props.y ?? 0) + 20)),
     };
     const all = (current.root.children ?? [])
       .filter((n) => isPanelElementNode(n) && n.props)
@@ -1126,6 +1126,9 @@ export function usePanelElements() {
   const redo = useCallback(() => {
     store.redo();
   }, []);
+  const goToHistory = useCallback((index: number) => {
+    store.goToHistory(index);
+  }, []);
 
   const history = useMemo<PanelHistoryItem[]>(() => {
     const entries = store.getHistoryEntries();
@@ -1214,6 +1217,7 @@ export function usePanelElements() {
     mergeSelectedLayers,
     undo,
     redo,
+    goToHistory,
     canUndo,
     canRedo,
     historyCursor,

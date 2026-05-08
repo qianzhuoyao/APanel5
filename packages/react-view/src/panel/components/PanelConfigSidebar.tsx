@@ -4,6 +4,10 @@ import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
+  Empty,
+  EmptyDescription,
+  EmptyIcon,
+  EmptyTitle,
   Input,
   Select,
   SelectContent,
@@ -432,9 +436,23 @@ export function PanelConfigSidebar({
         ) : null}
       </div>
       {!selectedElement ? (
-        <div className="rounded-lg border border-dashed border-border/70 bg-card/50 px-3 py-2 text-xs leading-6 text-muted-foreground">
-          请选择一个节点后进行配置
-        </div>
+        <Empty className="py-7">
+          <EmptyIcon>
+            <svg
+              viewBox="0 0 24 24"
+              className="h-4 w-4"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              aria-hidden="true"
+            >
+              <rect x="4" y="4" width="16" height="16" rx="2.5" />
+              <path d="M8 9h8M8 12h8M8 15h5" />
+            </svg>
+          </EmptyIcon>
+          <EmptyTitle>暂无可配置节点</EmptyTitle>
+          <EmptyDescription>请先在画布中选中一个节点，再到这里进行配置。</EmptyDescription>
+        </Empty>
       ) : (
         <div className="space-y-3">
           {!isNodeEditable ? (
