@@ -12,13 +12,22 @@ import { buildChartOption, CHART_TYPES } from "./utils/chartOptionBuilder";
 import { MaterialSidebar } from "./components/MaterialSidebar";
 import { PanelConfigSidebar } from "./components/PanelConfigSidebar";
 import {
+  Checkbox,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  Input,
+  RadioGroup,
+  RadioGroupItem,
   ResizableHandle,
   ResizablePanel,
   ResizablePanelGroup,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
   Switch,
   Tabs,
   TabsContent,
@@ -226,6 +235,8 @@ export type ReactViewPanelProps = {
 };
 
 export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelProps) {
+  const themedScrollbarClass =
+    "scrollbar-thin [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-muted/40 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border/80 [&::-webkit-scrollbar-thumb]:hover:bg-border";
   const {
     elements,
     allElements,
@@ -668,7 +679,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                       <div className="px-2 py-1 text-xs font-semibold text-muted-foreground">
                         操作历史（最近 20 条）
                       </div>
-                      <div className="max-h-64 overflow-auto px-1 pb-1">
+                      <div className={`max-h-64 overflow-auto px-1 pb-1 ${themedScrollbarClass}`}>
                         {history.length === 0 ? (
                           <div className="px-2 py-1.5 text-xs text-muted-foreground">暂无历史</div>
                         ) : (
@@ -782,7 +793,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                   </Tooltip>
                 </TooltipProvider>
               </div>
-              <input
+              <Input
                 ref={importInputRef}
                 type="file"
                 accept="application/json"
@@ -1024,7 +1035,9 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                       </Tooltip>
                     </div>
 
-                    <TabsList className="h-auto w-full justify-start gap-1 overflow-x-auto bg-muted/40 p-1">
+                    <TabsList
+                      className={`h-auto w-full justify-start gap-1 overflow-x-auto bg-muted/40 p-1 ${themedScrollbarClass}`}
+                    >
                       {layers.map((layer) => (
                         <TabsTrigger
                           key={layer.id}
@@ -1107,11 +1120,10 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                           <div className="flex flex-wrap gap-2">
                             {layers.map((layer) => (
                               <label key={layer.id} className="flex items-center gap-1.5">
-                                <input
-                                  type="checkbox"
+                                <Checkbox
                                   checked={Boolean(layer.mergeSelected)}
-                                  onChange={() => toggleLayerMergeSelected(layer.id)}
-                                  className="h-3.5 w-3.5"
+                                  className="h-4 w-4 border-2 border-foreground/80 bg-background ring-1 ring-foreground/40 data-[state=checked]:border-primary data-[state=checked]:ring-primary/40"
+                                  onCheckedChange={() => toggleLayerMergeSelected(layer.id)}
                                 />
                                 <span className="max-w-[120px] truncate">{layer.name}</span>
                               </label>
@@ -1125,10 +1137,10 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                 {isLayerPanelExpanded && editingLayerId ? (
                   <div className="mt-2 flex items-center gap-2 rounded border border-border bg-card px-2 py-1.5 text-xs">
                     <span className="text-muted-foreground">编辑图层名</span>
-                    <input
+                    <Input
                       value={editingLayerName}
                       onChange={(e) => setEditingLayerName(e.target.value)}
-                      className="h-7 min-w-0 flex-1 rounded border border-border bg-background px-2 outline-none"
+                      className="h-7 min-w-0 flex-1"
                       placeholder="请输入图层名称"
                       autoFocus
                     />
@@ -1170,10 +1182,10 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                 {isLayerPanelExpanded && isMergingLayers ? (
                   <div className="mt-2 flex items-center gap-2 rounded border border-border bg-card px-2 py-1.5 text-xs">
                     <span className="text-muted-foreground">合并后图层名</span>
-                    <input
+                    <Input
                       value={mergeLayerName}
                       onChange={(e) => setMergeLayerName(e.target.value)}
-                      className="h-7 min-w-0 flex-1 rounded border border-border bg-background px-2 outline-none"
+                      className="h-7 min-w-0 flex-1"
                       placeholder="可空，留空将随机命名"
                       autoFocus
                     />
@@ -1220,38 +1232,41 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                       确认删除图层：
                       <span className="font-semibold">{deletingLayer.name}</span>
                     </div>
-                    <div className="mb-2 flex items-center gap-3">
+                    <RadioGroup
+                      value={deleteMode}
+                      onValueChange={(value) => setDeleteMode(value as "move" | "remove")}
+                      className="mb-2 space-y-2"
+                    >
+                      <div className="flex items-center gap-3">
+                        <label className="flex items-center gap-1.5">
+                          <RadioGroupItem value="move" />
+                          节点迁移到
+                        </label>
+                        <Select
+                          value={deleteTargetLayerId || "__none__"}
+                          onValueChange={(value) =>
+                            setDeleteTargetLayerId(value === "__none__" ? "" : value)
+                          }
+                          disabled={deleteMode !== "move" || deleteTargetCandidates.length === 0}
+                        >
+                          <SelectTrigger className="h-7 w-[180px]">
+                            <SelectValue placeholder="选择目标图层" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__none__">请选择图层</SelectItem>
+                            {deleteTargetCandidates.map((l) => (
+                              <SelectItem key={l.id} value={l.id}>
+                                {l.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
                       <label className="flex items-center gap-1.5">
-                        <input
-                          type="radio"
-                          checked={deleteMode === "move"}
-                          onChange={() => setDeleteMode("move")}
-                        />
-                        节点迁移到
-                      </label>
-                      <select
-                        value={deleteTargetLayerId}
-                        onChange={(e) => setDeleteTargetLayerId(e.target.value)}
-                        disabled={deleteMode !== "move" || deleteTargetCandidates.length === 0}
-                        className="h-7 rounded border border-border bg-background px-2 disabled:opacity-50"
-                      >
-                        {deleteTargetCandidates.map((l) => (
-                          <option key={l.id} value={l.id}>
-                            {l.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="mb-2">
-                      <label className="flex items-center gap-1.5">
-                        <input
-                          type="radio"
-                          checked={deleteMode === "remove"}
-                          onChange={() => setDeleteMode("remove")}
-                        />
+                        <RadioGroupItem value="remove" />
                         同时删除该图层下所有节点
                       </label>
-                    </div>
+                    </RadioGroup>
                     <div className="flex items-center gap-2">
                       <Tooltip>
                         <TooltipTrigger asChild>
