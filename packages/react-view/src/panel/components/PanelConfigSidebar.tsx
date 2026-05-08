@@ -19,6 +19,10 @@ import {
   SelectTrigger,
   SelectValue,
   Textarea,
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
 } from "@arron/ui";
 import type {
   PanelChartConfig,
@@ -82,6 +86,9 @@ export function PanelConfigSidebar({
     styleBorder: true,
     chartBasic: true,
     chartAdvanced: false,
+    chartAdvancedHighFreq: true,
+    chartAdvancedLayout: false,
+    chartAdvancedAxisPointer: false,
     reference: true,
   });
   const [expandedNodeCards, setExpandedNodeCards] = useState<Record<string, boolean>>({});
@@ -424,6 +431,102 @@ export function PanelConfigSidebar({
       </div>
     </label>
   );
+  const optionCheckboxClass =
+    "h-4 w-4 border-2 border-foreground/80 bg-background ring-1 ring-foreground/40 data-[state=checked]:border-primary data-[state=checked]:ring-primary/40";
+  const optionInputClass =
+    "h-7 border border-border/60 bg-background/90 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-border/60";
+  const optionSelectTriggerClass =
+    "h-7 border border-border/60 bg-muted/40 shadow-none ring-0 focus:ring-0 focus:ring-offset-0 focus:border-border/60 data-[state=open]:border-border/60";
+  const optionLabelTextClass = "truncate whitespace-nowrap text-[11px] leading-none";
+  const renderOptionLabel = (label: string, keyPath: string, desc: string) => (
+    <div className="flex min-w-0 items-center gap-1">
+      <span className={optionLabelTextClass} title={`${label}（${keyPath}）`}>{label}</span>
+      <TooltipProvider delayDuration={120}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-border text-[10px] text-muted-foreground"
+              aria-label={`${label}说明`}
+            >
+              ?
+            </button>
+          </TooltipTrigger>
+          <TooltipContent className="max-w-[260px] text-[11px]">
+            <div>Key: {keyPath}</div>
+            <div>{desc}</div>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    </div>
+  );
+  const renderFormatterLabel = (label = "Tooltip Formatter（可选）") => (
+    <div className="flex min-w-0 items-center gap-1">
+      <span className={optionLabelTextClass} title={label}>{label}</span>
+      <TooltipProvider delayDuration={120}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-border text-[10px] text-muted-foreground"
+              aria-label="Tooltip Formatter 说明"
+            >
+              ?
+            </button>
+          </TooltipTrigger>
+          <TooltipContent className="max-w-[360px] text-[11px] leading-5">
+            <div className="font-medium">可用占位符</div>
+            <div>{"{a}=系列名, {b}=类目名, {c}=数值, {d}=百分比(饼图)"}</div>
+            <div className="mt-1 font-medium">常用模板 + 输出示例</div>
+            <div>{"1) {b}: {c}  ->  周一: 120"}</div>
+            <div>{"2) {a}<br/>{b}: {c}  ->  销量<br/>周一: 120"}</div>
+            <div>{"3) {b}: {c} ({d}%)  ->  访问来源: 335 (42%)"}</div>
+            <div>{"4) ￥{c} / {b}  ->  ￥120 / 周一"}</div>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    </div>
+  );
+  const mergeOptionPatch = useCallback(
+    (
+      base: Record<string, unknown> | undefined,
+      patch: Record<string, unknown>
+    ): Record<string, unknown> => {
+      const output: Record<string, unknown> = { ...(base ?? {}) };
+      for (const [key, value] of Object.entries(patch)) {
+        const prev = output[key];
+        if (
+          value &&
+          typeof value === "object" &&
+          !Array.isArray(value) &&
+          prev &&
+          typeof prev === "object" &&
+          !Array.isArray(prev)
+        ) {
+          output[key] = mergeOptionPatch(
+            prev as Record<string, unknown>,
+            value as Record<string, unknown>
+          );
+        } else {
+          output[key] = value;
+        }
+      }
+      return output;
+    },
+    []
+  );
+  const updateSelectedOptionForm = useCallback(
+    (patch: Record<string, unknown>) => {
+      if (!selectedElement) return;
+      updateSelectedChart({
+        option: mergeOptionPatch(
+          (selectedElement.chart?.option as Record<string, unknown> | undefined) ?? {},
+          patch
+        ),
+      });
+    },
+    [mergeOptionPatch, selectedElement, updateSelectedChart]
+  );
   const execTextCommand = (cmd: "bold" | "italic" | "underline") => {
     textEditorRef.current?.focus();
     document.execCommand(cmd);
@@ -436,7 +539,7 @@ export function PanelConfigSidebar({
   let renderedSectionCount = 0;
   return (
     <aside
-      className={`h-full overflow-auto border-l border-border bg-muted/[0.14] px-3 py-3 text-foreground ${themedScrollbarClass}`}
+      className={`h-full overflow-auto border-l border-border bg-muted/[0.14] px-3 py-3 text-foreground [&_button[role=checkbox]]:border-2 [&_button[role=checkbox]]:border-foreground/80 [&_button[role=checkbox]]:bg-background [&_button[role=checkbox]]:ring-1 [&_button[role=checkbox]]:ring-foreground/40 [&_button[role=checkbox][data-state=checked]]:border-primary [&_button[role=checkbox][data-state=checked]]:ring-primary/40 ${themedScrollbarClass}`}
     >
       <div className="sticky top-0 z-20 mb-3 rounded-lg border border-border/70 bg-card/95 px-2.5 py-2 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/80">
         <div className="flex items-center justify-between gap-2">
@@ -904,7 +1007,7 @@ export function PanelConfigSidebar({
                         />
                       </label>
                       <label className="block space-y-1 col-span-2">
-                        <div>Tooltip Formatter</div>
+                        {renderFormatterLabel("Tooltip Formatter")}
                         <Input
                           className="h-7"
                           value={el.chart?.tooltipFormatter ?? ""}
@@ -1253,6 +1356,225 @@ export function PanelConfigSidebar({
                           </label>
                         </>
                       ) : null}
+                      <label className="block space-y-1">
+                        {renderOptionLabel("网格左边距", "grid.left", "控制绘图区左侧留白。")}
+                        <Input
+                          className="h-7"
+                          type="number"
+                          value={Number((el.chart?.option as any)?.grid?.left ?? 28)}
+                          onChange={(e) =>
+                            updateElement(el.id, {
+                              chart: {
+                                ...(el.chart ?? {}),
+                                option: mergeOptionPatch(el.chart?.option as any, {
+                                  grid: { left: Number(e.target.value) || 0 },
+                                }),
+                              },
+                            })
+                          }
+                        />
+                      </label>
+                      <label className="block space-y-1">
+                        {renderOptionLabel("网格右边距", "grid.right", "控制绘图区右侧留白。")}
+                        <Input
+                          className="h-7"
+                          type="number"
+                          value={Number((el.chart?.option as any)?.grid?.right ?? 10)}
+                          onChange={(e) =>
+                            updateElement(el.id, {
+                              chart: {
+                                ...(el.chart ?? {}),
+                                option: mergeOptionPatch(el.chart?.option as any, {
+                                  grid: { right: Number(e.target.value) || 0 },
+                                }),
+                              },
+                            })
+                          }
+                        />
+                      </label>
+                      <label className="block space-y-1">
+                        {renderOptionLabel("网格上边距", "grid.top", "控制绘图区顶部留白。")}
+                        <Input
+                          className="h-7"
+                          type="number"
+                          value={Number((el.chart?.option as any)?.grid?.top ?? 30)}
+                          onChange={(e) =>
+                            updateElement(el.id, {
+                              chart: {
+                                ...(el.chart ?? {}),
+                                option: mergeOptionPatch(el.chart?.option as any, {
+                                  grid: { top: Number(e.target.value) || 0 },
+                                }),
+                              },
+                            })
+                          }
+                        />
+                      </label>
+                      <label className="block space-y-1">
+                        {renderOptionLabel("网格下边距", "grid.bottom", "控制绘图区底部留白。")}
+                        <Input
+                          className="h-7"
+                          type="number"
+                          value={Number((el.chart?.option as any)?.grid?.bottom ?? 20)}
+                          onChange={(e) =>
+                            updateElement(el.id, {
+                              chart: {
+                                ...(el.chart ?? {}),
+                                option: mergeOptionPatch(el.chart?.option as any, {
+                                  grid: { bottom: Number(e.target.value) || 0 },
+                                }),
+                              },
+                            })
+                          }
+                        />
+                      </label>
+                      <label className="block space-y-1">
+                        {renderOptionLabel("图例位置", "legend.top", "设置图例在容器中的停靠位置。")}
+                        <Select
+                          value={String((el.chart?.option as any)?.legend?.top ?? "top")}
+                          onValueChange={(value) =>
+                            updateElement(el.id, {
+                              chart: {
+                                ...(el.chart ?? {}),
+                                option: mergeOptionPatch(el.chart?.option as any, {
+                                  legend: { top: value },
+                                }),
+                              },
+                            })
+                          }
+                        >
+                          <SelectTrigger className="h-7"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="top">top</SelectItem>
+                            <SelectItem value="bottom">bottom</SelectItem>
+                            <SelectItem value="left">left</SelectItem>
+                            <SelectItem value="right">right</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </label>
+                      <label className="block space-y-1">
+                        {renderOptionLabel("图例排列", "legend.orient", "图例横向或纵向排列。")}
+                        <Select
+                          value={String((el.chart?.option as any)?.legend?.orient ?? "horizontal")}
+                          onValueChange={(value) =>
+                            updateElement(el.id, {
+                              chart: {
+                                ...(el.chart ?? {}),
+                                option: mergeOptionPatch(el.chart?.option as any, {
+                                  legend: { orient: value },
+                                }),
+                              },
+                            })
+                          }
+                        >
+                          <SelectTrigger className="h-7"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="horizontal">horizontal</SelectItem>
+                            <SelectItem value="vertical">vertical</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </label>
+                      <label className="flex items-center gap-2">
+                        <Checkbox
+                          checked={Boolean((el.chart?.option as any)?.legend?.show ?? true)}
+                          onCheckedChange={(checked) =>
+                            updateElement(el.id, {
+                              chart: {
+                                ...(el.chart ?? {}),
+                                option: mergeOptionPatch(el.chart?.option as any, {
+                                  legend: { show: checked === true },
+                                }),
+                              },
+                            })
+                          }
+                        />
+                        <span>显示图例（legend.show）</span>
+                      </label>
+                      <label className="flex items-center gap-2">
+                        <Checkbox
+                          checked={Boolean(
+                            Array.isArray((el.chart?.option as any)?.dataZoom) &&
+                              (el.chart?.option as any)?.dataZoom.some((z: any) => z?.type === "inside")
+                          )}
+                          onCheckedChange={(checked) => {
+                            const prev = Array.isArray((el.chart?.option as any)?.dataZoom)
+                              ? [...(el.chart?.option as any).dataZoom]
+                              : [];
+                            const next = checked
+                              ? [...prev.filter((z: any) => z?.type !== "inside"), { type: "inside" }]
+                              : prev.filter((z: any) => z?.type !== "inside");
+                            updateElement(el.id, {
+                              chart: {
+                                ...(el.chart ?? {}),
+                                option: mergeOptionPatch(el.chart?.option as any, { dataZoom: next }),
+                              },
+                            });
+                          }}
+                        />
+                        <span>内置缩放（dataZoom[type=inside]）</span>
+                      </label>
+                      <label className="flex items-center gap-2">
+                        <Checkbox
+                          checked={Boolean(
+                            Array.isArray((el.chart?.option as any)?.dataZoom) &&
+                              (el.chart?.option as any)?.dataZoom.some((z: any) => z?.type === "slider")
+                          )}
+                          onCheckedChange={(checked) => {
+                            const prev = Array.isArray((el.chart?.option as any)?.dataZoom)
+                              ? [...(el.chart?.option as any).dataZoom]
+                              : [];
+                            const next = checked
+                              ? [...prev.filter((z: any) => z?.type !== "slider"), { type: "slider" }]
+                              : prev.filter((z: any) => z?.type !== "slider");
+                            updateElement(el.id, {
+                              chart: {
+                                ...(el.chart ?? {}),
+                                option: mergeOptionPatch(el.chart?.option as any, { dataZoom: next }),
+                              },
+                            });
+                          }}
+                        />
+                        <span>滑块缩放（dataZoom[type=slider]）</span>
+                      </label>
+                      <label className="flex items-center gap-2">
+                        <Checkbox
+                          checked={Boolean((el.chart?.option as any)?.axisPointer?.show ?? false)}
+                          onCheckedChange={(checked) =>
+                            updateElement(el.id, {
+                              chart: {
+                                ...(el.chart ?? {}),
+                                option: mergeOptionPatch(el.chart?.option as any, {
+                                  axisPointer: { show: checked === true },
+                                }),
+                              },
+                            })
+                          }
+                        />
+                        <span>显示轴指示器（axisPointer.show）</span>
+                      </label>
+                      <label className="block space-y-1">
+                        <div>轴指示器类型（axisPointer.type）</div>
+                        <Select
+                          value={String((el.chart?.option as any)?.axisPointer?.type ?? "line")}
+                          onValueChange={(value) =>
+                            updateElement(el.id, {
+                              chart: {
+                                ...(el.chart ?? {}),
+                                option: mergeOptionPatch(el.chart?.option as any, {
+                                  axisPointer: { type: value },
+                                }),
+                              },
+                            })
+                          }
+                        >
+                          <SelectTrigger className="h-7"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="line">line</SelectItem>
+                            <SelectItem value="shadow">shadow</SelectItem>
+                            <SelectItem value="cross">cross</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </label>
                       <label className="block space-y-1 col-span-2">
                         <div>高级 option JSON（覆盖基础配置）</div>
                         <Textarea
@@ -1361,12 +1683,12 @@ export function PanelConfigSidebar({
                     </label>
                       ) : null}
                       {el.materialType === "grid" ? (
-                    <div className="grid grid-cols-2 gap-2">
-                      <label className="block space-y-1">
+                    <div className="grid grid-cols-2 gap-2 rounded-lg border border-border/60 bg-muted/20 p-3">
+                      <label className="block space-y-1.5">
                         <div>行</div>
                         <Input className="h-7" type="number" min={1} value={el.gridRows ?? 2} onChange={(e) => updateElement(el.id, { gridRows: Math.max(1, Number(e.target.value) || 2) })} />
                       </label>
-                      <label className="block space-y-1">
+                      <label className="block space-y-1.5">
                         <div>列</div>
                         <Input className="h-7" type="number" min={1} value={el.gridCols ?? 3} onChange={(e) => updateElement(el.id, { gridCols: Math.max(1, Number(e.target.value) || 3) })} />
                       </label>
@@ -1374,7 +1696,7 @@ export function PanelConfigSidebar({
                       ) : null}
                       {el.materialType === "reference" ? (
                     <div className="grid grid-cols-2 gap-2">
-                      <label className="block space-y-1">
+                      <label className="block space-y-1.5">
                         <div>引用图层</div>
                         <Select
                           value={el.refLayerId ?? "__none__"}
@@ -1389,7 +1711,7 @@ export function PanelConfigSidebar({
                           </SelectContent>
                         </Select>
                       </label>
-                      <label className="block space-y-1">
+                      <label className="block space-y-1.5">
                         <div>拷贝</div>
                         <Select
                           value={el.refCopyMode ?? "shallow"}
@@ -1775,7 +2097,7 @@ export function PanelConfigSidebar({
                   {renderFieldGroup(
                     "基础显示",
                     <>
-                      <label className="block space-y-1">
+                      <label className="block space-y-1.5">
                         <div>标题</div>
                         <Input
                           value={selectedElement.chart?.title ?? ""}
@@ -1854,7 +2176,7 @@ export function PanelConfigSidebar({
                           </div>
                         </div>
                       ) : null}
-                      <label className="block space-y-1">
+                      <label className="block space-y-1.5">
                         <div>显示模式</div>
                         <Select
                           value={selectedElement.chart?.renderMode ?? "canvas"}
@@ -1918,7 +2240,7 @@ export function PanelConfigSidebar({
                         )}
                       </div>
                       <label className="block space-y-1">
-                        <div>Tooltip Formatter（可选）</div>
+                        {renderFormatterLabel("Tooltip Formatter（可选）")}
                         <Input
                           value={selectedElement.chart?.tooltipFormatter ?? ""}
                           onChange={(e) =>
@@ -2230,56 +2552,232 @@ export function PanelConfigSidebar({
 
               {renderSection(
                 "chartAdvanced",
-                "图表配置 / 高级（JSON）",
+                "图表配置 / 高级",
                 <>
                   {renderFieldGroup(
-                    "编辑模式",
+                    "常用项（表单）",
+                    <div className="grid grid-cols-1 gap-2">
+                      <div className="rounded-lg border border-border/60 bg-background/70 p-3">
+                        <Collapsible
+                          open={isSectionExpanded("chartAdvancedLayout", false)}
+                          onOpenChange={(open) => setSectionExpanded("chartAdvancedLayout", open)}
+                        >
+                          <div className="mb-2 flex items-center gap-1.5">
+                            <CollapsibleTrigger asChild>
+                              <button
+                                type="button"
+                                className="flex h-5 w-5 items-center justify-center rounded text-[11px] hover:bg-accent"
+                                aria-label={isSectionExpanded("chartAdvancedLayout", false) ? "收起布局与坐标" : "展开布局与坐标"}
+                              >
+                                {isSectionExpanded("chartAdvancedLayout", false) ? "▾" : "▸"}
+                              </button>
+                            </CollapsibleTrigger>
+                            <div className="text-[11px] font-medium text-muted-foreground">布局与坐标</div>
+                          </div>
+                          <CollapsibleContent>
+                            <div className="grid grid-cols-2 gap-2">
+                          <label className="block space-y-1.5">
+                            <div className={optionLabelTextClass}>网格左距（grid.left）</div>
+                            <Input type="number" className={optionInputClass} value={Number((selectedElement.chart?.option as any)?.grid?.left ?? 28)} onChange={(e) => updateSelectedOptionForm({ grid: { left: Number(e.target.value) || 0 } })} />
+                          </label>
+                          <label className="block space-y-1.5">
+                            <div className={optionLabelTextClass}>网格右距（grid.right）</div>
+                            <Input type="number" className={optionInputClass} value={Number((selectedElement.chart?.option as any)?.grid?.right ?? 10)} onChange={(e) => updateSelectedOptionForm({ grid: { right: Number(e.target.value) || 0 } })} />
+                          </label>
+                          <label className="block space-y-1.5">
+                            <div className={optionLabelTextClass}>网格上距（grid.top）</div>
+                            <Input type="number" className={optionInputClass} value={Number((selectedElement.chart?.option as any)?.grid?.top ?? 30)} onChange={(e) => updateSelectedOptionForm({ grid: { top: Number(e.target.value) || 0 } })} />
+                          </label>
+                          <label className="block space-y-1.5">
+                            <div className={optionLabelTextClass}>网格下距（grid.bottom）</div>
+                            <Input type="number" className={optionInputClass} value={Number((selectedElement.chart?.option as any)?.grid?.bottom ?? 20)} onChange={(e) => updateSelectedOptionForm({ grid: { bottom: Number(e.target.value) || 0 } })} />
+                          </label>
+                          <label className="block space-y-1.5">
+                            <div className={optionLabelTextClass}>图例位置（legend.top）</div>
+                            <Select value={String((selectedElement.chart?.option as any)?.legend?.top ?? "top")} onValueChange={(value) => updateSelectedOptionForm({ legend: { top: value } })}>
+                              <SelectTrigger className={optionSelectTriggerClass}><SelectValue placeholder="选择图例位置" /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="top">顶部</SelectItem>
+                                <SelectItem value="bottom">底部</SelectItem>
+                                <SelectItem value="left">左侧</SelectItem>
+                                <SelectItem value="right">右侧</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </label>
+                          <label className="block space-y-1.5">
+                            <div className={optionLabelTextClass}>图例排列（legend.orient）</div>
+                            <Select value={String((selectedElement.chart?.option as any)?.legend?.orient ?? "horizontal")} onValueChange={(value) => updateSelectedOptionForm({ legend: { orient: value } })}>
+                              <SelectTrigger className={optionSelectTriggerClass}><SelectValue placeholder="选择图例排列" /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="horizontal">横向</SelectItem>
+                                <SelectItem value="vertical">纵向</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </label>
+                          <label className="block space-y-1.5">
+                            {renderOptionLabel("X 轴最小值", "xAxis.min", "设置横轴最小值，留空可在 JSON 里删除。")}
+                            <Input type="number" className={optionInputClass} value={Number((selectedElement.chart?.option as any)?.xAxis?.min ?? 0)} onChange={(e) => updateSelectedOptionForm({ xAxis: { min: Number(e.target.value) || 0 } })} />
+                          </label>
+                          <label className="block space-y-1.5">
+                            {renderOptionLabel("X 轴最大值", "xAxis.max", "设置横轴最大值，留空可在 JSON 里删除。")}
+                            <Input type="number" className={optionInputClass} value={Number((selectedElement.chart?.option as any)?.xAxis?.max ?? 100)} onChange={(e) => updateSelectedOptionForm({ xAxis: { max: Number(e.target.value) || 0 } })} />
+                          </label>
+                          <label className="block space-y-1.5">
+                            {renderOptionLabel("Y 轴最小值", "yAxis.min", "设置纵轴最小值，留空可在 JSON 里删除。")}
+                            <Input type="number" className={optionInputClass} value={Number((selectedElement.chart?.option as any)?.yAxis?.min ?? 0)} onChange={(e) => updateSelectedOptionForm({ yAxis: { min: Number(e.target.value) || 0 } })} />
+                          </label>
+                          <label className="block space-y-1.5">
+                            {renderOptionLabel("Y 轴最大值", "yAxis.max", "设置纵轴最大值，留空可在 JSON 里删除。")}
+                            <Input type="number" className={optionInputClass} value={Number((selectedElement.chart?.option as any)?.yAxis?.max ?? 100)} onChange={(e) => updateSelectedOptionForm({ yAxis: { max: Number(e.target.value) || 0 } })} />
+                          </label>
+                          <label className="block space-y-1.5">
+                            {renderOptionLabel("X 轴标签旋转", "xAxis.axisLabel.rotate", "单位为度。")}
+                            <Input type="number" className={optionInputClass} value={Number((selectedElement.chart?.option as any)?.xAxis?.axisLabel?.rotate ?? 0)} onChange={(e) => updateSelectedOptionForm({ xAxis: { axisLabel: { rotate: Number(e.target.value) || 0 } } })} />
+                          </label>
+                          <label className="block space-y-1.5">
+                            {renderOptionLabel("Y 轴标签旋转", "yAxis.axisLabel.rotate", "单位为度。")}
+                            <Input type="number" className={optionInputClass} value={Number((selectedElement.chart?.option as any)?.yAxis?.axisLabel?.rotate ?? 0)} onChange={(e) => updateSelectedOptionForm({ yAxis: { axisLabel: { rotate: Number(e.target.value) || 0 } } })} />
+                          </label>
+                            </div>
+                          </CollapsibleContent>
+                        </Collapsible>
+                      </div>
+                      <div className="rounded-lg border border-border/60 bg-background/70 p-3">
+                        <div className="space-y-2">
+                          <Collapsible
+                            open={isSectionExpanded("chartAdvancedHighFreq", true)}
+                            onOpenChange={(open) => setSectionExpanded("chartAdvancedHighFreq", open)}
+                          >
+                            <div className="mb-2 flex items-center gap-1.5">
+                              <CollapsibleTrigger asChild>
+                                <button
+                                  type="button"
+                                  className="flex h-5 w-5 items-center justify-center rounded text-[11px] hover:bg-accent"
+                                  aria-label={isSectionExpanded("chartAdvancedHighFreq", true) ? "收起高频项" : "展开高频项"}
+                                >
+                                  {isSectionExpanded("chartAdvancedHighFreq", true) ? "▾" : "▸"}
+                                </button>
+                              </CollapsibleTrigger>
+                              <div className="text-[11px] font-medium text-muted-foreground">高频项</div>
+                            </div>
+                            <CollapsibleContent>
+                              <div className="grid grid-cols-1 gap-2">
+                                <label className="flex items-center gap-2 rounded-md bg-muted/30 px-2 py-1.5">
+                                  <Checkbox className={optionCheckboxClass} checked={Boolean((selectedElement.chart?.option as any)?.legend?.show ?? true)} onCheckedChange={(checked) => updateSelectedOptionForm({ legend: { show: checked === true } })} />
+                                  {renderOptionLabel("显示图例", "legend.show", "控制图例显隐。")}
+                                </label>
+                                <label className="flex items-center gap-2 rounded-md bg-muted/30 px-2 py-1.5">
+                                  <Checkbox className={optionCheckboxClass} checked={Boolean((selectedElement.chart?.option as any)?.grid?.containLabel ?? false)} onCheckedChange={(checked) => updateSelectedOptionForm({ grid: { containLabel: checked === true } })} />
+                                  {renderOptionLabel("网格包含标签", "grid.containLabel", "自动为坐标轴标签预留空间。")}
+                                </label>
+                                <label className="flex items-center gap-2 rounded-md bg-muted/30 px-2 py-1.5">
+                                  <Checkbox className={optionCheckboxClass} checked={Boolean(Array.isArray((selectedElement.chart?.option as any)?.dataZoom) && (selectedElement.chart?.option as any)?.dataZoom.some((z: any) => z?.type === "inside"))} onCheckedChange={(checked) => { const prev = Array.isArray((selectedElement.chart?.option as any)?.dataZoom) ? [...(selectedElement.chart?.option as any).dataZoom] : []; const next = checked ? [...prev.filter((z: any) => z?.type !== "inside"), { type: "inside" }] : prev.filter((z: any) => z?.type !== "inside"); updateSelectedOptionForm({ dataZoom: next }); }} />
+                                  {renderOptionLabel("内置缩放", "dataZoom[type=inside]", "启用鼠标滚轮/手势缩放。")}
+                                </label>
+                                <label className="flex items-center gap-2 rounded-md bg-muted/30 px-2 py-1.5">
+                                  <Checkbox className={optionCheckboxClass} checked={Boolean(Array.isArray((selectedElement.chart?.option as any)?.dataZoom) && (selectedElement.chart?.option as any)?.dataZoom.some((z: any) => z?.type === "slider"))} onCheckedChange={(checked) => { const prev = Array.isArray((selectedElement.chart?.option as any)?.dataZoom) ? [...(selectedElement.chart?.option as any).dataZoom] : []; const next = checked ? [...prev.filter((z: any) => z?.type !== "slider"), { type: "slider" }] : prev.filter((z: any) => z?.type !== "slider"); updateSelectedOptionForm({ dataZoom: next }); }} />
+                                  {renderOptionLabel("滑块缩放", "dataZoom[type=slider]", "显示底部拖拽缩放条。")}
+                                </label>
+                                <label className="flex items-center gap-2 rounded-md bg-muted/30 px-2 py-1.5">
+                                  <Checkbox className={optionCheckboxClass} checked={Boolean((selectedElement.chart?.option as any)?.animation ?? false)} onCheckedChange={(checked) => updateSelectedOptionForm({ animation: checked === true })} />
+                                  {renderOptionLabel("开启动画", "animation", "开启后切换数据时有过渡动效。")}
+                                </label>
+                                <label className="block space-y-1.5">
+                                  {renderOptionLabel("动画时长", "animationDuration", "动画持续时间，单位毫秒。")}
+                                  <Input type="number" min={0} className={optionInputClass} value={Number((selectedElement.chart?.option as any)?.animationDuration ?? 300)} onChange={(e) => updateSelectedOptionForm({ animationDuration: Math.max(0, Number(e.target.value) || 0) })} />
+                                </label>
+                              </div>
+                            </CollapsibleContent>
+                          </Collapsible>
+                          <Collapsible
+                            open={isSectionExpanded("chartAdvancedAxisPointer", false)}
+                            onOpenChange={(open) => setSectionExpanded("chartAdvancedAxisPointer", open)}
+                          >
+                            <div className="mb-2 flex items-center gap-1.5">
+                              <CollapsibleTrigger asChild>
+                                <button
+                                  type="button"
+                                  className="flex h-5 w-5 items-center justify-center rounded text-[11px] hover:bg-accent"
+                                  aria-label={isSectionExpanded("chartAdvancedAxisPointer", false) ? "收起轴指示器项" : "展开轴指示器项"}
+                                >
+                                  {isSectionExpanded("chartAdvancedAxisPointer", false) ? "▾" : "▸"}
+                                </button>
+                              </CollapsibleTrigger>
+                              <div className="text-[11px] font-medium text-muted-foreground">轴指示器与对齐</div>
+                            </div>
+                            <CollapsibleContent>
+                              <div className="grid grid-cols-1 gap-2">
+                                <label className="flex items-center gap-2 rounded-md bg-muted/30 px-2 py-1.5">
+                                  <Checkbox className={optionCheckboxClass} checked={Boolean((selectedElement.chart?.option as any)?.axisPointer?.show ?? false)} onCheckedChange={(checked) => updateSelectedOptionForm({ axisPointer: { show: checked === true } })} />
+                                  {renderOptionLabel("显示轴指示器", "axisPointer.show", "悬停时显示轴对齐提示。")}
+                                </label>
+                                <label className="block space-y-1.5 rounded-md bg-muted/30 px-2 py-1.5">
+                                  {renderOptionLabel("轴指示器类型", "axisPointer.type", "设置指示器样式：线/阴影/十字。")}
+                                  <Select value={String((selectedElement.chart?.option as any)?.axisPointer?.type ?? "line")} onValueChange={(value) => updateSelectedOptionForm({ axisPointer: { type: value } })}>
+                                    <SelectTrigger className={optionSelectTriggerClass}><SelectValue placeholder="选择轴指示器类型" /></SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="line">线</SelectItem>
+                                      <SelectItem value="shadow">阴影</SelectItem>
+                                      <SelectItem value="cross">十字</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </label>
+                                <label className="flex items-center gap-2 rounded-md bg-muted/30 px-2 py-1.5">
+                                  <Checkbox className={optionCheckboxClass} checked={Boolean((selectedElement.chart?.option as any)?.axisPointer?.snap ?? false)} onCheckedChange={(checked) => updateSelectedOptionForm({ axisPointer: { snap: checked === true } })} />
+                                  {renderOptionLabel("轴指示器吸附", "axisPointer.snap", "指示器吸附到最近数据点。")}
+                                </label>
+                              </div>
+                            </CollapsibleContent>
+                          </Collapsible>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  {renderFieldGroup(
+                    "JSON 高级模式",
                     <>
-                      <label className="flex items-center gap-2">
+                      <label className="flex items-center gap-2 rounded-md bg-background/70 px-2 py-1.5">
                         <Checkbox
                           checked={isAdvancedOptionMode}
                           className="h-4 w-4 border-2 border-foreground/80 bg-background ring-1 ring-foreground/40 data-[state=checked]:border-primary data-[state=checked]:ring-primary/40"
                           onCheckedChange={(checked) => setIsAdvancedOptionMode(checked === true)}
                         />
-                        <span>JSON 高级模式（直接编辑 ECharts option）</span>
+                        <span>开启高级模式（直接编辑图表 JSON 配置）</span>
                       </label>
                       <div className="rounded border border-border/60 bg-background px-2 py-1.5 text-[11px] text-muted-foreground">
-                        基础配置会先生成 option，JSON 模式会在此基础上覆盖（深度合并）。
+                        基础配置会先生成图表配置，高级模式会在此基础上覆盖（深度合并）。
                       </div>
+                      {isAdvancedOptionMode ? (
+                        <>
+                          <Textarea
+                            value={optionJsonText}
+                            onChange={(e) => {
+                              const next = e.target.value;
+                              setOptionJsonText(next);
+                              try {
+                                const parsed = JSON.parse(next) as Record<string, unknown>;
+                                updateSelectedChart({ option: parsed });
+                                setOptionJsonError(null);
+                              } catch {
+                                setOptionJsonError("JSON 格式错误，修正后会自动应用");
+                              }
+                            }}
+                            spellCheck={false}
+                            className="h-44 font-mono text-[11px]"
+                          />
+                          {optionJsonError ? (
+                            <div className="rounded border border-destructive/40 bg-destructive/10 px-2 py-1.5 text-[11px] text-destructive">
+                              {optionJsonError}
+                            </div>
+                          ) : (
+                            <div className="rounded border border-emerald-500/30 bg-emerald-500/10 px-2 py-1.5 text-[11px] text-emerald-700 dark:text-emerald-300">
+                              JSON 有效，已实时应用到当前图表。
+                            </div>
+                          )}
+                        </>
+                      ) : null}
                     </>
                   )}
-                  {isAdvancedOptionMode ? (
-                    renderFieldGroup(
-                      "Option JSON",
-                      <>
-                        <Textarea
-                          value={optionJsonText}
-                          onChange={(e) => {
-                            const next = e.target.value;
-                            setOptionJsonText(next);
-                            try {
-                              const parsed = JSON.parse(next) as Record<string, unknown>;
-                              updateSelectedChart({ option: parsed });
-                              setOptionJsonError(null);
-                            } catch {
-                              setOptionJsonError("JSON 格式错误，修正后会自动应用");
-                            }
-                          }}
-                          spellCheck={false}
-                          className="h-44 font-mono text-[11px]"
-                        />
-                        {optionJsonError ? (
-                          <div className="rounded border border-destructive/40 bg-destructive/10 px-2 py-1.5 text-[11px] text-destructive">
-                            {optionJsonError}
-                          </div>
-                        ) : (
-                          <div className="rounded border border-emerald-500/30 bg-emerald-500/10 px-2 py-1.5 text-[11px] text-emerald-700 dark:text-emerald-300">
-                            JSON 有效，已实时应用到当前图表。
-                          </div>
-                        )}
-                      </>
-                    )
-                  ) : null}
                 </>,
                 false,
                 ["json", "option", "高级", "echarts"]

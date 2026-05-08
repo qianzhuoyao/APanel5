@@ -738,6 +738,19 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
           outline: none !important;
           box-shadow: none !important;
         }
+        .panel-font-root button[role="checkbox"] {
+          border-width: 2px !important;
+          border-color: hsl(var(--foreground) / 0.8) !important;
+          background: hsl(var(--background)) !important;
+          color: hsl(var(--background)) !important;
+          box-shadow: 0 0 0 1px hsl(var(--foreground) / 0.4) inset !important;
+        }
+        .panel-font-root button[role="checkbox"][data-state="checked"] {
+          border-color: hsl(var(--primary)) !important;
+          background: hsl(var(--primary)) !important;
+          color: hsl(var(--primary-foreground)) !important;
+          box-shadow: 0 0 0 1px hsl(var(--primary) / 0.45) inset !important;
+        }
       `}</style>
       <nav className="panel-font-root relative z-30 flex items-center gap-2 border-b border-border bg-background/95 px-2 text-foreground">
         <Menubar className="h-8 border-0 bg-transparent p-0 shadow-none">
