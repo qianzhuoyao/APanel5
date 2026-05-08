@@ -1755,6 +1755,14 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
               updateElement={updateElement}
               setReferenceCopyMode={setReferenceCopyMode}
               nodeZOrderLabel={selectedNodeZOrderLabel}
+              onExcludeSelectedNode={(nodeId) => {
+                setSelectedIds((prev) => {
+                  const nextIds = prev.filter((id) => id !== nodeId);
+                  // 立即同步 Moveable targets，避免一帧内仍持有旧多选目标导致拖拽不跟手
+                  setSelectedTargets(getSelectedTargetsFromIds(canvasRef.current, nextIds));
+                  return nextIds;
+                });
+              }}
               onAdjustNodeZOrder={(nodeId, action) => {
                 if (action === "bringForward") {
                   bringElementsForward([nodeId]);

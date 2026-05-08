@@ -43,6 +43,7 @@ export type PanelConfigSidebarProps = {
   updateElement: UpdateElement;
   setReferenceCopyMode?: (id: string, mode: ReferenceCopyMode) => void;
   nodeZOrderLabel?: string;
+  onExcludeSelectedNode?: (nodeId: string) => void;
   onAdjustNodeZOrder?: (
     nodeId: string,
     action: "bringForward" | "sendBackward" | "bringToFront" | "sendToBack"
@@ -56,6 +57,7 @@ export function PanelConfigSidebar({
   updateElement,
   setReferenceCopyMode,
   nodeZOrderLabel,
+  onExcludeSelectedNode,
   onAdjustNodeZOrder,
 }: PanelConfigSidebarProps) {
   const [isAdvancedOptionMode, setIsAdvancedOptionMode] = useState(false);
@@ -82,6 +84,7 @@ export function PanelConfigSidebar({
     chartAdvanced: false,
     reference: true,
   });
+  const [expandedNodeCards, setExpandedNodeCards] = useState<Record<string, boolean>>({});
 
   const isChartElement = !!selectedElement && CHART_TYPES.has(selectedElement.materialType ?? "");
   const selectedLayer = selectedElement
@@ -389,6 +392,13 @@ export function PanelConfigSidebar({
       {children}
     </div>
   );
+  const isNodeCardExpanded = useCallback(
+    (id: string) => expandedNodeCards[id] ?? true,
+    [expandedNodeCards]
+  );
+  const setNodeCardExpanded = useCallback((id: string, open: boolean) => {
+    setExpandedNodeCards((prev) => ({ ...prev, [id]: open }));
+  }, []);
 
   const renderColorField = (
     label: string,
@@ -535,107 +545,35 @@ export function PanelConfigSidebar({
               return text.includes(normalizedSearch);
             })
             .map((el) => (
-              <Card key={el.id}>
+              <Card
+                key={el.id}
+                className={el.locked ? "border-amber-500/40 bg-amber-500/5" : ""}
+              >
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-xs truncate">
-                    {el.name?.trim() || el.materialType || "节点"} · {el.id}
-                  </CardTitle>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      className="inline-flex h-6 w-6 items-center justify-center rounded border border-border text-[11px] hover:bg-accent"
+                      onClick={() => setNodeCardExpanded(el.id, !isNodeCardExpanded(el.id))}
+                      aria-label={isNodeCardExpanded(el.id) ? "收起节点配置" : "展开节点配置"}
+                    >
+                      {isNodeCardExpanded(el.id) ? "▾" : "▸"}
+                    </button>
+                    <CardTitle className="min-w-0 flex-1 text-xs truncate">
+                      {el.name?.trim() || el.materialType || "节点"} · {el.id}
+                    </CardTitle>
+                    <button
+                      type="button"
+                      className="inline-flex h-6 items-center justify-center rounded border border-border px-2 text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground"
+                      onClick={() => onExcludeSelectedNode?.(el.id)}
+                      title="将该节点从当前多选中剔除"
+                    >
+                      剔除
+                    </button>
+                  </div>
                 </CardHeader>
+                {isNodeCardExpanded(el.id) ? (
                 <CardContent className="space-y-2 text-xs">
-                  <label className="block space-y-1">
-                    <div>名称</div>
-                    <Input
-                      className="h-7"
-                      value={el.name ?? ""}
-                      onChange={(e) => updateElement(el.id, { name: e.target.value || undefined })}
-                    />
-                  </label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <label className="block space-y-1">
-                      <div>zIndex</div>
-                      <Input
-                        className="h-7"
-                        type="number"
-                        value={el.zIndex ?? 1}
-                        onChange={(e) =>
-                          updateElement(el.id, { zIndex: Number(e.target.value) || 1 })
-                        }
-                      />
-                    </label>
-                    <label className="block space-y-1">
-                      <div>图层</div>
-                      <Select
-                        value={el.layerId}
-                        onValueChange={(value) => updateElement(el.id, { layerId: value })}
-                      >
-                        <SelectTrigger className="h-7">
-                          <SelectValue placeholder="选择图层" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {layers.map((layer) => (
-                            <SelectItem key={layer.id} value={layer.id}>
-                              {layer.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </label>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <label className="block space-y-1">
-                      <div>X</div>
-                      <Input
-                        className="h-7"
-                        type="number"
-                        value={el.x}
-                        onChange={(e) => updateElement(el.id, { x: Number(e.target.value) || 0 })}
-                      />
-                    </label>
-                    <label className="block space-y-1">
-                      <div>Y</div>
-                      <Input
-                        className="h-7"
-                        type="number"
-                        value={el.y}
-                        onChange={(e) => updateElement(el.id, { y: Number(e.target.value) || 0 })}
-                      />
-                    </label>
-                    <label className="block space-y-1">
-                      <div>旋转角度</div>
-                      <Input
-                        className="h-7"
-                        type="number"
-                        value={el.rotate ?? 0}
-                        onChange={(e) =>
-                          updateElement(el.id, { rotate: Number(e.target.value) || 0 })
-                        }
-                      />
-                    </label>
-                    <label className="block space-y-1">
-                      <div>宽</div>
-                      <Input
-                        className="h-7"
-                        type="number"
-                        min={1}
-                        value={el.width}
-                        onChange={(e) =>
-                          updateElement(el.id, { width: Math.max(1, Number(e.target.value) || 1) })
-                        }
-                      />
-                    </label>
-                    <label className="block space-y-1">
-                      <div>高</div>
-                      <Input
-                        className="h-7"
-                        type="number"
-                        min={1}
-                        value={el.height}
-                        onChange={(e) =>
-                          updateElement(el.id, { height: Math.max(1, Number(e.target.value) || 1) })
-                        }
-                      />
-                    </label>
-                  </div>
                   <label className="flex items-center gap-2">
                     <Checkbox
                       checked={el.locked === true}
@@ -643,7 +581,108 @@ export function PanelConfigSidebar({
                     />
                     <span>锁定节点</span>
                   </label>
-                  <div className="grid grid-cols-2 gap-2">
+                  {el.locked ? (
+                    <div className="rounded border border-amber-500/40 bg-amber-500/10 px-2 py-1.5 text-[11px] text-amber-700 dark:text-amber-300">
+                      当前节点已锁定，仅可操作锁定开关。
+                    </div>
+                  ) : null}
+                  <fieldset disabled={el.locked} className={el.locked ? "opacity-60" : ""}>
+                    <div className="space-y-2">
+                      <label className="block space-y-1">
+                        <div>名称</div>
+                        <Input
+                          className="h-7"
+                          value={el.name ?? ""}
+                          onChange={(e) => updateElement(el.id, { name: e.target.value || undefined })}
+                        />
+                      </label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <label className="block space-y-1">
+                          <div>zIndex</div>
+                          <Input
+                            className="h-7"
+                            type="number"
+                            value={el.zIndex ?? 1}
+                            onChange={(e) =>
+                              updateElement(el.id, { zIndex: Number(e.target.value) || 1 })
+                            }
+                          />
+                        </label>
+                        <label className="block space-y-1">
+                          <div>图层</div>
+                          <Select
+                            value={el.layerId}
+                            onValueChange={(value) => updateElement(el.id, { layerId: value })}
+                          >
+                            <SelectTrigger className="h-7">
+                              <SelectValue placeholder="选择图层" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {layers.map((layer) => (
+                                <SelectItem key={layer.id} value={layer.id}>
+                                  {layer.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </label>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <label className="block space-y-1">
+                          <div>X</div>
+                          <Input
+                            className="h-7"
+                            type="number"
+                            value={el.x}
+                            onChange={(e) => updateElement(el.id, { x: Number(e.target.value) || 0 })}
+                          />
+                        </label>
+                        <label className="block space-y-1">
+                          <div>Y</div>
+                          <Input
+                            className="h-7"
+                            type="number"
+                            value={el.y}
+                            onChange={(e) => updateElement(el.id, { y: Number(e.target.value) || 0 })}
+                          />
+                        </label>
+                        <label className="block space-y-1">
+                          <div>旋转角度</div>
+                          <Input
+                            className="h-7"
+                            type="number"
+                            value={el.rotate ?? 0}
+                            onChange={(e) =>
+                              updateElement(el.id, { rotate: Number(e.target.value) || 0 })
+                            }
+                          />
+                        </label>
+                        <label className="block space-y-1">
+                          <div>宽</div>
+                          <Input
+                            className="h-7"
+                            type="number"
+                            min={1}
+                            value={el.width}
+                            onChange={(e) =>
+                              updateElement(el.id, { width: Math.max(1, Number(e.target.value) || 1) })
+                            }
+                          />
+                        </label>
+                        <label className="block space-y-1">
+                          <div>高</div>
+                          <Input
+                            className="h-7"
+                            type="number"
+                            min={1}
+                            value={el.height}
+                            onChange={(e) =>
+                              updateElement(el.id, { height: Math.max(1, Number(e.target.value) || 1) })
+                            }
+                          />
+                        </label>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
                     <label className="block space-y-1">
                       <div>背景色</div>
                       <Input
@@ -676,8 +715,8 @@ export function PanelConfigSidebar({
                         }
                       />
                     </label>
-                  </div>
-                  {CHART_TYPES.has(el.materialType ?? "") ? (
+                      </div>
+                      {CHART_TYPES.has(el.materialType ?? "") ? (
                     <div className="grid grid-cols-2 gap-2">
                       <label className="block space-y-1 col-span-2">
                         <div>图表标题</div>
@@ -723,8 +762,8 @@ export function PanelConfigSidebar({
                         </Select>
                       </label>
                     </div>
-                  ) : null}
-                  {el.materialType === "text" ? (
+                      ) : null}
+                      {el.materialType === "text" ? (
                     <div className="grid grid-cols-2 gap-2">
                       <label className="block space-y-1 col-span-2">
                         <div>文本内容(HTML)</div>
@@ -753,8 +792,8 @@ export function PanelConfigSidebar({
                         />
                       </label>
                     </div>
-                  ) : null}
-                  {el.materialType === "audio" ? (
+                      ) : null}
+                      {el.materialType === "audio" ? (
                     <div className="grid grid-cols-2 gap-2">
                       <label className="block space-y-1 col-span-2">
                         <div>音频 URL</div>
@@ -797,8 +836,8 @@ export function PanelConfigSidebar({
                         </Select>
                       </label>
                     </div>
-                  ) : null}
-                  {el.materialType === "video" ? (
+                      ) : null}
+                      {el.materialType === "video" ? (
                     <label className="block space-y-1">
                       <div>视频 URL</div>
                       <Input
@@ -807,8 +846,8 @@ export function PanelConfigSidebar({
                         onChange={(e) => updateElement(el.id, { videoRemoteUrl: e.target.value || undefined })}
                       />
                     </label>
-                  ) : null}
-                  {el.materialType === "grid" ? (
+                      ) : null}
+                      {el.materialType === "grid" ? (
                     <div className="grid grid-cols-2 gap-2">
                       <label className="block space-y-1">
                         <div>行</div>
@@ -819,8 +858,8 @@ export function PanelConfigSidebar({
                         <Input className="h-7" type="number" min={1} value={el.gridCols ?? 3} onChange={(e) => updateElement(el.id, { gridCols: Math.max(1, Number(e.target.value) || 3) })} />
                       </label>
                     </div>
-                  ) : null}
-                  {el.materialType === "reference" ? (
+                      ) : null}
+                      {el.materialType === "reference" ? (
                     <div className="grid grid-cols-2 gap-2">
                       <label className="block space-y-1">
                         <div>引用图层</div>
@@ -851,8 +890,11 @@ export function PanelConfigSidebar({
                         </Select>
                       </label>
                     </div>
-                  ) : null}
+                      ) : null}
+                    </div>
+                  </fieldset>
                 </CardContent>
+                ) : null}
               </Card>
             ))}
           {hasSearch &&

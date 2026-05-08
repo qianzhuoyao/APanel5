@@ -137,6 +137,10 @@ export function MoveableLayer({
         .filter((id): id is string => !!id),
     [getId, movableTargets]
   );
+  const moveableRenderKey = useMemo(() => {
+    const safeZoom = Number.isFinite(zoom) ? zoom.toFixed(4) : "1.0000";
+    return `${safeZoom}::${movableIds.join(",")}`;
+  }, [movableIds, zoom]);
   const resolveSingleEventId = useCallback(
     (target: HTMLElement | undefined | null) => {
       const id = target ? getId(target) : null;
@@ -148,12 +152,28 @@ export function MoveableLayer({
     [getId, movableIds]
   );
   const toCanvasDelta = useCallback(
-    (delta: number) => {
+    (value: number) => {
       const safeZoom = zoom > 0 ? zoom : 1;
-      return delta / safeZoom;
+      return value / safeZoom;
     },
     [zoom]
   );
+  const readClientPoint = useCallback((eventLike: any) => {
+    const x =
+      typeof eventLike?.clientX === "number"
+        ? eventLike.clientX
+        : typeof eventLike?.inputEvent?.clientX === "number"
+          ? eventLike.inputEvent.clientX
+          : null;
+    const y =
+      typeof eventLike?.clientY === "number"
+        ? eventLike.clientY
+        : typeof eventLike?.inputEvent?.clientY === "number"
+          ? eventLike.inputEvent.clientY
+          : null;
+    if (x === null || y === null) return null;
+    return { x, y };
+  }, []);
   const lockBadgeAnchor = useMemo(() => {
     const id = lockedSelected[0];
     if (!id) return null;
@@ -277,11 +297,12 @@ export function MoveableLayer({
   return (
     <>
       <Moveable
+        key={moveableRenderKey}
         ref={moveableRef}
       // Moveable 支持单个 HTMLElement 或 HTMLElement[]
       target={movableTargets as unknown as HTMLElement[]}
-      // Moveable 的 zoom 应与画布缩放同向，才能保证拖拽/缩放位移与鼠标一致
-      zoom={zoom > 0 ? zoom : 1}
+      // 控制框保持视觉固定大小：随画布缩放做反向补偿
+      zoom={zoom > 0 ? 1 / zoom : 1}
       // 允许在控制框内部区域拖动（不必必须点到某个节点本体）
       dragArea
       draggable
@@ -299,14 +320,26 @@ export function MoveableLayer({
         e.set([0, 0]);
         e.datas.__startX = data.x;
         e.datas.__startY = data.y;
+        const point = readClientPoint(e);
+        e.datas.__startClientX = point?.x ?? null;
+        e.datas.__startClientY = point?.y ?? null;
       }}
       onDrag={(e: any) => {
         if (!e?.target?.style) return;
         if (e.datas.__startX === undefined || e.datas.__startY === undefined) return;
         const sx = e.datas.__startX ?? 0;
         const sy = e.datas.__startY ?? 0;
-        const tx = toCanvasDelta(e.beforeTranslate?.[0] ?? 0);
-        const ty = toCanvasDelta(e.beforeTranslate?.[1] ?? 0);
+        const point = readClientPoint(e);
+        const hasClient =
+          typeof e.datas.__startClientX === "number" &&
+          typeof e.datas.__startClientY === "number" &&
+          !!point;
+        const tx = hasClient
+          ? toCanvasDelta(point.x - e.datas.__startClientX)
+          : toCanvasDelta(e.beforeTranslate?.[0] ?? 0);
+        const ty = hasClient
+          ? toCanvasDelta(point.y - e.datas.__startClientY)
+          : toCanvasDelta(e.beforeTranslate?.[1] ?? 0);
         e.target.style.left = `${sx + tx}px`;
         e.target.style.top = `${sy + ty}px`;
       }}
@@ -319,6 +352,9 @@ export function MoveableLayer({
           ev.set([0, 0]);
           ev.datas.__startX = data.x;
           ev.datas.__startY = data.y;
+          const point = readClientPoint(ev) ?? readClientPoint(e);
+          ev.datas.__startClientX = point?.x ?? null;
+          ev.datas.__startClientY = point?.y ?? null;
         });
       }}
       onDragGroup={(e: any) => {
@@ -326,8 +362,17 @@ export function MoveableLayer({
           if (!ev?.target?.style) return;
           const sx = ev.datas.__startX ?? 0;
           const sy = ev.datas.__startY ?? 0;
-          const tx = toCanvasDelta(ev.beforeTranslate?.[0] ?? 0);
-          const ty = toCanvasDelta(ev.beforeTranslate?.[1] ?? 0);
+          const point = readClientPoint(ev) ?? readClientPoint(e);
+          const hasClient =
+            typeof ev.datas.__startClientX === "number" &&
+            typeof ev.datas.__startClientY === "number" &&
+            !!point;
+          const tx = hasClient
+            ? toCanvasDelta(point.x - ev.datas.__startClientX)
+            : toCanvasDelta(ev.beforeTranslate?.[0] ?? 0);
+          const ty = hasClient
+            ? toCanvasDelta(point.y - ev.datas.__startClientY)
+            : toCanvasDelta(ev.beforeTranslate?.[1] ?? 0);
           ev.target.style.left = `${sx + tx}px`;
           ev.target.style.top = `${sy + ty}px`;
         });
@@ -341,6 +386,8 @@ export function MoveableLayer({
         e.dragStart?.set([0, 0]);
         e.datas.__startX = data.x;
         e.datas.__startY = data.y;
+        e.datas.__startClientX = e.inputEvent?.clientX ?? null;
+        e.datas.__startClientY = e.inputEvent?.clientY ?? null;
       }}
       onResize={(e: any) => {
         if (!e?.target?.style) return;
@@ -349,8 +396,17 @@ export function MoveableLayer({
         e.target.style.height = `${e.height}px`;
         const sx = e.datas.__startX ?? 0;
         const sy = e.datas.__startY ?? 0;
-        const tx = toCanvasDelta(e.drag.beforeTranslate?.[0] ?? 0);
-        const ty = toCanvasDelta(e.drag.beforeTranslate?.[1] ?? 0);
+        const hasClient =
+          typeof e.datas.__startClientX === "number" &&
+          typeof e.datas.__startClientY === "number" &&
+          typeof e.inputEvent?.clientX === "number" &&
+          typeof e.inputEvent?.clientY === "number";
+        const tx = hasClient
+          ? toCanvasDelta(e.inputEvent.clientX - e.datas.__startClientX)
+          : toCanvasDelta(e.drag.beforeTranslate?.[0] ?? 0);
+        const ty = hasClient
+          ? toCanvasDelta(e.inputEvent.clientY - e.datas.__startClientY)
+          : toCanvasDelta(e.drag.beforeTranslate?.[1] ?? 0);
         e.target.style.left = `${sx + tx}px`;
         e.target.style.top = `${sy + ty}px`;
       }}
@@ -364,6 +420,9 @@ export function MoveableLayer({
           ev.dragStart?.set([0, 0]);
           ev.datas.__startX = data.x;
           ev.datas.__startY = data.y;
+          const input = ev.inputEvent ?? e.inputEvent;
+          ev.datas.__startClientX = input?.clientX ?? null;
+          ev.datas.__startClientY = input?.clientY ?? null;
         });
       }}
       onResizeGroup={(e: any) => {
@@ -373,8 +432,18 @@ export function MoveableLayer({
           ev.target.style.height = `${ev.height}px`;
           const sx = ev.datas.__startX ?? 0;
           const sy = ev.datas.__startY ?? 0;
-          const tx = toCanvasDelta(ev.drag.beforeTranslate?.[0] ?? 0);
-          const ty = toCanvasDelta(ev.drag.beforeTranslate?.[1] ?? 0);
+          const input = ev.inputEvent ?? e.inputEvent;
+          const hasClient =
+            typeof ev.datas.__startClientX === "number" &&
+            typeof ev.datas.__startClientY === "number" &&
+            typeof input?.clientX === "number" &&
+            typeof input?.clientY === "number";
+          const tx = hasClient
+            ? toCanvasDelta(input.clientX - ev.datas.__startClientX)
+            : toCanvasDelta(ev.drag.beforeTranslate?.[0] ?? 0);
+          const ty = hasClient
+            ? toCanvasDelta(input.clientY - ev.datas.__startClientY)
+            : toCanvasDelta(ev.drag.beforeTranslate?.[1] ?? 0);
           ev.target.style.left = `${sx + tx}px`;
           ev.target.style.top = `${sy + ty}px`;
         });
@@ -403,8 +472,17 @@ export function MoveableLayer({
         if (!data) return;
         const sx = e.datas.__startX ?? data.x;
         const sy = e.datas.__startY ?? data.y;
-        const tx = toCanvasDelta(e.lastEvent?.beforeTranslate?.[0] ?? 0);
-        const ty = toCanvasDelta(e.lastEvent?.beforeTranslate?.[1] ?? 0);
+        const point = readClientPoint(e);
+        const hasClient =
+          typeof e.datas.__startClientX === "number" &&
+          typeof e.datas.__startClientY === "number" &&
+          !!point;
+        const tx = hasClient
+          ? toCanvasDelta(point.x - e.datas.__startClientX)
+          : toCanvasDelta(e.lastEvent?.beforeTranslate?.[0] ?? 0);
+        const ty = hasClient
+          ? toCanvasDelta(point.y - e.datas.__startClientY)
+          : toCanvasDelta(e.lastEvent?.beforeTranslate?.[1] ?? 0);
         const nextX = sx + tx;
         const nextY = sy + ty;
         const patch = getSnapPatch(id, nextX, nextY, data.width, data.height);
@@ -441,8 +519,17 @@ export function MoveableLayer({
           if (!data) return;
           const sx = ev.datas.__startX ?? data.x;
           const sy = ev.datas.__startY ?? data.y;
-          const tx = toCanvasDelta(ev.lastEvent?.beforeTranslate?.[0] ?? 0);
-          const ty = toCanvasDelta(ev.lastEvent?.beforeTranslate?.[1] ?? 0);
+          const point = readClientPoint(ev) ?? readClientPoint(e);
+          const hasClient =
+            typeof ev.datas.__startClientX === "number" &&
+            typeof ev.datas.__startClientY === "number" &&
+            !!point;
+          const tx = hasClient
+            ? toCanvasDelta(point.x - ev.datas.__startClientX)
+            : toCanvasDelta(ev.lastEvent?.beforeTranslate?.[0] ?? 0);
+          const ty = hasClient
+            ? toCanvasDelta(point.y - ev.datas.__startClientY)
+            : toCanvasDelta(ev.lastEvent?.beforeTranslate?.[1] ?? 0);
           const nextX = sx + tx;
           const nextY = sy + ty;
           const patch = getSnapPatch(id, nextX, nextY, data.width, data.height);
@@ -479,8 +566,17 @@ export function MoveableLayer({
         if (!data) return;
         const width = e.lastEvent?.width ?? data.width;
         const height = e.lastEvent?.height ?? data.height;
-        const tx = toCanvasDelta(e.lastEvent?.drag?.beforeTranslate?.[0] ?? 0);
-        const ty = toCanvasDelta(e.lastEvent?.drag?.beforeTranslate?.[1] ?? 0);
+        const hasClient =
+          typeof e.datas.__startClientX === "number" &&
+          typeof e.datas.__startClientY === "number" &&
+          typeof e.inputEvent?.clientX === "number" &&
+          typeof e.inputEvent?.clientY === "number";
+        const tx = hasClient
+          ? toCanvasDelta(e.inputEvent.clientX - e.datas.__startClientX)
+          : toCanvasDelta(e.lastEvent?.drag?.beforeTranslate?.[0] ?? 0);
+        const ty = hasClient
+          ? toCanvasDelta(e.inputEvent.clientY - e.datas.__startClientY)
+          : toCanvasDelta(e.lastEvent?.drag?.beforeTranslate?.[1] ?? 0);
         const sx = e.datas.__startX ?? data.x;
         const sy = e.datas.__startY ?? data.y;
         updateElement(id, { width, height, x: sx + tx, y: sy + ty });
@@ -495,8 +591,18 @@ export function MoveableLayer({
           if (!data) return;
           const width = ev.lastEvent?.width ?? data.width;
           const height = ev.lastEvent?.height ?? data.height;
-          const tx = toCanvasDelta(ev.lastEvent?.drag?.beforeTranslate?.[0] ?? 0);
-          const ty = toCanvasDelta(ev.lastEvent?.drag?.beforeTranslate?.[1] ?? 0);
+          const input = ev.inputEvent ?? e.inputEvent;
+          const hasClient =
+            typeof ev.datas.__startClientX === "number" &&
+            typeof ev.datas.__startClientY === "number" &&
+            typeof input?.clientX === "number" &&
+            typeof input?.clientY === "number";
+          const tx = hasClient
+            ? toCanvasDelta(input.clientX - ev.datas.__startClientX)
+            : toCanvasDelta(ev.lastEvent?.drag?.beforeTranslate?.[0] ?? 0);
+          const ty = hasClient
+            ? toCanvasDelta(input.clientY - ev.datas.__startClientY)
+            : toCanvasDelta(ev.lastEvent?.drag?.beforeTranslate?.[1] ?? 0);
           const sx = ev.datas.__startX ?? data.x;
           const sy = ev.datas.__startY ?? data.y;
           updateElement(
