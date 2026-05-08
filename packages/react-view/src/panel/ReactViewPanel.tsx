@@ -243,6 +243,7 @@ export type ReactViewPanelProps = {
 };
 
 export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelProps) {
+  const THEME_STORAGE_KEY = "panel:theme";
   const themedScrollbarClass =
     "scrollbar-thin [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-muted/40 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border/80 [&::-webkit-scrollbar-thumb]:hover:bg-border";
   const {
@@ -311,15 +312,61 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
   const mergeSelectedCount = layers.filter((l) => l.mergeSelected).length;
   const canMergeLayers = mergeSelectedCount >= 2;
   const panelFontPx = panelFontSize === "sm" ? 12 : panelFontSize === "lg" ? 15 : 13;
+  const applyTheme = useCallback((checked: boolean) => {
+    const root = document.documentElement;
+    root.classList.toggle("dark", checked);
+    root.dataset.theme = checked ? "dark" : "light";
+    try {
+      // panel 独立持久化键，避免与宿主应用的通用 theme 键互相覆盖
+      localStorage.setItem(THEME_STORAGE_KEY, checked ? "dark" : "light");
+      // 兼容旧逻辑与其他依赖 theme 的读取方
+      localStorage.setItem("theme", checked ? "dark" : "light");
+    } catch {
+      // ignore storage errors
+    }
+    setIsDark(checked);
+  }, [THEME_STORAGE_KEY]);
 
   useEffect(() => {
     const root = document.documentElement;
+    try {
+      const storedTheme =
+        localStorage.getItem(THEME_STORAGE_KEY) ?? localStorage.getItem("theme");
+      if (storedTheme === "dark" || storedTheme === "light") {
+        applyTheme(storedTheme === "dark");
+      } else {
+        // 默认黑色主题，并持久化
+        applyTheme(true);
+      }
+    } catch {
+      // 读取失败时也回落到默认黑色
+      applyTheme(true);
+    }
     const update = () => setIsDark(root.classList.contains("dark"));
     update();
     const observer = new MutationObserver(update);
     observer.observe(root, { attributes: true, attributeFilter: ["class"] });
     return () => observer.disconnect();
+  }, [THEME_STORAGE_KEY, applyTheme]);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("panel:fontSize");
+      if (stored === "sm" || stored === "md" || stored === "lg") {
+        setPanelFontSize(stored);
+      }
+    } catch {
+      // ignore storage errors
+    }
   }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("panel:fontSize", panelFontSize);
+    } catch {
+      // ignore storage errors
+    }
+  }, [panelFontSize]);
 
   const clearSelection = useCallback(() => {
     setSelectedIds([]);
@@ -580,16 +627,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
               <MenubarSeparator />
               <MenubarItem
                 onClick={() => {
-                  const checked = !isDark;
-                  const root = document.documentElement;
-                  root.classList.toggle("dark", checked);
-                  root.dataset.theme = checked ? "dark" : "light";
-                  try {
-                    localStorage.setItem("theme", checked ? "dark" : "light");
-                  } catch {
-                    // ignore storage errors
-                  }
-                  setIsDark(checked);
+                  applyTheme(!isDark);
                 }}
               >
                 {isDark ? "切换到浅色" : "切换到深色"}
@@ -721,17 +759,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                       <div className="relative">
                         <Switch
                           checked={isDark}
-                          onCheckedChange={(checked) => {
-                            const root = document.documentElement;
-                            root.classList.toggle("dark", checked);
-                            root.dataset.theme = checked ? "dark" : "light";
-                            try {
-                              localStorage.setItem("theme", checked ? "dark" : "light");
-                            } catch {
-                              // ignore storage errors
-                            }
-                            setIsDark(checked);
-                          }}
+                          onCheckedChange={applyTheme}
                           aria-label="切换主题"
                           className="data-[state=checked]:bg-primary/80 data-[state=unchecked]:bg-secondary"
                         />
