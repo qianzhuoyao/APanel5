@@ -1,6 +1,16 @@
 export type PanelChartConfig = {
   title?: string;
   color?: string;
+  xAxisName?: string;
+  yAxisName?: string;
+  xAxisTickShow?: boolean;
+  yAxisTickShow?: boolean;
+  xAxisTickColor?: string;
+  yAxisTickColor?: string;
+  xAxisSplitLineShow?: boolean;
+  yAxisSplitLineShow?: boolean;
+  xAxisSplitLineColor?: string;
+  yAxisSplitLineColor?: string;
   labels?: string[];
   values?: number[];
   smooth?: boolean;
@@ -27,6 +37,7 @@ export type ReferenceCopyMode = "shallow" | "deep";
 export type PanelElement = {
   id: string;
   layerId: string;
+  name?: string;
   materialType?: string;
   refLayerId?: string;
   refCopyMode?: ReferenceCopyMode;

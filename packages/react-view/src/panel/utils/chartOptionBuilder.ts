@@ -47,7 +47,17 @@ export function buildChartOption(element: PanelElement): EChartsOption {
   const labels = element.chart?.labels?.length ? element.chart.labels : ["A", "B", "C", "D"];
   const values = element.chart?.values?.length ? element.chart.values : [12, 18, 9, 24];
   const color = element.chart?.color || "#3b82f6";
-  const title = element.chart?.title || element.id;
+  const title = element.chart?.title ?? "";
+  const xAxisName = element.chart?.xAxisName ?? "";
+  const yAxisName = element.chart?.yAxisName ?? "";
+  const xAxisTickShow = element.chart?.xAxisTickShow ?? true;
+  const yAxisTickShow = element.chart?.yAxisTickShow ?? true;
+  const xAxisTickColor = element.chart?.xAxisTickColor ?? "#94a3b8";
+  const yAxisTickColor = element.chart?.yAxisTickColor ?? "#94a3b8";
+  const xAxisSplitLineShow = element.chart?.xAxisSplitLineShow ?? false;
+  const yAxisSplitLineShow = element.chart?.yAxisSplitLineShow ?? true;
+  const xAxisSplitLineColor = element.chart?.xAxisSplitLineColor ?? "#e2e8f0";
+  const yAxisSplitLineColor = element.chart?.yAxisSplitLineColor ?? "#e2e8f0";
 
   if (chartType === "pie") {
     const inner = element.chart?.pieInnerRadius ?? 30;
@@ -138,8 +148,22 @@ export function buildChartOption(element: PanelElement): EChartsOption {
       animation: false,
       title: { text: title, left: 8, top: 6, textStyle: { fontSize: 12 } },
       grid: { left: 28, right: 10, top: 30, bottom: 20 },
-      xAxis: { type: "value", axisLabel: { fontSize: 10 } },
-      yAxis: { type: "value", axisLabel: { fontSize: 10 } },
+      xAxis: {
+        type: "value",
+        name: xAxisName,
+        nameTextStyle: { fontSize: 10 },
+        axisLabel: { fontSize: 10 },
+        axisTick: { show: xAxisTickShow, lineStyle: { color: xAxisTickColor } },
+        splitLine: { show: xAxisSplitLineShow, lineStyle: { color: xAxisSplitLineColor } },
+      },
+      yAxis: {
+        type: "value",
+        name: yAxisName,
+        nameTextStyle: { fontSize: 10 },
+        axisLabel: { fontSize: 10 },
+        axisTick: { show: yAxisTickShow, lineStyle: { color: yAxisTickColor } },
+        splitLine: { show: yAxisSplitLineShow, lineStyle: { color: yAxisSplitLineColor } },
+      },
       tooltip: { trigger: "item" },
       series: [
         {
@@ -158,8 +182,23 @@ export function buildChartOption(element: PanelElement): EChartsOption {
     animation: false,
     title: { text: title, left: 8, top: 6, textStyle: { fontSize: 12 } },
     grid: { left: 28, right: 10, top: 30, bottom: 20 },
-    xAxis: { type: "category", data: labels, axisLabel: { fontSize: 10 } },
-    yAxis: { type: "value", axisLabel: { fontSize: 10 } },
+    xAxis: {
+      type: "category",
+      name: xAxisName,
+      nameTextStyle: { fontSize: 10 },
+      data: labels,
+      axisLabel: { fontSize: 10 },
+      axisTick: { show: xAxisTickShow, lineStyle: { color: xAxisTickColor } },
+      splitLine: { show: xAxisSplitLineShow, lineStyle: { color: xAxisSplitLineColor } },
+    },
+    yAxis: {
+      type: "value",
+      name: yAxisName,
+      nameTextStyle: { fontSize: 10 },
+      axisLabel: { fontSize: 10 },
+      axisTick: { show: yAxisTickShow, lineStyle: { color: yAxisTickColor } },
+      splitLine: { show: yAxisSplitLineShow, lineStyle: { color: yAxisSplitLineColor } },
+    },
     tooltip: { trigger: "axis" },
     series: [
       {

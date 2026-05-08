@@ -323,7 +323,8 @@ export function MaterialSidebar({
   }, [allElements, layers]);
 
   const getNodeDisplayName = (node: PanelElement) => {
-    const base = node.chart?.title || MATERIAL_LABEL_MAP[node.materialType ?? ""] || node.id;
+    const customName = node.name?.trim();
+    const base = customName || node.chart?.title || MATERIAL_LABEL_MAP[node.materialType ?? ""] || node.id;
     if (node.materialType !== "reference") return base;
     const modeLabel = (node.refCopyMode ?? "shallow") === "deep" ? "深" : "浅";
     return `${base}[${modeLabel}]`;

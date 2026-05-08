@@ -18,6 +18,14 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   Input,
+  Menubar,
+  MenubarContent,
+  MenubarItem,
+  MenubarMenu,
+  MenubarRadioGroup,
+  MenubarRadioItem,
+  MenubarSeparator,
+  MenubarTrigger,
   RadioGroup,
   RadioGroupItem,
   ResizableHandle,
@@ -298,9 +306,11 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
   const [isMergingLayers, setIsMergingLayers] = useState(false);
   const [mergeLayerName, setMergeLayerName] = useState("");
   const [isLayerPanelExpanded, setIsLayerPanelExpanded] = useState(false);
-  const [historyOpen, setHistoryOpen] = useState(false);
+  const [productName, setProductName] = useState("未命名产物");
+  const [panelFontSize, setPanelFontSize] = useState<"sm" | "md" | "lg">("md");
   const mergeSelectedCount = layers.filter((l) => l.mergeSelected).length;
   const canMergeLayers = mergeSelectedCount >= 2;
+  const panelFontPx = panelFontSize === "sm" ? 12 : panelFontSize === "lg" ? 15 : 13;
 
   useEffect(() => {
     const root = document.documentElement;
@@ -379,10 +389,13 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `panel-export-${Date.now()}.json`;
+    const safeName = (productName.trim() || "panel")
+      .replace(/[\\/:*?"<>|]/g, "-")
+      .replace(/\s+/g, "-");
+    a.download = `${safeName}-${Date.now()}.json`;
     a.click();
     URL.revokeObjectURL(url);
-  }, [exportPanelData]);
+  }, [exportPanelData, productName]);
 
   const handleImportFile = useCallback(
     async (file: File) => {
@@ -449,7 +462,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
     const previewNodes = layerElements.map((el) => ({
       id: el.id,
       styleText: serializeStyle(el, minX, minY),
-      title: el.chart?.title || el.materialType || el.id,
+      title: CHART_TYPES.has(el.materialType ?? "") ? (el.chart?.title ?? "") : (el.materialType || el.id),
       isChart: CHART_TYPES.has(el.materialType ?? ""),
       option: CHART_TYPES.has(el.materialType ?? "")
         ? buildChartOption(el)
@@ -519,31 +532,111 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
   }, [activeLayerId, allElements, layers]);
 
   return (
-    <div className={["h-full w-full bg-background text-foreground", className ?? ""].join(" ")}>
-      <ResizablePanelGroup direction="horizontal" className="h-full w-full">
+    <div
+      className={[
+        "relative flex h-full min-h-0 w-full flex-col overflow-hidden bg-background text-foreground",
+        className ?? "",
+      ].join(" ")}
+      style={{ ["--panel-font-px" as string]: `${panelFontPx}px` }}
+    >
+      <style>{`
+        .panel-font-root :is(span, label, p, strong, button, input, textarea, select, option, a, li) {
+          font-size: var(--panel-font-px) !important;
+        }
+        .panel-font-root :is(input, textarea):focus,
+        .panel-font-root :is(input, textarea):focus-visible {
+          outline: none !important;
+          box-shadow: none !important;
+        }
+      `}</style>
+      <nav className="panel-font-root relative z-30 flex items-center gap-2 border-b border-border bg-background/95 px-2 text-foreground">
+        <Menubar className="h-8 border-0 bg-transparent p-0 shadow-none">
+          <MenubarMenu>
+            <MenubarTrigger className="px-2 py-1 text-xs font-normal">文件</MenubarTrigger>
+            <MenubarContent>
+              <MenubarItem onClick={handlePreviewLayer}>预览</MenubarItem>
+              <MenubarItem onClick={handleExport}>导出</MenubarItem>
+              <MenubarItem onClick={() => importInputRef.current?.click()}>导入</MenubarItem>
+            </MenubarContent>
+          </MenubarMenu>
+          <MenubarMenu>
+            <MenubarTrigger className="px-2 py-1 text-xs font-normal">编辑</MenubarTrigger>
+            <MenubarContent>
+              <MenubarItem disabled={!canUndo} onClick={undo}>撤销</MenubarItem>
+              <MenubarItem disabled={!canRedo} onClick={redo}>重做</MenubarItem>
+              <MenubarSeparator />
+              <MenubarItem disabled={!hasSelection} onClick={() => bringElementsForward(selectedIds)}>上移一层</MenubarItem>
+              <MenubarItem disabled={!hasSelection} onClick={() => sendElementsBackward(selectedIds)}>下移一层</MenubarItem>
+              <MenubarItem disabled={!hasSelection} onClick={() => bringElementsToFront(selectedIds)}>置顶</MenubarItem>
+              <MenubarItem disabled={!hasSelection} onClick={() => sendElementsToBack(selectedIds)}>置底</MenubarItem>
+            </MenubarContent>
+          </MenubarMenu>
+          <MenubarMenu>
+            <MenubarTrigger className="px-2 py-1 text-xs font-normal">视图</MenubarTrigger>
+            <MenubarContent>
+              <MenubarItem onClick={() => setZoom((z) => Math.max(0.25, Number((z - 0.1).toFixed(2))))}>缩小</MenubarItem>
+              <MenubarItem onClick={() => setZoom((z) => Math.min(4, Number((z + 0.1).toFixed(2))))}>放大</MenubarItem>
+              <MenubarSeparator />
+              <MenubarItem
+                onClick={() => {
+                  const checked = !isDark;
+                  const root = document.documentElement;
+                  root.classList.toggle("dark", checked);
+                  root.dataset.theme = checked ? "dark" : "light";
+                  try {
+                    localStorage.setItem("theme", checked ? "dark" : "light");
+                  } catch {
+                    // ignore storage errors
+                  }
+                  setIsDark(checked);
+                }}
+              >
+                {isDark ? "切换到浅色" : "切换到深色"}
+              </MenubarItem>
+            </MenubarContent>
+          </MenubarMenu>
+          <MenubarMenu>
+            <MenubarTrigger className="px-2 py-1 text-xs font-normal">设置</MenubarTrigger>
+            <MenubarContent>
+              <MenubarRadioGroup
+                value={panelFontSize}
+                onValueChange={(value) => setPanelFontSize(value as "sm" | "md" | "lg")}
+              >
+                <MenubarRadioItem value="sm">字体：小</MenubarRadioItem>
+                <MenubarRadioItem value="md">字体：中</MenubarRadioItem>
+                <MenubarRadioItem value="lg">字体：大</MenubarRadioItem>
+              </MenubarRadioGroup>
+            </MenubarContent>
+          </MenubarMenu>
+        </Menubar>
+        <div className="flex-1" />
+      </nav>
+      <ResizablePanelGroup direction="horizontal" className="min-h-0 w-full flex-1">
         <ResizablePanel defaultSize={15} minSize={15}>
-          <MaterialSidebar
-            layers={layers}
-            allElements={allElements}
-            selectedIds={selectedIds}
-            onSelectNode={(nodeId, layerId) => {
-              if (activeLayerId !== layerId) setActiveLayer(layerId);
-              setSelectedIds([nodeId]);
-            }}
-            onCopyNode={(nodeId, mode) => {
-              duplicateElement(nodeId, { referenceCopyMode: mode });
-            }}
-            onDeleteNode={(nodeId) => {
-              deleteElement(nodeId);
-              setSelectedIds((prev) => prev.filter((id) => id !== nodeId));
-            }}
-          />
+          <div className="panel-font-root h-full">
+            <MaterialSidebar
+              layers={layers}
+              allElements={allElements}
+              selectedIds={selectedIds}
+              onSelectNode={(nodeId, layerId) => {
+                if (activeLayerId !== layerId) setActiveLayer(layerId);
+                setSelectedIds([nodeId]);
+              }}
+              onCopyNode={(nodeId, mode) => {
+                duplicateElement(nodeId, { referenceCopyMode: mode });
+              }}
+              onDeleteNode={(nodeId) => {
+                deleteElement(nodeId);
+                setSelectedIds((prev) => prev.filter((id) => id !== nodeId));
+              }}
+            />
+          </div>
         </ResizablePanel>
         <ResizableHandle withHandle />
         <ResizablePanel defaultSize={65} minSize={10}>
           {/* Center workspace */}
           <div
-            className="min-w-0 h-full"
+            className="panel-font-root min-w-0 h-full"
             onMouseDownCapture={(e) => {
               if (e.button !== 0) return;
               const target = e.target as HTMLElement | null;
@@ -552,47 +645,15 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
             }}
           >
             <div className="relative flex h-full flex-col overflow-hidden border border-border bg-background">
-              {/* Top bar */}
-              <div className="relative z-20 flex items-center gap-2 border-b border-border bg-background/90 px-3 py-2 text-foreground">
-                <strong className="text-xs font-semibold">Panel</strong>
-                <div className="flex-1" />
+              <div className="relative z-20 flex items-center gap-2 border-b border-border bg-background/90 px-3 py-1.5 text-foreground">
+                <Input
+                  value={productName}
+                  onChange={(e) => setProductName(e.target.value)}
+                  placeholder="请输入当前构建产物名称"
+                  className="h-7 w-[220px] text-xs focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none"
+                />
+                <span className="text-[11px] text-muted-foreground">产物名称</span>
                 <TooltipProvider delayDuration={150}>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        type="button"
-                        onClick={handleExport}
-                        className="rounded border border-border px-2 py-1 text-xs hover:bg-accent"
-                      >
-                        导出
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent className="z-[10000]">导出全部面板数据</TooltipContent>
-                  </Tooltip>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        type="button"
-                        onClick={() => importInputRef.current?.click()}
-                        className="rounded border border-border px-2 py-1 text-xs hover:bg-accent"
-                      >
-                        导入
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent className="z-[10000]">导入已导出的 JSON 文件</TooltipContent>
-                  </Tooltip>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        type="button"
-                        onClick={handlePreviewLayer}
-                        className="rounded border border-border px-2 py-1 text-xs hover:bg-accent"
-                      >
-                        预览
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent className="z-[10000]">新标签页预览当前图层</TooltipContent>
-                  </Tooltip>
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <button
@@ -621,91 +682,39 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                     </TooltipTrigger>
                     <TooltipContent className="z-[10000]">重做（Cmd/Ctrl + Shift + Z）</TooltipContent>
                   </Tooltip>
-                  <DropdownMenu>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <DropdownMenuTrigger asChild>
-                          <button
-                            type="button"
-                            disabled={!hasSelection}
-                            className="rounded border border-border p-1 hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40"
-                            aria-label="节点层级操作"
-                          >
-                            <IconLayers />
-                          </button>
-                        </DropdownMenuTrigger>
-                      </TooltipTrigger>
-                      <TooltipContent className="z-[10000]">节点层级操作</TooltipContent>
-                    </Tooltip>
-                    <DropdownMenuContent align="start" sideOffset={6} className="z-[10000] w-44">
-                      <DropdownMenuItem onClick={() => bringElementsForward(selectedIds)}>
-                        <span className="mr-2 inline-flex"><IconForward /></span>
-                        上移一层
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => sendElementsBackward(selectedIds)}>
-                        <span className="mr-2 inline-flex"><IconBackward /></span>
-                        下移一层
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => bringElementsToFront(selectedIds)}>
-                        <span className="mr-2 inline-flex"><IconBringFront /></span>
-                        置顶
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => sendElementsToBack(selectedIds)}>
-                        <span className="mr-2 inline-flex"><IconSendBack /></span>
-                        置底
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                  <DropdownMenu open={historyOpen} onOpenChange={setHistoryOpen}>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <DropdownMenuTrigger asChild>
-                          <button
-                            type="button"
-                            className="rounded border border-border p-1 hover:bg-accent"
-                            aria-label="查看操作历史"
-                          >
-                            <IconHistory />
-                          </button>
-                        </DropdownMenuTrigger>
-                      </TooltipTrigger>
-                      <TooltipContent className="z-[10000]">查看操作历史</TooltipContent>
-                    </Tooltip>
-                    <DropdownMenuContent
-                      align="end"
-                      sideOffset={6}
-                      className="z-[10000] w-72"
+                </TooltipProvider>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      type="button"
+                      disabled={!hasSelection}
+                      className="rounded border border-border p-1 hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40"
+                      aria-label="节点层级操作"
                     >
-                      <div className="px-2 py-1 text-xs font-semibold text-muted-foreground">
-                        操作历史（最近 20 条）
-                      </div>
-                      <div className={`max-h-64 overflow-auto px-1 pb-1 ${themedScrollbarClass}`}>
-                        {history.length === 0 ? (
-                          <div className="px-2 py-1.5 text-xs text-muted-foreground">暂无历史</div>
-                        ) : (
-                          history
-                            .slice(-20)
-                            .reverse()
-                            .map((item) => (
-                              <div
-                                key={item.index}
-                                className={[
-                                  "rounded px-2 py-1 text-xs",
-                                  item.active
-                                    ? "bg-primary/15 text-foreground"
-                                    : "text-muted-foreground",
-                                ].join(" ")}
-                              >
-                                <div className="truncate">{item.label}</div>
-                                <div className="text-[10px] opacity-80">
-                                  {new Date(item.timestamp).toLocaleTimeString()}
-                                </div>
-                              </div>
-                            ))
-                        )}
-                      </div>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                      <IconLayers />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" sideOffset={6} className="z-[10000] w-44">
+                    <DropdownMenuItem onClick={() => bringElementsForward(selectedIds)}>
+                      <span className="mr-2 inline-flex"><IconForward /></span>
+                      上移一层
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => sendElementsBackward(selectedIds)}>
+                      <span className="mr-2 inline-flex"><IconBackward /></span>
+                      下移一层
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => bringElementsToFront(selectedIds)}>
+                      <span className="mr-2 inline-flex"><IconBringFront /></span>
+                      置顶
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => sendElementsToBack(selectedIds)}>
+                      <span className="mr-2 inline-flex"><IconSendBack /></span>
+                      置底
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <div className="flex-1" />
+                <TooltipProvider delayDuration={150}>
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <div className="relative">
@@ -762,9 +771,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                     <TooltipTrigger asChild>
                       <button
                         type="button"
-                        onClick={() =>
-                          setZoom((z) => Math.max(0.25, Number((z - 0.1).toFixed(2))))
-                        }
+                        onClick={() => setZoom((z) => Math.max(0.25, Number((z - 0.1).toFixed(2))))}
                         className="rounded-md border border-border bg-secondary px-2 py-1 text-xs text-secondary-foreground hover:bg-secondary/80"
                       >
                         -
@@ -773,17 +780,13 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                     <TooltipContent className="z-[10000]">缩小画布</TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
-                <span className="w-16 text-center text-xs">
-                  {(zoom * 100).toFixed(0)}%
-                </span>
+                <span className="w-14 text-center text-xs">{(zoom * 100).toFixed(0)}%</span>
                 <TooltipProvider delayDuration={150}>
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <button
                         type="button"
-                        onClick={() =>
-                          setZoom((z) => Math.min(4, Number((z + 0.1).toFixed(2))))
-                        }
+                        onClick={() => setZoom((z) => Math.min(4, Number((z + 0.1).toFixed(2))))}
                         className="rounded-md border border-border bg-secondary px-2 py-1 text-xs text-secondary-foreground hover:bg-secondary/80"
                       >
                         +
@@ -1316,12 +1319,14 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
         </ResizablePanel>
         <ResizableHandle withHandle />
         <ResizablePanel defaultSize={20} minSize={20}>
-          <PanelConfigSidebar
-            selectedElement={selectedElement}
-            layers={layers}
-            updateElement={updateElement}
-            setReferenceCopyMode={setReferenceCopyMode}
-          />
+          <div className="panel-font-root h-full">
+            <PanelConfigSidebar
+              selectedElement={selectedElement}
+              layers={layers}
+              updateElement={updateElement}
+              setReferenceCopyMode={setReferenceCopyMode}
+            />
+          </div>
         </ResizablePanel>
       </ResizablePanelGroup>
     </div>

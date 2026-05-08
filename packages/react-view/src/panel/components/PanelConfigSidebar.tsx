@@ -18,7 +18,7 @@ import type {
   PanelElementStyle,
   ReferenceCopyMode,
 } from "../types";
-import { CHART_TYPES } from "../utils/chartOptionBuilder";
+import { buildChartOption, CHART_TYPES } from "../utils/chartOptionBuilder";
 import type { PanelLayer } from "../hooks/usePanelElements";
 
 type UpdateElement = (
@@ -73,9 +73,22 @@ export function PanelConfigSidebar({
       setOptionJsonError(null);
       return;
     }
-    setOptionJsonText(JSON.stringify(selectedElement.chart?.option ?? {}, null, 2));
+    if (CHART_TYPES.has(selectedElement.materialType ?? "")) {
+      setOptionJsonText(JSON.stringify(buildChartOption(selectedElement), null, 2));
+    } else {
+      setOptionJsonText("{}");
+    }
     setOptionJsonError(null);
   }, [selectedElement]);
+
+  useEffect(() => {
+    if (!selectedElement) return;
+    if (!CHART_TYPES.has(selectedElement.materialType ?? "")) return;
+    setExpandedSections((prev) => ({
+      ...prev,
+      chartBasic: true,
+    }));
+  }, [selectedElement?.id, selectedElement?.materialType]);
 
   const updateSelectedChart = useCallback(
     (patch: Partial<PanelChartConfig>) => {
@@ -162,6 +175,31 @@ export function PanelConfigSidebar({
     </Collapsible>
   );
 
+  const renderColorField = (
+    label: string,
+    value: string,
+    onTextChange: (next: string) => void
+  ) => (
+    <label className="block">
+      <div className="mb-1">{label}</div>
+      <div className="flex items-center gap-2">
+        <Input
+          value={value}
+          onChange={(e) => onTextChange(e.target.value)}
+          placeholder="#000000"
+          className="h-7"
+        />
+        <Input
+          type="color"
+          value={/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(value || "") ? value : "#000000"}
+          onChange={(e) => onTextChange(e.target.value)}
+          className="h-7 w-10 cursor-pointer p-1"
+          aria-label={`${label}调色盘`}
+        />
+      </div>
+    </label>
+  );
+
   return (
     <aside
       className={`h-full overflow-auto border-l border-border bg-background px-3 py-3 text-foreground ${themedScrollbarClass}`}
@@ -175,6 +213,19 @@ export function PanelConfigSidebar({
             "nodeInfo",
             "节点信息",
             <>
+              <label className="block">
+                <div className="mb-1">节点名称</div>
+                <Input
+                  value={selectedElement.name ?? ""}
+                  onChange={(e) =>
+                    updateElement(selectedElement.id, {
+                      name: e.target.value || undefined,
+                    })
+                  }
+                  placeholder="自定义节点名称（显示在节点树）"
+                  className="h-7"
+                />
+              </label>
               <div className="truncate">ID: {selectedElement.id}</div>
               <div>类型: {selectedElement.materialType ?? selectedElement.id}</div>
             </>
@@ -184,15 +235,11 @@ export function PanelConfigSidebar({
             "styleBackground",
             "通用样式 / 背景",
             <>
-              <label className="block">
-                <div className="mb-1">背景色</div>
-                <Input
-                  value={selectedElement.style?.backgroundColor ?? ""}
-                  onChange={(e) => updateSelectedStyle({ backgroundColor: e.target.value || undefined })}
-                  placeholder="#ffffff"
-                  className="h-7"
-                />
-              </label>
+              {renderColorField(
+                "背景色",
+                selectedElement.style?.backgroundColor ?? "",
+                (next) => updateSelectedStyle({ backgroundColor: next || undefined })
+              )}
               <label className="block">
                 <div className="mb-1">背景图</div>
                 <Input
@@ -297,15 +344,11 @@ export function PanelConfigSidebar({
                     </SelectContent>
                   </Select>
                 </label>
-                <label className="block">
-                  <div className="mb-1">边框颜色</div>
-                  <Input
-                    value={selectedElement.style?.borderColor ?? ""}
-                    onChange={(e) => updateSelectedStyle({ borderColor: e.target.value || undefined })}
-                    placeholder="#000000"
-                    className="h-7"
-                  />
-                </label>
+                {renderColorField(
+                  "边框颜色",
+                  selectedElement.style?.borderColor ?? "",
+                  (next) => updateSelectedStyle({ borderColor: next || undefined })
+                )}
               </div>
             </>
           )}
@@ -325,14 +368,11 @@ export function PanelConfigSidebar({
                     />
                   </label>
 
-                  <label className="block">
-                    <div className="mb-1">主色</div>
-                    <Input
-                      value={selectedElement.chart?.color ?? "#3b82f6"}
-                      onChange={(e) => updateSelectedChart({ color: e.target.value })}
-                      className="h-7"
-                    />
-                  </label>
+                  {renderColorField(
+                    "主色",
+                    selectedElement.chart?.color ?? "#3b82f6",
+                    (next) => updateSelectedChart({ color: next || "#3b82f6" })
+                  )}
 
                   <label className="block">
                     <div className="mb-1">类目（逗号分隔）</div>
@@ -365,6 +405,102 @@ export function PanelConfigSidebar({
                       className="h-7"
                     />
                   </label>
+
+                  {selectedChartType === "bar" ||
+                  selectedChartType === "line" ||
+                  selectedChartType === "area" ||
+                  selectedChartType === "scatter" ? (
+                    <>
+                      <div className="grid grid-cols-2 gap-2">
+                        <label className="block">
+                          <div className="mb-1">X 轴名称</div>
+                          <Input
+                            value={selectedElement.chart?.xAxisName ?? ""}
+                            onChange={(e) => updateSelectedChart({ xAxisName: e.target.value })}
+                            placeholder="例如：日期 / 类目"
+                            className="h-7"
+                          />
+                        </label>
+                        <label className="block">
+                          <div className="mb-1">Y 轴名称</div>
+                          <Input
+                            value={selectedElement.chart?.yAxisName ?? ""}
+                            onChange={(e) => updateSelectedChart({ yAxisName: e.target.value })}
+                            placeholder="例如：销量 / 数值"
+                            className="h-7"
+                          />
+                        </label>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <label className="flex items-center gap-2">
+                          <Checkbox
+                            checked={selectedElement.chart?.xAxisTickShow ?? true}
+                            className="h-4 w-4 border-2 border-foreground/80 bg-background ring-1 ring-foreground/40 data-[state=checked]:border-primary data-[state=checked]:ring-primary/40"
+                            onCheckedChange={(checked) =>
+                              updateSelectedChart({ xAxisTickShow: checked === true })
+                            }
+                          />
+                          <span>X 轴刻度线</span>
+                        </label>
+                        <label className="flex items-center gap-2">
+                          <Checkbox
+                            checked={selectedElement.chart?.yAxisTickShow ?? true}
+                            className="h-4 w-4 border-2 border-foreground/80 bg-background ring-1 ring-foreground/40 data-[state=checked]:border-primary data-[state=checked]:ring-primary/40"
+                            onCheckedChange={(checked) =>
+                              updateSelectedChart({ yAxisTickShow: checked === true })
+                            }
+                          />
+                          <span>Y 轴刻度线</span>
+                        </label>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        {renderColorField(
+                          "X 轴刻度线颜色",
+                          selectedElement.chart?.xAxisTickColor ?? "#94a3b8",
+                          (next) => updateSelectedChart({ xAxisTickColor: next || "#94a3b8" })
+                        )}
+                        {renderColorField(
+                          "Y 轴刻度线颜色",
+                          selectedElement.chart?.yAxisTickColor ?? "#94a3b8",
+                          (next) => updateSelectedChart({ yAxisTickColor: next || "#94a3b8" })
+                        )}
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <label className="flex items-center gap-2">
+                          <Checkbox
+                            checked={selectedElement.chart?.xAxisSplitLineShow ?? false}
+                            className="h-4 w-4 border-2 border-foreground/80 bg-background ring-1 ring-foreground/40 data-[state=checked]:border-primary data-[state=checked]:ring-primary/40"
+                            onCheckedChange={(checked) =>
+                              updateSelectedChart({ xAxisSplitLineShow: checked === true })
+                            }
+                          />
+                          <span>X 轴分割线</span>
+                        </label>
+                        <label className="flex items-center gap-2">
+                          <Checkbox
+                            checked={selectedElement.chart?.yAxisSplitLineShow ?? true}
+                            className="h-4 w-4 border-2 border-foreground/80 bg-background ring-1 ring-foreground/40 data-[state=checked]:border-primary data-[state=checked]:ring-primary/40"
+                            onCheckedChange={(checked) =>
+                              updateSelectedChart({ yAxisSplitLineShow: checked === true })
+                            }
+                          />
+                          <span>Y 轴分割线</span>
+                        </label>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        {renderColorField(
+                          "X 轴分割线颜色",
+                          selectedElement.chart?.xAxisSplitLineColor ?? "#e2e8f0",
+                          (next) => updateSelectedChart({ xAxisSplitLineColor: next || "#e2e8f0" })
+                        )}
+                        {renderColorField(
+                          "Y 轴分割线颜色",
+                          selectedElement.chart?.yAxisSplitLineColor ?? "#e2e8f0",
+                          (next) => updateSelectedChart({ yAxisSplitLineColor: next || "#e2e8f0" })
+                        )}
+                      </div>
+                    </>
+                  ) : null}
 
                   {selectedChartType === "bar" ? (
                     <label className="block">
