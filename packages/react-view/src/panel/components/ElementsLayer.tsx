@@ -423,6 +423,8 @@ function EmptyNodePlaceholder({ element }: { element: PanelElement }) {
 
 function GeometryNodeContent({ element }: { element: PanelElement }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const elementRef = useRef(element);
+  elementRef.current = element;
   const shape = element.geometryShape ?? "rect";
   const color = element.geometryColor ?? "#3b82f6";
   const script = element.geometryScript ?? "";
@@ -525,7 +527,7 @@ function GeometryNodeContent({ element }: { element: PanelElement }) {
       if (script.trim()) {
         try {
           const fn = new Function("ctx", "width", "height", "element", script);
-          fn(ctx, width, height, element);
+          fn(ctx, width, height, elementRef.current);
         } catch {
           // ignore invalid script to avoid breaking render
         }
@@ -536,7 +538,10 @@ function GeometryNodeContent({ element }: { element: PanelElement }) {
     const obs = new ResizeObserver(draw);
     obs.observe(canvas);
     return () => obs.disconnect();
-  }, [color, element, script, shape, sketch]);
+    // 不要依赖整个 element：移动 x/y 等会换新引用，触发 draw 后 clearRect
+    // 与手绘层 img.onload 异步绘制叠在一起会产生「移动结束闪一下」。
+    // 脚本里需要最新节点数据时读 elementRef.current。
+  }, [color, script, shape, sketch]);
 
   return <canvas ref={canvasRef} className="h-full w-full" />;
 }
