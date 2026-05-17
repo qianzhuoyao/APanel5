@@ -10,7 +10,12 @@ import { SelectLayer } from "./components/SelectLayer";
 import { MoveableLayer } from "./components/MoveableLayer";
 import { buildChartOption, CHART_TYPES } from "./utils/chartOptionBuilder";
 import { MaterialSidebar } from "./components/MaterialSidebar";
-import { PanelConfigSidebar } from "./components/PanelConfigSidebar";
+import { BlueprintGraph, type BlueprintGraphNode } from "@arron/react-blueprint";
+import { WorkspaceStageSplit } from "./components/WorkspaceStageSplit";
+import {
+  WorkspaceConfigSidebar,
+  type WorkspaceConfigFocus,
+} from "./components/WorkspaceConfigSidebar";
 import { PANEL_MESSAGES } from "./constants/messages";
 import { PANEL_Z_INDEX } from "./constants/zIndex";
 import {
@@ -369,6 +374,12 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
   const [titleIconZoom, setTitleIconZoom] = useState(1.6);
   const [pendingPreviewLayerId, setPendingPreviewLayerId] = useState<string | null>(null);
   const [panelFontSize, setPanelFontSize] = useState<"sm" | "md" | "lg">("md");
+  const [blueprintOpen, setBlueprintOpen] = useState(false);
+  const [blueprintGraph, setBlueprintGraph] = useState(() => BlueprintGraph.empty());
+  const [selectedBlueprintNodeId, setSelectedBlueprintNodeId] = useState<string | null>(
+    null
+  );
+  const [configFocus, setConfigFocus] = useState<WorkspaceConfigFocus>("view");
   const [ellipsisTooltip, setEllipsisTooltip] = useState<{
     open: boolean;
     text: string;
@@ -557,10 +568,42 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
     };
   }, []);
 
+  const focusViewConfig = useCallback(() => {
+    setConfigFocus("view");
+    setSelectedBlueprintNodeId(null);
+  }, []);
+
+  const onSelectBlueprintNode = useCallback((nodeId: string | null) => {
+    setSelectedBlueprintNodeId(nodeId);
+    if (nodeId) {
+      setConfigFocus("blueprint");
+      setSelectedIds([]);
+      setSelectedTargets([]);
+      return;
+    }
+    setConfigFocus("view");
+  }, []);
+
+  const handleUpdateBlueprintNode = useCallback(
+    (
+      nodeId: string,
+      patch: Partial<
+        Pick<
+          BlueprintGraphNode,
+          "label" | "nodeType" | "configSource" | "viewElementId" | "nestedBlueprintId"
+        >
+      >
+    ) => {
+      setBlueprintGraph((graph) => graph.updateNode(nodeId, patch));
+    },
+    []
+  );
+
   const clearSelection = useCallback(() => {
     setSelectedIds([]);
     setSelectedTargets([]);
-  }, []);
+    focusViewConfig();
+  }, [focusViewConfig]);
 
   useEffect(() => {
     clearSelection();
@@ -591,9 +634,16 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
 
   // 平移/滚动由 InfiniteViewer 驱动，通过 PanelCanvas 回传
 
-  const handleSelectedIdsChange = useCallback((ids: string[]) => {
-    setSelectedIds(ids);
-  }, []);
+  /** 选中视图节点：更新选中集合并将右侧配置切回视图（最近一次触发优先） */
+  const selectViewElements = useCallback(
+    (ids: string[]) => {
+      setSelectedIds(ids);
+      if (ids.length > 0) {
+        focusViewConfig();
+      }
+    },
+    [focusViewConfig]
+  );
 
   // 同步点击选中 -> targets
   useEffect(() => {
@@ -614,6 +664,21 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
   const deletingLayerMode: "move" | "remove" =
     deletingLayer?.isMapping ? "remove" : deleteMode;
   const deleteTargetCandidates = layers.filter((l) => l.id !== confirmDeleteLayerId);
+  const selectedBlueprintNode = useMemo(() => {
+    if (!selectedBlueprintNodeId) return null;
+    return blueprintGraph.getNode(selectedBlueprintNodeId) ?? null;
+  }, [blueprintGraph, selectedBlueprintNodeId]);
+
+  const blueprintCanvasProps = useMemo(
+    () => ({
+      graph: blueprintGraph,
+      onGraphChange: setBlueprintGraph,
+      selectedNodeId: selectedBlueprintNodeId,
+      onSelectNode: onSelectBlueprintNode,
+    }),
+    [blueprintGraph, onSelectBlueprintNode, selectedBlueprintNodeId]
+  );
+
   const selectedElement = selectedIds.length === 1 ? byId.get(selectedIds[0]) ?? null : null;
   const selectedElements = useMemo(
     () => selectedIds.map((id) => byId.get(id)).filter((el): el is PanelElement => !!el),
@@ -1146,7 +1211,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
               selectedIds={selectedIds}
               onSelectNode={(nodeId, layerId) => {
                 if (activeLayerId !== layerId) setActiveLayer(layerId);
-                setSelectedIds([nodeId]);
+                selectViewElements([nodeId]);
               }}
               onNodeContextMenu={({ nodeId, x, y }) => {
                 setDropdownOpen(false);
@@ -1218,11 +1283,34 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
             onMouseDownCapture={(e) => {
               if (e.button !== 0) return;
               const target = e.target as HTMLElement | null;
+              if (
+                target?.closest(
+                  "[data-workspace-region='blueprint'], [data-blueprint-toggle], [data-blueprint-node-card]"
+                )
+              ) {
+                return;
+              }
               if (!shouldClearSelectionOnBlank(target)) return;
               clearSelection();
             }}
           >
             <div className="relative flex h-full flex-col overflow-hidden border border-border bg-background">
+              <div
+                className="pointer-events-none absolute bottom-3 right-3 z-20 flex items-center gap-2"
+                style={{ zIndex: PANEL_Z_INDEX.toolbar + 1 }}
+              >
+                <div
+                  data-blueprint-toggle
+                  className="pointer-events-auto flex items-center gap-2 rounded-md border border-border bg-background/95 px-2.5 py-1.5 text-foreground shadow-md backdrop-blur"
+                >
+                  <span className="text-[11px] text-muted-foreground">蓝图</span>
+                  <Switch
+                    checked={blueprintOpen}
+                    onCheckedChange={setBlueprintOpen}
+                    aria-label="显示蓝图面板"
+                  />
+                </div>
+              </div>
               <div
                 className="relative flex items-center gap-2 border-b border-border bg-background/90 px-3 py-1.5 text-foreground"
                 style={{ zIndex: PANEL_Z_INDEX.toolbar }}
@@ -1577,8 +1665,14 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                 }}
               />
 
-              {/* Stage */}
-              <div className="relative min-h-0 flex-1">
+              <WorkspaceStageSplit
+                blueprintOpen={blueprintOpen}
+                blueprintProps={blueprintCanvasProps}
+                viewStage={
+              <div
+                data-workspace-region="view"
+                className="relative h-full min-h-0 flex-1"
+              >
                 <PanelRulers
                   zoom={zoom}
                   scrollLeft={scroll.left}
@@ -1660,7 +1754,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                       elements={elements}
                       allElements={allElements}
                       selectedIds={selectedIds}
-                      onSelectIds={setSelectedIds}
+                      onSelectIds={selectViewElements}
                       updateElement={updateElement}
                       layerLocked={Boolean(activeLayer?.locked)}
                     />
@@ -1670,7 +1764,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                       dragContainer={scrollRef.current}
                       rootContainer={scrollRef.current}
                       selectedIds={selectedIds}
-                      onSelectedIdsChange={handleSelectedIdsChange}
+                      onSelectedIdsChange={selectViewElements}
                     />
 
                     <MoveableLayer
@@ -1730,7 +1824,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                               if (activeLayerId !== sourceNode.layerId) {
                                 setActiveLayer(sourceNode.layerId);
                               }
-                              setSelectedIds([sourceNode.id]);
+                              selectViewElements([sourceNode.id]);
                               setContextMenuNodeId(null);
                             }}
                           >
@@ -1850,7 +1944,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                         <DropdownMenuItem
                           disabled={elements.length === 0}
                           onClick={() => {
-                            setSelectedIds(elements.map((el) => el.id));
+                            selectViewElements(elements.map((el) => el.id));
                           }}
                         >
                           全选当前图层
@@ -1860,6 +1954,8 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
+                }
+              />
 
               <div className="border-t border-border bg-background/95 px-2 py-1.5">
                 <TooltipProvider delayDuration={120}>
@@ -2189,9 +2285,13 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
         <ResizableHandle withHandle />
         <ResizablePanel defaultSize={20} minSize={20}>
           <div className="panel-font-root h-full">
-            <PanelConfigSidebar
+            <WorkspaceConfigSidebar
+              configFocus={configFocus}
+              selectedBlueprintNode={selectedBlueprintNode}
+              onUpdateBlueprintNode={handleUpdateBlueprintNode}
               selectedElement={selectedElement}
               selectedElements={selectedElements}
+              allViewElements={allElements}
               layers={layers}
               updateElement={updateElement}
               setReferenceCopyMode={setReferenceCopyMode}
@@ -2199,7 +2299,6 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
               onExcludeSelectedNode={(nodeId) => {
                 setSelectedIds((prev) => {
                   const nextIds = prev.filter((id) => id !== nodeId);
-                  // 立即同步 Moveable targets，避免一帧内仍持有旧多选目标导致拖拽不跟手
                   setSelectedTargets(getSelectedTargetsFromIds(canvasRef.current, nextIds));
                   return nextIds;
                 });

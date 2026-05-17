@@ -13,6 +13,7 @@
     "react": "^19",
     "react-dom": "^19",
     "@arron/react-rx-store": "workspace:*",
+    "@arron/ui": "workspace:*",
     "@xyflow/react": "^12.9.3"
   },
   "devDependencies": {

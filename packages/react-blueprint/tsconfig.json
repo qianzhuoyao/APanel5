@@ -1,5 +1,11 @@
 {
   "extends": "@arron/typescript-config/react-library.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@arron/ui": ["../ui/index.ts"]
+    }
+  },
   "include": ["."],
   "exclude": ["node_modules"]
 }
