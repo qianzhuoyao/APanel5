@@ -777,6 +777,7 @@ export function ElementsLayer({
               height: el.height,
               zIndex: el.zIndex ?? 1,
               transform: `rotate(${el.rotate ?? 0}deg)`,
+              transformOrigin: "center center",
               boxSizing: "border-box",
               ...getNodeVisualStyle(el),
             }}

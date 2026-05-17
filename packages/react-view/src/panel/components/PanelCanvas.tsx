@@ -5,6 +5,7 @@ import { TransformComponent, TransformWrapper } from "react-zoom-pan-pinch";
 import {
   clampViewportZoom,
   clampViewportZoomXY,
+  uniformViewportZoom,
   type ViewportZoom,
 } from "../viewportZoom";
 
@@ -260,6 +261,8 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
 
       const factorX = w / baseline.viewportWidth;
       const factorY = h / baseline.viewportHeight;
+      // 视口拉伸时用同一倍率，避免 scale(zoomX, zoomY) 非等比导致节点旋转变形
+      const factor = Math.sqrt(factorX * factorY);
 
       const anchor = resizeLayoutAnchorRef.current ?? {
         viewportWidth: w,
@@ -270,17 +273,16 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
         scrollTop: lastScrollRef.current.top,
       };
 
-      const nextZoomX = clampViewportZoom(baseline.zoomX * factorX);
-      const nextZoomY = clampViewportZoom(baseline.zoomY * factorY);
+      const nextZoomValue = clampViewportZoom(baseline.zoomX * factor);
       const worldX =
         (anchor.scrollLeft + anchor.viewportWidth / 2) /
         Math.max(0.0001, anchor.zoomX);
       const worldY =
         (anchor.scrollTop + anchor.viewportHeight / 2) /
         Math.max(0.0001, anchor.zoomY);
-      const nextScrollLeft = worldX * nextZoomX - w / 2;
-      const nextScrollTop = worldY * nextZoomY - h / 2;
-      const nextZoom = { x: nextZoomX, y: nextZoomY };
+      const nextScrollLeft = worldX * nextZoomValue - w / 2;
+      const nextScrollTop = worldY * nextZoomValue - h / 2;
+      const nextZoom = { x: nextZoomValue, y: nextZoomValue };
 
       syncingZoomRef.current = true;
       viewer.scrollTo?.(nextScrollLeft, nextScrollTop);
@@ -288,21 +290,21 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
       resizeLayoutAnchorRef.current = {
         viewportWidth: w,
         viewportHeight: h,
-        zoomX: nextZoomX,
-        zoomY: nextZoomY,
+        zoomX: nextZoomValue,
+        zoomY: nextZoomValue,
         scrollLeft: nextScrollLeft,
         scrollTop: nextScrollTop,
       };
       layoutBaselineRef.current = {
         viewportWidth: w,
         viewportHeight: h,
-        zoomX: nextZoomX,
-        zoomY: nextZoomY,
+        zoomX: nextZoomValue,
+        zoomY: nextZoomValue,
       };
       zoomRef.current = nextZoom;
       onZoomChange({
-        x: Number(nextZoomX.toFixed(4)),
-        y: Number(nextZoomY.toFixed(4)),
+        x: Number(nextZoomValue.toFixed(4)),
+        y: Number(nextZoomValue.toFixed(4)),
       });
       requestAnimationFrame(() => {
         syncingZoomRef.current = false;
@@ -460,7 +462,18 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
         }
         if (!panRef.current.moved) return;
         ev.preventDefault();
-        viewer.scrollTo(panRef.current.startLeft - dx, panRef.current.startTop - dy);
+        const nextLeft = panRef.current.startLeft - dx;
+        const nextTop = panRef.current.startTop - dy;
+        viewer.scrollTo(nextLeft, nextTop);
+        const left =
+          typeof viewer.getScrollLeft === "function"
+            ? viewer.getScrollLeft()
+            : nextLeft;
+        const top =
+          typeof viewer.getScrollTop === "function"
+            ? viewer.getScrollTop()
+            : nextTop;
+        commitScroll(left, top);
       };
 
       const up = (ev: MouseEvent) => {
@@ -485,7 +498,7 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
       el.removeEventListener("contextmenu", onContextMenu, true);
       el.removeEventListener("mousedown", onMouseDown, true);
     };
-  }, [clearWindowPanListeners]);
+  }, [clearWindowPanListeners, commitScroll]);
 
   const resolvedContentSize = useMemo(() => {
     if (contentSize) return contentSize;
@@ -496,6 +509,8 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
     };
   }, [contentSize, viewport.height, viewport.width, worldCanvasSize]);
 
+  const canvasScale = useMemo(() => uniformViewportZoom(zoom), [zoom.x, zoom.y]);
+
   const style = useMemo<React.CSSProperties>(
     () => ({
       width: resolvedContentSize.width,
@@ -503,10 +518,10 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
       minWidth: "100%",
       minHeight: "100%",
       position: "relative",
-      transform: `scale(${zoom.x}, ${zoom.y})`,
+      transform: `scale(${canvasScale})`,
       transformOrigin: "0 0",
     }),
-    [resolvedContentSize.height, resolvedContentSize.width, zoom.x, zoom.y]
+    [canvasScale, resolvedContentSize.height, resolvedContentSize.width]
   );
 
   const hasMaterialPayload = useCallback((types: ArrayLike<string> | null | undefined) => {
@@ -628,14 +643,14 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
             onContextMenuCapture={onCanvasContextMenuCapture}
           >
             {children}
+            {viewportOverlay ? (
+              <div className="rv-viewport-overlay pointer-events-none absolute inset-0 z-[70] overflow-visible [&_.moveable-control-box]:pointer-events-auto">
+                {viewportOverlay}
+              </div>
+            ) : null}
           </div>
         </TransformComponent>
       </TransformWrapper>
-      {viewportOverlay ? (
-        <div className="rv-viewport-overlay pointer-events-none absolute inset-0 z-[70] overflow-visible [&_.moveable-control-box]:pointer-events-auto">
-          {viewportOverlay}
-        </div>
-      ) : null}
     </InfiniteViewer>
   );
 }

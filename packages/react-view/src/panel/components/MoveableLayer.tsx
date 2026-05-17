@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import Moveable from "react-moveable";
 
 import type { PanelElement } from "../types";
+import { uniformViewportZoom } from "../viewportZoom";
 
 function LockGlyph({ className = "h-3.5 w-3.5" }: { className?: string }) {
   return (
@@ -26,8 +27,10 @@ function LockGlyph({ className = "h-3.5 w-3.5" }: { className?: string }) {
 export type MoveableLayerProps = {
   zoomX: number;
   zoomY: number;
-  /** 未 transform 的滚动视口（InfiniteViewer 容器） */
-  rootContainer: HTMLElement | null;
+  /** 带 scale 的画布根节点（data-panel-canvas），与节点同一坐标系 */
+  canvasContainer: HTMLElement | null;
+  /** 滚动视口，用于拖拽/框选指针坐标 */
+  dragContainer?: HTMLElement | null;
   selectedTargets: HTMLElement[];
   elementsById: Map<string, PanelElement>;
   updateElement: (
@@ -35,7 +38,10 @@ export type MoveableLayerProps = {
     patch: Partial<PanelElement>,
     options?: { batchId?: string; meta?: Record<string, unknown> }
   ) => void;
-  refreshToken?: number;
+  /** 画布平移/缩放等视口变化时递增或变化，用于触发控制框重算 */
+  refreshToken?: number | string;
+  /** InfiniteViewer 虚拟滚动位置（无原生 scroll 事件） */
+  viewportScroll?: { left: number; top: number };
 };
 
 function getGridSlotLayout(grid: PanelElement) {
@@ -151,11 +157,13 @@ function isDescendantGrid(
 export function MoveableLayer({
   zoomX,
   zoomY,
-  rootContainer,
+  canvasContainer,
+  dragContainer,
   selectedTargets,
   elementsById,
   updateElement,
   refreshToken,
+  viewportScroll,
 }: MoveableLayerProps) {
   const moveableRef = useRef<any>(null);
   const targets = useMemo(() => {
@@ -201,6 +209,16 @@ export function MoveableLayer({
     [getId, movableTargets]
   );
   const moveableRenderKey = useMemo(() => movableIds.join(","), [movableIds]);
+  const canvasScale = useMemo(
+    () => uniformViewportZoom({ x: zoomX, y: zoomY }),
+    [zoomX, zoomY]
+  );
+  /** 控制框在 scale 画布内渲染，用倒数保持屏幕像素尺寸 */
+  const moveableControlZoom = useMemo(
+    () => 1 / Math.max(0.0001, canvasScale),
+    [canvasScale]
+  );
+  const pointerRoot = dragContainer ?? canvasContainer;
   const resolveSingleEventId = useCallback(
     (target: HTMLElement | undefined | null) => {
       const id = target ? getId(target) : null;
@@ -212,12 +230,12 @@ export function MoveableLayer({
     [getId, movableIds]
   );
   const toCanvasDeltaX = useCallback(
-    (value: number) => value / Math.max(0.0001, zoomX > 0 ? zoomX : 1),
-    [zoomX]
+    (value: number) => value / Math.max(0.0001, canvasScale),
+    [canvasScale]
   );
   const toCanvasDeltaY = useCallback(
-    (value: number) => value / Math.max(0.0001, zoomY > 0 ? zoomY : 1),
-    [zoomY]
+    (value: number) => value / Math.max(0.0001, canvasScale),
+    [canvasScale]
   );
   const readClientPoint = useCallback((eventLike: any) => {
     const x =
@@ -253,7 +271,7 @@ export function MoveableLayer({
   );
   useEffect(() => {
     const id = lockedSelected[0];
-    if (!id || !rootContainer) {
+    if (!id || !canvasContainer) {
       setLockBadgeScreen(null);
       return;
     }
@@ -266,7 +284,7 @@ export function MoveableLayer({
     }
     const sync = () => {
       const rect = target.getBoundingClientRect();
-      const rootRect = rootContainer.getBoundingClientRect();
+      const rootRect = canvasContainer.getBoundingClientRect();
       setLockBadgeScreen({
         x: rect.left - rootRect.left,
         y: rect.top - rootRect.top,
@@ -275,18 +293,20 @@ export function MoveableLayer({
     sync();
     const ro = new ResizeObserver(sync);
     ro.observe(target);
-    ro.observe(rootContainer);
-    rootContainer.addEventListener("scroll", sync, { passive: true });
+    ro.observe(canvasContainer);
+    canvasContainer.addEventListener("scroll", sync, { passive: true });
     return () => {
       ro.disconnect();
-      rootContainer.removeEventListener("scroll", sync);
+      canvasContainer.removeEventListener("scroll", sync);
     };
-  }, [lockedSelected, rootContainer, selectedTargets, zoomX, zoomY]);
+  }, [canvasContainer, lockedSelected, selectedTargets, viewportScroll, zoomX, zoomY]);
 
   const updateRectNextFrame = useCallback(() => {
-    // 等 React 把 left/top/width/height 重新渲染后，再让 Moveable 重新计算控制框
+    // InfiniteViewer 用 transform 平移，需等视口与节点布局提交后再 updateRect
     requestAnimationFrame(() => {
-      moveableRef.current?.updateRect?.();
+      requestAnimationFrame(() => {
+        moveableRef.current?.updateRect?.();
+      });
     });
   }, []);
   const getGridDirectChildren = useCallback(
@@ -410,9 +430,14 @@ export function MoveableLayer({
   useEffect(() => {
     if (!targets) return;
     updateRectNextFrame();
+  }, [targets, updateRectNextFrame, viewportScroll?.left, viewportScroll?.top]);
+
+  useEffect(() => {
+    if (!targets) return;
+    updateRectNextFrame();
   }, [targets, updateRectNextFrame, zoomX, zoomY]);
 
-  if (!rootContainer) return null;
+  if (!canvasContainer) return null;
 
   const lockBadgeOnly =
     lockBadgeScreen && hasLockedSelected && !movableTargets ? (
@@ -427,11 +452,11 @@ export function MoveableLayer({
     ) : null;
 
   if (!targets) {
-    return lockBadgeOnly ? createPortal(lockBadgeOnly, rootContainer) : null;
+    return lockBadgeOnly ? createPortal(lockBadgeOnly, canvasContainer) : null;
   }
 
   if (!movableTargets) {
-    return lockBadgeOnly ? createPortal(lockBadgeOnly, rootContainer) : null;
+    return lockBadgeOnly ? createPortal(lockBadgeOnly, canvasContainer) : null;
   }
 
   const layer = (
@@ -441,11 +466,11 @@ export function MoveableLayer({
         ref={moveableRef}
       // Moveable 支持单个 HTMLElement 或 HTMLElement[]
       target={movableTargets as unknown as HTMLElement[]}
-      rootContainer={rootContainer}
-      container={rootContainer}
-      dragContainer={rootContainer}
+      rootContainer={canvasContainer}
+      container={canvasContainer}
+      dragContainer={pointerRoot ?? canvasContainer}
       className="rv-moveable-layer"
-      zoom={1}
+      zoom={moveableControlZoom}
       // 允许在控制框内部区域拖动（不必必须点到某个节点本体）
       dragArea
       draggable
@@ -770,6 +795,6 @@ export function MoveableLayer({
     </>
   );
 
-  return createPortal(layer, rootContainer);
+  return createPortal(layer, canvasContainer);
 }
 

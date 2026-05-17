@@ -340,6 +340,11 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
     setViewportEl(el);
   }, []);
   const canvasRef = useRef<HTMLDivElement | null>(null);
+  const [canvasEl, setCanvasEl] = useState<HTMLDivElement | null>(null);
+  const syncCanvasRef = useCallback((el: HTMLDivElement | null) => {
+    canvasRef.current = el;
+    setCanvasEl(el);
+  }, []);
   const panelRootRef = useRef<HTMLDivElement | null>(null);
   const [zoom, setZoom] = useState<ViewportZoom>({
     x: initialZoom,
@@ -674,7 +679,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
     setSelectedIds((prev) => prev.filter((id) => existing.has(id)));
   }, [elements]);
 
-  const canvasContainer = canvasRef.current;
+  const canvasContainer = canvasEl;
   const activeLayer = layers.find((l) => l.id === activeLayerId) ?? null;
   const primaryLayer = layers.find((l) => l.isPrimary) ?? layers[0] ?? null;
   const deletingLayer = layers.find((l) => l.id === confirmDeleteLayerId) ?? null;
@@ -1170,7 +1175,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
         <Menubar className="h-8 border-0 bg-transparent p-0 shadow-none">
           <MenubarMenu>
             <MenubarTrigger className="px-2 py-1 text-xs font-normal">文件</MenubarTrigger>
-            <MenubarContent>
+            <MenubarContent className="z-[10100]">
               <MenubarItem onClick={handlePreviewLayer}>预览</MenubarItem>
               <MenubarItem onClick={handleExport}>导出</MenubarItem>
               <MenubarItem onClick={() => importInputRef.current?.click()}>导入</MenubarItem>
@@ -1178,7 +1183,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
           </MenubarMenu>
           <MenubarMenu>
             <MenubarTrigger className="px-2 py-1 text-xs font-normal">编辑</MenubarTrigger>
-            <MenubarContent>
+            <MenubarContent className="z-[10100]">
               <MenubarItem disabled={!canUndo} onClick={undo}>撤销</MenubarItem>
               <MenubarItem disabled={!canRedo} onClick={redo}>重做</MenubarItem>
               <MenubarSeparator />
@@ -1190,7 +1195,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
           </MenubarMenu>
           <MenubarMenu>
             <MenubarTrigger className="px-2 py-1 text-xs font-normal">视图</MenubarTrigger>
-            <MenubarContent>
+            <MenubarContent className="z-[10100]">
               <MenubarItem onClick={() => adjustUniformZoom((z) => z - 0.1)}>缩小</MenubarItem>
               <MenubarItem onClick={() => adjustUniformZoom((z) => z + 0.1)}>放大</MenubarItem>
               <MenubarSeparator />
@@ -1205,7 +1210,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
           </MenubarMenu>
           <MenubarMenu>
             <MenubarTrigger className="px-2 py-1 text-xs font-normal">设置</MenubarTrigger>
-            <MenubarContent>
+            <MenubarContent className="z-[10100]">
               <MenubarRadioGroup
                 value={panelFontSize}
                 onValueChange={(value) => setPanelFontSize(value as "sm" | "md" | "lg")}
@@ -1312,22 +1317,6 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
             }}
           >
             <div className="relative flex h-full flex-col overflow-hidden border border-border bg-background">
-              <div
-                className="pointer-events-none absolute bottom-3 right-3 z-20 flex items-center gap-2"
-                style={{ zIndex: PANEL_Z_INDEX.toolbar + 1 }}
-              >
-                <div
-                  data-blueprint-toggle
-                  className="pointer-events-auto flex items-center gap-2 rounded-md border border-border bg-background/95 px-2.5 py-1.5 text-foreground shadow-md backdrop-blur"
-                >
-                  <span className="text-[11px] text-muted-foreground">蓝图</span>
-                  <Switch
-                    checked={blueprintOpen}
-                    onCheckedChange={setBlueprintOpen}
-                    aria-label="显示蓝图面板"
-                  />
-                </div>
-              </div>
               <div
                 className="relative flex items-center gap-2 border-b border-border bg-background/90 px-3 py-1.5 text-foreground"
                 style={{ zIndex: PANEL_Z_INDEX.toolbar }}
@@ -1576,6 +1565,17 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                   </DropdownMenuContent>
                 </DropdownMenu>
                 <div className="flex-1" />
+                <div
+                  data-blueprint-toggle
+                  className="flex shrink-0 items-center gap-2 rounded-md border border-border bg-muted/30 px-2 py-1"
+                >
+                  <span className="text-[11px] text-muted-foreground">蓝图</span>
+                  <Switch
+                    checked={blueprintOpen}
+                    onCheckedChange={setBlueprintOpen}
+                    aria-label="显示蓝图面板"
+                  />
+                </div>
                 <TooltipProvider delayDuration={150}>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -1755,16 +1755,18 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                     zoom={zoom}
                     onZoomChange={setZoom}
                     onScrollChange={setScroll}
-                    canvasRef={canvasRef}
+                    canvasRef={syncCanvasRef}
                     viewportOverlay={
                       <MoveableLayer
                         zoomX={zoom.x}
                         zoomY={zoom.y}
-                        rootContainer={viewportEl}
+                        canvasContainer={canvasContainer}
+                        dragContainer={viewportEl}
                         selectedTargets={selectedTargets}
                         elementsById={byId}
                         updateElement={updateElement}
-                        refreshToken={historyCursor}
+                        refreshToken={`${historyCursor}|${scroll.left}|${scroll.top}|${zoom.x}|${zoom.y}`}
+                        viewportScroll={scroll}
                       />
                     }
                     onCanvasMouseDownCapture={(e) => {

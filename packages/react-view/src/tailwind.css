@@ -26,16 +26,33 @@
   background: hsl(var(--foreground) / 0.45);
 }
 
-/* Moveable 控制点：固定屏幕像素，不随画布 scale 变化 */
-.rv-moveable-layer .moveable-control,
-.rv-moveable-layer .moveable-direction {
+/* Moveable：仅角点控制柄固定屏幕像素；勿作用于 moveable-direction 边线 */
+.rv-moveable-layer {
+  --moveable-color: #1990ff;
+}
+
+.rv-moveable-layer .moveable-control {
   width: 14px !important;
   height: 14px !important;
   margin-top: -7px !important;
   margin-left: -7px !important;
+  border-radius: 50% !important;
+  box-sizing: border-box !important;
+  border: 2px solid hsl(var(--background)) !important;
+  background: #1990ff !important;
+  background: var(--moveable-color) !important;
+}
+
+.rv-moveable-layer .moveable-line.moveable-direction {
+  width: 1px !important;
+  height: 1px !important;
+  margin: 0 !important;
 }
 
 .rv-moveable-layer .moveable-line {
-  --moveable-color: hsl(var(--primary));
+  --moveable-color: #1990ff;
 }
 
+.rv-moveable-layer .moveable-around-control {
+  background: transparent !important;
+}
