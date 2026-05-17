@@ -2,9 +2,15 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import InfiniteViewer from "react-infinite-viewer";
 import { TransformComponent, TransformWrapper } from "react-zoom-pan-pinch";
 
+import {
+  clampViewportZoom,
+  clampViewportZoomXY,
+  type ViewportZoom,
+} from "../viewportZoom";
+
 export type PanelCanvasProps = {
-  zoom: number;
-  onZoomChange: (next: number) => void;
+  zoom: ViewportZoom;
+  onZoomChange: (next: ViewportZoom) => void;
   contentSize?: { width: number; height: number } | null;
   onScrollChange?: (pos: { left: number; top: number }) => void;
   children: React.ReactNode;
@@ -42,10 +48,71 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
   const [isPanning, setIsPanning] = useState(false);
   const lastScrollRef = useRef({ left: 0, top: 0 });
   const zoomRef = useRef(zoom);
+  const viewportSizeRef = useRef({ width: 0, height: 0 });
+  const resizeZoomRafRef = useRef<number | null>(null);
+  const resizeLayoutAnchorRef = useRef<{
+    viewportWidth: number;
+    viewportHeight: number;
+    zoomX: number;
+    zoomY: number;
+    scrollLeft: number;
+    scrollTop: number;
+  } | null>(null);
+  /** 首次布局时的视口与分轴 zoom，缩放回弹时可逆 */
+  const layoutBaselineRef = useRef({
+    viewportWidth: 0,
+    viewportHeight: 0,
+    zoomX: 1,
+    zoomY: 1,
+  });
   const [viewport, setViewport] = useState({ width: 0, height: 0 });
+  /** 固定世界画布尺寸，不随 zoom / 当前视口变化，避免缩放与 DOM 尺寸竞态导致节点错位 */
+  const [worldCanvasSize, setWorldCanvasSize] = useState<{
+    width: number;
+    height: number;
+  } | null>(null);
+
+  const commitScroll = useCallback(
+    (left: number, top: number) => {
+      const next = { left, top };
+      lastScrollRef.current = next;
+      onScrollChange?.(next);
+    },
+    [onScrollChange]
+  );
+
   useEffect(() => {
     zoomRef.current = zoom;
   }, [zoom]);
+
+  useEffect(() => {
+    viewportSizeRef.current = viewport;
+  }, [viewport]);
+
+  useEffect(() => {
+    if (contentSize) return;
+    if (viewport.width < 8 || viewport.height < 8) return;
+    setWorldCanvasSize((prev) => {
+      if (prev) return prev;
+      const size = { width: viewport.width, height: viewport.height };
+      layoutBaselineRef.current = {
+        viewportWidth: viewport.width,
+        viewportHeight: viewport.height,
+        zoomX: zoomRef.current.x,
+        zoomY: zoomRef.current.y,
+      };
+      resizeLayoutAnchorRef.current = {
+        viewportWidth: viewport.width,
+        viewportHeight: viewport.height,
+        zoomX: zoomRef.current.x,
+        zoomY: zoomRef.current.y,
+        scrollLeft: lastScrollRef.current.left,
+        scrollTop: lastScrollRef.current.top,
+      };
+      return size;
+    });
+  }, [contentSize, viewport.height, viewport.width]);
+
   const panRef = useRef<{
     active: boolean;
     moved: boolean;
@@ -99,25 +166,43 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
       const rect = el.getBoundingClientRect();
       const pointerX = e.clientX - rect.left;
       const pointerY = e.clientY - rect.top;
-      const currentScale = Number(api.state?.scale ?? 1);
+      const zx = zoomRef.current.x;
+      const zy = zoomRef.current.y;
       const currentScrollLeft = Number(lastScrollRef.current.left ?? 0);
       const currentScrollTop = Number(lastScrollRef.current.top ?? 0);
 
       const direction = e.deltaY > 0 ? -1 : 1;
       const zoomStep = direction > 0 ? 1.08 : 0.92;
-      const nextScale = Math.min(4, Math.max(0.25, currentScale * zoomStep));
-      if (Math.abs(nextScale - currentScale) < 0.0001) return;
+      const nextZoom = clampViewportZoomXY({
+        x: zx * zoomStep,
+        y: zy * zoomStep,
+      });
+      if (Math.abs(nextZoom.x - zx) < 0.0001 && Math.abs(nextZoom.y - zy) < 0.0001) {
+        return;
+      }
 
-      // 以鼠标点为锚点缩放：通过滚动补偿实现，避免 transform 平移破坏 Ruler 对齐
-      const worldX = (pointerX + currentScrollLeft) / Math.max(0.0001, currentScale);
-      const worldY = (pointerY + currentScrollTop) / Math.max(0.0001, currentScale);
-      const nextScrollLeft = worldX * nextScale - pointerX;
-      const nextScrollTop = worldY * nextScale - pointerY;
+      const worldX = (pointerX + currentScrollLeft) / Math.max(0.0001, zx);
+      const worldY = (pointerY + currentScrollTop) / Math.max(0.0001, zy);
+      const nextScrollLeft = worldX * nextZoom.x - pointerX;
+      const nextScrollTop = worldY * nextZoom.y - pointerY;
 
       syncingZoomRef.current = true;
-      api.setTransform(0, 0, nextScale, 0, "linear");
       viewer.scrollTo(nextScrollLeft, nextScrollTop);
-      onZoomChange(Number(nextScale.toFixed(4)));
+      commitScroll(nextScrollLeft, nextScrollTop);
+      const { width: vw, height: vh } = viewportSizeRef.current;
+      resizeLayoutAnchorRef.current = {
+        viewportWidth: vw,
+        viewportHeight: vh,
+        zoomX: nextZoom.x,
+        zoomY: nextZoom.y,
+        scrollLeft: nextScrollLeft,
+        scrollTop: nextScrollTop,
+      };
+      zoomRef.current = nextZoom;
+      onZoomChange({
+        x: Number(nextZoom.x.toFixed(4)),
+        y: Number(nextZoom.y.toFixed(4)),
+      });
       requestAnimationFrame(() => {
         syncingZoomRef.current = false;
       });
@@ -127,20 +212,87 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
     return () => {
       el.removeEventListener("wheel", onWheelZoom, true);
     };
-  }, [onZoomChange, viewport.width, viewport.height]);
+  }, [commitScroll, onZoomChange, viewport.width, viewport.height]);
 
-  useEffect(() => {
-    const api = transformRef.current;
-    if (!api) return;
-    const current = api.state?.scale ?? 1;
-    if (Math.abs(current - zoom) < 0.0001) return;
-    syncingZoomRef.current = true;
-    // 位置始终锁定为 0，避免可操作层偏移出操作面板
-    api.setTransform(0, 0, zoom, 120, "easeOut");
-    requestAnimationFrame(() => {
-      syncingZoomRef.current = false;
-    });
-  }, [zoom]);
+  const applyViewportResizeZoom = useCallback(
+    (w: number, h: number) => {
+      const viewer = viewerRef.current as {
+        scrollTo?: (x: number, y: number) => void;
+      } | null;
+      if (!viewer) return;
+
+      const baseline = layoutBaselineRef.current;
+      if (baseline.viewportWidth < 8 || baseline.viewportHeight < 8) {
+        layoutBaselineRef.current = {
+          viewportWidth: w,
+          viewportHeight: h,
+          zoomX: zoomRef.current.x,
+          zoomY: zoomRef.current.y,
+        };
+        resizeLayoutAnchorRef.current = {
+          viewportWidth: w,
+          viewportHeight: h,
+          zoomX: zoomRef.current.x,
+          zoomY: zoomRef.current.y,
+          scrollLeft: lastScrollRef.current.left,
+          scrollTop: lastScrollRef.current.top,
+        };
+        return;
+      }
+
+      const factorX = w / baseline.viewportWidth;
+      const factorY = h / baseline.viewportHeight;
+      if (Math.abs(factorX - 1) < 0.008 && Math.abs(factorY - 1) < 0.008) {
+        const anchor = resizeLayoutAnchorRef.current;
+        if (anchor) {
+          resizeLayoutAnchorRef.current = { ...anchor, viewportWidth: w, viewportHeight: h };
+        }
+        return;
+      }
+
+      const anchor = resizeLayoutAnchorRef.current ?? {
+        viewportWidth: w,
+        viewportHeight: h,
+        zoomX: zoomRef.current.x,
+        zoomY: zoomRef.current.y,
+        scrollLeft: lastScrollRef.current.left,
+        scrollTop: lastScrollRef.current.top,
+      };
+
+      const nextZoomX = clampViewportZoom(baseline.zoomX * factorX);
+      const nextZoomY = clampViewportZoom(baseline.zoomY * factorY);
+      const worldX =
+        (anchor.scrollLeft + anchor.viewportWidth / 2) /
+        Math.max(0.0001, anchor.zoomX);
+      const worldY =
+        (anchor.scrollTop + anchor.viewportHeight / 2) /
+        Math.max(0.0001, anchor.zoomY);
+      const nextScrollLeft = worldX * nextZoomX - w / 2;
+      const nextScrollTop = worldY * nextZoomY - h / 2;
+      const nextZoom = { x: nextZoomX, y: nextZoomY };
+
+      syncingZoomRef.current = true;
+      viewer.scrollTo?.(nextScrollLeft, nextScrollTop);
+      commitScroll(nextScrollLeft, nextScrollTop);
+      resizeLayoutAnchorRef.current = {
+        viewportWidth: w,
+        viewportHeight: h,
+        zoomX: nextZoomX,
+        zoomY: nextZoomY,
+        scrollLeft: nextScrollLeft,
+        scrollTop: nextScrollTop,
+      };
+      zoomRef.current = nextZoom;
+      onZoomChange({
+        x: Number(nextZoomX.toFixed(4)),
+        y: Number(nextZoomY.toFixed(4)),
+      });
+      requestAnimationFrame(() => {
+        syncingZoomRef.current = false;
+      });
+    },
+    [commitScroll, onZoomChange]
+  );
 
   const syncViewportElement = useCallback(
     (el: HTMLDivElement | null) => {
@@ -229,6 +381,31 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
     return () => window.removeEventListener("resize", update);
   }, []);
 
+  /** 操作区尺寸变化时同步缩放；基于上一次已应用的锚点，避免放大后滚动补偿错位 */
+  useEffect(() => {
+    if (contentSize) return;
+    if (viewport.width < 8 || viewport.height < 8) return;
+
+    if (resizeZoomRafRef.current != null) {
+      cancelAnimationFrame(resizeZoomRafRef.current);
+    }
+    resizeZoomRafRef.current = requestAnimationFrame(() => {
+      resizeZoomRafRef.current = null;
+      applyViewportResizeZoom(viewport.width, viewport.height);
+    });
+
+    return () => {
+      if (resizeZoomRafRef.current != null) {
+        cancelAnimationFrame(resizeZoomRafRef.current);
+      }
+    };
+  }, [
+    applyViewportResizeZoom,
+    contentSize,
+    viewport.height,
+    viewport.width,
+  ]);
+
   useEffect(() => {
     const el = viewportRef.current;
     if (!el) return;
@@ -295,9 +472,12 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
 
   const resolvedContentSize = useMemo(() => {
     if (contentSize) return contentSize;
-    // 内容尺寸严格跟随父容器可视区（不除以 zoom），缩放通过外层占位尺寸实现
-    return { width: Math.max(0, viewport.width), height: Math.max(0, viewport.height) };
-  }, [contentSize, viewport.height, viewport.width]);
+    if (worldCanvasSize) return worldCanvasSize;
+    return {
+      width: Math.max(0, viewport.width),
+      height: Math.max(0, viewport.height),
+    };
+  }, [contentSize, viewport.height, viewport.width, worldCanvasSize]);
 
   const style = useMemo<React.CSSProperties>(
     () => ({
@@ -306,8 +486,10 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
       minWidth: "100%",
       minHeight: "100%",
       position: "relative",
+      transform: `scale(${zoom.x}, ${zoom.y})`,
+      transformOrigin: "0 0",
     }),
-    [resolvedContentSize.height, resolvedContentSize.width]
+    [resolvedContentSize.height, resolvedContentSize.width, zoom.x, zoom.y]
   );
 
   const hasMaterialPayload = useCallback((types: ArrayLike<string> | null | undefined) => {
@@ -336,9 +518,8 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
         const canvasEl = canvasElRef.current;
         if (!canvasEl) return;
         const canvasRect = canvasEl.getBoundingClientRect();
-        const currentZoom = Math.max(0.0001, zoomRef.current);
-        const x = (clientX - canvasRect.left) / currentZoom;
-        const y = (clientY - canvasRect.top) / currentZoom;
+        const x = (clientX - canvasRect.left) / Math.max(0.0001, zoomRef.current.x);
+        const y = (clientY - canvasRect.top) / Math.max(0.0001, zoomRef.current.y);
         onDropMaterial?.({ materialId: material.id, x, y });
       } catch {
         // ignore invalid payload
@@ -404,9 +585,9 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
     >
       <TransformWrapper
         ref={transformRef}
-        initialScale={zoom}
-        minScale={0.5}
-        maxScale={2}
+        initialScale={1}
+        minScale={1}
+        maxScale={1}
         centerOnInit={false}
         limitToBounds={false}
         panning={{ disabled: true }}

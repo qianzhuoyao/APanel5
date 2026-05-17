@@ -5,6 +5,7 @@ import type { PanelElement } from "./types";
 import { usePanelElements } from "./hooks/usePanelElements";
 import { PanelCanvas } from "./components/PanelCanvas";
 import { PanelRulers } from "./components/PanelRulers";
+import { type ViewportZoom, uniformViewportZoom } from "./viewportZoom";
 import { ElementsLayer } from "./components/ElementsLayer";
 import { SelectLayer } from "./components/SelectLayer";
 import { MoveableLayer } from "./components/MoveableLayer";
@@ -335,7 +336,18 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLDivElement | null>(null);
   const panelRootRef = useRef<HTMLDivElement | null>(null);
-  const [zoom, setZoom] = useState(initialZoom);
+  const [zoom, setZoom] = useState<ViewportZoom>({
+    x: initialZoom,
+    y: initialZoom,
+  });
+
+  const adjustUniformZoom = useCallback((updater: (value: number) => number) => {
+    setZoom((prev) => {
+      const next = Math.min(4, Math.max(0.25, updater(prev.x)));
+      const rounded = Number(next.toFixed(4));
+      return { x: rounded, y: rounded };
+    });
+  }, []);
   const [scroll, setScroll] = useState({ left: 0, top: 0 });
 
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -1174,8 +1186,8 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
           <MenubarMenu>
             <MenubarTrigger className="px-2 py-1 text-xs font-normal">视图</MenubarTrigger>
             <MenubarContent>
-              <MenubarItem onClick={() => setZoom((z) => Math.max(0.25, Number((z - 0.1).toFixed(2))))}>缩小</MenubarItem>
-              <MenubarItem onClick={() => setZoom((z) => Math.min(4, Number((z + 0.1).toFixed(2))))}>放大</MenubarItem>
+              <MenubarItem onClick={() => adjustUniformZoom((z) => z - 0.1)}>缩小</MenubarItem>
+              <MenubarItem onClick={() => adjustUniformZoom((z) => z + 0.1)}>放大</MenubarItem>
               <MenubarSeparator />
               <MenubarItem
                 onClick={() => {
@@ -1606,7 +1618,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                     <TooltipTrigger asChild>
                       <button
                         type="button"
-                        onClick={() => setZoom((z) => Math.max(0.25, Number((z - 0.1).toFixed(2))))}
+                        onClick={() => adjustUniformZoom((z) => z - 0.1)}
                         className="rounded-md border border-border bg-secondary px-2 py-1 text-xs text-secondary-foreground hover:bg-secondary/80"
                       >
                         -
@@ -1615,13 +1627,17 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                     <TooltipContent className="z-[10000]">缩小画布</TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
-                <span className="w-14 text-center text-xs">{(zoom * 100).toFixed(0)}%</span>
+                <span className="w-20 text-center text-xs">
+                  {zoom.x === zoom.y
+                    ? `${(zoom.x * 100).toFixed(0)}%`
+                    : `${(zoom.x * 100).toFixed(0)}%×${(zoom.y * 100).toFixed(0)}%`}
+                </span>
                 <TooltipProvider delayDuration={150}>
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <button
                         type="button"
-                        onClick={() => setZoom((z) => Math.min(4, Number((z + 0.1).toFixed(2))))}
+                        onClick={() => adjustUniformZoom((z) => z + 0.1)}
                         className="rounded-md border border-border bg-secondary px-2 py-1 text-xs text-secondary-foreground hover:bg-secondary/80"
                       >
                         +
@@ -1674,10 +1690,10 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                 className="relative h-full min-h-0 flex-1"
               >
                 <PanelRulers
-                  zoom={zoom}
+                  zoomX={zoom.x}
+                  zoomY={zoom.y}
                   scrollLeft={scroll.left}
                   scrollTop={scroll.top}
-                  onZoomChange={setZoom}
                 />
 
                 <div
@@ -1768,7 +1784,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                     />
 
                     <MoveableLayer
-                      zoom={zoom}
+                      zoom={uniformViewportZoom(zoom)}
                       selectedTargets={selectedTargets}
                       elementsById={byId}
                       updateElement={updateElement}
@@ -1917,19 +1933,26 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                             }
                             const canvasEl = canvasRef.current;
                             const viewportEl = scrollRef.current;
-                            const currentZoom = Math.max(0.0001, zoom);
                             let targetX: number | undefined;
                             let targetY: number | undefined;
                             if (canvasEl) {
                               const canvasRect = canvasEl.getBoundingClientRect();
-                              targetX = (dropdownPoint.x - canvasRect.left) / currentZoom;
-                              targetY = (dropdownPoint.y - canvasRect.top) / currentZoom;
+                              targetX =
+                                (dropdownPoint.x - canvasRect.left) /
+                                Math.max(0.0001, zoom.x);
+                              targetY =
+                                (dropdownPoint.y - canvasRect.top) /
+                                Math.max(0.0001, zoom.y);
                             } else if (viewportEl) {
                               const rect = viewportEl.getBoundingClientRect();
                               const centerX = rect.left + rect.width / 2;
                               const centerY = rect.top + rect.height / 2;
-                              targetX = (centerX - rect.left + scroll.left) / currentZoom;
-                              targetY = (centerY - rect.top + scroll.top) / currentZoom;
+                              targetX =
+                                (centerX - rect.left + scroll.left) /
+                                Math.max(0.0001, zoom.x);
+                              targetY =
+                                (centerY - rect.top + scroll.top) /
+                                Math.max(0.0001, zoom.y);
                             }
                             duplicateElement(
                               copiedNodeId,
