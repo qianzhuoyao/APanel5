@@ -1,4 +1,10 @@
-/* 画布：与 panel 主题一致 */
+/* 画布：与 panel / next-themes 主题一致 */
+.bp-canvas,
+[data-workspace-region="blueprint"] .bp-canvas {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+
 .bp-canvas .react-flow__pane,
 .bp-flow.react-flow__pane {
   cursor: default;
@@ -7,11 +13,13 @@
 .bp-canvas .react-flow,
 .bp-flow.react-flow,
 [data-workspace-region="blueprint"] .react-flow {
+  --xy-background-color: transparent;
   --xy-edge-stroke: #2563eb;
   --xy-edge-stroke-width: 2.5;
   --xy-edge-stroke-selected: #1d4ed8;
   --xy-connectionline-stroke: #2563eb;
   --xy-connectionline-stroke-width: 2.5;
+  background-color: transparent;
 }
 
 /*

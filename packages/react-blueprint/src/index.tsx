@@ -1,7 +1,6 @@
 import {
   FC,
   useCallback,
-  useEffect,
   useMemo,
   useRef,
   useState,
@@ -12,41 +11,23 @@ import {
   ReactFlow,
   ReactFlowProvider,
   ConnectionMode,
-  addEdge,
-  useEdgesState,
-  useNodesState,
   useReactFlow,
-  type Connection,
-  type Edge,
   type Node,
-  type NodeChange,
-  type EdgeChange,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import "./blueprint.css";
 
-import {
-  BlueprintGraph,
-  applyFlowNodePositions,
-  BP_EDGE_STYLE,
-  BP_FLOW_EDGE_TYPE,
-  flowEdgesToGraphEdges,
-  graphToFlowEdges,
-  graphToFlowNodes,
-  mergeMeasuredFlowNodes,
-  normalizeFlowEdges,
-  edgeListSignature,
-  nodeListSignature,
-  resolveConnection,
-  type BlueprintFlowNodeData,
-} from "./graph";
-
+import { BlueprintGraph, nodeListSignature, type BlueprintFlowNodeData } from "./graph";
 import {
   BlueprintContextMenu,
   type BlueprintContextMenuState,
 } from "./BlueprintContextMenu";
+import { BlueprintCanvasProvider } from "./BlueprintCanvasContext";
+import { blueprintNodeTypes } from "./blueprintNodeTypes";
 import { createBlueprintEdgeTypes } from "./createBlueprintEdgeTypes";
-import { createBlueprintNodeTypes } from "./createBlueprintNodeTypes";
+import { BLUEPRINT_DEFAULT_EDGE_OPTIONS } from "./flowDefaults";
+import { useBlueprintFlowColorMode } from "./hooks/useBlueprintFlowColorMode";
+import { useBlueprintFlowState } from "./hooks/useBlueprintFlowState";
 import { useBlueprintFlowViewport } from "./hooks/useBlueprintFlowViewport";
 
 export type { BlueprintNodeConfigSidebarProps, BlueprintViewElementOption } from "./BlueprintNodeConfigSidebar";
@@ -64,6 +45,8 @@ type BlueprintCanvasProps = Omit<BluePrintReactRootProps, "style"> & {
   containerRef: React.RefObject<HTMLDivElement | null>;
 };
 
+const blueprintEdgeTypes = createBlueprintEdgeTypes();
+
 function BlueprintCanvas({
   graph,
   onGraphChange,
@@ -71,183 +54,39 @@ function BlueprintCanvas({
   onSelectNode,
   containerRef,
 }: BlueprintCanvasProps) {
-  const { screenToFlowPosition, getNodes } = useReactFlow();
+  const { screenToFlowPosition } = useReactFlow();
   const [menu, setMenu] = useState<BlueprintContextMenuState | null>(null);
   const flowPositionRef = useRef({ x: 0, y: 0 });
-  const nodeSigRef = useRef(nodeListSignature(graph.document.nodes));
-  const edgeSigRef = useRef(edgeListSignature(graph.document.edges));
 
-  const [nodes, setNodes, onNodesChangeRf] = useNodesState(
-    graphToFlowNodes(graph, selectedNodeId)
-  );
-
-  const structuralEdges = useMemo(() => graphToFlowEdges(graph), [graph]);
-  const [edges, setEdges, onEdgesChangeRf] = useEdgesState(structuralEdges);
-
-  const nodeIdSig = useMemo(
-    () => nodeListSignature(graph.document.nodes),
-    [graph.document.nodes]
-  );
-  const edgeIdSig = useMemo(
-    () => edgeListSignature(graph.document.edges),
-    [graph.document.edges]
-  );
-  useBlueprintFlowViewport(containerRef, nodeIdSig);
-
-  useEffect(() => {
-    if (edgeSigRef.current === edgeIdSig) return;
-    edgeSigRef.current = edgeIdSig;
-    setEdges(structuralEdges);
-  }, [edgeIdSig, structuralEdges, setEdges]);
-
-  const setGraph = useCallback(
+  const applyGraphChange = useCallback(
     (updater: (prev: BlueprintGraph) => BlueprintGraph) => {
       onGraphChange((prev) => updater(prev));
     },
     [onGraphChange]
   );
 
-  useEffect(() => {
-    const sig = nodeListSignature(graph.document.nodes);
-    if (sig === nodeSigRef.current) return;
-    nodeSigRef.current = sig;
-    setNodes((prev) =>
-      mergeMeasuredFlowNodes(
-        graphToFlowNodes(graph, selectedNodeId),
-        prev as Node<BlueprintFlowNodeData>[]
-      )
-    );
-  }, [graph.document.nodes, selectedNodeId, setNodes, graph]);
+  const {
+    nodes,
+    edges,
+    onNodesChange,
+    onEdgesChange,
+    onNodeDragStop,
+    onConnect,
+    isValidConnection,
+  } = useBlueprintFlowState({
+    graph,
+    selectedNodeId,
+    onGraphChange: applyGraphChange,
+    onSelectNode,
+  });
 
-  useEffect(() => {
-    setNodes((nds) =>
-      nds.map((n) => ({
-        ...n,
-        data: {
-          ...(n.data as BlueprintFlowNodeData),
-          isSelected: selectedNodeId === n.id,
-        },
-      }))
-    );
-  }, [selectedNodeId, setNodes]);
-
-  const nodeTypes = useMemo(
-    () => createBlueprintNodeTypes(onSelectNode),
-    [onSelectNode]
-  );
-  const edgeTypes = useMemo(() => createBlueprintEdgeTypes(), []);
-
-  const onNodesChange = useCallback(
-    (changes: NodeChange<Node<BlueprintFlowNodeData>>[]) => {
-      onNodesChangeRf(changes);
-
-      const actionable = changes.filter(
-        (c) => c.type !== "select" && c.type !== "dimensions"
-      );
-      if (actionable.length === 0) return;
-
-      const removals = actionable.filter((c) => c.type === "remove");
-      const shouldPersistGraph =
-        removals.length > 0 ||
-        actionable.some(
-          (c) => c.type === "position" && "dragging" in c && c.dragging === false
-        );
-      if (!shouldPersistGraph) return;
-
-      setNodes((nds) => {
-        queueMicrotask(() => {
-          onGraphChange((prev) => {
-            let doc = prev;
-            for (const change of removals) {
-              if (change.type === "remove") {
-                if (change.id === selectedNodeId) {
-                  onSelectNode?.(null);
-                }
-                doc = doc.removeNode(change.id);
-              }
-            }
-            return applyFlowNodePositions(doc, nds);
-          });
-        });
-        return nds;
-      });
-    },
-    [onNodesChangeRf, onSelectNode, selectedNodeId, onGraphChange, setNodes]
+  const flowColorMode = useBlueprintFlowColorMode();
+  const nodeIdSig = useMemo(
+    () => nodeListSignature(graph.document.nodes),
+    [graph.document.nodes]
   );
 
-  const onNodeDragStop = useCallback(() => {
-    const rfNodes = getNodes();
-    onGraphChange((prev) => applyFlowNodePositions(prev, rfNodes));
-  }, [getNodes, onGraphChange]);
-
-  const onEdgesChange = useCallback(
-    (changes: EdgeChange[]) => {
-      if (changes.length === 0) return;
-
-      /** select 等 UI 态只更新本地 edges，不写 graph，避免受控边死循环 */
-      onEdgesChangeRf(changes);
-
-      const removals = changes.filter(
-        (c): c is EdgeChange & { type: "remove"; id: string } => c.type === "remove"
-      );
-      if (removals.length === 0) return;
-
-      onGraphChange((prev) => {
-        let next = prev;
-        for (const { id } of removals) {
-          next = next.removeEdge(id);
-        }
-        return next;
-      });
-    },
-    [onEdgesChangeRf, onGraphChange]
-  );
-
-  const onConnect = useCallback(
-    (connection: Connection) => {
-      const resolved = resolveConnection(
-        connection,
-        getNodes() as Node<BlueprintFlowNodeData>[]
-      );
-      if (!resolved?.source || !resolved.target) return;
-
-      onGraphChange((prev) => {
-        const current = graphToFlowEdges(prev);
-        const exists = current.some(
-          (e) =>
-            e.source === resolved.source &&
-            e.target === resolved.target &&
-            (e.sourceHandle ?? "out") === (resolved.sourceHandle ?? "out") &&
-            (e.targetHandle ?? "in") === (resolved.targetHandle ?? "in")
-        );
-        if (exists) return prev;
-
-        const next = normalizeFlowEdges(
-          addEdge(
-            {
-              ...resolved,
-              type: BP_FLOW_EDGE_TYPE,
-              zIndex: 1000,
-              style: { ...BP_EDGE_STYLE },
-            },
-            current
-          )
-        );
-        return prev.replaceEdges(flowEdgesToGraphEdges(next));
-      });
-    },
-    [getNodes, onGraphChange]
-  );
-
-  const isValidConnection = useCallback(
-    (connection: Edge | Connection) => {
-      if (!connection.source || !connection.target) return false;
-      if (connection.source === connection.target) return false;
-      const nodeIds = new Set(nodes.map((n) => n.id));
-      return nodeIds.has(connection.source) && nodeIds.has(connection.target);
-    },
-    [nodes]
-  );
+  useBlueprintFlowViewport(containerRef, nodeIdSig, true);
 
   const onPaneContextMenu = useCallback(
     (event: MouseEvent | React.MouseEvent) => {
@@ -266,7 +105,10 @@ function BlueprintCanvas({
   );
 
   const onNodeContextMenu = useCallback(
-    (event: MouseEvent | React.MouseEvent, node: Node<BlueprintFlowNodeData>) => {
+    (
+      event: MouseEvent | React.MouseEvent,
+      node: Node<BlueprintFlowNodeData>
+    ) => {
       event.preventDefault();
       onSelectNode?.(node.id);
       flowPositionRef.current = screenToFlowPosition({
@@ -282,6 +124,18 @@ function BlueprintCanvas({
       });
     },
     [onSelectNode, screenToFlowPosition]
+  );
+
+  const onPaneClick = useCallback(() => {
+    setMenu(null);
+    onSelectNode?.(null);
+  }, [onSelectNode]);
+
+  const setGraph = useCallback(
+    (updater: (prev: BlueprintGraph) => BlueprintGraph) => {
+      applyGraphChange(updater);
+    },
+    [applyGraphChange]
   );
 
   const handleAddBlueprintNode = useCallback(() => {
@@ -316,11 +170,11 @@ function BlueprintCanvas({
     <>
       <ReactFlow
         className="bp-flow h-full w-full"
-        colorMode="system"
+        colorMode={flowColorMode}
         nodes={nodes}
         edges={edges}
-        nodeTypes={nodeTypes}
-        edgeTypes={edgeTypes}
+        nodeTypes={blueprintNodeTypes}
+        edgeTypes={blueprintEdgeTypes}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
@@ -328,18 +182,11 @@ function BlueprintCanvas({
         onPaneContextMenu={onPaneContextMenu}
         onNodeContextMenu={onNodeContextMenu}
         onNodeDragStop={onNodeDragStop}
-        onPaneClick={() => {
-          setMenu(null);
-          onSelectNode?.(null);
-        }}
+        onPaneClick={onPaneClick}
         nodesConnectable
         elementsSelectable
         connectionMode={ConnectionMode.Strict}
-        defaultEdgeOptions={{
-          type: BP_FLOW_EDGE_TYPE,
-          zIndex: 1000,
-          style: { ...BP_EDGE_STYLE },
-        }}
+        defaultEdgeOptions={BLUEPRINT_DEFAULT_EDGE_OPTIONS}
         selectNodesOnDrag={false}
         elevateNodesOnSelect={false}
         nodeClickDistance={8}
@@ -369,7 +216,7 @@ export const BluePrintReactRoot: FC<BluePrintReactRootProps> = ({
     <div
       ref={containerRef}
       data-workspace-region="blueprint"
-      className="bp-canvas h-full w-full"
+      className="bp-canvas h-full w-full bg-background text-foreground"
       style={{
         width: "100%",
         height: "100%",
@@ -377,15 +224,17 @@ export const BluePrintReactRoot: FC<BluePrintReactRootProps> = ({
         ...style,
       }}
     >
-      <ReactFlowProvider>
-        <BlueprintCanvas
-          containerRef={containerRef}
-          graph={graph}
-          onGraphChange={onGraphChange}
-          selectedNodeId={selectedNodeId}
-          onSelectNode={onSelectNode}
-        />
-      </ReactFlowProvider>
+      <BlueprintCanvasProvider onSelectNode={onSelectNode}>
+        <ReactFlowProvider>
+          <BlueprintCanvas
+            containerRef={containerRef}
+            graph={graph}
+            onGraphChange={onGraphChange}
+            selectedNodeId={selectedNodeId}
+            onSelectNode={onSelectNode}
+          />
+        </ReactFlowProvider>
+      </BlueprintCanvasProvider>
     </div>
   );
 };

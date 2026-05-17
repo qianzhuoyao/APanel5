@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { createRoot } from "react-dom/client";
+import { ThemeProvider } from "@arron/ui";
+import "@arron/ui/styles.css";
 import "@xyflow/react/dist/style.css";
 import "./dev.css";
 import "./blueprint.css";
@@ -34,4 +36,8 @@ function DevApp() {
   );
 }
 
-createRoot(document.getElementById("app")!).render(<DevApp />);
+createRoot(document.getElementById("app")!).render(
+  <ThemeProvider defaultTheme="light" enableSystem={false}>
+    <DevApp />
+  </ThemeProvider>
+);

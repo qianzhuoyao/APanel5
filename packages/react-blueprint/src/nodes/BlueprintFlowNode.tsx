@@ -1,15 +1,12 @@
 import type { NodeProps } from "@xyflow/react";
 
+import { useBlueprintNodeSelect } from "../BlueprintCanvasContext";
 import type { BlueprintFlowNodeData } from "../types";
 import { BlueprintNodeShell } from "./BlueprintNodeShell";
 
-export type BlueprintFlowNodeProps = NodeProps & {
-  onSelect?: (nodeId: string) => void;
-};
-
-export function BlueprintFlowNode({ id, data, onSelect }: BlueprintFlowNodeProps) {
+export function BlueprintFlowNode({ id, data }: NodeProps) {
   const nodeData = data as BlueprintFlowNodeData;
-  const selected = Boolean(nodeData.isSelected);
+  const onSelect = useBlueprintNodeSelect();
 
   return (
     <BlueprintNodeShell
@@ -17,7 +14,7 @@ export function BlueprintFlowNode({ id, data, onSelect }: BlueprintFlowNodeProps
       label={nodeData.label}
       meta="蓝图"
       variant="blueprint"
-      selected={selected}
+      selected={Boolean(nodeData.isSelected)}
       onSelect={onSelect}
     />
   );

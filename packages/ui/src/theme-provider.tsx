@@ -32,3 +32,5 @@ export function ThemeProvider({
   );
 }
 
+export { useTheme } from "next-themes";
+
