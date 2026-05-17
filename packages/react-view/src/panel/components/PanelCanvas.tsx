@@ -58,7 +58,7 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
     scrollLeft: number;
     scrollTop: number;
   } | null>(null);
-  /** 首次布局时的视口与分轴 zoom，缩放回弹时可逆 */
+  /** 上一次已应用的视口尺寸与分轴 zoom（每次 resize / 滚轮缩放后更新，保证开合蓝图可逆） */
   const layoutBaselineRef = useRef({
     viewportWidth: 0,
     viewportHeight: 0,
@@ -198,6 +198,12 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
         scrollLeft: nextScrollLeft,
         scrollTop: nextScrollTop,
       };
+      layoutBaselineRef.current = {
+        viewportWidth: vw,
+        viewportHeight: vh,
+        zoomX: nextZoom.x,
+        zoomY: nextZoom.y,
+      };
       zoomRef.current = nextZoom;
       onZoomChange({
         x: Number(nextZoom.x.toFixed(4)),
@@ -216,6 +222,8 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
 
   const applyViewportResizeZoom = useCallback(
     (w: number, h: number) => {
+      if (w < 8 || h < 8) return;
+
       const viewer = viewerRef.current as {
         scrollTo?: (x: number, y: number) => void;
       } | null;
@@ -240,15 +248,15 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
         return;
       }
 
-      const factorX = w / baseline.viewportWidth;
-      const factorY = h / baseline.viewportHeight;
-      if (Math.abs(factorX - 1) < 0.008 && Math.abs(factorY - 1) < 0.008) {
-        const anchor = resizeLayoutAnchorRef.current;
-        if (anchor) {
-          resizeLayoutAnchorRef.current = { ...anchor, viewportWidth: w, viewportHeight: h };
-        }
+      if (
+        Math.abs(w - baseline.viewportWidth) < 2 &&
+        Math.abs(h - baseline.viewportHeight) < 2
+      ) {
         return;
       }
+
+      const factorX = w / baseline.viewportWidth;
+      const factorY = h / baseline.viewportHeight;
 
       const anchor = resizeLayoutAnchorRef.current ?? {
         viewportWidth: w,
@@ -281,6 +289,12 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
         zoomY: nextZoomY,
         scrollLeft: nextScrollLeft,
         scrollTop: nextScrollTop,
+      };
+      layoutBaselineRef.current = {
+        viewportWidth: w,
+        viewportHeight: h,
+        zoomX: nextZoomX,
+        zoomY: nextZoomY,
       };
       zoomRef.current = nextZoom;
       onZoomChange({
