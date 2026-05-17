@@ -17,16 +17,23 @@ export type BlueprintFlowNodeData = {
   isSelected?: boolean;
 };
 
+/** 与 BlueprintNodeCard 固定宽度一致，供 RF 在 measured 前计算连线路径 */
+export const BP_FLOW_NODE_WIDTH = 168;
+export const BP_FLOW_NODE_HEIGHT = 72;
+
 export type ReactFlowNodeView = {
   id: string;
   type: string;
   position: { x: number; y: number };
+  width?: number;
+  height?: number;
   dragHandle?: string;
   data: BlueprintFlowNodeData;
 };
 
 export type ReactFlowEdgeView = {
   id: string;
+  type?: string;
   source: string;
   target: string;
   sourceHandle?: string | null;
@@ -38,6 +45,10 @@ export function toReactFlowNodes(document: BlueprintDocument): ReactFlowNodeView
     id: n.id,
     type: n.role === "blueprint" ? "blueprint" : "logic",
     position: { ...n.position },
+    width: BP_FLOW_NODE_WIDTH,
+    height: BP_FLOW_NODE_HEIGHT,
+    zIndex: 0,
+    connectable: true,
     dragHandle: ".bp-flow-drag-handle",
     data: {
       label: n.label,
@@ -54,10 +65,11 @@ export function toReactFlowNodes(document: BlueprintDocument): ReactFlowNodeView
 export function toReactFlowEdges(document: BlueprintDocument): ReactFlowEdgeView[] {
   return document.edges.map((e) => ({
     id: e.id,
+    type: "smoothstep",
     source: e.source,
     target: e.target,
-    sourceHandle: e.sourceHandle,
-    targetHandle: e.targetHandle,
+    sourceHandle: e.sourceHandle ?? "out",
+    targetHandle: e.targetHandle ?? "in",
   }));
 }
 

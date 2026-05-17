@@ -120,6 +120,7 @@ export class BlueprintGraph {
   }
 
   removeEdge(edgeId: string) {
+    if (!this.document.edges.some((e) => e.id === edgeId)) return this;
     return this.withDocument({
       ...this.document,
       edges: this.document.edges.filter((e) => e.id !== edgeId),

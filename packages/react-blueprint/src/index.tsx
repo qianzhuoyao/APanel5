@@ -1,6 +1,7 @@
 import {
   FC,
   useCallback,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -10,8 +11,10 @@ import {
 import {
   ReactFlow,
   ReactFlowProvider,
-  applyEdgeChanges,
-  applyNodeChanges,
+  ConnectionMode,
+  addEdge,
+  useEdgesState,
+  useNodesState,
   useReactFlow,
   type Connection,
   type Edge,
@@ -24,10 +27,17 @@ import "./blueprint.css";
 
 import {
   BlueprintGraph,
-  collectPositionUpdates,
-  syncEdgesFromFlow,
-  toReactFlowEdges,
-  toReactFlowNodes,
+  applyFlowNodePositions,
+  BP_EDGE_STYLE,
+  BP_FLOW_EDGE_TYPE,
+  flowEdgesToGraphEdges,
+  graphToFlowEdges,
+  graphToFlowNodes,
+  mergeMeasuredFlowNodes,
+  normalizeFlowEdges,
+  edgeListSignature,
+  nodeListSignature,
+  resolveConnection,
   type BlueprintFlowNodeData,
 } from "./graph";
 
@@ -35,7 +45,9 @@ import {
   BlueprintContextMenu,
   type BlueprintContextMenuState,
 } from "./BlueprintContextMenu";
+import { createBlueprintEdgeTypes } from "./createBlueprintEdgeTypes";
 import { createBlueprintNodeTypes } from "./createBlueprintNodeTypes";
+import { useBlueprintFlowViewport } from "./hooks/useBlueprintFlowViewport";
 
 export type { BlueprintNodeConfigSidebarProps, BlueprintViewElementOption } from "./BlueprintNodeConfigSidebar";
 export { BlueprintNodeConfigSidebar } from "./BlueprintNodeConfigSidebar";
@@ -48,18 +60,45 @@ export type BluePrintReactRootProps = {
   onSelectNode?: (nodeId: string | null) => void;
 };
 
-type BlueprintCanvasProps = Omit<BluePrintReactRootProps, "style">;
+type BlueprintCanvasProps = Omit<BluePrintReactRootProps, "style"> & {
+  containerRef: React.RefObject<HTMLDivElement | null>;
+};
 
 function BlueprintCanvas({
   graph,
   onGraphChange,
   selectedNodeId = null,
   onSelectNode,
+  containerRef,
 }: BlueprintCanvasProps) {
-  const { screenToFlowPosition, fitView } = useReactFlow();
+  const { screenToFlowPosition, getNodes } = useReactFlow();
   const [menu, setMenu] = useState<BlueprintContextMenuState | null>(null);
   const flowPositionRef = useRef({ x: 0, y: 0 });
-  const hasFitViewRef = useRef(false);
+  const nodeSigRef = useRef(nodeListSignature(graph.document.nodes));
+  const edgeSigRef = useRef(edgeListSignature(graph.document.edges));
+
+  const [nodes, setNodes, onNodesChangeRf] = useNodesState(
+    graphToFlowNodes(graph, selectedNodeId)
+  );
+
+  const structuralEdges = useMemo(() => graphToFlowEdges(graph), [graph]);
+  const [edges, setEdges, onEdgesChangeRf] = useEdgesState(structuralEdges);
+
+  const nodeIdSig = useMemo(
+    () => nodeListSignature(graph.document.nodes),
+    [graph.document.nodes]
+  );
+  const edgeIdSig = useMemo(
+    () => edgeListSignature(graph.document.edges),
+    [graph.document.edges]
+  );
+  useBlueprintFlowViewport(containerRef, nodeIdSig);
+
+  useEffect(() => {
+    if (edgeSigRef.current === edgeIdSig) return;
+    edgeSigRef.current = edgeIdSig;
+    setEdges(structuralEdges);
+  }, [edgeIdSig, structuralEdges, setEdges]);
 
   const setGraph = useCallback(
     (updater: (prev: BlueprintGraph) => BlueprintGraph) => {
@@ -68,101 +107,146 @@ function BlueprintCanvas({
     [onGraphChange]
   );
 
-  const nodes = useMemo(() => {
-    const base = toReactFlowNodes(graph.document) as Node<BlueprintFlowNodeData>[];
-    return base.map((n) => ({
-      ...n,
-      selected: false,
-      data: {
-        ...n.data,
-        isSelected: selectedNodeId === n.id,
-      },
-    }));
-  }, [graph.document, selectedNodeId]);
+  useEffect(() => {
+    const sig = nodeListSignature(graph.document.nodes);
+    if (sig === nodeSigRef.current) return;
+    nodeSigRef.current = sig;
+    setNodes((prev) =>
+      mergeMeasuredFlowNodes(
+        graphToFlowNodes(graph, selectedNodeId),
+        prev as Node<BlueprintFlowNodeData>[]
+      )
+    );
+  }, [graph.document.nodes, selectedNodeId, setNodes, graph]);
 
-  const edges = useMemo(
-    () => toReactFlowEdges(graph.document) as Edge[],
-    [graph.document]
-  );
+  useEffect(() => {
+    setNodes((nds) =>
+      nds.map((n) => ({
+        ...n,
+        data: {
+          ...(n.data as BlueprintFlowNodeData),
+          isSelected: selectedNodeId === n.id,
+        },
+      }))
+    );
+  }, [selectedNodeId, setNodes]);
 
   const nodeTypes = useMemo(
     () => createBlueprintNodeTypes(onSelectNode),
     [onSelectNode]
   );
+  const edgeTypes = useMemo(() => createBlueprintEdgeTypes(), []);
 
   const onNodesChange = useCallback(
     (changes: NodeChange<Node<BlueprintFlowNodeData>>[]) => {
+      onNodesChangeRf(changes);
+
       const actionable = changes.filter(
         (c) => c.type !== "select" && c.type !== "dimensions"
       );
       if (actionable.length === 0) return;
 
-      setGraph((prev) => {
-        let next = prev;
-        const removals = actionable.filter((c) => c.type === "remove");
-        for (const change of removals) {
-          if (change.type === "remove") {
-            if (change.id === selectedNodeId) {
-              onSelectNode?.(null);
-            }
-            next = next.removeNode(change.id);
-          }
-        }
+      const removals = actionable.filter((c) => c.type === "remove");
+      const shouldPersistGraph =
+        removals.length > 0 ||
+        actionable.some(
+          (c) => c.type === "position" && "dragging" in c && c.dragging === false
+        );
+      if (!shouldPersistGraph) return;
 
-        const flowNodes = toReactFlowNodes(next.document) as Node<BlueprintFlowNodeData>[];
-        const nextFlowNodes = applyNodeChanges(actionable, flowNodes);
-        return next.applyNodePositions(collectPositionUpdates(nextFlowNodes));
+      setNodes((nds) => {
+        queueMicrotask(() => {
+          onGraphChange((prev) => {
+            let doc = prev;
+            for (const change of removals) {
+              if (change.type === "remove") {
+                if (change.id === selectedNodeId) {
+                  onSelectNode?.(null);
+                }
+                doc = doc.removeNode(change.id);
+              }
+            }
+            return applyFlowNodePositions(doc, nds);
+          });
+        });
+        return nds;
       });
     },
-    [onSelectNode, selectedNodeId, setGraph]
+    [onNodesChangeRf, onSelectNode, selectedNodeId, onGraphChange, setNodes]
   );
 
-  const onNodeDragStop = useCallback(
-    (_: React.MouseEvent, node: Node<BlueprintFlowNodeData>) => {
-      setGraph((prev) =>
-        prev.updateNodePosition(node.id, {
-          x: node.position.x,
-          y: node.position.y,
-        })
-      );
-    },
-    [setGraph]
-  );
+  const onNodeDragStop = useCallback(() => {
+    const rfNodes = getNodes();
+    onGraphChange((prev) => applyFlowNodePositions(prev, rfNodes));
+  }, [getNodes, onGraphChange]);
 
   const onEdgesChange = useCallback(
     (changes: EdgeChange[]) => {
-      setGraph((prev) => {
-        const flowEdges = toReactFlowEdges(prev.document) as Edge[];
-        const nextFlowEdges = applyEdgeChanges(changes, flowEdges);
-        return prev.replaceEdges(
-          syncEdgesFromFlow(
-            nextFlowEdges.map((e) => ({
-              id: e.id,
-              source: e.source,
-              target: e.target,
-              sourceHandle: e.sourceHandle,
-              targetHandle: e.targetHandle,
-            }))
-          )
-        );
+      if (changes.length === 0) return;
+
+      /** select 等 UI 态只更新本地 edges，不写 graph，避免受控边死循环 */
+      onEdgesChangeRf(changes);
+
+      const removals = changes.filter(
+        (c): c is EdgeChange & { type: "remove"; id: string } => c.type === "remove"
+      );
+      if (removals.length === 0) return;
+
+      onGraphChange((prev) => {
+        let next = prev;
+        for (const { id } of removals) {
+          next = next.removeEdge(id);
+        }
+        return next;
       });
     },
-    [setGraph]
+    [onEdgesChangeRf, onGraphChange]
   );
 
   const onConnect = useCallback(
     (connection: Connection) => {
-      if (!connection.source || !connection.target) return;
-      setGraph((prev) =>
-        prev.addEdge({
-          source: connection.source,
-          target: connection.target,
-          sourceHandle: connection.sourceHandle ?? undefined,
-          targetHandle: connection.targetHandle ?? undefined,
-        })
+      const resolved = resolveConnection(
+        connection,
+        getNodes() as Node<BlueprintFlowNodeData>[]
       );
+      if (!resolved?.source || !resolved.target) return;
+
+      onGraphChange((prev) => {
+        const current = graphToFlowEdges(prev);
+        const exists = current.some(
+          (e) =>
+            e.source === resolved.source &&
+            e.target === resolved.target &&
+            (e.sourceHandle ?? "out") === (resolved.sourceHandle ?? "out") &&
+            (e.targetHandle ?? "in") === (resolved.targetHandle ?? "in")
+        );
+        if (exists) return prev;
+
+        const next = normalizeFlowEdges(
+          addEdge(
+            {
+              ...resolved,
+              type: BP_FLOW_EDGE_TYPE,
+              zIndex: 1000,
+              style: { ...BP_EDGE_STYLE },
+            },
+            current
+          )
+        );
+        return prev.replaceEdges(flowEdgesToGraphEdges(next));
+      });
     },
-    [setGraph]
+    [getNodes, onGraphChange]
+  );
+
+  const isValidConnection = useCallback(
+    (connection: Edge | Connection) => {
+      if (!connection.source || !connection.target) return false;
+      if (connection.source === connection.target) return false;
+      const nodeIds = new Set(nodes.map((n) => n.id));
+      return nodeIds.has(connection.source) && nodeIds.has(connection.target);
+    },
+    [nodes]
   );
 
   const onPaneContextMenu = useCallback(
@@ -228,23 +312,19 @@ function BlueprintCanvas({
     [onSelectNode, selectedNodeId, setGraph]
   );
 
-  const onInit = useCallback(() => {
-    if (hasFitViewRef.current) return;
-    hasFitViewRef.current = true;
-    requestAnimationFrame(() => {
-      fitView({ padding: 0.2, duration: 0 });
-    });
-  }, [fitView]);
-
   return (
     <>
       <ReactFlow
+        className="bp-flow h-full w-full"
+        colorMode="system"
         nodes={nodes}
         edges={edges}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
+        isValidConnection={isValidConnection}
         onPaneContextMenu={onPaneContextMenu}
         onNodeContextMenu={onNodeContextMenu}
         onNodeDragStop={onNodeDragStop}
@@ -252,7 +332,14 @@ function BlueprintCanvas({
           setMenu(null);
           onSelectNode?.(null);
         }}
-        onInit={onInit}
+        nodesConnectable
+        elementsSelectable
+        connectionMode={ConnectionMode.Strict}
+        defaultEdgeOptions={{
+          type: BP_FLOW_EDGE_TYPE,
+          zIndex: 1000,
+          style: { ...BP_EDGE_STYLE },
+        }}
         selectNodesOnDrag={false}
         elevateNodesOnSelect={false}
         nodeClickDistance={8}
@@ -276,9 +363,13 @@ export const BluePrintReactRoot: FC<BluePrintReactRootProps> = ({
   selectedNodeId,
   onSelectNode,
 }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+
   return (
     <div
+      ref={containerRef}
       data-workspace-region="blueprint"
+      className="bp-canvas h-full w-full"
       style={{
         width: "100%",
         height: "100%",
@@ -288,6 +379,7 @@ export const BluePrintReactRoot: FC<BluePrintReactRootProps> = ({
     >
       <ReactFlowProvider>
         <BlueprintCanvas
+          containerRef={containerRef}
           graph={graph}
           onGraphChange={onGraphChange}
           selectedNodeId={selectedNodeId}

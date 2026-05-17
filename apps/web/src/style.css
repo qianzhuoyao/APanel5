@@ -24,10 +24,20 @@ body {
 img,
 picture,
 video,
-canvas,
-svg {
+canvas {
   display: block;
   max-width: 100%;
+}
+
+svg {
+  display: block;
+}
+
+/* React Flow 边线 SVG 需保持原始尺寸，见 @arron/react-blueprint/blueprint.css */
+.react-flow__edges svg,
+svg.react-flow__connectionline {
+  max-width: none;
+  max-height: none;
 }
 
 input,
