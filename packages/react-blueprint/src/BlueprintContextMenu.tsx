@@ -17,8 +17,12 @@ export type BlueprintContextMenuState =
 type BlueprintContextMenuProps = {
   menu: BlueprintContextMenuState | null;
   onClose: () => void;
-  onAddBlueprintNode: () => void;
-  onAddLogicNode: (parentBlueprintId: string) => void;
+  onAddBlueprintNode: (clientX: number, clientY: number) => void;
+  onAddLogicNode: (
+    parentBlueprintId: string,
+    clientX: number,
+    clientY: number
+  ) => void;
   onDeleteNode: (nodeId: string) => void;
 };
 
@@ -64,7 +68,7 @@ export function BlueprintContextMenu({
           type="button"
           className="bp-context-menu__item"
           onClick={() => {
-            onAddBlueprintNode();
+            onAddBlueprintNode(menu.clientX, menu.clientY);
             onClose();
           }}
         >
@@ -77,7 +81,7 @@ export function BlueprintContextMenu({
           type="button"
           className="bp-context-menu__item"
           onClick={() => {
-            onAddLogicNode(menu.nodeId);
+            onAddLogicNode(menu.nodeId, menu.clientX, menu.clientY);
             onClose();
           }}
         >

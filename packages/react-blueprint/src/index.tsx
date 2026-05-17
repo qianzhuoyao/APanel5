@@ -1,7 +1,6 @@
 import {
   FC,
   useCallback,
-  useMemo,
   useRef,
   useState,
   type Dispatch,
@@ -17,7 +16,7 @@ import {
 import "@xyflow/react/dist/style.css";
 import "./blueprint.css";
 
-import { BlueprintGraph, nodeListSignature, type BlueprintFlowNodeData } from "./graph";
+import { BlueprintGraph, type BlueprintFlowNodeData } from "./graph";
 import {
   BlueprintContextMenu,
   type BlueprintContextMenuState,
@@ -29,6 +28,7 @@ import { BLUEPRINT_DEFAULT_EDGE_OPTIONS } from "./flowDefaults";
 import { useBlueprintFlowColorMode } from "./hooks/useBlueprintFlowColorMode";
 import { useBlueprintFlowState } from "./hooks/useBlueprintFlowState";
 import { useBlueprintFlowViewport } from "./hooks/useBlueprintFlowViewport";
+import { clientToFlowNodePosition } from "./flowCoordinates";
 
 export type { BlueprintNodeConfigSidebarProps, BlueprintViewElementOption } from "./BlueprintNodeConfigSidebar";
 export { BlueprintNodeConfigSidebar } from "./BlueprintNodeConfigSidebar";
@@ -56,7 +56,6 @@ function BlueprintCanvas({
 }: BlueprintCanvasProps) {
   const { screenToFlowPosition } = useReactFlow();
   const [menu, setMenu] = useState<BlueprintContextMenuState | null>(null);
-  const flowPositionRef = useRef({ x: 0, y: 0 });
 
   const applyGraphChange = useCallback(
     (updater: (prev: BlueprintGraph) => BlueprintGraph) => {
@@ -81,27 +80,19 @@ function BlueprintCanvas({
   });
 
   const flowColorMode = useBlueprintFlowColorMode();
-  const nodeIdSig = useMemo(
-    () => nodeListSignature(graph.document.nodes),
-    [graph.document.nodes]
-  );
 
-  useBlueprintFlowViewport(containerRef, nodeIdSig, true);
+  useBlueprintFlowViewport(containerRef, true);
 
   const onPaneContextMenu = useCallback(
     (event: MouseEvent | React.MouseEvent) => {
       event.preventDefault();
-      flowPositionRef.current = screenToFlowPosition({
-        x: event.clientX,
-        y: event.clientY,
-      });
       setMenu({
         kind: "pane",
         clientX: event.clientX,
         clientY: event.clientY,
       });
     },
-    [screenToFlowPosition]
+    []
   );
 
   const onNodeContextMenu = useCallback(
@@ -111,10 +102,6 @@ function BlueprintCanvas({
     ) => {
       event.preventDefault();
       onSelectNode?.(node.id);
-      flowPositionRef.current = screenToFlowPosition({
-        x: event.clientX,
-        y: event.clientY,
-      });
       setMenu({
         kind: "node",
         clientX: event.clientX,
@@ -123,7 +110,7 @@ function BlueprintCanvas({
         role: node.data.role,
       });
     },
-    [onSelectNode, screenToFlowPosition]
+    [onSelectNode]
   );
 
   const onPaneClick = useCallback(() => {
@@ -138,22 +125,36 @@ function BlueprintCanvas({
     [applyGraphChange]
   );
 
-  const handleAddBlueprintNode = useCallback(() => {
-    setGraph((prev) => prev.addBlueprintNode(flowPositionRef.current));
-  }, [setGraph]);
+  const handleAddBlueprintNode = useCallback(
+    (clientX: number, clientY: number) => {
+      const position = clientToFlowNodePosition(
+        (point) => screenToFlowPosition(point, { snapToGrid: false }),
+        clientX,
+        clientY
+      );
+      setGraph((prev) => prev.addBlueprintNode(position));
+    },
+    [screenToFlowPosition, setGraph]
+  );
 
   const handleAddLogicNode = useCallback(
-    (parentBlueprintId: string) => {
+    (parentBlueprintId: string, clientX: number, clientY: number) => {
       setGraph((prev) => {
         const parent = prev.getNode(parentBlueprintId);
-        const base = parent?.position ?? flowPositionRef.current;
+        const base =
+          parent?.position ??
+          clientToFlowNodePosition(
+            (point) => screenToFlowPosition(point, { snapToGrid: false }),
+            clientX,
+            clientY
+          );
         return prev.addLogicNode(parentBlueprintId, {
           x: base.x + 40,
           y: base.y + 80,
         });
       });
     },
-    [setGraph]
+    [screenToFlowPosition, setGraph]
   );
 
   const handleDeleteNode = useCallback(
