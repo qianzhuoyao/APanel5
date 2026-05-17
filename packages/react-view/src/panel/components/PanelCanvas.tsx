@@ -20,6 +20,8 @@ export type PanelCanvasProps = {
   onCanvasClickCapture?: React.MouseEventHandler<HTMLDivElement>;
   onCanvasContextMenuCapture?: React.MouseEventHandler<HTMLDivElement>;
   onDropMaterial?: (payload: { materialId: string; x: number; y: number }) => void;
+  /** 渲染在 InfiniteViewer 内、画布 scale 层之外（如 Moveable 控制框） */
+  viewportOverlay?: React.ReactNode;
 };
 
 export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
@@ -36,6 +38,7 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
       onCanvasClickCapture,
       onCanvasContextMenuCapture,
       onDropMaterial,
+      viewportOverlay,
     },
     scrollRef
   ) => {
@@ -628,6 +631,11 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
           </div>
         </TransformComponent>
       </TransformWrapper>
+      {viewportOverlay ? (
+        <div className="rv-viewport-overlay pointer-events-none absolute inset-0 z-[70] overflow-visible [&_.moveable-control-box]:pointer-events-auto">
+          {viewportOverlay}
+        </div>
+      ) : null}
     </InfiniteViewer>
   );
 }

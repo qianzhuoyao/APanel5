@@ -26,3 +26,16 @@
   background: hsl(var(--foreground) / 0.45);
 }
 
+/* Moveable 控制点：固定屏幕像素，不随画布 scale 变化 */
+.rv-moveable-layer .moveable-control,
+.rv-moveable-layer .moveable-direction {
+  width: 14px !important;
+  height: 14px !important;
+  margin-top: -7px !important;
+  margin-left: -7px !important;
+}
+
+.rv-moveable-layer .moveable-line {
+  --moveable-color: hsl(var(--primary));
+}
+

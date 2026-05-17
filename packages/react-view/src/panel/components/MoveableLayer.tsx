@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useRef } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import Moveable from "react-moveable";
 
 import type { PanelElement } from "../types";
@@ -23,7 +24,10 @@ function LockGlyph({ className = "h-3.5 w-3.5" }: { className?: string }) {
 }
 
 export type MoveableLayerProps = {
-  zoom: number;
+  zoomX: number;
+  zoomY: number;
+  /** 未 transform 的滚动视口（InfiniteViewer 容器） */
+  rootContainer: HTMLElement | null;
   selectedTargets: HTMLElement[];
   elementsById: Map<string, PanelElement>;
   updateElement: (
@@ -145,7 +149,9 @@ function isDescendantGrid(
 }
 
 export function MoveableLayer({
-  zoom,
+  zoomX,
+  zoomY,
+  rootContainer,
   selectedTargets,
   elementsById,
   updateElement,
@@ -194,10 +200,7 @@ export function MoveableLayer({
         .filter((id): id is string => !!id),
     [getId, movableTargets]
   );
-  const moveableRenderKey = useMemo(() => {
-    const safeZoom = Number.isFinite(zoom) ? zoom.toFixed(4) : "1.0000";
-    return `${safeZoom}::${movableIds.join(",")}`;
-  }, [movableIds, zoom]);
+  const moveableRenderKey = useMemo(() => movableIds.join(","), [movableIds]);
   const resolveSingleEventId = useCallback(
     (target: HTMLElement | undefined | null) => {
       const id = target ? getId(target) : null;
@@ -208,12 +211,13 @@ export function MoveableLayer({
     },
     [getId, movableIds]
   );
-  const toCanvasDelta = useCallback(
-    (value: number) => {
-      const safeZoom = zoom > 0 ? zoom : 1;
-      return value / safeZoom;
-    },
-    [zoom]
+  const toCanvasDeltaX = useCallback(
+    (value: number) => value / Math.max(0.0001, zoomX > 0 ? zoomX : 1),
+    [zoomX]
+  );
+  const toCanvasDeltaY = useCallback(
+    (value: number) => value / Math.max(0.0001, zoomY > 0 ? zoomY : 1),
+    [zoomY]
   );
   const readClientPoint = useCallback((eventLike: any) => {
     const x =
@@ -236,21 +240,48 @@ export function MoveableLayer({
       const rect = target?.getBoundingClientRect?.();
       if (rect && rect.width > 0 && rect.height > 0) {
         return {
-          width: Math.max(1, toCanvasDelta(rect.width)),
-          height: Math.max(1, toCanvasDelta(rect.height)),
+          width: Math.max(1, toCanvasDeltaX(rect.width)),
+          height: Math.max(1, toCanvasDeltaY(rect.height)),
         };
       }
       return { width: Math.max(1, fallback.width), height: Math.max(1, fallback.height) };
     },
-    [toCanvasDelta]
+    [toCanvasDeltaX, toCanvasDeltaY]
   );
-  const lockBadgeAnchor = useMemo(() => {
+  const [lockBadgeScreen, setLockBadgeScreen] = useState<{ x: number; y: number } | null>(
+    null
+  );
+  useEffect(() => {
     const id = lockedSelected[0];
-    if (!id) return null;
-    const el = elementsById.get(id);
-    if (!el) return null;
-    return { x: el.x, y: el.y };
-  }, [elementsById, lockedSelected]);
+    if (!id || !rootContainer) {
+      setLockBadgeScreen(null);
+      return;
+    }
+    const target = selectedTargets.find(
+      (node) => node.closest<HTMLElement>(".rv-selectable")?.dataset.elementId === id
+    );
+    if (!target) {
+      setLockBadgeScreen(null);
+      return;
+    }
+    const sync = () => {
+      const rect = target.getBoundingClientRect();
+      const rootRect = rootContainer.getBoundingClientRect();
+      setLockBadgeScreen({
+        x: rect.left - rootRect.left,
+        y: rect.top - rootRect.top,
+      });
+    };
+    sync();
+    const ro = new ResizeObserver(sync);
+    ro.observe(target);
+    ro.observe(rootContainer);
+    rootContainer.addEventListener("scroll", sync, { passive: true });
+    return () => {
+      ro.disconnect();
+      rootContainer.removeEventListener("scroll", sync);
+    };
+  }, [lockedSelected, rootContainer, selectedTargets, zoomX, zoomY]);
 
   const updateRectNextFrame = useCallback(() => {
     // 等 React 把 left/top/width/height 重新渲染后，再让 Moveable 重新计算控制框
@@ -376,29 +407,45 @@ export function MoveableLayer({
     updateRectNextFrame();
   }, [refreshToken, targets, updateRectNextFrame]);
 
-  if (!targets) return null;
-  if (!movableTargets) {
-    return lockBadgeAnchor ? (
+  useEffect(() => {
+    if (!targets) return;
+    updateRectNextFrame();
+  }, [targets, updateRectNextFrame, zoomX, zoomY]);
+
+  if (!rootContainer) return null;
+
+  const lockBadgeOnly =
+    lockBadgeScreen && hasLockedSelected && !movableTargets ? (
       <div
         className="pointer-events-none absolute z-[80] inline-flex select-none items-center gap-1 rounded border border-border bg-background/95 px-1.5 py-0.5 text-[11px] text-foreground shadow-sm"
-        style={{ left: lockBadgeAnchor.x + 6, top: lockBadgeAnchor.y - 22 }}
+        style={{ left: lockBadgeScreen.x + 6, top: lockBadgeScreen.y - 22 }}
         title="节点已锁定"
       >
         <LockGlyph />
         <span>已锁定</span>
       </div>
     ) : null;
+
+  if (!targets) {
+    return lockBadgeOnly ? createPortal(lockBadgeOnly, rootContainer) : null;
   }
 
-  return (
+  if (!movableTargets) {
+    return lockBadgeOnly ? createPortal(lockBadgeOnly, rootContainer) : null;
+  }
+
+  const layer = (
     <>
       <Moveable
         key={moveableRenderKey}
         ref={moveableRef}
       // Moveable 支持单个 HTMLElement 或 HTMLElement[]
       target={movableTargets as unknown as HTMLElement[]}
-      // 控制框保持视觉固定大小：随画布缩放做反向补偿
-      zoom={zoom > 0 ? 1 / zoom : 1}
+      rootContainer={rootContainer}
+      container={rootContainer}
+      dragContainer={rootContainer}
+      className="rv-moveable-layer"
+      zoom={1}
       // 允许在控制框内部区域拖动（不必必须点到某个节点本体）
       dragArea
       draggable
@@ -431,11 +478,11 @@ export function MoveableLayer({
           typeof e.datas.__startClientY === "number" &&
           !!point;
         const tx = hasClient
-          ? toCanvasDelta(point.x - e.datas.__startClientX)
-          : toCanvasDelta(e.beforeTranslate?.[0] ?? 0);
+          ? toCanvasDeltaX(point.x - e.datas.__startClientX)
+          : toCanvasDeltaX(e.beforeTranslate?.[0] ?? 0);
         const ty = hasClient
-          ? toCanvasDelta(point.y - e.datas.__startClientY)
-          : toCanvasDelta(e.beforeTranslate?.[1] ?? 0);
+          ? toCanvasDeltaY(point.y - e.datas.__startClientY)
+          : toCanvasDeltaY(e.beforeTranslate?.[1] ?? 0);
         e.target.style.left = `${sx + tx}px`;
         e.target.style.top = `${sy + ty}px`;
       }}
@@ -464,11 +511,11 @@ export function MoveableLayer({
             typeof ev.datas.__startClientY === "number" &&
             !!point;
           const tx = hasClient
-            ? toCanvasDelta(point.x - ev.datas.__startClientX)
-            : toCanvasDelta(ev.beforeTranslate?.[0] ?? 0);
+            ? toCanvasDeltaX(point.x - ev.datas.__startClientX)
+            : toCanvasDeltaX(ev.beforeTranslate?.[0] ?? 0);
           const ty = hasClient
-            ? toCanvasDelta(point.y - ev.datas.__startClientY)
-            : toCanvasDelta(ev.beforeTranslate?.[1] ?? 0);
+            ? toCanvasDeltaY(point.y - ev.datas.__startClientY)
+            : toCanvasDeltaY(ev.beforeTranslate?.[1] ?? 0);
           ev.target.style.left = `${sx + tx}px`;
           ev.target.style.top = `${sy + ty}px`;
         });
@@ -493,8 +540,8 @@ export function MoveableLayer({
         const sx = e.datas.__startX ?? 0;
         const sy = e.datas.__startY ?? 0;
         // resize 场景下位移应以 moveable 的 drag 偏移为准，避免 client 坐标换算导致漂移
-        const tx = toCanvasDelta(e.drag.beforeTranslate?.[0] ?? 0);
-        const ty = toCanvasDelta(e.drag.beforeTranslate?.[1] ?? 0);
+        const tx = toCanvasDeltaX(e.drag.beforeTranslate?.[0] ?? 0);
+        const ty = toCanvasDeltaY(e.drag.beforeTranslate?.[1] ?? 0);
         e.target.style.left = `${sx + tx}px`;
         e.target.style.top = `${sy + ty}px`;
       }}
@@ -520,8 +567,8 @@ export function MoveableLayer({
           ev.target.style.height = `${ev.height}px`;
           const sx = ev.datas.__startX ?? 0;
           const sy = ev.datas.__startY ?? 0;
-          const tx = toCanvasDelta(ev.drag.beforeTranslate?.[0] ?? 0);
-          const ty = toCanvasDelta(ev.drag.beforeTranslate?.[1] ?? 0);
+          const tx = toCanvasDeltaX(ev.drag.beforeTranslate?.[0] ?? 0);
+          const ty = toCanvasDeltaY(ev.drag.beforeTranslate?.[1] ?? 0);
           ev.target.style.left = `${sx + tx}px`;
           ev.target.style.top = `${sy + ty}px`;
         });
@@ -556,11 +603,11 @@ export function MoveableLayer({
           typeof e.datas.__startClientY === "number" &&
           !!point;
         const tx = hasClient
-          ? toCanvasDelta(point.x - e.datas.__startClientX)
-          : toCanvasDelta(e.lastEvent?.beforeTranslate?.[0] ?? 0);
+          ? toCanvasDeltaX(point.x - e.datas.__startClientX)
+          : toCanvasDeltaX(e.lastEvent?.beforeTranslate?.[0] ?? 0);
         const ty = hasClient
-          ? toCanvasDelta(point.y - e.datas.__startClientY)
-          : toCanvasDelta(e.lastEvent?.beforeTranslate?.[1] ?? 0);
+          ? toCanvasDeltaY(point.y - e.datas.__startClientY)
+          : toCanvasDeltaY(e.lastEvent?.beforeTranslate?.[1] ?? 0);
         const nextX = sx + tx;
         const nextY = sy + ty;
         const size = readTargetCanvasSize(e.target as HTMLElement | null, {
@@ -607,11 +654,11 @@ export function MoveableLayer({
             typeof ev.datas.__startClientY === "number" &&
             !!point;
           const tx = hasClient
-            ? toCanvasDelta(point.x - ev.datas.__startClientX)
-            : toCanvasDelta(ev.lastEvent?.beforeTranslate?.[0] ?? 0);
+            ? toCanvasDeltaX(point.x - ev.datas.__startClientX)
+            : toCanvasDeltaX(ev.lastEvent?.beforeTranslate?.[0] ?? 0);
           const ty = hasClient
-            ? toCanvasDelta(point.y - ev.datas.__startClientY)
-            : toCanvasDelta(ev.lastEvent?.beforeTranslate?.[1] ?? 0);
+            ? toCanvasDeltaY(point.y - ev.datas.__startClientY)
+            : toCanvasDeltaY(ev.lastEvent?.beforeTranslate?.[1] ?? 0);
           const nextX = sx + tx;
           const nextY = sy + ty;
           const size = readTargetCanvasSize(ev.target as HTMLElement | null, {
@@ -652,8 +699,8 @@ export function MoveableLayer({
         if (!data) return;
         const width = e.lastEvent?.width ?? data.width;
         const height = e.lastEvent?.height ?? data.height;
-        const tx = toCanvasDelta(e.lastEvent?.drag?.beforeTranslate?.[0] ?? 0);
-        const ty = toCanvasDelta(e.lastEvent?.drag?.beforeTranslate?.[1] ?? 0);
+        const tx = toCanvasDeltaX(e.lastEvent?.drag?.beforeTranslate?.[0] ?? 0);
+        const ty = toCanvasDeltaY(e.lastEvent?.drag?.beforeTranslate?.[1] ?? 0);
         const sx = e.datas.__startX ?? data.x;
         const sy = e.datas.__startY ?? data.y;
         const nextX = sx + tx;
@@ -672,8 +719,8 @@ export function MoveableLayer({
           if (!data) return;
           const width = ev.lastEvent?.width ?? data.width;
           const height = ev.lastEvent?.height ?? data.height;
-          const tx = toCanvasDelta(ev.lastEvent?.drag?.beforeTranslate?.[0] ?? 0);
-          const ty = toCanvasDelta(ev.lastEvent?.drag?.beforeTranslate?.[1] ?? 0);
+          const tx = toCanvasDeltaX(ev.lastEvent?.drag?.beforeTranslate?.[0] ?? 0);
+          const ty = toCanvasDeltaY(ev.lastEvent?.drag?.beforeTranslate?.[1] ?? 0);
           const sx = ev.datas.__startX ?? data.x;
           const sy = ev.datas.__startY ?? data.y;
           const nextX = sx + tx;
@@ -710,10 +757,10 @@ export function MoveableLayer({
         updateRectNextFrame();
       }}
       />
-      {hasLockedSelected && lockBadgeAnchor ? (
+      {hasLockedSelected && lockBadgeScreen ? (
         <div
           className="pointer-events-none absolute z-[80] inline-flex select-none items-center gap-1 rounded border border-border bg-background/95 px-1.5 py-0.5 text-[11px] text-foreground shadow-sm"
-          style={{ left: lockBadgeAnchor.x + 6, top: lockBadgeAnchor.y - 22 }}
+          style={{ left: lockBadgeScreen.x + 6, top: lockBadgeScreen.y - 22 }}
           title="部分节点已锁定，已自动排除"
         >
           <LockGlyph />
@@ -722,5 +769,7 @@ export function MoveableLayer({
       ) : null}
     </>
   );
+
+  return createPortal(layer, rootContainer);
 }
 

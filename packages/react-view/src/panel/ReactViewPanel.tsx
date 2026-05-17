@@ -5,7 +5,7 @@ import type { PanelElement } from "./types";
 import { usePanelElements } from "./hooks/usePanelElements";
 import { PanelCanvas } from "./components/PanelCanvas";
 import { PanelRulers } from "./components/PanelRulers";
-import { type ViewportZoom, uniformViewportZoom } from "./viewportZoom";
+import { type ViewportZoom } from "./viewportZoom";
 import { ElementsLayer } from "./components/ElementsLayer";
 import { SelectLayer } from "./components/SelectLayer";
 import { MoveableLayer } from "./components/MoveableLayer";
@@ -334,6 +334,11 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
   } = usePanelElements();
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const [viewportEl, setViewportEl] = useState<HTMLDivElement | null>(null);
+  const syncScrollRef = useCallback((el: HTMLDivElement | null) => {
+    scrollRef.current = el;
+    setViewportEl(el);
+  }, []);
   const canvasRef = useRef<HTMLDivElement | null>(null);
   const panelRootRef = useRef<HTMLDivElement | null>(null);
   const [zoom, setZoom] = useState<ViewportZoom>({
@@ -1746,11 +1751,22 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                   }}
                 >
                   <PanelCanvas
-                    ref={scrollRef}
+                    ref={syncScrollRef}
                     zoom={zoom}
                     onZoomChange={setZoom}
                     onScrollChange={setScroll}
                     canvasRef={canvasRef}
+                    viewportOverlay={
+                      <MoveableLayer
+                        zoomX={zoom.x}
+                        zoomY={zoom.y}
+                        rootContainer={viewportEl}
+                        selectedTargets={selectedTargets}
+                        elementsById={byId}
+                        updateElement={updateElement}
+                        refreshToken={historyCursor}
+                      />
+                    }
                     onCanvasMouseDownCapture={(e) => {
                       if (e.button !== 0) return;
                       const target = e.target as HTMLElement | null;
@@ -1783,13 +1799,6 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                       onSelectedIdsChange={selectViewElements}
                     />
 
-                    <MoveableLayer
-                      zoom={uniformViewportZoom(zoom)}
-                      selectedTargets={selectedTargets}
-                      elementsById={byId}
-                      updateElement={updateElement}
-                      refreshToken={historyCursor}
-                    />
                   </PanelCanvas>
                 </div>
                 <DropdownMenu
