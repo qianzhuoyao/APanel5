@@ -12,6 +12,7 @@ import {
 } from "@xyflow/react";
 
 import type { BlueprintGraph } from "../graph/blueprint-graph";
+import { sanitizeBlueprintDocument } from "../graph/document";
 import {
   applyFlowNodePositions,
   BP_EDGE_STYLE,
@@ -21,7 +22,7 @@ import {
   graphToFlowEdges,
   graphToFlowNodes,
   mergeMeasuredFlowNodes,
-  nodeListSignature,
+  nodeStructureSignature,
   normalizeFlowEdges,
   resolveConnection,
   type BlueprintFlowNodeData,
@@ -30,6 +31,7 @@ import {
 type UseBlueprintFlowStateOptions = {
   graph: BlueprintGraph;
   selectedNodeId: string | null;
+  libraryNameById?: ReadonlyMap<string, string>;
   onGraphChange: (updater: (prev: BlueprintGraph) => BlueprintGraph) => void;
   onSelectNode?: (nodeId: string | null) => void;
 };
@@ -37,23 +39,37 @@ type UseBlueprintFlowStateOptions = {
 export function useBlueprintFlowState({
   graph,
   selectedNodeId,
+  libraryNameById,
   onGraphChange,
   onSelectNode,
 }: UseBlueprintFlowStateOptions) {
   const { getNodes } = useReactFlow();
-  const nodeSigRef = useRef(nodeListSignature(graph.document.nodes));
+  const nodeSigRef = useRef(nodeStructureSignature(graph.document.nodes));
   const edgeSigRef = useRef(edgeListSignature(graph.document.edges));
   const selectedIdRef = useRef(selectedNodeId);
 
   const [nodes, setNodes, onNodesChangeRf] = useNodesState(
-    graphToFlowNodes(graph, selectedNodeId)
+    graphToFlowNodes(graph, selectedNodeId, libraryNameById)
   );
   const [edges, setEdges, onEdgesChangeRf] = useEdgesState(
     graphToFlowEdges(graph)
   );
 
-  const nodeIdSig = useMemo(
-    () => nodeListSignature(graph.document.nodes),
+  useEffect(() => {
+    onGraphChange((prev) => {
+      const sanitized = sanitizeBlueprintDocument(prev.document);
+      const edgesChanged = sanitized.edges.length !== prev.document.edges.length;
+      const nodesChanged = sanitized.nodes.some((node, index) => {
+        const before = prev.document.nodes[index];
+        return before && node.configSource !== before.configSource;
+      });
+      if (!edgesChanged && !nodesChanged) return prev;
+      return prev.withDocument(sanitized);
+    });
+  }, [onGraphChange]);
+
+  const nodeStructureSig = useMemo(
+    () => nodeStructureSignature(graph.document.nodes),
     [graph.document.nodes]
   );
   const edgeIdSig = useMemo(
@@ -62,15 +78,15 @@ export function useBlueprintFlowState({
   );
 
   useEffect(() => {
-    if (nodeIdSig === nodeSigRef.current) return;
-    nodeSigRef.current = nodeIdSig;
+    if (nodeStructureSig === nodeSigRef.current) return;
+    nodeSigRef.current = nodeStructureSig;
     setNodes((prev) =>
       mergeMeasuredFlowNodes(
-        graphToFlowNodes(graph, selectedIdRef.current),
+        graphToFlowNodes(graph, selectedIdRef.current, libraryNameById),
         prev as Node<BlueprintFlowNodeData>[]
       )
     );
-  }, [nodeIdSig, graph, setNodes]);
+  }, [nodeStructureSig, graph, libraryNameById, setNodes]);
 
   useEffect(() => {
     if (edgeIdSig === edgeSigRef.current) return;
@@ -103,6 +119,26 @@ export function useBlueprintFlowState({
       return changed ? next : nds;
     });
   }, [selectedNodeId, setNodes]);
+
+  useEffect(() => {
+    if (!libraryNameById) return;
+    setNodes((nds) => {
+      let changed = false;
+      const next = nds.map((n) => {
+        const data = n.data as BlueprintFlowNodeData;
+        const libraryBlueprintLabel = data.libraryBlueprintId
+          ? libraryNameById.get(data.libraryBlueprintId)
+          : undefined;
+        if (data.libraryBlueprintLabel === libraryBlueprintLabel) return n;
+        changed = true;
+        return {
+          ...n,
+          data: { ...data, libraryBlueprintLabel },
+        };
+      });
+      return changed ? next : nds;
+    });
+  }, [libraryNameById, setNodes]);
 
   const onNodesChange = useCallback(
     (changes: NodeChange<Node<BlueprintFlowNodeData>>[]) => {
@@ -193,10 +229,20 @@ export function useBlueprintFlowState({
     (connection: Edge | Connection) => {
       if (!connection.source || !connection.target) return false;
       if (connection.source === connection.target) return false;
-      const nodeIds = new Set(getNodes().map((n) => n.id));
-      return (
-        nodeIds.has(connection.source) && nodeIds.has(connection.target)
-      );
+
+      const rfNodes = getNodes() as Node<BlueprintFlowNodeData>[];
+      const nodeIds = new Set(rfNodes.map((n) => n.id));
+      if (!nodeIds.has(connection.source) || !nodeIds.has(connection.target)) {
+        return false;
+      }
+
+      const targetNode = rfNodes.find((n) => n.id === connection.target);
+      // 生命周期节点无输入口，禁止连入
+      if (targetNode?.data.role === "lifecycle") {
+        return false;
+      }
+
+      return true;
     },
     [getNodes]
   );

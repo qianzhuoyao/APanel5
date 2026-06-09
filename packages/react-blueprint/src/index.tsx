@@ -1,7 +1,6 @@
 import {
   FC,
   useCallback,
-  useMemo,
   useRef,
   useState,
   type Dispatch,
@@ -31,7 +30,7 @@ import { useBlueprintFlowState } from "./hooks/useBlueprintFlowState";
 import { useBlueprintFlowViewport } from "./hooks/useBlueprintFlowViewport";
 import { clientToFlowNodePosition } from "./flowCoordinates";
 
-export type { BlueprintNodeConfigSidebarProps, BlueprintViewElementOption } from "./BlueprintNodeConfigSidebar";
+export type { BlueprintNodeConfigSidebarProps, BlueprintViewElementOption, BlueprintLibraryOption } from "./BlueprintNodeConfigSidebar";
 export { BlueprintNodeConfigSidebar } from "./BlueprintNodeConfigSidebar";
 
 export type BluePrintReactRootProps = {
@@ -40,6 +39,8 @@ export type BluePrintReactRootProps = {
   onGraphChange: Dispatch<SetStateAction<BlueprintGraph>>;
   selectedNodeId?: string | null;
   onSelectNode?: (nodeId: string | null) => void;
+  /** 蓝图库 id -> 名称，用于画布节点展示引用蓝图名 */
+  libraryNameById?: ReadonlyMap<string, string>;
 };
 
 type BlueprintCanvasProps = Omit<BluePrintReactRootProps, "style"> & {
@@ -53,6 +54,7 @@ function BlueprintCanvas({
   onGraphChange,
   selectedNodeId = null,
   onSelectNode,
+  libraryNameById,
   containerRef,
 }: BlueprintCanvasProps) {
   const { screenToFlowPosition } = useReactFlow();
@@ -76,6 +78,7 @@ function BlueprintCanvas({
   } = useBlueprintFlowState({
     graph,
     selectedNodeId,
+    libraryNameById,
     onGraphChange: applyGraphChange,
     onSelectNode,
   });
@@ -138,46 +141,6 @@ function BlueprintCanvas({
     [screenToFlowPosition, setGraph]
   );
 
-  const handleAddLogicNode = useCallback(
-    (parentBlueprintId: string, clientX: number, clientY: number) => {
-      setGraph((prev) => {
-        const parent = prev.getNode(parentBlueprintId);
-        const base =
-          parent?.position ??
-          clientToFlowNodePosition(
-            (point) => screenToFlowPosition(point, { snapToGrid: false }),
-            clientX,
-            clientY
-          );
-        return prev.addLogicNode(parentBlueprintId, {
-          x: base.x + 40,
-          y: base.y + 80,
-        });
-      });
-    },
-    [screenToFlowPosition, setGraph]
-  );
-
-  const handleAddLifecycleNode = useCallback(
-    (parentBlueprintId: string, clientX: number, clientY: number) => {
-      setGraph((prev) => {
-        const parent = prev.getNode(parentBlueprintId);
-        const base =
-          parent?.position ??
-          clientToFlowNodePosition(
-            (point) => screenToFlowPosition(point, { snapToGrid: false }),
-            clientX,
-            clientY
-          );
-        return prev.addLifecycleNode(parentBlueprintId, {
-          x: base.x + 40,
-          y: base.y + 140,
-        });
-      });
-    },
-    [screenToFlowPosition, setGraph]
-  );
-
   const handleDeleteNode = useCallback(
     (nodeId: string) => {
       if (nodeId === selectedNodeId) {
@@ -187,12 +150,6 @@ function BlueprintCanvas({
     },
     [onSelectNode, selectedNodeId, setGraph]
   );
-
-  const selectedBlueprintNodeId = useMemo(() => {
-    if (!selectedNodeId) return null;
-    const node = graph.getNode(selectedNodeId);
-    return node?.role === "blueprint" ? selectedNodeId : null;
-  }, [graph, selectedNodeId]);
 
   return (
     <>
@@ -222,11 +179,8 @@ function BlueprintCanvas({
       />
       <BlueprintContextMenu
         menu={menu}
-        selectedBlueprintNodeId={selectedBlueprintNodeId}
         onClose={() => setMenu(null)}
         onAddBlueprintNode={handleAddBlueprintNode}
-        onAddLogicNode={handleAddLogicNode}
-        onAddLifecycleNode={handleAddLifecycleNode}
         onDeleteNode={handleDeleteNode}
       />
     </>
@@ -239,6 +193,7 @@ export const BluePrintReactRoot: FC<BluePrintReactRootProps> = ({
   onGraphChange,
   selectedNodeId,
   onSelectNode,
+  libraryNameById,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -262,6 +217,7 @@ export const BluePrintReactRoot: FC<BluePrintReactRootProps> = ({
             onGraphChange={onGraphChange}
             selectedNodeId={selectedNodeId}
             onSelectNode={onSelectNode}
+            libraryNameById={libraryNameById}
           />
         </ReactFlowProvider>
       </BlueprintCanvasProvider>

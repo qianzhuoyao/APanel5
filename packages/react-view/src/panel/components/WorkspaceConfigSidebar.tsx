@@ -2,7 +2,6 @@ import { useMemo } from "react";
 
 import {
   BlueprintNodeConfigSidebar,
-  resolveBlueprintConfigSource,
   type BlueprintGraphNode,
 } from "@arron/react-blueprint";
 import {
@@ -30,14 +29,19 @@ export type WorkspaceConfigSidebarProps = Omit<
       Pick<
         BlueprintGraphNode,
         | "label"
+        | "role"
         | "nodeType"
         | "configSource"
         | "viewElementId"
         | "nestedBlueprintId"
+        | "libraryBlueprintId"
         | "lifecyclePhase"
+        | "fetchConfig"
+        | "jsonConfig"
       >
     >
   ) => void;
+  blueprintLibraryOptions?: { id: string; label: string }[];
   selectedElement: PanelElement | null;
   selectedElements?: PanelElement[];
   allViewElements: PanelElement[];
@@ -47,6 +51,7 @@ export function WorkspaceConfigSidebar({
   configFocus,
   selectedBlueprintNode,
   onUpdateBlueprintNode,
+  blueprintLibraryOptions = [],
   selectedElement,
   selectedElements,
   allViewElements,
@@ -60,22 +65,6 @@ export function WorkspaceConfigSidebar({
       })),
     [allViewElements]
   );
-
-  const linkedViewElement = useMemo(() => {
-    if (configFocus !== "blueprint" || !selectedBlueprintNode?.viewElementId) {
-      return null;
-    }
-    return (
-      allViewElements.find((el) => el.id === selectedBlueprintNode.viewElementId) ??
-      null
-    );
-  }, [allViewElements, configFocus, selectedBlueprintNode?.viewElementId]);
-
-  const showViewConfigForBlueprint =
-    configFocus === "blueprint" &&
-    selectedBlueprintNode &&
-    resolveBlueprintConfigSource(selectedBlueprintNode) === "view" &&
-    linkedViewElement;
 
   if (configFocus === "view") {
     return (
@@ -114,27 +103,11 @@ export function WorkspaceConfigSidebar({
     );
   }
 
-  if (showViewConfigForBlueprint && linkedViewElement) {
-    return (
-      <div className="flex h-full min-h-0 flex-col overflow-hidden">
-        <div className="shrink-0 border-b border-border bg-primary/5 px-3 py-2 text-[11px] text-muted-foreground">
-          蓝图节点「{selectedBlueprintNode.label}」· 视图配置
-        </div>
-        <div className="min-h-0 flex-1 overflow-hidden">
-          <PanelConfigSidebar
-            {...viewPanelProps}
-            selectedElement={linkedViewElement}
-            selectedElements={[linkedViewElement]}
-          />
-        </div>
-      </div>
-    );
-  }
-
   return (
     <BlueprintNodeConfigSidebar
       node={selectedBlueprintNode}
       viewElementOptions={viewElementOptions}
+      blueprintLibraryOptions={blueprintLibraryOptions}
       onUpdateNode={onUpdateBlueprintNode}
     />
   );

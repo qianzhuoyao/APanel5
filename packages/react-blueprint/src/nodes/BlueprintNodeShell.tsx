@@ -19,6 +19,7 @@ export function BlueprintNodeShell({
         position={Position.Left}
         id="in"
         className="bp-flow-handle bp-flow-handle--target"
+        title="真/假信号输入"
       />
       <BlueprintNodeCard {...cardProps} selected={selected} />
       <Handle
@@ -26,6 +27,7 @@ export function BlueprintNodeShell({
         position={Position.Right}
         id="out"
         className="bp-flow-handle bp-flow-handle--source"
+        title="真/假信号输出"
       />
     </div>
   );

@@ -13,7 +13,11 @@ export type BlueprintFlowNodeData = {
   viewElementId?: string;
   parentId?: string;
   nestedBlueprintId?: string;
+  libraryBlueprintId?: string;
+  libraryBlueprintLabel?: string;
   lifecyclePhase?: BlueprintGraphNode["lifecyclePhase"];
+  fetchConfig?: BlueprintGraphNode["fetchConfig"];
+  jsonConfig?: BlueprintGraphNode["jsonConfig"];
   /** 由画布注入，勿写入图数据 */
   isSelected?: boolean;
 };
@@ -49,7 +53,11 @@ export function toReactFlowNodes(document: BlueprintDocument): ReactFlowNodeView
         ? "blueprint"
         : n.role === "lifecycle"
           ? "lifecycle"
-          : "logic",
+        : n.role === "fetch"
+          ? "fetch"
+          : n.role === "json"
+            ? "json"
+            : "logic",
     position: { ...n.position },
     width: BP_FLOW_NODE_WIDTH,
     height: BP_FLOW_NODE_HEIGHT,
@@ -64,7 +72,10 @@ export function toReactFlowNodes(document: BlueprintDocument): ReactFlowNodeView
       viewElementId: n.viewElementId,
       parentId: n.parentId,
       nestedBlueprintId: n.nestedBlueprintId,
+      libraryBlueprintId: n.libraryBlueprintId,
       lifecyclePhase: n.lifecyclePhase,
+      fetchConfig: n.fetchConfig,
+      jsonConfig: n.jsonConfig,
     },
   }));
 }

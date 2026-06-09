@@ -169,6 +169,18 @@
   background: hsl(var(--primary));
 }
 
+/* 生命周期节点无输入口：隐藏任何左侧/目标连接点（含旧数据产生的幽灵 handle） */
+.bp-node--lifecycle .react-flow__handle.bp-flow-handle--target,
+.bp-node--lifecycle .react-flow__handle-left,
+.bp-node--lifecycle .react-flow__handle[data-handlepos="left"] {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  opacity: 0 !important;
+}
+
 .bp-canvas .react-flow__handle.bp-flow-handle--signal,
 .bp-flow .react-flow__handle.bp-flow-handle--signal,
 [data-workspace-region="blueprint"] .react-flow__handle.bp-flow-handle--signal {

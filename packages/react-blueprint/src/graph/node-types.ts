@@ -3,4 +3,5 @@ export {
   BLUEPRINT_NODE_TYPE,
   DEFAULT_LOGIC_NODE_TYPE,
   LIFECYCLE_NODE_TYPE,
+  JSON_NODE_TYPE,
 } from "@arron/blueprint-dsl";

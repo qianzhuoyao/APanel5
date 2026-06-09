@@ -14,22 +14,26 @@ import { MaterialSidebar } from "./components/MaterialSidebar";
 import {
   BlueprintGraph,
   BlueprintMetaDialog,
+  BlueprintNodeSwitchTaskDialog,
   buildBlueprintExportPayload,
   buildLibraryRecord,
   createLibraryBlueprintId,
   deleteBlueprintLibraryRecord,
   downloadBlueprintExport,
+  documentToRunnableGraph,
   getBlueprintLibraryRecord,
   libraryRecordFromImport,
   listBlueprintLibrary,
   parseBlueprintImportFile,
   putBlueprintLibraryRecord,
   updateBlueprintLibraryMeta,
+  useBlueprintNodeSelectionGuard,
   useBlueprintPageLifecycle,
   type BlueprintGraphNode,
   type BlueprintLibraryListItem,
   type BlueprintMetaDraft,
 } from "@arron/react-blueprint";
+import type { LibraryBlueprintResolver } from "@arron/blueprint-dsl";
 import { WorkspaceStageSplit } from "./components/WorkspaceStageSplit";
 import {
   WorkspaceConfigSidebar,
@@ -428,6 +432,9 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
     null
   );
   const [blueprintMetaDialogOpen, setBlueprintMetaDialogOpen] = useState(false);
+  const [blueprintMetaDialogMode, setBlueprintMetaDialogMode] = useState<
+    "export" | "save"
+  >("save");
   const [selectedBlueprintNodeId, setSelectedBlueprintNodeId] = useState<string | null>(
     null
   );
@@ -620,12 +627,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
     };
   }, []);
 
-  const focusViewConfig = useCallback(() => {
-    setConfigFocus("view");
-    setSelectedBlueprintNodeId(null);
-  }, []);
-
-  const onSelectBlueprintNode = useCallback((nodeId: string | null) => {
+  const applyBlueprintNodeSelection = useCallback((nodeId: string | null) => {
     setSelectedBlueprintNodeId(nodeId);
     if (nodeId) {
       setConfigFocus("blueprint");
@@ -636,6 +638,24 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
     setConfigFocus("view");
   }, []);
 
+  const {
+    requestSelectNode: requestSelectBlueprintNode,
+    pendingSwitch: pendingBlueprintNodeSwitch,
+    keepTaskAndSwitch: keepBlueprintTaskAndSwitch,
+    cancelTaskAndSwitch: cancelBlueprintTaskAndSwitch,
+    stayOnCurrentNode: stayOnCurrentBlueprintNode,
+  } = useBlueprintNodeSelectionGuard(
+    selectedBlueprintNodeId,
+    applyBlueprintNodeSelection
+  );
+
+  const focusViewConfig = useCallback(() => {
+    setConfigFocus("view");
+    requestSelectBlueprintNode(null);
+  }, [requestSelectBlueprintNode]);
+
+  const onSelectBlueprintNode = requestSelectBlueprintNode;
+
   const handleUpdateBlueprintNode = useCallback(
     (
       nodeId: string,
@@ -643,11 +663,15 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
         Pick<
           BlueprintGraphNode,
           | "label"
+          | "role"
           | "nodeType"
           | "configSource"
           | "viewElementId"
           | "nestedBlueprintId"
+          | "libraryBlueprintId"
           | "lifecyclePhase"
+          | "fetchConfig"
+          | "jsonConfig"
         >
       >
     ) => {
@@ -663,8 +687,11 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
   }, [focusViewConfig]);
 
   useEffect(() => {
-    clearSelection();
-  }, [activeLayerId, clearSelection]);
+    setSelectedIds([]);
+    setSelectedTargets([]);
+    setConfigFocus("view");
+    setSelectedBlueprintNodeId(null);
+  }, [activeLayerId]);
 
   useEffect(() => {
     if (isMergingLayers && !canMergeLayers) {
@@ -726,14 +753,45 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
     return blueprintGraph.getNode(selectedBlueprintNodeId) ?? null;
   }, [blueprintGraph, selectedBlueprintNodeId]);
 
+  const blueprintLibraryNameById = useMemo(
+    () => new Map(blueprintLibraryItems.map((item) => [item.id, item.name])),
+    [blueprintLibraryItems]
+  );
+
+  const blueprintLibraryOptions = useMemo(
+    () =>
+      blueprintLibraryItems.map((item) => ({
+        id: item.id,
+        label: item.name,
+      })),
+    [blueprintLibraryItems]
+  );
+
+  const resolveLibraryBlueprint = useCallback<LibraryBlueprintResolver>(
+    async (libraryBlueprintId) => {
+      const record = await getBlueprintLibraryRecord(libraryBlueprintId);
+      if (!record) return null;
+      const items = await listBlueprintLibrary();
+      const nameById = new Map(items.map((item) => [item.id, item.name]));
+      return documentToRunnableGraph(record.document, { libraryNameById: nameById });
+    },
+    []
+  );
+
   const blueprintCanvasProps = useMemo(
     () => ({
       graph: blueprintGraph,
       onGraphChange: setBlueprintGraph,
       selectedNodeId: selectedBlueprintNodeId,
       onSelectNode: onSelectBlueprintNode,
+      libraryNameById: blueprintLibraryNameById,
     }),
-    [blueprintGraph, onSelectBlueprintNode, selectedBlueprintNodeId]
+    [
+      blueprintGraph,
+      blueprintLibraryNameById,
+      onSelectBlueprintNode,
+      selectedBlueprintNodeId,
+    ]
   );
 
   const refreshBlueprintLibrary = useCallback(async () => {
@@ -799,12 +857,25 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
     [activeBlueprintLibraryId, blueprintGraph.document, refreshBlueprintLibrary]
   );
 
-  const handleQuickSaveBlueprint = useCallback(() => {
-    void saveBlueprintToLibrary({
-      name: blueprintMeta.name.trim() || "未命名蓝图",
-      remark: blueprintMeta.remark,
-    });
-  }, [blueprintMeta.name, blueprintMeta.remark, saveBlueprintToLibrary]);
+  const openBlueprintMetaDialog = useCallback((mode: "export" | "save") => {
+    setBlueprintMetaDialogMode(mode);
+    setBlueprintMetaDialogOpen(true);
+  }, []);
+
+  const handleBlueprintMetaConfirm = useCallback(
+    async (meta: BlueprintMetaDraft) => {
+      if (blueprintMetaDialogMode === "export") {
+        setBlueprintMeta(meta);
+        downloadBlueprintExport(
+          buildBlueprintExportPayload(blueprintGraph.document, meta)
+        );
+        toast({ title: "蓝图已导出" });
+        return;
+      }
+      await saveBlueprintToLibrary(meta);
+    },
+    [blueprintGraph.document, blueprintMetaDialogMode, saveBlueprintToLibrary]
+  );
 
   const handleRenameBlueprintLibraryItem = useCallback(
     async (id: string, name: string) => {
@@ -836,19 +907,8 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
   );
 
   const openBlueprintExportDialog = useCallback(() => {
-    setBlueprintMetaDialogOpen(true);
-  }, []);
-
-  const handleBlueprintExportConfirm = useCallback(
-    async (meta: BlueprintMetaDraft) => {
-      setBlueprintMeta(meta);
-      downloadBlueprintExport(
-        buildBlueprintExportPayload(blueprintGraph.document, meta)
-      );
-      toast({ title: "蓝图已导出" });
-    },
-    [blueprintGraph.document]
-  );
+    openBlueprintMetaDialog("export");
+  }, [openBlueprintMetaDialog]);
 
   const handleBlueprintImportFile = useCallback(
     async (file: File) => {
@@ -867,6 +927,8 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
     graph: blueprintGraph,
     active: blueprintOpen,
     onUpdated: `${activeLayerId}|${historyCursor}`,
+    resolveLibraryBlueprint,
+    libraryNameById: blueprintLibraryNameById,
   });
 
   const selectedElement = selectedIds.length === 1 ? byId.get(selectedIds[0]) ?? null : null;
@@ -1893,7 +1955,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                 onDeleteBlueprintLibraryItem={(id) => {
                   void handleDeleteBlueprintLibraryItem(id);
                 }}
-                onSaveBlueprint={handleQuickSaveBlueprint}
+                onSaveBlueprint={() => openBlueprintMetaDialog("save")}
                 viewStage={
               <div
                 data-workspace-region="view"
@@ -2528,6 +2590,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
               configFocus={configFocus}
               selectedBlueprintNode={selectedBlueprintNode}
               onUpdateBlueprintNode={handleUpdateBlueprintNode}
+              blueprintLibraryOptions={blueprintLibraryOptions}
               selectedElement={selectedElement}
               selectedElements={selectedElements}
               allViewElements={allElements}
@@ -2752,13 +2815,25 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
       </Dialog>
       <BlueprintMetaDialog
         open={blueprintMetaDialogOpen}
-        mode="export"
+        mode={blueprintMetaDialogMode}
         initialMeta={blueprintMeta}
         onOpenChange={setBlueprintMetaDialogOpen}
         onConfirm={(meta) => {
-          void handleBlueprintExportConfirm(meta);
+          void handleBlueprintMetaConfirm(meta);
         }}
       />
+      {pendingBlueprintNodeSwitch ? (
+        <BlueprintNodeSwitchTaskDialog
+          open
+          fromNodeId={pendingBlueprintNodeSwitch.fromNodeId}
+          toNodeId={pendingBlueprintNodeSwitch.toNodeId}
+          onOpenChange={(open) => {
+            if (!open) stayOnCurrentBlueprintNode();
+          }}
+          onKeepTaskAndSwitch={keepBlueprintTaskAndSwitch}
+          onCancelTaskAndSwitch={cancelBlueprintTaskAndSwitch}
+        />
+      ) : null}
       <Toaster />
     </div>
   );

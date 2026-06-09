@@ -1,26 +1,27 @@
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { cn } from "@arron/ui";
-import { PAGE_LIFECYCLE_LABELS } from "@arron/blueprint-dsl";
 
+import { resolveBlueprintNodeTypeLabel } from "../graph/document";
 import { useBlueprintNodeSelect } from "../BlueprintCanvasContext";
 import type { BlueprintFlowNodeData } from "../types";
 import { BlueprintNodeCard } from "./BlueprintNodeCard";
 
+/** 生命周期节点：无输入口，仅在对应生命周期触发时从右侧输出口发出信号 */
 export function LifecycleFlowNode({ id, data }: NodeProps) {
   const nodeData = data as BlueprintFlowNodeData;
   const onSelect = useBlueprintNodeSelect();
-  const phaseLabel = nodeData.lifecyclePhase
-    ? PAGE_LIFECYCLE_LABELS[nodeData.lifecyclePhase]
-    : "未配置";
 
   return (
-    <div className={cn("bp-node", nodeData.isSelected && "bp-node--selected")}>
+    <div
+      className={cn("bp-node bp-node--lifecycle", nodeData.isSelected && "bp-node--selected")}
+    >
       <BlueprintNodeCard
         nodeId={id}
         label={nodeData.label}
-        meta={phaseLabel}
+        meta={resolveBlueprintNodeTypeLabel(nodeData)}
         variant="lifecycle"
         selected={Boolean(nodeData.isSelected)}
+        hideLeadingDot
         onSelect={onSelect}
       />
       <Handle
@@ -28,13 +29,7 @@ export function LifecycleFlowNode({ id, data }: NodeProps) {
         position={Position.Right}
         id="out"
         className="bp-flow-handle bp-flow-handle--source"
-      />
-      <Handle
-        type="source"
-        position={Position.Bottom}
-        id="signal"
-        className="bp-flow-handle bp-flow-handle--signal"
-        title="生命周期信号（phase + timestamp）"
+        title="生命周期满足时输出真/假信号"
       />
     </div>
   );

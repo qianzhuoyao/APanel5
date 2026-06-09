@@ -4,12 +4,18 @@ export { BlueprintNodeConfigSidebar } from "./src/BlueprintNodeConfigSidebar";
 export type {
   BlueprintNodeConfigSidebarProps,
   BlueprintViewElementOption,
+  BlueprintLibraryOption,
 } from "./src/BlueprintNodeConfigSidebar";
 export * from "./src/graph";
-export { resolveBlueprintConfigSource } from "./src/graph/document";
+export { resolveBlueprintConfigSource, resolveBlueprintNodeTypeLabel } from "./src/graph/document";
 export type { BlueprintConfigSource } from "./src/graph/document";
+export { documentToRunnableGraph } from "./src/runtime/document-to-runnable-graph";
 export { useBlueprintPageLifecycle } from "./src/hooks/useBlueprintPageLifecycle";
 export type { UseBlueprintPageLifecycleOptions } from "./src/hooks/useBlueprintPageLifecycle";
+export { BlueprintNodeSwitchTaskDialog } from "./src/components/BlueprintNodeSwitchTaskDialog";
+export type { BlueprintNodeSwitchTaskDialogProps } from "./src/components/BlueprintNodeSwitchTaskDialog";
+export { useBlueprintNodeSelectionGuard } from "./src/hooks/useBlueprintNodeSelectionGuard";
+export type { PendingBlueprintNodeSwitch } from "./src/hooks/useBlueprintNodeSelectionGuard";
 export { BlueprintMetaDialog } from "./src/components/BlueprintMetaDialog";
 export type { BlueprintMetaDialogProps } from "./src/components/BlueprintMetaDialog";
 export { BlueprintLibrarySelect } from "./src/components/BlueprintLibrarySelect";

@@ -5,7 +5,7 @@ import { useBlueprintNodeSelect } from "../BlueprintCanvasContext";
 import type { BlueprintFlowNodeData } from "../types";
 import { BlueprintNodeShell } from "./BlueprintNodeShell";
 
-export function BlueprintFlowNode({ id, data }: NodeProps) {
+export function FetchFlowNode({ id, data }: NodeProps) {
   const nodeData = data as BlueprintFlowNodeData;
   const onSelect = useBlueprintNodeSelect();
 
@@ -14,7 +14,7 @@ export function BlueprintFlowNode({ id, data }: NodeProps) {
       nodeId={id}
       label={nodeData.label}
       meta={resolveBlueprintNodeTypeLabel(nodeData)}
-      variant="blueprint"
+      variant="fetch"
       selected={Boolean(nodeData.isSelected)}
       onSelect={onSelect}
     />

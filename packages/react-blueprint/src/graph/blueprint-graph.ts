@@ -1,6 +1,12 @@
 import {
   createBlueprintDocument,
   createNodeId,
+  defaultBlueprintNodeLabel,
+  filterInvalidBlueprintEdges,
+  patchNodeConfigSource,
+  resolveNodeFetchConfig,
+  resolveNodeJsonConfig,
+  sanitizeBlueprintDocument,
   type BlueprintDocument,
   type BlueprintGraphEdge,
   type BlueprintGraphNode,
@@ -16,11 +22,11 @@ export class BlueprintGraph {
   readonly document: BlueprintDocument;
 
   constructor(document: BlueprintDocument = createBlueprintDocument()) {
-    this.document = document;
+    this.document = sanitizeBlueprintDocument(document);
   }
 
   static empty(id?: string) {
-    return new BlueprintGraph(createBlueprintDocument(id));
+    return new BlueprintGraph(sanitizeBlueprintDocument(createBlueprintDocument(id)));
   }
 
   static fromDocument(document: BlueprintDocument) {
@@ -31,12 +37,12 @@ export class BlueprintGraph {
     return this.document.nodes.find((n) => n.id === nodeId);
   }
 
-  addBlueprintNode(position: { x: number; y: number }, label = "蓝图") {
+  addBlueprintNode(position: { x: number; y: number }, label?: string) {
     const node: BlueprintGraphNode = {
       id: createNodeId("bp"),
       role: "blueprint",
       nodeType: BLUEPRINT_NODE_TYPE,
-      label,
+      label: label ?? defaultBlueprintNodeLabel("blueprint"),
       position: { ...position },
       nestedBlueprintId: createNodeId("nested_bp"),
     };
@@ -49,7 +55,7 @@ export class BlueprintGraph {
   addLogicNode(
     parentBlueprintId: string,
     position: { x: number; y: number },
-    label = "逻辑"
+    label?: string
   ) {
     const parent = this.getNode(parentBlueprintId);
     if (!parent || parent.role !== "blueprint") {
@@ -60,7 +66,7 @@ export class BlueprintGraph {
       id: createNodeId("logic"),
       role: "logic",
       nodeType: DEFAULT_LOGIC_NODE_TYPE,
-      label,
+      label: label ?? defaultBlueprintNodeLabel("logic"),
       position: { ...position },
       parentId: parentBlueprintId,
     };
@@ -86,7 +92,7 @@ export class BlueprintGraph {
       id: createNodeId("lifecycle"),
       role: "lifecycle",
       nodeType: LIFECYCLE_NODE_TYPE,
-      label: label ?? `生命周期 · ${lifecyclePhase}`,
+      label: label ?? defaultBlueprintNodeLabel("lifecycle"),
       position: { ...position },
       parentId: parentBlueprintId,
       lifecyclePhase,
@@ -165,7 +171,10 @@ export class BlueprintGraph {
   }
 
   replaceEdges(edges: BlueprintGraphEdge[]) {
-    return this.withDocument({ ...this.document, edges });
+    return this.withDocument({
+      ...this.document,
+      edges: filterInvalidBlueprintEdges(this.document, edges),
+    });
   }
 
   updateNode(
@@ -174,21 +183,45 @@ export class BlueprintGraph {
       Pick<
         BlueprintGraphNode,
         | "label"
+        | "role"
         | "nodeType"
         | "configSource"
         | "viewElementId"
         | "nestedBlueprintId"
+        | "libraryBlueprintId"
         | "lifecyclePhase"
+        | "fetchConfig"
+        | "jsonConfig"
       >
     >
   ) {
     const exists = this.getNode(nodeId);
     if (!exists) return this;
+
+    const configPatch =
+      patch.configSource && patch.configSource !== exists.configSource
+        ? patchNodeConfigSource(exists, patch.configSource)
+        : {};
+
     return this.withDocument({
       ...this.document,
-      nodes: this.document.nodes.map((n) =>
-        n.id === nodeId ? { ...n, ...patch } : n
-      ),
+      nodes: this.document.nodes.map((n) => {
+        if (n.id !== nodeId) return n;
+        const nextNode = { ...n, ...configPatch, ...patch };
+        if (patch.fetchConfig) {
+          nextNode.fetchConfig = {
+            ...resolveNodeFetchConfig(n),
+            ...patch.fetchConfig,
+          };
+        }
+        if (patch.jsonConfig) {
+          nextNode.jsonConfig = {
+            ...resolveNodeJsonConfig(n),
+            ...patch.jsonConfig,
+          };
+        }
+        return nextNode;
+      }),
     });
   }
 

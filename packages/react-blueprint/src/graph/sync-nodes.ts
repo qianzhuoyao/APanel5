@@ -32,9 +32,33 @@ export function nodeListSignature(nodes: { id: string }[]): string {
     .join(",");
 }
 
+/** 含 role / 配置 / 名称等影响 React Flow 节点展示与端口的字段 */
+export function nodeStructureSignature(
+  nodes: Array<{
+    id: string;
+    role: string;
+    label: string;
+    configSource?: string;
+    lifecyclePhase?: string;
+    libraryBlueprintId?: string;
+    nodeType?: string;
+    fetchConfig?: { url?: string; method?: string; apiBaseUrl?: string; swaggerDocsUrl?: string };
+    jsonConfig?: { jsonString?: string };
+  }>
+): string {
+  return nodes
+    .map(
+      (n) =>
+        `${n.id}:${n.role}:${n.label}:${n.configSource ?? ""}:${n.lifecyclePhase ?? ""}:${n.libraryBlueprintId ?? ""}:${n.nodeType ?? ""}:${n.fetchConfig?.url ?? ""}:${n.fetchConfig?.method ?? ""}:${n.fetchConfig?.apiBaseUrl ?? ""}:${n.fetchConfig?.swaggerDocsUrl ?? ""}:${n.jsonConfig?.jsonString ?? ""}`
+    )
+    .sort()
+    .join("|");
+}
+
 export function graphToFlowNodes(
   graph: BlueprintGraph,
-  selectedNodeId: string | null
+  selectedNodeId: string | null,
+  libraryNameById?: ReadonlyMap<string, string>
 ): Node<BlueprintFlowNodeData>[] {
   const base = toReactFlowNodes(graph.document) as Node<BlueprintFlowNodeData>[];
   return base.map((n) => ({
@@ -42,6 +66,9 @@ export function graphToFlowNodes(
     selected: false,
     data: {
       ...n.data,
+      libraryBlueprintLabel: n.data.libraryBlueprintId
+        ? libraryNameById?.get(n.data.libraryBlueprintId)
+        : undefined,
       isSelected: selectedNodeId === n.id,
     },
   }));

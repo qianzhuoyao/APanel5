@@ -1,26 +1,12 @@
 import { useEffect, useRef } from "react";
 import {
   BlueprintGraphRunner,
+  type LibraryBlueprintResolver,
   type PageLifecyclePhase,
 } from "@arron/blueprint-dsl";
 
 import type { BlueprintGraph } from "../graph/blueprint-graph";
-
-function toRunnableGraph(graph: BlueprintGraph) {
-  return {
-    nodes: graph.document.nodes.map((node) => ({
-      id: node.id,
-      nodeType: node.nodeType,
-      lifecyclePhase: node.lifecyclePhase,
-    })),
-    edges: graph.document.edges.map((edge) => ({
-      source: edge.source,
-      target: edge.target,
-      sourceHandle: edge.sourceHandle,
-      targetHandle: edge.targetHandle,
-    })),
-  };
-}
+import { documentToRunnableGraph } from "../runtime/document-to-runnable-graph";
 
 const PAGE_BOOT_PHASES: PageLifecyclePhase[] = [
   "created",
@@ -39,10 +25,32 @@ export type UseBlueprintPageLifecycleOptions = {
   active?: boolean;
   /** 元素或图层变更时是否触发 updated */
   onUpdated?: unknown;
+  /** 解析蓝图库记录为可执行子图 */
+  resolveLibraryBlueprint?: LibraryBlueprintResolver;
+  /** 蓝图库 id -> 名称，用于 signal 中的 blueprintName */
+  libraryNameById?: ReadonlyMap<string, string>;
 };
 
-async function emitPhases(graph: BlueprintGraph, phases: PageLifecyclePhase[]) {
-  const runner = new BlueprintGraphRunner(toRunnableGraph(graph));
+type RunnerOptions = Pick<
+  UseBlueprintPageLifecycleOptions,
+  "resolveLibraryBlueprint" | "libraryNameById"
+>;
+
+function createRunner(graph: BlueprintGraph, options: RunnerOptions) {
+  return new BlueprintGraphRunner(
+    documentToRunnableGraph(graph.document, {
+      libraryNameById: options.libraryNameById,
+    }),
+    { resolveLibraryBlueprint: options.resolveLibraryBlueprint }
+  );
+}
+
+async function emitPhases(
+  graph: BlueprintGraph,
+  phases: PageLifecyclePhase[],
+  options: RunnerOptions
+) {
+  const runner = createRunner(graph, options);
   for (const phase of phases) {
     await runner.emitLifecycle(phase);
   }
@@ -56,26 +64,38 @@ export function useBlueprintPageLifecycle({
   graph,
   active = true,
   onUpdated,
+  resolveLibraryBlueprint,
+  libraryNameById,
 }: UseBlueprintPageLifecycleOptions) {
   const graphRef = useRef(graph);
   graphRef.current = graph;
 
+  const runnerOptionsRef = useRef<RunnerOptions>({
+    resolveLibraryBlueprint,
+    libraryNameById,
+  });
+  runnerOptionsRef.current = { resolveLibraryBlueprint, libraryNameById };
+
   useEffect(() => {
-    void emitPhases(graphRef.current, PAGE_BOOT_PHASES);
+    void emitPhases(graphRef.current, PAGE_BOOT_PHASES, runnerOptionsRef.current);
     return () => {
-      void emitPhases(graphRef.current, PAGE_TEARDOWN_PHASES);
+      void emitPhases(
+        graphRef.current,
+        PAGE_TEARDOWN_PHASES,
+        runnerOptionsRef.current
+      );
     };
   }, []);
 
   useEffect(() => {
     if (!active) {
-      void emitPhases(graphRef.current, ["deactivated"]);
+      void emitPhases(graphRef.current, ["deactivated"], runnerOptionsRef.current);
       return;
     }
-    void emitPhases(graphRef.current, ["activated"]);
+    void emitPhases(graphRef.current, ["activated"], runnerOptionsRef.current);
   }, [active]);
 
   useEffect(() => {
-    void emitPhases(graphRef.current, ["updated"]);
+    void emitPhases(graphRef.current, ["updated"], runnerOptionsRef.current);
   }, [onUpdated]);
 }

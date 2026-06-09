@@ -11,35 +11,20 @@ export type BlueprintContextMenuState =
       clientX: number;
       clientY: number;
       nodeId: string;
-      role: "blueprint" | "logic" | "lifecycle";
+      role: "blueprint" | "logic" | "lifecycle" | "fetch" | "json";
     };
 
 type BlueprintContextMenuProps = {
   menu: BlueprintContextMenuState | null;
-  /** 当前选中的蓝图节点 id，用于在空白处右键时添加子节点 */
-  selectedBlueprintNodeId?: string | null;
   onClose: () => void;
   onAddBlueprintNode: (clientX: number, clientY: number) => void;
-  onAddLogicNode: (
-    parentBlueprintId: string,
-    clientX: number,
-    clientY: number
-  ) => void;
-  onAddLifecycleNode: (
-    parentBlueprintId: string,
-    clientX: number,
-    clientY: number
-  ) => void;
   onDeleteNode: (nodeId: string) => void;
 };
 
 export function BlueprintContextMenu({
   menu,
-  selectedBlueprintNodeId = null,
   onClose,
   onAddBlueprintNode,
-  onAddLogicNode,
-  onAddLifecycleNode,
   onDeleteNode,
 }: BlueprintContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
@@ -73,51 +58,16 @@ export function BlueprintContextMenu({
       onContextMenu={(e) => e.preventDefault()}
     >
       {menu.kind === "pane" ? (
-        <>
-          <button
-            type="button"
-            className="bp-context-menu__item"
-            onClick={() => {
-              onAddBlueprintNode(menu.clientX, menu.clientY);
-              onClose();
-            }}
-          >
-            新增蓝图节点
-          </button>
-          {selectedBlueprintNodeId ? (
-            <>
-              <div className="bp-context-menu__separator" />
-              <button
-                type="button"
-                className="bp-context-menu__item"
-                onClick={() => {
-                  onAddLogicNode(
-                    selectedBlueprintNodeId,
-                    menu.clientX,
-                    menu.clientY
-                  );
-                  onClose();
-                }}
-              >
-                添加逻辑节点
-              </button>
-              <button
-                type="button"
-                className="bp-context-menu__item"
-                onClick={() => {
-                  onAddLifecycleNode(
-                    selectedBlueprintNodeId,
-                    menu.clientX,
-                    menu.clientY
-                  );
-                  onClose();
-                }}
-              >
-                添加生命周期节点
-              </button>
-            </>
-          ) : null}
-        </>
+        <button
+          type="button"
+          className="bp-context-menu__item"
+          onClick={() => {
+            onAddBlueprintNode(menu.clientX, menu.clientY);
+            onClose();
+          }}
+        >
+          新增节点
+        </button>
       ) : null}
 
       {menu.kind === "node" ? (
