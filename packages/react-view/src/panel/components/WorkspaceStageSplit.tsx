@@ -1,6 +1,11 @@
 import { useEffect, useRef, useState, type ComponentRef, type ReactNode } from "react";
 
-import { BluePrintReactRoot, type BluePrintReactRootProps } from "@arron/react-blueprint";
+import {
+  BluePrintReactRoot,
+  BlueprintPanelToolbar,
+  type BluePrintReactRootProps,
+  type BlueprintLibraryListItem,
+} from "@arron/react-blueprint";
 import {
   ResizableHandle,
   ResizablePanel,
@@ -11,6 +16,12 @@ type WorkspaceStageSplitProps = {
   blueprintOpen: boolean;
   viewStage: ReactNode;
   blueprintProps: BluePrintReactRootProps;
+  blueprintLibraryItems?: BlueprintLibraryListItem[];
+  activeBlueprintLibraryId?: string | null;
+  onSelectBlueprintLibraryItem?: (id: string) => void;
+  onRenameBlueprintLibraryItem?: (id: string, name: string) => void;
+  onDeleteBlueprintLibraryItem?: (id: string) => void;
+  onSaveBlueprint?: () => void;
 };
 
 const MIN_BLUEPRINT_HEIGHT = 48;
@@ -18,9 +29,21 @@ const MIN_BLUEPRINT_HEIGHT = 48;
 function BlueprintPanel({
   blueprintOpen,
   blueprintProps,
+  blueprintLibraryItems = [],
+  activeBlueprintLibraryId = null,
+  onSelectBlueprintLibraryItem,
+  onRenameBlueprintLibraryItem,
+  onDeleteBlueprintLibraryItem,
+  onSaveBlueprint,
 }: {
   blueprintOpen: boolean;
   blueprintProps: BluePrintReactRootProps;
+  blueprintLibraryItems?: BlueprintLibraryListItem[];
+  activeBlueprintLibraryId?: string | null;
+  onSelectBlueprintLibraryItem?: (id: string) => void;
+  onRenameBlueprintLibraryItem?: (id: string, name: string) => void;
+  onDeleteBlueprintLibraryItem?: (id: string) => void;
+  onSaveBlueprint?: () => void;
 }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const [layoutReady, setLayoutReady] = useState(false);
@@ -49,8 +72,15 @@ function BlueprintPanel({
       data-workspace-region="blueprint"
       className="flex h-full min-h-0 flex-col overflow-hidden bg-background"
     >
-      <div className="shrink-0 border-b border-border bg-background/90 px-3 py-1 text-[11px] font-semibold text-muted-foreground">
-        蓝图
+      <div className="flex shrink-0 items-center border-b border-border bg-background/90 px-2 py-1">
+        <BlueprintPanelToolbar
+          items={blueprintLibraryItems}
+          activeId={activeBlueprintLibraryId}
+          onSelectItem={(id) => onSelectBlueprintLibraryItem?.(id)}
+          onRenameItem={(id, name) => onRenameBlueprintLibraryItem?.(id, name)}
+          onDeleteItem={(id) => onDeleteBlueprintLibraryItem?.(id)}
+          onSave={() => onSaveBlueprint?.()}
+        />
       </div>
       <div ref={wrapRef} className="relative min-h-0 flex-1">
         {layoutReady ? (
@@ -69,6 +99,12 @@ export function WorkspaceStageSplit({
   blueprintOpen,
   viewStage,
   blueprintProps,
+  blueprintLibraryItems,
+  activeBlueprintLibraryId,
+  onSelectBlueprintLibraryItem,
+  onRenameBlueprintLibraryItem,
+  onDeleteBlueprintLibraryItem,
+  onSaveBlueprint,
 }: WorkspaceStageSplitProps) {
   const blueprintPanelRef = useRef<ComponentRef<typeof ResizablePanel>>(null);
 
@@ -102,7 +138,16 @@ export function WorkspaceStageSplit({
         minSize={15}
         className="min-h-0"
       >
-        <BlueprintPanel blueprintOpen={blueprintOpen} blueprintProps={blueprintProps} />
+        <BlueprintPanel
+          blueprintOpen={blueprintOpen}
+          blueprintProps={blueprintProps}
+          blueprintLibraryItems={blueprintLibraryItems}
+          activeBlueprintLibraryId={activeBlueprintLibraryId}
+          onSelectBlueprintLibraryItem={onSelectBlueprintLibraryItem}
+          onRenameBlueprintLibraryItem={onRenameBlueprintLibraryItem}
+          onDeleteBlueprintLibraryItem={onDeleteBlueprintLibraryItem}
+          onSaveBlueprint={onSaveBlueprint}
+        />
       </ResizablePanel>
     </ResizablePanelGroup>
   );

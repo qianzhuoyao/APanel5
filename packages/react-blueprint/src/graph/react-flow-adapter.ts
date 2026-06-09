@@ -13,6 +13,7 @@ export type BlueprintFlowNodeData = {
   viewElementId?: string;
   parentId?: string;
   nestedBlueprintId?: string;
+  lifecyclePhase?: BlueprintGraphNode["lifecyclePhase"];
   /** 由画布注入，勿写入图数据 */
   isSelected?: boolean;
 };
@@ -43,7 +44,12 @@ export type ReactFlowEdgeView = {
 export function toReactFlowNodes(document: BlueprintDocument): ReactFlowNodeView[] {
   return document.nodes.map((n) => ({
     id: n.id,
-    type: n.role === "blueprint" ? "blueprint" : "logic",
+    type:
+      n.role === "blueprint"
+        ? "blueprint"
+        : n.role === "lifecycle"
+          ? "lifecycle"
+          : "logic",
     position: { ...n.position },
     width: BP_FLOW_NODE_WIDTH,
     height: BP_FLOW_NODE_HEIGHT,
@@ -58,6 +64,7 @@ export function toReactFlowNodes(document: BlueprintDocument): ReactFlowNodeView
       viewElementId: n.viewElementId,
       parentId: n.parentId,
       nestedBlueprintId: n.nestedBlueprintId,
+      lifecyclePhase: n.lifecyclePhase,
     },
   }));
 }

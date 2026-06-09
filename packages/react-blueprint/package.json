@@ -12,6 +12,7 @@
   "dependencies": {
     "react": "^19",
     "react-dom": "^19",
+    "@arron/blueprint-dsl": "workspace:*",
     "@arron/react-rx-store": "workspace:*",
     "@arron/ui": "workspace:*",
     "@xyflow/react": "^12.9.3"

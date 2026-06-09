@@ -74,3 +74,16 @@
   }
 }
 
+/* 弹窗蒙层全屏覆盖，层级高于画布 Ruler / 工具栏 */
+[data-radix-dialog-overlay],
+[data-radix-alert-dialog-overlay],
+[data-vaul-overlay] {
+  z-index: 20000 !important;
+}
+
+[data-radix-dialog-content],
+[data-radix-alert-dialog-content],
+[data-vaul-drawer-wrapper] {
+  z-index: 20001 !important;
+}
+

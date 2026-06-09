@@ -12,11 +12,13 @@
     "lint:legacy": "eslint \"src/**/*.ts\""
   },
   "dependencies": {
-    "@arron/ui": "workspace:*",
+    "@arron/blueprint-dsl": "workspace:*",
     "@arron/react-blueprint": "workspace:*",
+    "@arron/react-view": "workspace:*",
+    "@arron/rx-store": "workspace:*",
+    "@arron/ui": "workspace:*",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "@arron/react-view": "workspace:*"
+    "react-dom": "^18.2.0"
   },
   "devDependencies": {
     "@arron/eslint-config": "workspace:*",

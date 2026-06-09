@@ -4,7 +4,7 @@ export type BlueprintNodeCardProps = {
   nodeId: string;
   label: string;
   meta?: string;
-  variant?: "blueprint" | "logic";
+  variant?: "blueprint" | "logic" | "lifecycle";
   selected?: boolean;
   onSelect?: (nodeId: string) => void;
 };
@@ -19,6 +19,11 @@ const variantStyle = {
     accent: "border-l-sky-500 dark:border-l-sky-400",
     badge: "bg-sky-500/10 text-sky-700 dark:text-sky-300",
     dot: "bg-sky-500",
+  },
+  lifecycle: {
+    accent: "border-l-amber-500 dark:border-l-amber-400",
+    badge: "bg-amber-500/10 text-amber-700 dark:text-amber-300",
+    dot: "bg-amber-500",
   },
 } as const;
 
@@ -43,6 +48,7 @@ function NodeGrip() {
 export function BlueprintNodeCard({
   nodeId,
   label,
+  meta,
   variant = "blueprint",
   selected = false,
   onSelect,
@@ -68,14 +74,17 @@ export function BlueprintNodeCard({
         title="拖拽移动"
       >
         <NodeGrip />
-        {/* <span
-          className={cn(
-            "rounded px-1.5 py-0.5 text-[10px] font-medium leading-none tracking-wide",
-            v.badge
-          )}
-        >
-          {meta}
-        </span> */}
+        {meta ? (
+          <span
+            className={cn(
+              "min-w-0 flex-1 truncate rounded px-1.5 py-0.5 text-[10px] font-medium leading-none tracking-wide",
+              v.badge
+            )}
+            title={meta}
+          >
+            {meta}
+          </span>
+        ) : null}
       </div>
 
       <button

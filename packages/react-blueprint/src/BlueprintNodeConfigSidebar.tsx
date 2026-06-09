@@ -7,6 +7,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@arron/ui";
+import {
+  PAGE_LIFECYCLE_LABELS,
+  PAGE_LIFECYCLE_PHASES,
+  type PageLifecyclePhase,
+} from "@arron/blueprint-dsl";
 
 import type { BlueprintConfigSource, BlueprintGraphNode } from "./graph/document";
 import { resolveBlueprintConfigSource } from "./graph/document";
@@ -24,7 +29,12 @@ export type BlueprintNodeConfigSidebarProps = {
     patch: Partial<
       Pick<
         BlueprintGraphNode,
-        "label" | "nodeType" | "configSource" | "viewElementId" | "nestedBlueprintId"
+        | "label"
+        | "nodeType"
+        | "configSource"
+        | "viewElementId"
+        | "nestedBlueprintId"
+        | "lifecyclePhase"
       >
     >
   ) => void;
@@ -42,7 +52,12 @@ export function BlueprintNodeConfigSidebar({
       <div className="shrink-0 border-b border-border px-3 py-2">
         <div className="text-xs font-semibold">蓝图节点配置</div>
         <div className="mt-0.5 text-[11px] text-muted-foreground">
-          {node.role === "blueprint" ? "蓝图节点" : "逻辑节点"} · {node.id}
+          {node.role === "blueprint"
+            ? "蓝图节点"
+            : node.role === "lifecycle"
+              ? "生命周期节点"
+              : "逻辑节点"}{" "}
+          · {node.id}
         </div>
       </div>
       <div className="min-h-0 flex-1 space-y-3 overflow-auto p-3 text-xs">
@@ -75,6 +90,7 @@ export function BlueprintNodeConfigSidebar({
             <SelectContent>
               <SelectItem value="blueprint">蓝图配置</SelectItem>
               <SelectItem value="logic">逻辑配置</SelectItem>
+              <SelectItem value="lifecycle">生命周期配置</SelectItem>
               <SelectItem value="view">视图节点配置</SelectItem>
             </SelectContent>
           </Select>
@@ -137,6 +153,44 @@ export function BlueprintNodeConfigSidebar({
                 className="h-8 font-mono text-[11px]"
               />
             </label>
+          </div>
+        ) : null}
+
+        {configSource === "lifecycle" ? (
+          <div className="space-y-2 rounded-md border border-border/70 bg-muted/20 p-2.5">
+            <div className="font-medium text-foreground">生命周期钩子</div>
+            <p className="text-[11px] text-muted-foreground">
+              当页面进入对应生命周期时，自动向下游节点发送信号（含 phase 与 timestamp）。
+            </p>
+            <label className="block space-y-1">
+              <span className="text-muted-foreground">监听阶段</span>
+              <Select
+                value={node.lifecyclePhase ?? "mounted"}
+                onValueChange={(value: string) =>
+                  onUpdateNode(node.id, {
+                    lifecyclePhase: value as PageLifecyclePhase,
+                    configSource: "lifecycle",
+                    label: `生命周期 · ${value}`,
+                  })
+                }
+              >
+                <SelectTrigger className="h-8">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PAGE_LIFECYCLE_PHASES.map((phase) => (
+                    <SelectItem key={phase} value={phase}>
+                      {PAGE_LIFECYCLE_LABELS[phase]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </label>
+            {node.parentId ? (
+              <p className="text-[11px] text-muted-foreground">
+                所属蓝图节点：{node.parentId}
+              </p>
+            ) : null}
           </div>
         ) : null}
 

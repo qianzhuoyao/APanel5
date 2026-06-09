@@ -169,6 +169,18 @@
   background: hsl(var(--primary));
 }
 
+.bp-canvas .react-flow__handle.bp-flow-handle--signal,
+.bp-flow .react-flow__handle.bp-flow-handle--signal,
+[data-workspace-region="blueprint"] .react-flow__handle.bp-flow-handle--signal {
+  background: hsl(38 92% 50% / 0.75);
+  width: 8px;
+  height: 8px;
+}
+
+.bp-node--selected .bp-flow-handle--signal {
+  background: hsl(38 92% 50%);
+}
+
 /* 右键菜单 */
 .bp-context-menu {
   position: fixed;

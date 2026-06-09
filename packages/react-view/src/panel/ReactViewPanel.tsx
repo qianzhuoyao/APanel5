@@ -11,7 +11,25 @@ import { SelectLayer } from "./components/SelectLayer";
 import { MoveableLayer } from "./components/MoveableLayer";
 import { buildChartOption, CHART_TYPES } from "./utils/chartOptionBuilder";
 import { MaterialSidebar } from "./components/MaterialSidebar";
-import { BlueprintGraph, type BlueprintGraphNode } from "@arron/react-blueprint";
+import {
+  BlueprintGraph,
+  BlueprintMetaDialog,
+  buildBlueprintExportPayload,
+  buildLibraryRecord,
+  createLibraryBlueprintId,
+  deleteBlueprintLibraryRecord,
+  downloadBlueprintExport,
+  getBlueprintLibraryRecord,
+  libraryRecordFromImport,
+  listBlueprintLibrary,
+  parseBlueprintImportFile,
+  putBlueprintLibraryRecord,
+  updateBlueprintLibraryMeta,
+  useBlueprintPageLifecycle,
+  type BlueprintGraphNode,
+  type BlueprintLibraryListItem,
+  type BlueprintMetaDraft,
+} from "@arron/react-blueprint";
 import { WorkspaceStageSplit } from "./components/WorkspaceStageSplit";
 import {
   WorkspaceConfigSidebar,
@@ -375,6 +393,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
   const [copiedNodeId, setCopiedNodeId] = useState<string | null>(null);
   const [isDark, setIsDark] = useState(false);
   const importInputRef = useRef<HTMLInputElement | null>(null);
+  const blueprintImportInputRef = useRef<HTMLInputElement | null>(null);
   const titleIconInputRef = useRef<HTMLInputElement | null>(null);
   const [editingLayerId, setEditingLayerId] = useState<string | null>(null);
   const [editingLayerName, setEditingLayerName] = useState("");
@@ -398,6 +417,17 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
   const [panelFontSize, setPanelFontSize] = useState<"sm" | "md" | "lg">("md");
   const [blueprintOpen, setBlueprintOpen] = useState(false);
   const [blueprintGraph, setBlueprintGraph] = useState(() => BlueprintGraph.empty());
+  const [blueprintMeta, setBlueprintMeta] = useState<BlueprintMetaDraft>({
+    name: "未命名蓝图",
+    remark: "",
+  });
+  const [blueprintLibraryItems, setBlueprintLibraryItems] = useState<
+    BlueprintLibraryListItem[]
+  >([]);
+  const [activeBlueprintLibraryId, setActiveBlueprintLibraryId] = useState<string | null>(
+    null
+  );
+  const [blueprintMetaDialogOpen, setBlueprintMetaDialogOpen] = useState(false);
   const [selectedBlueprintNodeId, setSelectedBlueprintNodeId] = useState<string | null>(
     null
   );
@@ -612,7 +642,12 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
       patch: Partial<
         Pick<
           BlueprintGraphNode,
-          "label" | "nodeType" | "configSource" | "viewElementId" | "nestedBlueprintId"
+          | "label"
+          | "nodeType"
+          | "configSource"
+          | "viewElementId"
+          | "nestedBlueprintId"
+          | "lifecyclePhase"
         >
       >
     ) => {
@@ -700,6 +735,139 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
     }),
     [blueprintGraph, onSelectBlueprintNode, selectedBlueprintNodeId]
   );
+
+  const refreshBlueprintLibrary = useCallback(async () => {
+    const items = await listBlueprintLibrary();
+    setBlueprintLibraryItems(items);
+  }, []);
+
+  useEffect(() => {
+    void refreshBlueprintLibrary();
+  }, [refreshBlueprintLibrary]);
+
+  const loadBlueprintFromLibrary = useCallback(
+    async (id: string) => {
+      const record = await getBlueprintLibraryRecord(id);
+      if (!record) {
+        toast({ title: "蓝图不存在或已被删除" });
+        void refreshBlueprintLibrary();
+        return;
+      }
+      setBlueprintGraph(BlueprintGraph.fromDocument(record.document));
+      setBlueprintMeta({
+        name: record.name,
+        remark: record.remark ?? "",
+      });
+      setActiveBlueprintLibraryId(record.id);
+      setSelectedBlueprintNodeId(null);
+      setConfigFocus("blueprint");
+      setBlueprintOpen(true);
+    },
+    [refreshBlueprintLibrary]
+  );
+
+  const saveBlueprintToLibrary = useCallback(
+    async (meta: BlueprintMetaDraft) => {
+      setBlueprintMeta(meta);
+
+      let recordId = activeBlueprintLibraryId ?? undefined;
+      let createdAt: number | undefined;
+      if (activeBlueprintLibraryId) {
+        const existing = await getBlueprintLibraryRecord(activeBlueprintLibraryId);
+        if (existing?.source === "saved") {
+          recordId = existing.id;
+          createdAt = existing.createdAt;
+        } else {
+          recordId = createLibraryBlueprintId();
+        }
+      } else {
+        recordId = createLibraryBlueprintId();
+      }
+
+      const record = buildLibraryRecord({
+        id: recordId,
+        createdAt,
+        document: blueprintGraph.document,
+        meta,
+        source: "saved",
+      });
+      await putBlueprintLibraryRecord(record);
+      setActiveBlueprintLibraryId(record.id);
+      await refreshBlueprintLibrary();
+      toast({ title: "蓝图已保存到本地" });
+    },
+    [activeBlueprintLibraryId, blueprintGraph.document, refreshBlueprintLibrary]
+  );
+
+  const handleQuickSaveBlueprint = useCallback(() => {
+    void saveBlueprintToLibrary({
+      name: blueprintMeta.name.trim() || "未命名蓝图",
+      remark: blueprintMeta.remark,
+    });
+  }, [blueprintMeta.name, blueprintMeta.remark, saveBlueprintToLibrary]);
+
+  const handleRenameBlueprintLibraryItem = useCallback(
+    async (id: string, name: string) => {
+      const updated = await updateBlueprintLibraryMeta(id, { name });
+      if (!updated) {
+        toast({ title: "重命名失败" });
+        void refreshBlueprintLibrary();
+        return;
+      }
+      await refreshBlueprintLibrary();
+      if (activeBlueprintLibraryId === id) {
+        setBlueprintMeta((prev) => ({ ...prev, name }));
+      }
+      toast({ title: "蓝图已重命名" });
+    },
+    [activeBlueprintLibraryId, refreshBlueprintLibrary]
+  );
+
+  const handleDeleteBlueprintLibraryItem = useCallback(
+    async (id: string) => {
+      await deleteBlueprintLibraryRecord(id);
+      await refreshBlueprintLibrary();
+      if (activeBlueprintLibraryId === id) {
+        setActiveBlueprintLibraryId(null);
+      }
+      toast({ title: "蓝图已从库中删除" });
+    },
+    [activeBlueprintLibraryId, refreshBlueprintLibrary]
+  );
+
+  const openBlueprintExportDialog = useCallback(() => {
+    setBlueprintMetaDialogOpen(true);
+  }, []);
+
+  const handleBlueprintExportConfirm = useCallback(
+    async (meta: BlueprintMetaDraft) => {
+      setBlueprintMeta(meta);
+      downloadBlueprintExport(
+        buildBlueprintExportPayload(blueprintGraph.document, meta)
+      );
+      toast({ title: "蓝图已导出" });
+    },
+    [blueprintGraph.document]
+  );
+
+  const handleBlueprintImportFile = useCallback(
+    async (file: File) => {
+      const text = await file.text();
+      const payload = parseBlueprintImportFile(JSON.parse(text) as unknown);
+      const record = libraryRecordFromImport(payload);
+      await putBlueprintLibraryRecord(record);
+      await refreshBlueprintLibrary();
+      await loadBlueprintFromLibrary(record.id);
+      toast({ title: "蓝图已导入并加载" });
+    },
+    [loadBlueprintFromLibrary, refreshBlueprintLibrary]
+  );
+
+  useBlueprintPageLifecycle({
+    graph: blueprintGraph,
+    active: blueprintOpen,
+    onUpdated: `${activeLayerId}|${historyCursor}`,
+  });
 
   const selectedElement = selectedIds.length === 1 ? byId.get(selectedIds[0]) ?? null : null;
   const selectedElements = useMemo(
@@ -1209,6 +1377,15 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
             </MenubarContent>
           </MenubarMenu>
           <MenubarMenu>
+            <MenubarTrigger className="px-2 py-1 text-xs font-normal">蓝图</MenubarTrigger>
+            <MenubarContent className="z-[10100]">
+              <MenubarItem onClick={openBlueprintExportDialog}>导出</MenubarItem>
+              <MenubarItem onClick={() => blueprintImportInputRef.current?.click()}>
+                导入
+              </MenubarItem>
+            </MenubarContent>
+          </MenubarMenu>
+          <MenubarMenu>
             <MenubarTrigger className="px-2 py-1 text-xs font-normal">设置</MenubarTrigger>
             <MenubarContent className="z-[10100]">
               <MenubarRadioGroup
@@ -1669,6 +1846,22 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                 }}
               />
               <Input
+                ref={blueprintImportInputRef}
+                type="file"
+                accept="application/json"
+                className="hidden"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  e.currentTarget.value = "";
+                  if (!file) return;
+                  try {
+                    await handleBlueprintImportFile(file);
+                  } catch {
+                    window.alert("蓝图导入失败：文件格式不正确");
+                  }
+                }}
+              />
+              <Input
                 ref={titleIconInputRef}
                 type="file"
                 accept="image/*"
@@ -1689,6 +1882,18 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
               <WorkspaceStageSplit
                 blueprintOpen={blueprintOpen}
                 blueprintProps={blueprintCanvasProps}
+                blueprintLibraryItems={blueprintLibraryItems}
+                activeBlueprintLibraryId={activeBlueprintLibraryId}
+                onSelectBlueprintLibraryItem={(id) => {
+                  void loadBlueprintFromLibrary(id);
+                }}
+                onRenameBlueprintLibraryItem={(id, name) => {
+                  void handleRenameBlueprintLibraryItem(id, name);
+                }}
+                onDeleteBlueprintLibraryItem={(id) => {
+                  void handleDeleteBlueprintLibraryItem(id);
+                }}
+                onSaveBlueprint={handleQuickSaveBlueprint}
                 viewStage={
               <div
                 data-workspace-region="view"
@@ -2545,6 +2750,15 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
           ) : null}
         </DialogContent>
       </Dialog>
+      <BlueprintMetaDialog
+        open={blueprintMetaDialogOpen}
+        mode="export"
+        initialMeta={blueprintMeta}
+        onOpenChange={setBlueprintMetaDialogOpen}
+        onConfirm={(meta) => {
+          void handleBlueprintExportConfirm(meta);
+        }}
+      />
       <Toaster />
     </div>
   );

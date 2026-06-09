@@ -1,6 +1,7 @@
 import {
   FC,
   useCallback,
+  useMemo,
   useRef,
   useState,
   type Dispatch,
@@ -157,6 +158,26 @@ function BlueprintCanvas({
     [screenToFlowPosition, setGraph]
   );
 
+  const handleAddLifecycleNode = useCallback(
+    (parentBlueprintId: string, clientX: number, clientY: number) => {
+      setGraph((prev) => {
+        const parent = prev.getNode(parentBlueprintId);
+        const base =
+          parent?.position ??
+          clientToFlowNodePosition(
+            (point) => screenToFlowPosition(point, { snapToGrid: false }),
+            clientX,
+            clientY
+          );
+        return prev.addLifecycleNode(parentBlueprintId, {
+          x: base.x + 40,
+          y: base.y + 140,
+        });
+      });
+    },
+    [screenToFlowPosition, setGraph]
+  );
+
   const handleDeleteNode = useCallback(
     (nodeId: string) => {
       if (nodeId === selectedNodeId) {
@@ -166,6 +187,12 @@ function BlueprintCanvas({
     },
     [onSelectNode, selectedNodeId, setGraph]
   );
+
+  const selectedBlueprintNodeId = useMemo(() => {
+    if (!selectedNodeId) return null;
+    const node = graph.getNode(selectedNodeId);
+    return node?.role === "blueprint" ? selectedNodeId : null;
+  }, [graph, selectedNodeId]);
 
   return (
     <>
@@ -195,9 +222,11 @@ function BlueprintCanvas({
       />
       <BlueprintContextMenu
         menu={menu}
+        selectedBlueprintNodeId={selectedBlueprintNodeId}
         onClose={() => setMenu(null)}
         onAddBlueprintNode={handleAddBlueprintNode}
         onAddLogicNode={handleAddLogicNode}
+        onAddLifecycleNode={handleAddLifecycleNode}
         onDeleteNode={handleDeleteNode}
       />
     </>

@@ -5,7 +5,12 @@ import {
   type BlueprintGraphEdge,
   type BlueprintGraphNode,
 } from "./document";
-import { BLUEPRINT_NODE_TYPE, DEFAULT_LOGIC_NODE_TYPE } from "./node-types";
+import {
+  BLUEPRINT_NODE_TYPE,
+  DEFAULT_LOGIC_NODE_TYPE,
+  LIFECYCLE_NODE_TYPE,
+} from "./node-types";
+import type { PageLifecyclePhase } from "@arron/blueprint-dsl";
 
 export class BlueprintGraph {
   readonly document: BlueprintDocument;
@@ -16,6 +21,10 @@ export class BlueprintGraph {
 
   static empty(id?: string) {
     return new BlueprintGraph(createBlueprintDocument(id));
+  }
+
+  static fromDocument(document: BlueprintDocument) {
+    return new BlueprintGraph(document);
   }
 
   getNode(nodeId: string): BlueprintGraphNode | undefined {
@@ -54,6 +63,34 @@ export class BlueprintGraph {
       label,
       position: { ...position },
       parentId: parentBlueprintId,
+    };
+
+    return this.withDocument({
+      ...this.document,
+      nodes: [...this.document.nodes, node],
+    });
+  }
+
+  addLifecycleNode(
+    parentBlueprintId: string,
+    position: { x: number; y: number },
+    lifecyclePhase: PageLifecyclePhase = "mounted",
+    label?: string
+  ) {
+    const parent = this.getNode(parentBlueprintId);
+    if (!parent || parent.role !== "blueprint") {
+      throw new Error(`Parent blueprint node not found: ${parentBlueprintId}`);
+    }
+
+    const node: BlueprintGraphNode = {
+      id: createNodeId("lifecycle"),
+      role: "lifecycle",
+      nodeType: LIFECYCLE_NODE_TYPE,
+      label: label ?? `生命周期 · ${lifecyclePhase}`,
+      position: { ...position },
+      parentId: parentBlueprintId,
+      lifecyclePhase,
+      configSource: "lifecycle",
     };
 
     return this.withDocument({
@@ -136,7 +173,12 @@ export class BlueprintGraph {
     patch: Partial<
       Pick<
         BlueprintGraphNode,
-        "label" | "nodeType" | "configSource" | "viewElementId" | "nestedBlueprintId"
+        | "label"
+        | "nodeType"
+        | "configSource"
+        | "viewElementId"
+        | "nestedBlueprintId"
+        | "lifecyclePhase"
       >
     >
   ) {

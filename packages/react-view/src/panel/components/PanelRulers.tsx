@@ -65,7 +65,7 @@ export function PanelRulers({
 
   return (
     <div
-      className="pointer-events-none absolute inset-0"
+      className="pointer-events-none absolute inset-0 isolate"
       style={{ ["--rv-ruler-size" as string]: `${size}px`, zIndex: PANEL_Z_INDEX.ruler }}
     >
       <div className="absolute left-[var(--rv-ruler-size)] right-[var(--rv-ruler-size)] top-0 h-[var(--rv-ruler-size)] overflow-visible">

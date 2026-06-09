@@ -3,6 +3,7 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
+      "@arron/blueprint-dsl": ["../blueprint-dsl/src/index.ts"],
       "@arron/ui": ["../ui/index.ts"]
     }
   },

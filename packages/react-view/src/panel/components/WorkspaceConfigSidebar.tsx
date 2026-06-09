@@ -29,7 +29,12 @@ export type WorkspaceConfigSidebarProps = Omit<
     patch: Partial<
       Pick<
         BlueprintGraphNode,
-        "label" | "nodeType" | "configSource" | "viewElementId" | "nestedBlueprintId"
+        | "label"
+        | "nodeType"
+        | "configSource"
+        | "viewElementId"
+        | "nestedBlueprintId"
+        | "lifecyclePhase"
       >
     >
   ) => void;

@@ -1,7 +1,9 @@
-export type BlueprintNodeRole = "blueprint" | "logic";
+import type { PageLifecyclePhase } from "@arron/blueprint-dsl";
+
+export type BlueprintNodeRole = "blueprint" | "logic" | "lifecycle";
 
 /** 决定右侧配置面板展示哪类配置 */
-export type BlueprintConfigSource = "blueprint" | "logic" | "view";
+export type BlueprintConfigSource = "blueprint" | "logic" | "lifecycle" | "view";
 
 export type BlueprintGraphNode = {
   id: string;
@@ -18,6 +20,8 @@ export type BlueprintGraphNode = {
   parentId?: string;
   /** blueprint 节点嵌套子蓝图 id */
   nestedBlueprintId?: string;
+  /** lifecycle 节点监听的生命周期阶段 */
+  lifecyclePhase?: PageLifecyclePhase;
 };
 
 export function resolveBlueprintConfigSource(
@@ -25,6 +29,7 @@ export function resolveBlueprintConfigSource(
 ): BlueprintConfigSource {
   if (node.configSource) return node.configSource;
   if (node.viewElementId) return "view";
+  if (node.role === "lifecycle") return "lifecycle";
   return node.role === "logic" ? "logic" : "blueprint";
 }
 
