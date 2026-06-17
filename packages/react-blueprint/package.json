@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "react": "^19",
+    "dayjs": "^1.11.13",
     "react-dom": "^19",
     "@arron/blueprint-dsl": "workspace:*",
     "@arron/react-rx-store": "workspace:*",

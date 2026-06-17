@@ -20,12 +20,18 @@ importers:
 
   apps/web:
     dependencies:
+      '@arron/blueprint-dsl':
+        specifier: workspace:*
+        version: link:../../packages/blueprint-dsl
       '@arron/react-blueprint':
         specifier: workspace:*
         version: link:../../packages/react-blueprint
       '@arron/react-view':
         specifier: workspace:*
         version: link:../../packages/react-view
+      '@arron/rx-store':
+        specifier: workspace:*
+        version: link:../../packages/rx-store
       '@arron/ui':
         specifier: workspace:*
         version: link:../../packages/ui
@@ -106,6 +112,9 @@ importers:
       '@xyflow/react':
         specifier: ^12.9.3
         version: 12.9.3(@types/react@19.1.0)(react-dom@19.2.0)(react@19.2.0)
+      dayjs:
+        specifier: ^1.11.13
+        version: 1.11.21
       react:
         specifier: ^19
         version: 19.2.0
@@ -201,6 +210,9 @@ importers:
       '@scena/react-ruler':
         specifier: ^0.19.0
         version: 0.19.0
+      dayjs:
+        specifier: ^1.11.13
+        version: 1.11.21
       echarts:
         specifier: ^6.0.0
         version: 6.0.0
@@ -3169,6 +3181,10 @@ packages:
 
   /date-fns@4.1.0:
     resolution: {integrity: sha512-Ukq0owbQXxa/U3EGtsdVBkR1w7KOQ5gIBqdH2hkvknzZPYvBxb/aa6E8L7tmjFtkwZBu3UXBbjIgPo/Ez4xaNg==}
+    dev: false
+
+  /dayjs@1.11.21:
+    resolution: {integrity: sha512-98IT+HOahAisibz/yjKbzuOBwYcjJ7BCLPzARyHiyEBmRz4fatF+KPJszEHXsGYjUG234aH/cOjW1wwTbKUZlA==}
     dev: false
 
   /debug@4.4.0:

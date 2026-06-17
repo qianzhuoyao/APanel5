@@ -4,9 +4,12 @@ export type BlueprintNodeCardProps = {
   nodeId: string;
   label: string;
   meta?: string;
-  variant?: "blueprint" | "logic" | "lifecycle" | "fetch" | "json";
+  /** 节点关键配置摘要，显示在名称下方 */
+  subtitle?: string;
+  /** 调试执行进度（如时钟 2/3） */
+  progressLabel?: string;
+  variant?: "blueprint" | "logic" | "and" | "lifecycle" | "fetch" | "json" | "clock";
   selected?: boolean;
-  /** 生命周期节点无输入口，隐藏左侧圆点避免误认作连接点 */
   hideLeadingDot?: boolean;
   onSelect?: (nodeId: string) => void;
 };
@@ -22,6 +25,11 @@ const variantStyle = {
     badge: "bg-sky-500/10 text-sky-700 dark:text-sky-300",
     dot: "bg-sky-500",
   },
+  and: {
+    accent: "border-l-indigo-500 dark:border-l-indigo-400",
+    badge: "bg-indigo-500/10 text-indigo-700 dark:text-indigo-300",
+    dot: "bg-indigo-500",
+  },
   lifecycle: {
     accent: "border-l-amber-500 dark:border-l-amber-400",
     badge: "bg-amber-500/10 text-amber-700 dark:text-amber-300",
@@ -36,6 +44,11 @@ const variantStyle = {
     accent: "border-l-teal-500 dark:border-l-teal-400",
     badge: "bg-teal-500/10 text-teal-700 dark:text-teal-300",
     dot: "bg-teal-500",
+  },
+  clock: {
+    accent: "border-l-rose-500 dark:border-l-rose-400",
+    badge: "bg-rose-500/10 text-rose-700 dark:text-rose-300",
+    dot: "bg-rose-500",
   },
 } as const;
 
@@ -61,6 +74,8 @@ export function BlueprintNodeCard({
   nodeId,
   label,
   meta,
+  subtitle,
+  progressLabel,
   variant = "blueprint",
   selected = false,
   hideLeadingDot = false,
@@ -108,7 +123,7 @@ export function BlueprintNodeCard({
           "nodrag flex w-full text-left outline-none transition-colors hover:bg-accent/30",
           "focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-inset",
           hideLeadingDot
-            ? "items-center px-2.5 py-2"
+            ? cn("px-2.5 py-2", subtitle ? "items-start" : "items-center")
             : "items-start gap-2 px-2.5 py-2"
         )}
         onClick={(e) => {
@@ -122,9 +137,32 @@ export function BlueprintNodeCard({
             aria-hidden="true"
           />
         ) : null}
-        <span className="min-w-0 flex-1 truncate text-[13px] font-medium leading-snug text-foreground">
-          {label}
-        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start gap-1.5">
+            <div className="min-w-0 flex-1 truncate text-[13px] font-medium leading-snug text-foreground">
+              {label}
+            </div>
+            {progressLabel ? (
+              <span
+                className={cn(
+                  "shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold leading-none",
+                  v.badge
+                )}
+                title="已发送信号次数"
+              >
+                {progressLabel}
+              </span>
+            ) : null}
+          </div>
+          {subtitle ? (
+            <div
+              className="mt-0.5 truncate font-mono text-[10px] leading-tight text-muted-foreground"
+              title={subtitle}
+            >
+              {subtitle}
+            </div>
+          ) : null}
+        </div>
       </button>
     </div>
   );

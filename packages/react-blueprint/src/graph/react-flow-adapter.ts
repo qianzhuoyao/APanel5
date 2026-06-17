@@ -11,6 +11,7 @@ export type BlueprintFlowNodeData = {
   nodeType: string;
   configSource?: BlueprintGraphNode["configSource"];
   viewElementId?: string;
+  viewElementIds?: string[];
   parentId?: string;
   nestedBlueprintId?: string;
   libraryBlueprintId?: string;
@@ -18,13 +19,21 @@ export type BlueprintFlowNodeData = {
   lifecyclePhase?: BlueprintGraphNode["lifecyclePhase"];
   fetchConfig?: BlueprintGraphNode["fetchConfig"];
   jsonConfig?: BlueprintGraphNode["jsonConfig"];
+  clockConfig?: BlueprintGraphNode["clockConfig"];
+  logicConfig?: BlueprintGraphNode["logicConfig"];
+  /** 调试执行时时钟节点已发送次数 */
+  clockEmitProgress?: { current: number; total: number } | null;
   /** 由画布注入，勿写入图数据 */
   isSelected?: boolean;
+  /** 调试执行时高亮当前执行到的节点 */
+  isExecutionActive?: boolean;
+  /** 调试执行时当前节点主输出信号类型 */
+  executionSignalKind?: "true" | "false" | null;
 };
 
 /** 与 BlueprintNodeCard 固定宽度一致，供 RF 在 measured 前计算连线路径 */
 export const BP_FLOW_NODE_WIDTH = 168;
-export const BP_FLOW_NODE_HEIGHT = 72;
+export const BP_FLOW_NODE_HEIGHT = 92;
 
 export type ReactFlowNodeView = {
   id: string;
@@ -53,6 +62,10 @@ export function toReactFlowNodes(document: BlueprintDocument): ReactFlowNodeView
         ? "blueprint"
         : n.role === "lifecycle"
           ? "lifecycle"
+          : n.role === "clock"
+            ? "clock"
+          : n.role === "and"
+            ? "and"
         : n.role === "fetch"
           ? "fetch"
           : n.role === "json"
@@ -70,12 +83,15 @@ export function toReactFlowNodes(document: BlueprintDocument): ReactFlowNodeView
       nodeType: n.nodeType,
       configSource: n.configSource,
       viewElementId: n.viewElementId,
+      viewElementIds: n.viewElementIds,
       parentId: n.parentId,
       nestedBlueprintId: n.nestedBlueprintId,
       libraryBlueprintId: n.libraryBlueprintId,
       lifecyclePhase: n.lifecyclePhase,
       fetchConfig: n.fetchConfig,
       jsonConfig: n.jsonConfig,
+      clockConfig: n.clockConfig,
+      logicConfig: n.logicConfig,
     },
   }));
 }

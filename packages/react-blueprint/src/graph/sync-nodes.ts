@@ -44,12 +44,14 @@ export function nodeStructureSignature(
     nodeType?: string;
     fetchConfig?: { url?: string; method?: string; apiBaseUrl?: string; swaggerDocsUrl?: string };
     jsonConfig?: { jsonString?: string };
+    logicConfig?: { sourceCode?: string };
+    clockConfig?: { intervalSeconds?: number; timeFormat?: string; outputCount?: number; emitImmediately?: boolean };
   }>
 ): string {
   return nodes
     .map(
       (n) =>
-        `${n.id}:${n.role}:${n.label}:${n.configSource ?? ""}:${n.lifecyclePhase ?? ""}:${n.libraryBlueprintId ?? ""}:${n.nodeType ?? ""}:${n.fetchConfig?.url ?? ""}:${n.fetchConfig?.method ?? ""}:${n.fetchConfig?.apiBaseUrl ?? ""}:${n.fetchConfig?.swaggerDocsUrl ?? ""}:${n.jsonConfig?.jsonString ?? ""}`
+        `${n.id}:${n.role}:${n.label}:${n.configSource ?? ""}:${n.lifecyclePhase ?? ""}:${n.libraryBlueprintId ?? ""}:${n.nodeType ?? ""}:${n.fetchConfig?.url ?? ""}:${n.fetchConfig?.method ?? ""}:${n.fetchConfig?.apiBaseUrl ?? ""}:${n.fetchConfig?.swaggerDocsUrl ?? ""}:${n.jsonConfig?.jsonString ?? ""}:${n.logicConfig?.sourceCode ?? ""}:${n.clockConfig?.intervalSeconds ?? ""}:${n.clockConfig?.timeFormat ?? ""}:${n.clockConfig?.outputCount ?? ""}:${n.clockConfig?.emitImmediately ?? ""}`
     )
     .sort()
     .join("|");

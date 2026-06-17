@@ -35,11 +35,11 @@ export function BlueprintNodeSwitchTaskDialog({
           <DialogTitle>节点正在执行任务</DialogTitle>
           <DialogDescription>
             节点 <span className="font-mono text-foreground">{fromNodeId}</span>{" "}
-            正在解析 Swagger 文档。是否切换到 {targetLabel}？
+            正在执行任务（Swagger 解析或请求调试）。是否切换到 {targetLabel}？
           </DialogDescription>
         </DialogHeader>
         <p className="text-xs text-muted-foreground">
-          选择「保留并切换」将在后台继续解析，回到该节点时仍能看到进度；选择「取消并切换」会中止解析任务。
+          选择「保留并切换」将在后台继续执行，回到该节点时仍能看到进度；选择「取消并切换」会中止当前任务。
         </p>
         <DialogFooter className="gap-2 sm:gap-0">
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

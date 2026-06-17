@@ -2,7 +2,9 @@ import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { cn } from "@arron/ui";
 
 import { resolveBlueprintNodeTypeLabel } from "../graph/document";
+import { resolveBlueprintNodeSummary } from "../graph/node-summary";
 import { useBlueprintNodeSelect } from "../BlueprintCanvasContext";
+import { resolveBlueprintNodeExecutionTone } from "../runtime/execution-overlay";
 import type { BlueprintFlowNodeData } from "../types";
 import { BlueprintNodeCard } from "./BlueprintNodeCard";
 
@@ -10,15 +12,21 @@ import { BlueprintNodeCard } from "./BlueprintNodeCard";
 export function LifecycleFlowNode({ id, data }: NodeProps) {
   const nodeData = data as BlueprintFlowNodeData;
   const onSelect = useBlueprintNodeSelect();
+  const executionTone = resolveBlueprintNodeExecutionTone(nodeData);
 
   return (
     <div
-      className={cn("bp-node bp-node--lifecycle", nodeData.isSelected && "bp-node--selected")}
+      className={cn(
+        "bp-node bp-node--lifecycle",
+        executionTone === "success" && "bp-node--execution-true",
+        executionTone === "error" && "bp-node--execution-false"
+      )}
     >
       <BlueprintNodeCard
         nodeId={id}
         label={nodeData.label}
         meta={resolveBlueprintNodeTypeLabel(nodeData)}
+        subtitle={resolveBlueprintNodeSummary(nodeData)}
         variant="lifecycle"
         selected={Boolean(nodeData.isSelected)}
         hideLeadingDot

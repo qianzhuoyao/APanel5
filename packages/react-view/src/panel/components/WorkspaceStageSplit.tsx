@@ -4,6 +4,7 @@ import {
   BluePrintReactRoot,
   BlueprintPanelToolbar,
   type BluePrintReactRootProps,
+  type BlueprintDebugToolbarProps,
   type BlueprintLibraryListItem,
 } from "@arron/react-blueprint";
 import {
@@ -18,10 +19,14 @@ type WorkspaceStageSplitProps = {
   blueprintProps: BluePrintReactRootProps;
   blueprintLibraryItems?: BlueprintLibraryListItem[];
   activeBlueprintLibraryId?: string | null;
+  currentBlueprintLabel?: string;
   onSelectBlueprintLibraryItem?: (id: string) => void;
   onRenameBlueprintLibraryItem?: (id: string, name: string) => void;
   onDeleteBlueprintLibraryItem?: (id: string) => void;
   onSaveBlueprint?: () => void;
+  onSyncBlueprint?: () => void;
+  canSyncBlueprint?: boolean;
+  blueprintDebug?: BlueprintDebugToolbarProps;
 };
 
 const MIN_BLUEPRINT_HEIGHT = 48;
@@ -31,19 +36,27 @@ function BlueprintPanel({
   blueprintProps,
   blueprintLibraryItems = [],
   activeBlueprintLibraryId = null,
+  currentBlueprintLabel,
   onSelectBlueprintLibraryItem,
   onRenameBlueprintLibraryItem,
   onDeleteBlueprintLibraryItem,
   onSaveBlueprint,
+  onSyncBlueprint,
+  canSyncBlueprint = false,
+  blueprintDebug,
 }: {
   blueprintOpen: boolean;
   blueprintProps: BluePrintReactRootProps;
   blueprintLibraryItems?: BlueprintLibraryListItem[];
   activeBlueprintLibraryId?: string | null;
+  currentBlueprintLabel?: string;
   onSelectBlueprintLibraryItem?: (id: string) => void;
   onRenameBlueprintLibraryItem?: (id: string, name: string) => void;
   onDeleteBlueprintLibraryItem?: (id: string) => void;
   onSaveBlueprint?: () => void;
+  onSyncBlueprint?: () => void;
+  canSyncBlueprint?: boolean;
+  blueprintDebug?: BlueprintDebugToolbarProps;
 }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const [layoutReady, setLayoutReady] = useState(false);
@@ -76,10 +89,14 @@ function BlueprintPanel({
         <BlueprintPanelToolbar
           items={blueprintLibraryItems}
           activeId={activeBlueprintLibraryId}
+          currentBlueprintLabel={currentBlueprintLabel}
           onSelectItem={(id) => onSelectBlueprintLibraryItem?.(id)}
           onRenameItem={(id, name) => onRenameBlueprintLibraryItem?.(id, name)}
           onDeleteItem={(id) => onDeleteBlueprintLibraryItem?.(id)}
           onSave={() => onSaveBlueprint?.()}
+          onSync={() => onSyncBlueprint?.()}
+          canSync={canSyncBlueprint}
+          debug={blueprintDebug}
         />
       </div>
       <div ref={wrapRef} className="relative min-h-0 flex-1">
@@ -101,10 +118,14 @@ export function WorkspaceStageSplit({
   blueprintProps,
   blueprintLibraryItems,
   activeBlueprintLibraryId,
+  currentBlueprintLabel,
   onSelectBlueprintLibraryItem,
   onRenameBlueprintLibraryItem,
   onDeleteBlueprintLibraryItem,
   onSaveBlueprint,
+  onSyncBlueprint,
+  canSyncBlueprint,
+  blueprintDebug,
 }: WorkspaceStageSplitProps) {
   const blueprintPanelRef = useRef<ComponentRef<typeof ResizablePanel>>(null);
 
@@ -143,10 +164,14 @@ export function WorkspaceStageSplit({
           blueprintProps={blueprintProps}
           blueprintLibraryItems={blueprintLibraryItems}
           activeBlueprintLibraryId={activeBlueprintLibraryId}
+          currentBlueprintLabel={currentBlueprintLabel}
           onSelectBlueprintLibraryItem={onSelectBlueprintLibraryItem}
           onRenameBlueprintLibraryItem={onRenameBlueprintLibraryItem}
           onDeleteBlueprintLibraryItem={onDeleteBlueprintLibraryItem}
           onSaveBlueprint={onSaveBlueprint}
+          onSyncBlueprint={onSyncBlueprint}
+          canSyncBlueprint={canSyncBlueprint}
+          blueprintDebug={blueprintDebug}
         />
       </ResizablePanel>
     </ResizablePanelGroup>

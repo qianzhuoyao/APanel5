@@ -8,16 +8,21 @@ import {
   SelectValue,
 } from "@arron/ui";
 import {
+  LIFECYCLE_NODE_TYPE,
   PAGE_LIFECYCLE_LABELS,
   PAGE_LIFECYCLE_PHASES,
   type PageLifecyclePhase,
 } from "@arron/blueprint-dsl";
 
 import { FetchNodeConfigPanel } from "./components/FetchNodeConfigPanel";
+import { ClockNodeConfigPanel } from "./components/ClockNodeConfigPanel";
 import { JsonNodeConfigPanel } from "./components/JsonNodeConfigPanel";
+import { LogicNodeConfigPanel } from "./components/LogicNodeConfigPanel";
+import { ViewElementMultiSelect } from "./components/ViewElementMultiSelect";
 import {
   patchNodeConfigSource,
   resolveBlueprintConfigSource,
+  resolveViewElementIds,
   type BlueprintConfigSource,
   type BlueprintGraphNode,
 } from "./graph/document";
@@ -36,6 +41,8 @@ export type BlueprintNodeConfigSidebarProps = {
   node: BlueprintGraphNode;
   viewElementOptions?: BlueprintViewElementOption[];
   blueprintLibraryOptions?: BlueprintLibraryOption[];
+  allowFalseSignalPropagation?: boolean;
+  onUpdateAllowFalseSignalPropagation?: (value: boolean) => void;
   onUpdateNode: (
     nodeId: string,
     patch: Partial<
@@ -46,11 +53,14 @@ export type BlueprintNodeConfigSidebarProps = {
         | "nodeType"
         | "configSource"
         | "viewElementId"
+        | "viewElementIds"
         | "nestedBlueprintId"
         | "libraryBlueprintId"
         | "lifecyclePhase"
         | "fetchConfig"
         | "jsonConfig"
+        | "logicConfig"
+        | "clockConfig"
       >
     >
   ) => void;
@@ -60,9 +70,15 @@ export function BlueprintNodeConfigSidebar({
   node,
   viewElementOptions = [],
   blueprintLibraryOptions = [],
+  allowFalseSignalPropagation = false,
+  onUpdateAllowFalseSignalPropagation,
   onUpdateNode,
 }: BlueprintNodeConfigSidebarProps) {
   const configSource = resolveBlueprintConfigSource(node);
+  const linkedViewElementIds = resolveViewElementIds(node);
+  const viewElementLabelById = new Map(
+    viewElementOptions.map((opt) => [opt.id, opt.label])
+  );
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-background text-foreground">
@@ -73,6 +89,8 @@ export function BlueprintNodeConfigSidebar({
             ? "蓝图节点"
             : node.role === "lifecycle"
               ? "生命周期节点"
+              : node.role === "and"
+                ? "并运算节点"
               : node.role === "fetch"
                 ? "数据源节点"
                 : node.role === "json"
@@ -101,8 +119,15 @@ export function BlueprintNodeConfigSidebar({
               const nextSource = value as BlueprintConfigSource;
               onUpdateNode(node.id, {
                 ...patchNodeConfigSource(node, nextSource),
-                viewElementId:
-                  nextSource === "view" ? node.viewElementId : undefined,
+                ...(nextSource === "view"
+                  ? {
+                      viewElementIds: linkedViewElementIds,
+                      viewElementId: undefined,
+                    }
+                  : {
+                      viewElementIds: undefined,
+                      viewElementId: undefined,
+                    }),
               });
             }}
           >
@@ -112,51 +137,45 @@ export function BlueprintNodeConfigSidebar({
             <SelectContent>
               <SelectItem value="blueprint">蓝图配置</SelectItem>
               <SelectItem value="logic">逻辑配置</SelectItem>
+              <SelectItem value="and">并运算</SelectItem>
               <SelectItem value="lifecycle">生命周期配置</SelectItem>
               <SelectItem value="fetch">数据源获取</SelectItem>
               <SelectItem value="json">JSON 节点</SelectItem>
+              <SelectItem value="clock">时钟</SelectItem>
               <SelectItem value="view">视图节点配置</SelectItem>
             </SelectContent>
           </Select>
         </label>
 
         {configSource === "view" ? (
-          <label className="block space-y-1">
+          <div className="block space-y-1">
             <span className="text-muted-foreground">关联视图节点</span>
-            <Select
-              value={node.viewElementId ?? "__none__"}
-              onValueChange={(value: string) =>
+            <ViewElementMultiSelect
+              options={viewElementOptions}
+              value={linkedViewElementIds}
+              placeholder="选择视图节点"
+              onChange={(next) =>
                 onUpdateNode(node.id, {
-                  viewElementId: value === "__none__" ? undefined : value,
+                  viewElementIds: next,
+                  viewElementId: undefined,
                   configSource: "view",
                 })
               }
-            >
-              <SelectTrigger className="h-8">
-                <SelectValue placeholder="选择视图节点" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__none__">未关联</SelectItem>
-                {viewElementOptions.map((opt) => (
-                  <SelectItem key={opt.id} value={opt.id}>
-                    {opt.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {!node.viewElementId ? (
+            />
+            {linkedViewElementIds.length === 0 ? (
               <p className="text-[11px] text-muted-foreground">
-                选择要绑定的视图画布节点；关联后仍在此配置蓝图节点，视图属性请在视图面板中编辑。
+                可多选视图画布节点；关联后仍在此配置蓝图节点，视图属性请在视图面板中编辑。
               </p>
             ) : (
               <p className="text-[11px] text-muted-foreground">
-                已关联视图节点「
-                {viewElementOptions.find((o) => o.id === node.viewElementId)?.label ??
-                  node.viewElementId}
-                」。
+                已关联 {linkedViewElementIds.length} 个视图节点：
+                {linkedViewElementIds
+                  .map((id) => viewElementLabelById.get(id) ?? id)
+                  .join("、")}
+                。
               </p>
             )}
-          </label>
+          </div>
         ) : null}
 
         {configSource === "blueprint" ? (
@@ -197,6 +216,19 @@ export function BlueprintNodeConfigSidebar({
                 请先从蓝图库选择要引用的蓝图。
               </p>
             ) : null}
+            <label className="flex items-start gap-2 pt-1">
+              <input
+                type="checkbox"
+                checked={allowFalseSignalPropagation}
+                onChange={(e) =>
+                  onUpdateAllowFalseSignalPropagation?.(e.target.checked)
+                }
+                className="mt-0.5 h-3.5 w-3.5 shrink-0 rounded border border-input"
+              />
+              <span className="text-[11px] leading-relaxed text-muted-foreground">
+                允许假信号传递：开启后，节点输出假信号时不会阻塞任务链，错误信息会继续向下游传递。
+              </span>
+            </label>
           </div>
         ) : null}
 
@@ -204,7 +236,10 @@ export function BlueprintNodeConfigSidebar({
           <div className="space-y-2 rounded-md border border-border/70 bg-muted/20 p-2.5">
             <div className="font-medium text-foreground">生命周期钩子</div>
             <p className="text-[11px] text-muted-foreground">
-              生命周期节点<strong>没有输入口</strong>，仅右侧输出口；当页面进入对应生命周期时，自动向下游发出真/假信号。
+              生命周期节点<strong>没有输入口</strong>，仅右侧输出口。
+              {node.lifecyclePhase === "blueprintActivated"
+                ? "当本蓝图被其他蓝图的蓝图配置节点引用且收到真信号时，自动向下游发出真信号，输出值为父级传入的输入数据。"
+                : "当页面进入对应生命周期时，自动向下游发出真/假信号。"}
             </p>
             <label className="block space-y-1">
               <span className="text-muted-foreground">监听阶段</span>
@@ -212,6 +247,8 @@ export function BlueprintNodeConfigSidebar({
                 value={node.lifecyclePhase ?? "mounted"}
                 onValueChange={(value: string) =>
                   onUpdateNode(node.id, {
+                    role: "lifecycle",
+                    nodeType: LIFECYCLE_NODE_TYPE,
                     lifecyclePhase: value as PageLifecyclePhase,
                     configSource: "lifecycle",
                   })
@@ -245,24 +282,49 @@ export function BlueprintNodeConfigSidebar({
           <JsonNodeConfigPanel node={node} onUpdateNode={onUpdateNode} />
         ) : null}
 
-        {configSource === "logic" ? (
+        {configSource === "clock" ? (
+          <ClockNodeConfigPanel node={node} onUpdateNode={onUpdateNode} />
+        ) : null}
+
+        {configSource === "and" ? (
           <div className="space-y-2 rounded-md border border-border/70 bg-muted/20 p-2.5">
-            <div className="font-medium text-foreground">逻辑属性</div>
-            <label className="block space-y-1">
-              <span className="text-muted-foreground">逻辑类型</span>
-              <Input
-                value={node.nodeType}
-                onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                  onUpdateNode(node.id, { nodeType: e.target.value })
-                }
-                className="h-8"
-              />
-            </label>
+            <div className="font-medium text-foreground">并运算</div>
+            <p className="text-[11px] text-muted-foreground">
+              左侧两个输入口 <strong>inA</strong>、<strong>inB</strong>。
+              每个输入口可连 n 条线，同端口任一为真则该端口视为真（或）。
+              仅当 <strong>inA 与 inB 均为真信号</strong> 时，从输出口发出真信号；
+              否则发出假信号。
+            </p>
+          </div>
+        ) : null}
+
+        {configSource === "logic" ? (
+          <>
+            <LogicNodeConfigPanel node={node} onUpdateNode={onUpdateNode} />
             {node.parentId ? (
               <p className="text-[11px] text-muted-foreground">
                 所属蓝图节点：{node.parentId}
               </p>
             ) : null}
+          </>
+        ) : null}
+
+        {configSource !== "blueprint" && configSource !== "and" ? (
+          <div className="space-y-2 rounded-md border border-border/70 bg-muted/20 p-2.5">
+            <div className="font-medium text-foreground">任务链执行</div>
+            <label className="flex items-start gap-2">
+              <input
+                type="checkbox"
+                checked={allowFalseSignalPropagation}
+                onChange={(e) =>
+                  onUpdateAllowFalseSignalPropagation?.(e.target.checked)
+                }
+                className="mt-0.5 h-3.5 w-3.5 shrink-0 rounded border border-input"
+              />
+              <span className="text-[11px] leading-relaxed text-muted-foreground">
+                允许假信号传递：默认假信号会阻塞任务链；开启后继续向下游传递假信号与错误信息。
+              </span>
+            </label>
           </div>
         ) : null}
       </div>

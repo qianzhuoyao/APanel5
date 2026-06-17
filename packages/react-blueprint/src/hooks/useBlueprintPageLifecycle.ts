@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import {
   BlueprintGraphRunner,
+  detectBlueprintReferenceCycle,
   type LibraryBlueprintResolver,
   type PageLifecyclePhase,
 } from "@arron/blueprint-dsl";
@@ -29,19 +30,38 @@ export type UseBlueprintPageLifecycleOptions = {
   resolveLibraryBlueprint?: LibraryBlueprintResolver;
   /** 蓝图库 id -> 名称，用于 signal 中的 blueprintName */
   libraryNameById?: ReadonlyMap<string, string>;
+  /** 当前蓝图在蓝图库中的 id；未入库时为 null */
+  rootLibraryBlueprintId?: string | null;
+  /** 检测到蓝图相互引用死循环时回调 */
+  onExecutionBlocked?: (message: string) => void;
 };
 
 type RunnerOptions = Pick<
   UseBlueprintPageLifecycleOptions,
-  "resolveLibraryBlueprint" | "libraryNameById"
+  | "resolveLibraryBlueprint"
+  | "libraryNameById"
+  | "rootLibraryBlueprintId"
+  | "onExecutionBlocked"
 >;
+
+function resolveBlueprintName(
+  libraryNameById: ReadonlyMap<string, string> | undefined,
+  id: string
+) {
+  return libraryNameById?.get(id) ?? id;
+}
 
 function createRunner(graph: BlueprintGraph, options: RunnerOptions) {
   return new BlueprintGraphRunner(
     documentToRunnableGraph(graph.document, {
       libraryNameById: options.libraryNameById,
     }),
-    { resolveLibraryBlueprint: options.resolveLibraryBlueprint }
+    {
+      resolveLibraryBlueprint: options.resolveLibraryBlueprint,
+      rootLibraryBlueprintId: options.rootLibraryBlueprintId,
+      resolveBlueprintName: (id) =>
+        resolveBlueprintName(options.libraryNameById, id),
+    }
   );
 }
 
@@ -50,6 +70,22 @@ async function emitPhases(
   phases: PageLifecyclePhase[],
   options: RunnerOptions
 ) {
+  if (options.resolveLibraryBlueprint) {
+    const result = await detectBlueprintReferenceCycle({
+      rootGraph: documentToRunnableGraph(graph.document, {
+        libraryNameById: options.libraryNameById,
+      }),
+      rootLibraryBlueprintId: options.rootLibraryBlueprintId,
+      resolveLibraryBlueprint: options.resolveLibraryBlueprint,
+      resolveBlueprintName: (id) =>
+        resolveBlueprintName(options.libraryNameById, id),
+    });
+    if (!result.ok) {
+      options.onExecutionBlocked?.(result.message);
+      return;
+    }
+  }
+
   const runner = createRunner(graph, options);
   for (const phase of phases) {
     await runner.emitLifecycle(phase);
@@ -66,6 +102,8 @@ export function useBlueprintPageLifecycle({
   onUpdated,
   resolveLibraryBlueprint,
   libraryNameById,
+  rootLibraryBlueprintId = null,
+  onExecutionBlocked,
 }: UseBlueprintPageLifecycleOptions) {
   const graphRef = useRef(graph);
   graphRef.current = graph;
@@ -73,8 +111,15 @@ export function useBlueprintPageLifecycle({
   const runnerOptionsRef = useRef<RunnerOptions>({
     resolveLibraryBlueprint,
     libraryNameById,
+    rootLibraryBlueprintId,
+    onExecutionBlocked,
   });
-  runnerOptionsRef.current = { resolveLibraryBlueprint, libraryNameById };
+  runnerOptionsRef.current = {
+    resolveLibraryBlueprint,
+    libraryNameById,
+    rootLibraryBlueprintId,
+    onExecutionBlocked,
+  };
 
   useEffect(() => {
     void emitPhases(graphRef.current, PAGE_BOOT_PHASES, runnerOptionsRef.current);

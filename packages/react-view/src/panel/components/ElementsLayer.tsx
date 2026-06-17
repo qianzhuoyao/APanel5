@@ -407,9 +407,22 @@ function VideoNodeContent({
   );
 }
 
+function hasBackgroundImage(element: PanelElement) {
+  const style = element.style ?? {};
+  return Boolean(style.backgroundImage || style.backgroundImageRemoteUrl);
+}
+
+function ImageNodeContent({ element }: { element: PanelElement }) {
+  if (hasBackgroundImage(element)) return null;
+  return (
+    <div className="flex h-full w-full items-center justify-center rounded border border-dashed border-border/70 bg-muted/15 px-2 text-[11px] text-muted-foreground">
+      图片占位
+    </div>
+  );
+}
+
 function EmptyNodePlaceholder({ element }: { element: PanelElement }) {
   const labelMap: Record<string, string> = {
-    image: "图片占位",
     video: "视频占位",
     audio: "音频占位",
   };
@@ -802,6 +815,8 @@ export function ElementsLayer({
               <VideoNodeContent element={el} selected={isSelected} />
             ) : el.materialType === "geometry" ? (
               <GeometryNodeContent element={el} />
+            ) : el.materialType === "image" ? (
+              <ImageNodeContent element={el} />
             ) : (
               <EmptyNodePlaceholder element={el} />
             )}

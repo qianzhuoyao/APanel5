@@ -12,6 +12,7 @@ import {
   ConnectionMode,
   useReactFlow,
   type Node,
+  type Edge,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import "./blueprint.css";
@@ -29,6 +30,9 @@ import { useBlueprintFlowColorMode } from "./hooks/useBlueprintFlowColorMode";
 import { useBlueprintFlowState } from "./hooks/useBlueprintFlowState";
 import { useBlueprintFlowViewport } from "./hooks/useBlueprintFlowViewport";
 import { clientToFlowNodePosition } from "./flowCoordinates";
+import type { BlueprintExecutionOverlay } from "./runtime/execution-overlay";
+
+export type { BlueprintExecutionOverlay } from "./runtime/execution-overlay";
 
 export type { BlueprintNodeConfigSidebarProps, BlueprintViewElementOption, BlueprintLibraryOption } from "./BlueprintNodeConfigSidebar";
 export { BlueprintNodeConfigSidebar } from "./BlueprintNodeConfigSidebar";
@@ -39,6 +43,8 @@ export type BluePrintReactRootProps = {
   onGraphChange: Dispatch<SetStateAction<BlueprintGraph>>;
   selectedNodeId?: string | null;
   onSelectNode?: (nodeId: string | null) => void;
+  /** 调试执行时的画布高亮（节点 + 边线信号色） */
+  executionOverlay?: BlueprintExecutionOverlay | null;
   /** 蓝图库 id -> 名称，用于画布节点展示引用蓝图名 */
   libraryNameById?: ReadonlyMap<string, string>;
 };
@@ -53,6 +59,7 @@ function BlueprintCanvas({
   graph,
   onGraphChange,
   selectedNodeId = null,
+  executionOverlay = null,
   onSelectNode,
   libraryNameById,
   containerRef,
@@ -78,6 +85,7 @@ function BlueprintCanvas({
   } = useBlueprintFlowState({
     graph,
     selectedNodeId,
+    executionOverlay,
     libraryNameById,
     onGraphChange: applyGraphChange,
     onSelectNode,
@@ -117,6 +125,23 @@ function BlueprintCanvas({
     [onSelectNode]
   );
 
+  const onEdgeContextMenu = useCallback(
+    (event: MouseEvent | React.MouseEvent, edge: Edge) => {
+      event.preventDefault();
+      setMenu({
+        kind: "edge",
+        clientX: event.clientX,
+        clientY: event.clientY,
+        edgeId: edge.id,
+      });
+    },
+    []
+  );
+
+  const onEdgeClick = useCallback(() => {
+    setMenu(null);
+  }, []);
+
   const onPaneClick = useCallback(() => {
     setMenu(null);
     onSelectNode?.(null);
@@ -151,6 +176,13 @@ function BlueprintCanvas({
     [onSelectNode, selectedNodeId, setGraph]
   );
 
+  const handleDeleteEdge = useCallback(
+    (edgeId: string) => {
+      setGraph((prev) => prev.removeEdge(edgeId));
+    },
+    [setGraph]
+  );
+
   return (
     <>
       <ReactFlow
@@ -166,10 +198,13 @@ function BlueprintCanvas({
         isValidConnection={isValidConnection}
         onPaneContextMenu={onPaneContextMenu}
         onNodeContextMenu={onNodeContextMenu}
+        onEdgeContextMenu={onEdgeContextMenu}
+        onEdgeClick={onEdgeClick}
         onNodeDragStop={onNodeDragStop}
         onPaneClick={onPaneClick}
         nodesConnectable
         elementsSelectable
+        edgesFocusable
         connectionMode={ConnectionMode.Strict}
         defaultEdgeOptions={BLUEPRINT_DEFAULT_EDGE_OPTIONS}
         selectNodesOnDrag={false}
@@ -182,6 +217,7 @@ function BlueprintCanvas({
         onClose={() => setMenu(null)}
         onAddBlueprintNode={handleAddBlueprintNode}
         onDeleteNode={handleDeleteNode}
+        onDeleteEdge={handleDeleteEdge}
       />
     </>
   );
@@ -192,6 +228,7 @@ export const BluePrintReactRoot: FC<BluePrintReactRootProps> = ({
   graph,
   onGraphChange,
   selectedNodeId,
+  executionOverlay,
   onSelectNode,
   libraryNameById,
 }) => {
@@ -216,6 +253,7 @@ export const BluePrintReactRoot: FC<BluePrintReactRootProps> = ({
             graph={graph}
             onGraphChange={onGraphChange}
             selectedNodeId={selectedNodeId}
+            executionOverlay={executionOverlay}
             onSelectNode={onSelectNode}
             libraryNameById={libraryNameById}
           />

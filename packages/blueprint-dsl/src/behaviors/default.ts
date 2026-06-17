@@ -8,6 +8,7 @@ import type { LifecycleSignal } from "../lifecycle.js";
 import { BehaviorRegistry } from "../core/behavior-registry.js";
 
 const LIFECYCLE_SIGNAL_KEY = "__lifecycleSignal";
+const BLUEPRINT_ACTIVATION_INPUT_KEY = "__blueprintActivationInput";
 
 export function registerDefaultBehaviors(registry: BehaviorRegistry) {
   registry.registerJS("logic-noop", async ({ io }) => {
@@ -28,6 +29,11 @@ export function registerDefaultBehaviors(registry: BehaviorRegistry) {
       | undefined;
     if (!lifecycle) {
       io.setOutput("out", createFalseSignal("生命周期信号缺失"));
+    } else if (lifecycle.phase === "blueprintActivated") {
+      io.setOutput(
+        "out",
+        createTrueSignal(token.scope.vars.get(BLUEPRINT_ACTIVATION_INPUT_KEY))
+      );
     } else {
       io.setOutput("out", createTrueSignal(lifecycle));
     }
@@ -35,4 +41,4 @@ export function registerDefaultBehaviors(registry: BehaviorRegistry) {
   });
 }
 
-export { LIFECYCLE_SIGNAL_KEY };
+export { LIFECYCLE_SIGNAL_KEY, BLUEPRINT_ACTIVATION_INPUT_KEY };

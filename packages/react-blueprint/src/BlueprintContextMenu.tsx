@@ -11,7 +11,13 @@ export type BlueprintContextMenuState =
       clientX: number;
       clientY: number;
       nodeId: string;
-      role: "blueprint" | "logic" | "lifecycle" | "fetch" | "json";
+      role: "blueprint" | "logic" | "and" | "lifecycle" | "fetch" | "json" | "clock";
+    }
+  | {
+      kind: "edge";
+      clientX: number;
+      clientY: number;
+      edgeId: string;
     };
 
 type BlueprintContextMenuProps = {
@@ -19,6 +25,7 @@ type BlueprintContextMenuProps = {
   onClose: () => void;
   onAddBlueprintNode: (clientX: number, clientY: number) => void;
   onDeleteNode: (nodeId: string) => void;
+  onDeleteEdge: (edgeId: string) => void;
 };
 
 export function BlueprintContextMenu({
@@ -26,6 +33,7 @@ export function BlueprintContextMenu({
   onClose,
   onAddBlueprintNode,
   onDeleteNode,
+  onDeleteEdge,
 }: BlueprintContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -79,7 +87,20 @@ export function BlueprintContextMenu({
             onClose();
           }}
         >
-          删除
+          删除节点
+        </button>
+      ) : null}
+
+      {menu.kind === "edge" ? (
+        <button
+          type="button"
+          className="bp-context-menu__item bp-context-menu__item--danger"
+          onClick={() => {
+            onDeleteEdge(menu.edgeId);
+            onClose();
+          }}
+        >
+          删除连线
         </button>
       ) : null}
     </div>

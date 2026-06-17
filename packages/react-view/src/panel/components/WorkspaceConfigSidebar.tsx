@@ -1,8 +1,11 @@
 import { useMemo } from "react";
 
 import {
+  BlueprintExecutionLogPanel,
   BlueprintNodeConfigSidebar,
   type BlueprintGraphNode,
+  type ExecutionLogSettings,
+  type ExecutionTraceEntry,
 } from "@arron/react-blueprint";
 import {
   Empty,
@@ -15,14 +18,30 @@ import type { PanelConfigSidebarProps } from "./PanelConfigSidebar";
 import { PanelConfigSidebar } from "./PanelConfigSidebar";
 import type { PanelElement } from "../types";
 
-export type WorkspaceConfigFocus = "view" | "blueprint";
+export type WorkspaceConfigFocus = "view" | "blueprint" | "blueprint-log";
+
+export type BlueprintExecutionLogViewProps = {
+  entries: ExecutionTraceEntry[];
+  settings: ExecutionLogSettings;
+  onUpdateSettings: (patch: Partial<ExecutionLogSettings>) => void;
+  onSave: () => void;
+  onExport: () => void;
+  onClear: () => void;
+  onClearAllSaved?: () => void | Promise<void>;
+  onApplyRetention: () => void;
+  hasSavedRuns?: boolean;
+  lifecyclePhase?: string;
+};
 
 export type WorkspaceConfigSidebarProps = Omit<
   PanelConfigSidebarProps,
   "selectedElement" | "selectedElements"
 > & {
   configFocus: WorkspaceConfigFocus;
+  executionLog?: BlueprintExecutionLogViewProps;
   selectedBlueprintNode: BlueprintGraphNode | null;
+  allowFalseSignalPropagation?: boolean;
+  onUpdateAllowFalseSignalPropagation?: (value: boolean) => void;
   onUpdateBlueprintNode: (
     nodeId: string,
     patch: Partial<
@@ -33,11 +52,14 @@ export type WorkspaceConfigSidebarProps = Omit<
         | "nodeType"
         | "configSource"
         | "viewElementId"
+        | "viewElementIds"
         | "nestedBlueprintId"
         | "libraryBlueprintId"
         | "lifecyclePhase"
         | "fetchConfig"
         | "jsonConfig"
+        | "logicConfig"
+        | "clockConfig"
       >
     >
   ) => void;
@@ -49,7 +71,10 @@ export type WorkspaceConfigSidebarProps = Omit<
 
 export function WorkspaceConfigSidebar({
   configFocus,
+  executionLog,
   selectedBlueprintNode,
+  allowFalseSignalPropagation = false,
+  onUpdateAllowFalseSignalPropagation,
   onUpdateBlueprintNode,
   blueprintLibraryOptions = [],
   selectedElement,
@@ -72,6 +97,23 @@ export function WorkspaceConfigSidebar({
         {...viewPanelProps}
         selectedElement={selectedElement}
         selectedElements={selectedElements}
+      />
+    );
+  }
+
+  if (configFocus === "blueprint-log" && executionLog) {
+    return (
+      <BlueprintExecutionLogPanel
+        entries={executionLog.entries}
+        settings={executionLog.settings}
+        onUpdateSettings={executionLog.onUpdateSettings}
+        onSave={() => void executionLog.onSave()}
+        onExport={executionLog.onExport}
+        onClear={executionLog.onClear}
+        onClearAllSaved={executionLog.onClearAllSaved}
+        hasSavedRuns={executionLog.hasSavedRuns}
+        onApplyRetention={() => void executionLog.onApplyRetention()}
+        lifecyclePhase={executionLog.lifecyclePhase}
       />
     );
   }
@@ -106,6 +148,8 @@ export function WorkspaceConfigSidebar({
   return (
     <BlueprintNodeConfigSidebar
       node={selectedBlueprintNode}
+      allowFalseSignalPropagation={allowFalseSignalPropagation}
+      onUpdateAllowFalseSignalPropagation={onUpdateAllowFalseSignalPropagation}
       viewElementOptions={viewElementOptions}
       blueprintLibraryOptions={blueprintLibraryOptions}
       onUpdateNode={onUpdateBlueprintNode}

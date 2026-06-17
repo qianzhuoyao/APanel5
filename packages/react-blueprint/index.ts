@@ -10,8 +10,25 @@ export * from "./src/graph";
 export { resolveBlueprintConfigSource, resolveBlueprintNodeTypeLabel } from "./src/graph/document";
 export type { BlueprintConfigSource } from "./src/graph/document";
 export { documentToRunnableGraph } from "./src/runtime/document-to-runnable-graph";
-export { useBlueprintPageLifecycle } from "./src/hooks/useBlueprintPageLifecycle";
+export { BlueprintExecutionLogPanel } from "./src/components/BlueprintExecutionLogPanel";
+export type { BlueprintExecutionLogPanelProps } from "./src/components/BlueprintExecutionLogPanel";
+export { useBlueprintDebugSession } from "./src/hooks/useBlueprintDebugSession";
+export type {
+  LifecycleNodeOption,
+  UseBlueprintDebugSessionOptions,
+  UseBlueprintDebugSessionReturn,
+} from "./src/hooks/useBlueprintDebugSession";
+export {
+  listExecutionRunRecords,
+  putExecutionRunRecord,
+  purgeExecutionRunsOlderThan,
+  clearAllExecutionRunRecords,
+  trimExecutionRunRecordsToMax,
+  downloadExecutionRunExport,
+} from "./src/library/execution-log-db";
 export type { UseBlueprintPageLifecycleOptions } from "./src/hooks/useBlueprintPageLifecycle";
+export { useBlueprintPageLifecycle } from "./src/hooks/useBlueprintPageLifecycle";
+export { stopAllClockSchedules } from "@arron/blueprint-dsl";
 export { BlueprintNodeSwitchTaskDialog } from "./src/components/BlueprintNodeSwitchTaskDialog";
 export type { BlueprintNodeSwitchTaskDialogProps } from "./src/components/BlueprintNodeSwitchTaskDialog";
 export { useBlueprintNodeSelectionGuard } from "./src/hooks/useBlueprintNodeSelectionGuard";
@@ -25,9 +42,18 @@ export type {
   BlueprintPanelToolbarProps,
   BlueprintRenameDialogProps,
   BlueprintDeleteDialogProps,
+  BlueprintDebugToolbarProps,
 } from "./src/components/BlueprintPanelToolbar";
+export type { ExecutionLogSettings } from "./src/library/execution-log-settings";
+export type {
+  ExecutionTraceEntry,
+  ExecutionRunRecord,
+} from "@arron/blueprint-dsl";
+export type { BlueprintExecutionOverlay } from "./src/runtime/execution-overlay";
+export { buildExecutionOverlay, shouldHaltDebugOnFalseSignal } from "./src/runtime/execution-overlay";
 export * from "./src/library/types";
 export {
+  blueprintDocumentsEqual,
   buildBlueprintExportPayload,
   buildLibraryRecord,
   createLibraryBlueprintId,

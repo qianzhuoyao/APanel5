@@ -83,6 +83,48 @@
   stroke-width: 3px !important;
 }
 
+.bp-canvas .react-flow__edge.bp-edge--signal-true path.react-flow__edge-path,
+.bp-flow .react-flow__edge.bp-edge--signal-true path.react-flow__edge-path,
+[data-workspace-region="blueprint"] .react-flow__edge.bp-edge--signal-true path.react-flow__edge-path {
+  stroke: #16a34a !important;
+  stroke-width: 3px !important;
+}
+
+.bp-canvas .react-flow__edge.bp-edge--signal-false path.react-flow__edge-path,
+.bp-flow .react-flow__edge.bp-edge--signal-false path.react-flow__edge-path,
+[data-workspace-region="blueprint"] .react-flow__edge.bp-edge--signal-false path.react-flow__edge-path {
+  stroke: #dc2626 !important;
+  stroke-width: 3px !important;
+}
+
+.bp-canvas .react-flow__edge.bp-edge--signal-true .react-flow__arrowhead polyline,
+.bp-flow .react-flow__edge.bp-edge--signal-true .react-flow__arrowhead polyline,
+[data-workspace-region="blueprint"] .react-flow__edge.bp-edge--signal-true .react-flow__arrowhead polyline {
+  stroke: #16a34a;
+  fill: #16a34a;
+}
+
+.bp-canvas .react-flow__edge.bp-edge--signal-false .react-flow__arrowhead polyline,
+.bp-flow .react-flow__edge.bp-edge--signal-false .react-flow__arrowhead polyline,
+[data-workspace-region="blueprint"] .react-flow__edge.bp-edge--signal-false .react-flow__arrowhead polyline {
+  stroke: #dc2626;
+  fill: #dc2626;
+}
+
+.bp-canvas .react-flow__edge.bp-edge--signal-clock-blue path.react-flow__edge-path,
+.bp-flow .react-flow__edge.bp-edge--signal-clock-blue path.react-flow__edge-path,
+[data-workspace-region="blueprint"] .react-flow__edge.bp-edge--signal-clock-blue path.react-flow__edge-path {
+  stroke: #2563eb !important;
+  stroke-width: 3px !important;
+}
+
+.bp-canvas .react-flow__edge.bp-edge--signal-clock-blue .react-flow__arrowhead polyline,
+.bp-flow .react-flow__edge.bp-edge--signal-clock-blue .react-flow__arrowhead polyline,
+[data-workspace-region="blueprint"] .react-flow__edge.bp-edge--signal-clock-blue .react-flow__arrowhead polyline {
+  stroke: #2563eb;
+  fill: #2563eb;
+}
+
 .bp-canvas .react-flow__arrowhead polyline,
 .bp-flow .react-flow__arrowhead polyline,
 [data-workspace-region="blueprint"] .react-flow__arrowhead polyline {
@@ -101,9 +143,10 @@
 .bp-canvas .react-flow__edge-interaction,
 .bp-flow .react-flow__edge-interaction,
 [data-workspace-region="blueprint"] .react-flow__edge-interaction {
-  pointer-events: none;
+  pointer-events: stroke;
   stroke: transparent !important;
   stroke-opacity: 0 !important;
+  stroke-width: 18px !important;
 }
 
 .bp-canvas .react-flow__edge.selected .react-flow__edge-interaction,
@@ -167,6 +210,46 @@
 
 .bp-node--selected .bp-flow-handle--source {
   background: hsl(var(--primary));
+}
+
+.bp-node--execution-true .bp-node-card {
+  border-color: rgb(22 163 74 / 0.65);
+  box-shadow:
+    0 0 0 1px rgb(22 163 74 / 0.35),
+    0 4px 14px rgb(22 163 74 / 0.18);
+}
+
+.bp-node--execution-true .bp-flow-handle {
+  border-color: hsl(var(--card));
+  box-shadow: 0 0 0 2px rgb(22 163 74 / 0.45);
+}
+
+.bp-node--execution-true .bp-flow-handle--source {
+  background: #16a34a;
+}
+
+.bp-node--execution-true .bp-flow-handle--target {
+  background: rgb(22 163 74 / 0.55);
+}
+
+.bp-node--execution-false .bp-node-card {
+  border-color: hsl(var(--destructive) / 0.65);
+  box-shadow:
+    0 0 0 1px hsl(var(--destructive) / 0.4),
+    0 4px 14px hsl(var(--destructive) / 0.16);
+}
+
+.bp-node--execution-false .bp-flow-handle {
+  border-color: hsl(var(--card));
+  box-shadow: 0 0 0 2px hsl(var(--destructive) / 0.4);
+}
+
+.bp-node--execution-false .bp-flow-handle--source {
+  background: hsl(var(--destructive));
+}
+
+.bp-node--execution-false .bp-flow-handle--target {
+  background: hsl(var(--destructive) / 0.55);
 }
 
 /* 生命周期节点无输入口：隐藏任何左侧/目标连接点（含旧数据产生的幽灵 handle） */

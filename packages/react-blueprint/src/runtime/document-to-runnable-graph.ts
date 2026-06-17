@@ -16,6 +16,8 @@ export function documentToRunnableGraph(
       libraryBlueprintId: node.libraryBlueprintId,
       fetchConfig: node.fetchConfig,
       jsonConfig: node.jsonConfig,
+      logicConfig: node.logicConfig,
+      clockConfig: node.clockConfig,
       blueprintName: node.libraryBlueprintId
         ? (options?.libraryNameById?.get(node.libraryBlueprintId) ?? node.label)
         : undefined,
@@ -26,5 +28,6 @@ export function documentToRunnableGraph(
       sourceHandle: edge.sourceHandle,
       targetHandle: edge.targetHandle,
     })),
+    allowFalseSignalPropagation: document.allowFalseSignalPropagation,
   };
 }

@@ -80,18 +80,88 @@ function joinFetchUrl(base: string, path: string): string {
   return `${normalizedBase}${normalizedPath}`;
 }
 
+function getUrlAuthorityPart(url: string): string | null {
+  const trimmed = url.trim();
+  if (!trimmed || trimmed.startsWith("/")) return null;
+  const slashIndex = trimmed.indexOf("/");
+  return slashIndex === -1 ? trimmed : trimmed.slice(0, slashIndex);
+}
+
+function isAbsoluteHostAuthority(authority: string): boolean {
+  if (/^localhost$/i.test(authority)) return true;
+  if (/^localhost:\d+$/i.test(authority)) return true;
+  if (/^\d{1,3}(?:\.\d{1,3}){3}$/.test(authority)) return true;
+  if (/^\d{1,3}(?:\.\d{1,3}){3}:\d+$/.test(authority)) return true;
+  if (/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/i.test(authority) && authority.includes(".")) {
+    return true;
+  }
+  if (/^[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?\.[a-z]{2,}(?::\d+)?$/i.test(authority)) {
+    return true;
+  }
+  if (/^[a-z0-9-]+:\d+$/i.test(authority)) return true;
+  return false;
+}
+
+function hasExplicitUrlScheme(url: string): boolean {
+  return /^[a-z][a-z0-9+.-]*:\/\//i.test(url) || url.startsWith("//");
+}
+
+/** 解析 fetch 节点的最终请求 URL，避免对已有主机信息的地址重复拼接 apiBaseUrl */
+export function resolveFetchRequestUrl(
+  config: Pick<FetchRequestConfig, "url" | "apiBaseUrl">
+): string {
+  const rawUrl = config.url?.trim() ?? "";
+  if (!rawUrl) {
+    throw new Error("请求 URL 未配置");
+  }
+
+  if (hasExplicitUrlScheme(rawUrl)) {
+    return rawUrl;
+  }
+
+  const authority = getUrlAuthorityPart(rawUrl);
+  if (authority && isAbsoluteHostAuthority(authority)) {
+    return `http://${rawUrl}`;
+  }
+
+  const apiBaseUrl = config.apiBaseUrl?.trim();
+  if (!apiBaseUrl) {
+    return rawUrl;
+  }
+
+  return joinFetchUrl(apiBaseUrl, rawUrl);
+}
+
+export type ExecuteFetchOptions = {
+  signal?: AbortSignal;
+  /** 调试模式下 HTTP 非 2xx 仍返回响应体，不抛错 */
+  allowHttpError?: boolean;
+};
+
+function linkAbortSignal(
+  controller: AbortController,
+  external?: AbortSignal
+): () => void {
+  if (!external) return () => {};
+  if (external.aborted) {
+    controller.abort();
+    return () => {};
+  }
+  const onAbort = () => controller.abort();
+  external.addEventListener("abort", onAbort);
+  return () => external.removeEventListener("abort", onAbort);
+}
+
 export async function executeFetch(
-  config: FetchRequestConfig
+  config: FetchRequestConfig,
+  options?: ExecuteFetchOptions
 ): Promise<FetchResultValue> {
   const rawUrl = config.url?.trim();
   if (!rawUrl) {
     throw new Error("请求 URL 未配置");
   }
 
-  const url =
-    rawUrl.includes("://") || !config.apiBaseUrl?.trim()
-      ? rawUrl
-      : joinFetchUrl(config.apiBaseUrl, rawUrl);
+  const url = resolveFetchRequestUrl(config);
 
   const method = config.method ?? "GET";
   const hasBody = method !== "GET" && method !== "HEAD";
@@ -100,6 +170,7 @@ export async function executeFetch(
 
   const timeoutMs = config.timeoutMs ?? 30000;
   const controller = new AbortController();
+  const unlinkExternal = linkAbortSignal(controller, options?.signal);
   const timer =
     timeoutMs > 0
       ? setTimeout(() => controller.abort(), timeoutMs)
@@ -133,12 +204,16 @@ export async function executeFetch(
         try {
           data = JSON.parse(text) as unknown;
         } catch {
-          throw new Error("响应不是有效的 JSON");
+          if (options?.allowHttpError) {
+            data = text;
+          } else {
+            throw new Error("响应不是有效的 JSON");
+          }
         }
       }
     }
 
-    if (!response.ok) {
+    if (!response.ok && !options?.allowHttpError) {
       const detail =
         typeof data === "string"
           ? data.slice(0, 200)
@@ -156,10 +231,14 @@ export async function executeFetch(
     };
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") {
+      if (options?.signal?.aborted) {
+        throw new Error("请求已中止");
+      }
       throw new Error(`请求超时（${timeoutMs}ms）`);
     }
     throw error;
   } finally {
+    unlinkExternal();
     if (timer) clearTimeout(timer);
   }
 }

@@ -1,8 +1,9 @@
 import { useCallback, useRef, useState } from "react";
 
 import {
+  cancelFetchDebugTask,
   cancelSwaggerLoadTask,
-  findActiveSwaggerLoadTaskNodeId,
+  findActiveFetchConfigTaskNodeId,
 } from "../fetch-config-task-store";
 
 export type PendingBlueprintNodeSwitch = {
@@ -22,7 +23,7 @@ export function useBlueprintNodeSelectionGuard(
   onSelectNodeRef.current = onSelectNode;
 
   const requestSelectNode = useCallback((nodeId: string | null) => {
-    const activeTaskNodeId = findActiveSwaggerLoadTaskNodeId();
+    const activeTaskNodeId = findActiveFetchConfigTaskNodeId();
     if (
       activeTaskNodeId &&
       selectedNodeIdRef.current === activeTaskNodeId &&
@@ -43,6 +44,7 @@ export function useBlueprintNodeSelectionGuard(
   const cancelTaskAndSwitch = useCallback(() => {
     if (!pendingSwitch) return;
     cancelSwaggerLoadTask(pendingSwitch.fromNodeId);
+    cancelFetchDebugTask(pendingSwitch.fromNodeId);
     onSelectNodeRef.current(pendingSwitch.toNodeId);
     setPendingSwitch(null);
   }, [pendingSwitch]);

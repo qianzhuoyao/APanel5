@@ -8,6 +8,8 @@ export const PAGE_LIFECYCLE_PHASES = [
   "destroy",
   "activated",
   "deactivated",
+  /** 被其他蓝图的蓝图配置节点引用且收到真信号时触发 */
+  "blueprintActivated",
 ] as const;
 
 export type PageLifecyclePhase = (typeof PAGE_LIFECYCLE_PHASES)[number];
@@ -30,6 +32,7 @@ export const PAGE_LIFECYCLE_LABELS: Record<PageLifecyclePhase, string> = {
   destroy: "已销毁 (destroy)",
   activated: "已激活 (activated)",
   deactivated: "已停用 (deactivated)",
+  blueprintActivated: "蓝图激活 (blueprintActivated)",
 };
 
 export function createLifecycleSignal(phase: PageLifecyclePhase): LifecycleSignal {

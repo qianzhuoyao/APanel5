@@ -62,6 +62,8 @@ export function normalizeFlowEdges(edges: Edge[]): Edge[] {
     ...e,
     type: BP_FLOW_EDGE_TYPE,
     zIndex: 1000,
+    selectable: true,
+    deletable: true,
     style: { ...BP_EDGE_STYLE },
   })) as Edge[];
 }

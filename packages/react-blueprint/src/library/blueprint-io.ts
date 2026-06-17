@@ -13,6 +13,13 @@ export function createLibraryBlueprintId() {
   return createNodeId("lib_bp");
 }
 
+export function blueprintDocumentsEqual(
+  a: BlueprintDocument,
+  b: BlueprintDocument
+): boolean {
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+
 export function buildBlueprintExportPayload(
   document: BlueprintDocument,
   meta: BlueprintMetaDraft

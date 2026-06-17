@@ -27,7 +27,10 @@ import type { BlueprintGraphNode } from "../graph/document";
 import { resolveNodeFetchConfig } from "../graph/document";
 import {
   cancelSwaggerLoadTask,
+  cancelFetchDebugTask,
+  startFetchDebugTask,
   startSwaggerLoadTask,
+  useFetchDebugTask,
   useSwaggerLoadTask,
 } from "../fetch-config-task-store";
 import { FetchUrlAutocomplete } from "./FetchUrlAutocomplete";
@@ -58,6 +61,145 @@ function StopIcon({ className }: { className?: string }) {
     >
       <rect x="6" y="6" width="12" height="12" rx="1" />
     </svg>
+  );
+}
+
+function ChevronIcon({ className, expanded }: { className?: string; expanded: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={cn("transition-transform", expanded && "rotate-180", className)}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      aria-hidden="true"
+    >
+      <path d="m6 9 6 6 6-6" />
+    </svg>
+  );
+}
+
+function AsyncSendButton({
+  loading,
+  disabled,
+  onSend,
+  onAbort,
+  sendTitle,
+  abortTitle,
+  sendAriaLabel,
+  abortAriaLabel,
+}: {
+  loading: boolean;
+  disabled?: boolean;
+  onSend: () => void;
+  onAbort: () => void;
+  sendTitle: string;
+  abortTitle: string;
+  sendAriaLabel: string;
+  abortAriaLabel: string;
+}) {
+  if (loading) {
+    return (
+      <Button
+        type="button"
+        variant="outline"
+        size="icon"
+        className="h-8 w-8 shrink-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
+        title={abortTitle}
+        aria-label={abortAriaLabel}
+        onClick={onAbort}
+      >
+        <StopIcon className="h-3.5 w-3.5" />
+      </Button>
+    );
+  }
+
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      size="icon"
+      className="h-8 w-8 shrink-0"
+      title={sendTitle}
+      aria-label={sendAriaLabel}
+      disabled={disabled}
+      onClick={onSend}
+    >
+      <SendIcon className="h-4 w-4" />
+    </Button>
+  );
+}
+
+function formatFetchDebugData(data: unknown): string {
+  if (typeof data === "string") return data;
+  try {
+    return JSON.stringify(data, null, 2);
+  } catch {
+    return String(data);
+  }
+}
+
+function FetchDebugResponsePanel({
+  task,
+}: {
+  task: ReturnType<typeof useFetchDebugTask>;
+}) {
+  const [expanded, setExpanded] = useState(false);
+
+  if (task.status === "idle" || task.status === "loading") return null;
+
+  if (task.status === "error") {
+    return (
+      <div className="rounded-md border border-destructive/40 bg-destructive/5 p-2">
+        <p className="text-[11px] text-destructive">{task.error ?? "请求失败"}</p>
+      </div>
+    );
+  }
+
+  const result = task.result;
+  if (!result) return null;
+
+  const bodyText = formatFetchDebugData(result.data);
+  const preview =
+    bodyText.length > 120 ? `${bodyText.slice(0, 120).trimEnd()}…` : bodyText;
+  const ok = result.status >= 200 && result.status < 300;
+
+  return (
+    <div className="rounded-md border border-border/70 bg-background/80">
+      <button
+        type="button"
+        className="flex w-full items-center gap-2 px-2 py-1.5 text-left"
+        onClick={() => setExpanded((value) => !value)}
+      >
+        <ChevronIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" expanded={expanded} />
+        <span className="text-[11px] font-medium text-foreground">调试响应</span>
+        <span
+          className={cn(
+            "rounded px-1.5 py-0.5 font-mono text-[10px]",
+            ok
+              ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
+              : "bg-destructive/15 text-destructive"
+          )}
+        >
+          {result.status} {result.statusText}
+        </span>
+        {!expanded ? (
+          <span className="min-w-0 flex-1 truncate font-mono text-[10px] text-muted-foreground">
+            {preview}
+          </span>
+        ) : null}
+      </button>
+      {expanded ? (
+        <div className="border-t border-border/60 px-2 py-2">
+          <div className="mb-1 truncate font-mono text-[10px] text-muted-foreground">
+            {result.url}
+          </div>
+          <pre className="max-h-56 overflow-auto whitespace-pre-wrap break-all rounded bg-muted/30 p-2 font-mono text-[10px] leading-relaxed text-foreground">
+            {bodyText}
+          </pre>
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -111,10 +253,13 @@ export function FetchNodeConfigPanel({
   const urlInputMode =
     fetchConfig.urlInputMode ?? (hasSwaggerEndpoints ? "swagger" : "manual");
   const swaggerTask = useSwaggerLoadTask(node.id);
+  const fetchDebugTask = useFetchDebugTask(node.id);
   const loadingSwagger = swaggerTask.status === "loading";
+  const loadingFetchDebug = fetchDebugTask.status === "loading";
   const swaggerTaskError =
     swaggerTask.status === "error" ? swaggerTask.error : null;
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [fetchValidationError, setFetchValidationError] = useState<string | null>(null);
   const swaggerError = validationError ?? swaggerTaskError;
 
   const setUrlInputMode = useCallback(
@@ -152,6 +297,25 @@ export function FetchNodeConfigPanel({
   const handleAbortSwagger = useCallback(() => {
     cancelSwaggerLoadTask(node.id);
     setValidationError(null);
+  }, [node.id]);
+
+  const handleSendFetchDebug = useCallback(() => {
+    const url = fetchConfig.url?.trim();
+    if (!url) {
+      setFetchValidationError("请先填写请求 URL");
+      return;
+    }
+
+    setFetchValidationError(null);
+    startFetchDebugTask({
+      nodeId: node.id,
+      config: fetchConfig,
+    });
+  }, [fetchConfig, node.id]);
+
+  const handleAbortFetchDebug = useCallback(() => {
+    cancelFetchDebugTask(node.id);
+    setFetchValidationError(null);
   }, [node.id]);
 
   return (
@@ -276,37 +440,74 @@ export function FetchNodeConfigPanel({
             </label>
             <label className="block space-y-1">
               <span className="text-muted-foreground">选择接口</span>
-              <FetchUrlAutocomplete
-                value={fetchConfig.url}
-                apiBaseUrl={fetchConfig.apiBaseUrl ?? ""}
-                endpoints={endpoints}
-                selectOnly
-                placeholder="点击选择或搜索接口"
-                onChange={(url) =>
-                  onUpdateNode(node.id, patchFetchConfig(node, { url }))
-                }
-                onSelectEndpoint={(endpoint) =>
-                  onUpdateNode(
-                    node.id,
-                    patchFetchConfig(node, {
-                      url: endpoint.path,
-                      method: endpoint.method,
-                    })
-                  )
-                }
-              />
+              <div className="flex gap-1.5">
+                <div className="min-w-0 flex-1">
+                  <FetchUrlAutocomplete
+                    value={fetchConfig.url}
+                    apiBaseUrl={fetchConfig.apiBaseUrl ?? ""}
+                    endpoints={endpoints}
+                    selectOnly
+                    placeholder="点击选择或搜索接口"
+                    onChange={(url) =>
+                      onUpdateNode(node.id, patchFetchConfig(node, { url }))
+                    }
+                    onSelectEndpoint={(endpoint) =>
+                      onUpdateNode(
+                        node.id,
+                        patchFetchConfig(node, {
+                          url: endpoint.path,
+                          method: endpoint.method,
+                        })
+                      )
+                    }
+                  />
+                </div>
+                <AsyncSendButton
+                  loading={loadingFetchDebug}
+                  disabled={loadingSwagger}
+                  onSend={handleSendFetchDebug}
+                  onAbort={handleAbortFetchDebug}
+                  sendTitle="发送调试请求"
+                  abortTitle="中止请求"
+                  sendAriaLabel="发送调试请求"
+                  abortAriaLabel="中止调试请求"
+                />
+              </div>
             </label>
           </div>
         ) : (
-          <Input
-            value={fetchConfig.url}
-            onChange={(e: ChangeEvent<HTMLInputElement>) =>
-              onUpdateNode(node.id, patchFetchConfig(node, { url: e.target.value }))
-            }
-            placeholder="https://api.example.com/data"
-            className="h-8 font-mono text-[11px]"
-          />
+          <div className="flex gap-1.5">
+            <Input
+              value={fetchConfig.url}
+              disabled={loadingFetchDebug}
+              onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                onUpdateNode(node.id, patchFetchConfig(node, { url: e.target.value }))
+              }
+              placeholder="https://api.example.com/data"
+              className="h-8 flex-1 font-mono text-[11px]"
+            />
+            <AsyncSendButton
+              loading={loadingFetchDebug}
+              disabled={loadingSwagger}
+              onSend={handleSendFetchDebug}
+              onAbort={handleAbortFetchDebug}
+              sendTitle="发送调试请求"
+              abortTitle="中止请求"
+              sendAriaLabel="发送调试请求"
+              abortAriaLabel="中止调试请求"
+            />
+          </div>
         )}
+        {loadingFetchDebug ? (
+          <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+            <LoaderIcon className="h-3.5 w-3.5 shrink-0" />
+            正在发送调试请求，点击右侧按钮可中止…
+          </p>
+        ) : null}
+        {fetchValidationError ? (
+          <p className="text-[11px] text-destructive">{fetchValidationError}</p>
+        ) : null}
+        <FetchDebugResponsePanel task={fetchDebugTask} />
       </label>
 
       <label className="block space-y-1">

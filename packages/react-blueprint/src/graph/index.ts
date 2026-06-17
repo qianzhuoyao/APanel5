@@ -4,3 +4,4 @@ export * from "./blueprint-graph";
 export * from "./react-flow-adapter";
 export * from "./sync-edges";
 export * from "./sync-nodes";
+export * from "./node-summary";

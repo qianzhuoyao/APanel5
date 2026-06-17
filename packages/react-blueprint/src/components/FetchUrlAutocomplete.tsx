@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@arron/ui";
 import {
-  buildEndpointFullUrl,
   buildEndpointSuggestions,
   filterEndpointSuggestions,
+  resolveFetchRequestUrl,
   type FetchHttpMethod,
   type SwaggerApiEndpoint,
 } from "@arron/blueprint-dsl";
@@ -178,17 +178,13 @@ export function resolveFetchUrlPreview(
   url: string,
   endpoints: SwaggerApiEndpoint[]
 ): string {
-  if (url.includes("://") || !apiBaseUrl.trim()) {
+  const matched = endpoints.find((item) => item.path === url);
+  const resolvedPath = matched?.path ?? url;
+  try {
+    return resolveFetchRequestUrl({ url: resolvedPath, apiBaseUrl });
+  } catch {
     return url;
   }
-  if (url.startsWith("/")) {
-    return buildEndpointFullUrl(apiBaseUrl, url);
-  }
-  const matched = endpoints.find((item) => item.path === url);
-  if (matched) {
-    return buildEndpointFullUrl(apiBaseUrl, matched.path);
-  }
-  return url;
 }
 
 export type { FetchHttpMethod };

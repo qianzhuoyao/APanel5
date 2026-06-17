@@ -15,6 +15,7 @@ import {
   BlueprintGraph,
   BlueprintMetaDialog,
   BlueprintNodeSwitchTaskDialog,
+  blueprintDocumentsEqual,
   buildBlueprintExportPayload,
   buildLibraryRecord,
   createLibraryBlueprintId,
@@ -27,8 +28,11 @@ import {
   parseBlueprintImportFile,
   putBlueprintLibraryRecord,
   updateBlueprintLibraryMeta,
+  useBlueprintDebugSession,
   useBlueprintNodeSelectionGuard,
   useBlueprintPageLifecycle,
+  stopAllClockSchedules,
+  type BlueprintDocument,
   type BlueprintGraphNode,
   type BlueprintLibraryListItem,
   type BlueprintMetaDraft,
@@ -431,6 +435,14 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
   const [activeBlueprintLibraryId, setActiveBlueprintLibraryId] = useState<string | null>(
     null
   );
+  /** 当前库蓝图加载/同步时的文档快照，用于判断是否有未同步修改 */
+  const [blueprintSyncedDocument, setBlueprintSyncedDocument] =
+    useState<BlueprintDocument | null>(null);
+  /** 进入蓝图库编辑前的工作区蓝图，用于取消库选中时恢复 */
+  const workspaceBlueprintRef = useRef<{
+    document: BlueprintDocument;
+    meta: BlueprintMetaDraft;
+  } | null>(null);
   const [blueprintMetaDialogOpen, setBlueprintMetaDialogOpen] = useState(false);
   const [blueprintMetaDialogMode, setBlueprintMetaDialogMode] = useState<
     "export" | "save"
@@ -667,11 +679,14 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
           | "nodeType"
           | "configSource"
           | "viewElementId"
+          | "viewElementIds"
           | "nestedBlueprintId"
           | "libraryBlueprintId"
           | "lifecyclePhase"
           | "fetchConfig"
           | "jsonConfig"
+          | "logicConfig"
+          | "clockConfig"
         >
       >
     ) => {
@@ -679,6 +694,15 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
     },
     []
   );
+
+  const handleUpdateAllowFalseSignalPropagation = useCallback((value: boolean) => {
+    setBlueprintGraph((graph) =>
+      graph.withDocument({
+        ...graph.document,
+        allowFalseSignalPropagation: value,
+      })
+    );
+  }, []);
 
   const clearSelection = useCallback(() => {
     setSelectedIds([]);
@@ -778,6 +802,89 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
     []
   );
 
+  const handleBlueprintExecutionBlocked = useCallback((message: string) => {
+    toast({ title: message });
+  }, []);
+
+  const blueprintDebugSession = useBlueprintDebugSession({
+    graph: blueprintGraph,
+    blueprintId: activeBlueprintLibraryId,
+    blueprintName: blueprintMeta.name || "未命名蓝图",
+    resolveLibraryBlueprint,
+    libraryNameById: blueprintLibraryNameById,
+    onExecutionBlocked: handleBlueprintExecutionBlocked,
+  });
+
+  const { selectLifecycleNode, selectedLifecycleNodeId: debugLifecycleNodeId } =
+    blueprintDebugSession;
+
+  useEffect(() => {
+    if (!selectedBlueprintNodeId) return;
+    const node = blueprintGraph.getNode(selectedBlueprintNodeId);
+    if (node?.role !== "lifecycle") return;
+    if (debugLifecycleNodeId === selectedBlueprintNodeId) return;
+    selectLifecycleNode(selectedBlueprintNodeId);
+  }, [
+    blueprintGraph,
+    debugLifecycleNodeId,
+    selectLifecycleNode,
+    selectedBlueprintNodeId,
+  ]);
+
+  const sidebarConfigFocus: WorkspaceConfigFocus =
+    blueprintDebugSession.logPanelOpen ? "blueprint-log" : configFocus;
+
+  const selectedDebugLifecyclePhase =
+    blueprintDebugSession.lifecycleNodes.find(
+      (node) => node.id === blueprintDebugSession.selectedLifecycleNodeId
+    )?.phase;
+
+  const blueprintDebugToolbar = useMemo(
+    () => ({
+      lifecycleNodes: blueprintDebugSession.lifecycleNodes,
+      selectedLifecycleNodeId: blueprintDebugSession.selectedLifecycleNodeId,
+      onSelectLifecycleNode: blueprintDebugSession.selectLifecycleNode,
+      onRunAll: () => void blueprintDebugSession.runAll(),
+      onResetToStart: () => void blueprintDebugSession.resetToStart(),
+      onStepBack: () => void blueprintDebugSession.stepBack(),
+      onStepNext: () => void blueprintDebugSession.stepNext(),
+      canResetToStart: blueprintDebugSession.canResetToStart,
+      canStepBack: blueprintDebugSession.canStepBack,
+      canStepNext: blueprintDebugSession.canStepNext,
+      chainComplete: blueprintDebugSession.chainComplete,
+      falseSignalHalt: blueprintDebugSession.falseSignalHalt,
+      logPanelOpen: blueprintDebugSession.logPanelOpen,
+      onToggleLogPanel: () =>
+        blueprintDebugSession.setLogPanelOpen((open) => !open),
+      running: blueprintDebugSession.running,
+    }),
+    [blueprintDebugSession]
+  );
+
+  const executionLogView = useMemo(
+    () => ({
+      entries: blueprintDebugSession.entries,
+      settings: blueprintDebugSession.settings,
+      onUpdateSettings: blueprintDebugSession.updateSettings,
+      onSave: blueprintDebugSession.saveCurrentRun,
+      onExport: blueprintDebugSession.exportCurrentRun,
+      onClear: blueprintDebugSession.clearLog,
+      onClearAllSaved: async () => {
+        const removed = await blueprintDebugSession.clearAllSavedRuns();
+        toast({
+          title:
+            removed > 0
+              ? `已清空 IndexedDB 中 ${removed} 条蓝图日志`
+              : "IndexedDB 中暂无已保存日志",
+        });
+      },
+      hasSavedRuns: blueprintDebugSession.totalSavedRunCount > 0,
+      onApplyRetention: blueprintDebugSession.applyRetention,
+      lifecyclePhase: selectedDebugLifecyclePhase,
+    }),
+    [blueprintDebugSession, selectedDebugLifecyclePhase]
+  );
+
   const blueprintCanvasProps = useMemo(
     () => ({
       graph: blueprintGraph,
@@ -785,9 +892,11 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
       selectedNodeId: selectedBlueprintNodeId,
       onSelectNode: onSelectBlueprintNode,
       libraryNameById: blueprintLibraryNameById,
+      executionOverlay: blueprintDebugSession.executionOverlay,
     }),
     [
       blueprintGraph,
+      blueprintDebugSession.executionOverlay,
       blueprintLibraryNameById,
       onSelectBlueprintNode,
       selectedBlueprintNodeId,
@@ -817,12 +926,92 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
         remark: record.remark ?? "",
       });
       setActiveBlueprintLibraryId(record.id);
+      setBlueprintSyncedDocument(record.document);
       setSelectedBlueprintNodeId(null);
       setConfigFocus("blueprint");
       setBlueprintOpen(true);
     },
     [refreshBlueprintLibrary]
   );
+
+  const snapshotWorkspaceBlueprint = useCallback(() => {
+    workspaceBlueprintRef.current = {
+      document: blueprintGraph.document,
+      meta: { ...blueprintMeta },
+    };
+  }, [blueprintGraph.document, blueprintMeta]);
+
+  const returnToWorkspaceBlueprint = useCallback(() => {
+    const snapshot = workspaceBlueprintRef.current;
+    if (snapshot) {
+      setBlueprintGraph(BlueprintGraph.fromDocument(snapshot.document));
+      setBlueprintMeta(snapshot.meta);
+    }
+    setActiveBlueprintLibraryId(null);
+    setBlueprintSyncedDocument(null);
+    setSelectedBlueprintNodeId(null);
+  }, []);
+
+  const handleSelectBlueprintLibraryItem = useCallback(
+    async (id: string) => {
+      if (activeBlueprintLibraryId === id) {
+        returnToWorkspaceBlueprint();
+        return;
+      }
+      if (!activeBlueprintLibraryId) {
+        snapshotWorkspaceBlueprint();
+      }
+      await loadBlueprintFromLibrary(id);
+    },
+    [
+      activeBlueprintLibraryId,
+      loadBlueprintFromLibrary,
+      returnToWorkspaceBlueprint,
+      snapshotWorkspaceBlueprint,
+    ]
+  );
+
+  const blueprintLibraryDirty = useMemo(() => {
+    if (!activeBlueprintLibraryId || !blueprintSyncedDocument) return false;
+    return !blueprintDocumentsEqual(
+      blueprintGraph.document,
+      blueprintSyncedDocument
+    );
+  }, [
+    activeBlueprintLibraryId,
+    blueprintGraph.document,
+    blueprintSyncedDocument,
+  ]);
+
+  const syncBlueprintToLibrary = useCallback(async () => {
+    if (!activeBlueprintLibraryId) return;
+
+    const existing = await getBlueprintLibraryRecord(activeBlueprintLibraryId);
+    if (!existing) {
+      toast({ title: "蓝图不存在或已被删除" });
+      void refreshBlueprintLibrary();
+      setActiveBlueprintLibraryId(null);
+      setBlueprintSyncedDocument(null);
+      return;
+    }
+
+    const record = buildLibraryRecord({
+      id: existing.id,
+      createdAt: existing.createdAt,
+      document: blueprintGraph.document,
+      meta: blueprintMeta,
+      source: existing.source,
+    });
+    await putBlueprintLibraryRecord(record);
+    setBlueprintSyncedDocument(blueprintGraph.document);
+    await refreshBlueprintLibrary();
+    toast({ title: `已同步「${record.name}」` });
+  }, [
+    activeBlueprintLibraryId,
+    blueprintGraph.document,
+    blueprintMeta,
+    refreshBlueprintLibrary,
+  ]);
 
   const saveBlueprintToLibrary = useCallback(
     async (meta: BlueprintMetaDraft) => {
@@ -851,6 +1040,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
       });
       await putBlueprintLibraryRecord(record);
       setActiveBlueprintLibraryId(record.id);
+      setBlueprintSyncedDocument(blueprintGraph.document);
       await refreshBlueprintLibrary();
       toast({ title: "蓝图已保存到本地" });
     },
@@ -900,6 +1090,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
       await refreshBlueprintLibrary();
       if (activeBlueprintLibraryId === id) {
         setActiveBlueprintLibraryId(null);
+        setBlueprintSyncedDocument(null);
       }
       toast({ title: "蓝图已从库中删除" });
     },
@@ -917,10 +1108,18 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
       const record = libraryRecordFromImport(payload);
       await putBlueprintLibraryRecord(record);
       await refreshBlueprintLibrary();
+      if (!activeBlueprintLibraryId) {
+        snapshotWorkspaceBlueprint();
+      }
       await loadBlueprintFromLibrary(record.id);
       toast({ title: "蓝图已导入并加载" });
     },
-    [loadBlueprintFromLibrary, refreshBlueprintLibrary]
+    [
+      activeBlueprintLibraryId,
+      loadBlueprintFromLibrary,
+      refreshBlueprintLibrary,
+      snapshotWorkspaceBlueprint,
+    ]
   );
 
   useBlueprintPageLifecycle({
@@ -929,7 +1128,14 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
     onUpdated: `${activeLayerId}|${historyCursor}`,
     resolveLibraryBlueprint,
     libraryNameById: blueprintLibraryNameById,
+    rootLibraryBlueprintId: activeBlueprintLibraryId,
+    onExecutionBlocked: handleBlueprintExecutionBlocked,
   });
+
+  useEffect(() => {
+    if (blueprintOpen) return;
+    stopAllClockSchedules();
+  }, [blueprintOpen]);
 
   const selectedElement = selectedIds.length === 1 ? byId.get(selectedIds[0]) ?? null : null;
   const selectedElements = useMemo(
@@ -1946,8 +2152,9 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                 blueprintProps={blueprintCanvasProps}
                 blueprintLibraryItems={blueprintLibraryItems}
                 activeBlueprintLibraryId={activeBlueprintLibraryId}
+                currentBlueprintLabel={blueprintMeta.name}
                 onSelectBlueprintLibraryItem={(id) => {
-                  void loadBlueprintFromLibrary(id);
+                  void handleSelectBlueprintLibraryItem(id);
                 }}
                 onRenameBlueprintLibraryItem={(id, name) => {
                   void handleRenameBlueprintLibraryItem(id, name);
@@ -1956,6 +2163,11 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                   void handleDeleteBlueprintLibraryItem(id);
                 }}
                 onSaveBlueprint={() => openBlueprintMetaDialog("save")}
+                onSyncBlueprint={() => {
+                  void syncBlueprintToLibrary();
+                }}
+                canSyncBlueprint={blueprintLibraryDirty}
+                blueprintDebug={blueprintDebugToolbar}
                 viewStage={
               <div
                 data-workspace-region="view"
@@ -2587,8 +2799,15 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
         <ResizablePanel defaultSize={20} minSize={20}>
           <div className="panel-font-root h-full">
             <WorkspaceConfigSidebar
-              configFocus={configFocus}
+              configFocus={sidebarConfigFocus}
+              executionLog={executionLogView}
               selectedBlueprintNode={selectedBlueprintNode}
+              allowFalseSignalPropagation={
+                blueprintGraph.document.allowFalseSignalPropagation ?? false
+              }
+              onUpdateAllowFalseSignalPropagation={
+                handleUpdateAllowFalseSignalPropagation
+              }
               onUpdateBlueprintNode={handleUpdateBlueprintNode}
               blueprintLibraryOptions={blueprintLibraryOptions}
               selectedElement={selectedElement}

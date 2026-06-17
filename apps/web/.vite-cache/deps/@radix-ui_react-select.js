@@ -1,19 +1,10 @@
 "use client";
 import {
-  clamp
-} from "./chunk-V4HRT5A2.js";
-import {
   VISUALLY_HIDDEN_STYLES
 } from "./chunk-Q42GSQOY.js";
 import {
-  usePrevious
-} from "./chunk-ZHBB5BCR.js";
-import {
-  createCollection
-} from "./chunk-TLVBUFEP.js";
-import {
-  useDirection
-} from "./chunk-QCPE6CUQ.js";
+  clamp
+} from "./chunk-V4HRT5A2.js";
 import {
   Anchor,
   Arrow,
@@ -21,6 +12,9 @@ import {
   Root2,
   createPopperScope
 } from "./chunk-LRBZ5KIH.js";
+import {
+  usePrevious
+} from "./chunk-ZHBB5BCR.js";
 import "./chunk-2ZKFB24A.js";
 import {
   Combination_default,
@@ -38,6 +32,12 @@ import {
 import {
   useCallbackRef
 } from "./chunk-FGQFSSX4.js";
+import {
+  createCollection
+} from "./chunk-TLVBUFEP.js";
+import {
+  useDirection
+} from "./chunk-QCPE6CUQ.js";
 import {
   useId
 } from "./chunk-RS7VNSMO.js";

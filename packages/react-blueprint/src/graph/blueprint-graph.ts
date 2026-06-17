@@ -4,8 +4,10 @@ import {
   defaultBlueprintNodeLabel,
   filterInvalidBlueprintEdges,
   patchNodeConfigSource,
+  resolveNodeClockConfig,
   resolveNodeFetchConfig,
   resolveNodeJsonConfig,
+  resolveNodeLogicConfig,
   sanitizeBlueprintDocument,
   type BlueprintDocument,
   type BlueprintGraphEdge,
@@ -187,11 +189,14 @@ export class BlueprintGraph {
         | "nodeType"
         | "configSource"
         | "viewElementId"
+        | "viewElementIds"
         | "nestedBlueprintId"
         | "libraryBlueprintId"
         | "lifecyclePhase"
         | "fetchConfig"
         | "jsonConfig"
+        | "logicConfig"
+        | "clockConfig"
       >
     >
   ) {
@@ -208,6 +213,19 @@ export class BlueprintGraph {
       nodes: this.document.nodes.map((n) => {
         if (n.id !== nodeId) return n;
         const nextNode = { ...n, ...configPatch, ...patch };
+        if (
+          patch.viewElementIds !== undefined ||
+          patch.viewElementId !== undefined
+        ) {
+          const ids =
+            patch.viewElementIds !== undefined
+              ? [...new Set(patch.viewElementIds.filter(Boolean))]
+              : patch.viewElementId
+                ? [patch.viewElementId]
+                : [];
+          nextNode.viewElementIds = ids.length > 0 ? ids : undefined;
+          nextNode.viewElementId = undefined;
+        }
         if (patch.fetchConfig) {
           nextNode.fetchConfig = {
             ...resolveNodeFetchConfig(n),
@@ -218,6 +236,18 @@ export class BlueprintGraph {
           nextNode.jsonConfig = {
             ...resolveNodeJsonConfig(n),
             ...patch.jsonConfig,
+          };
+        }
+        if (patch.logicConfig) {
+          nextNode.logicConfig = {
+            ...resolveNodeLogicConfig(n),
+            ...patch.logicConfig,
+          };
+        }
+        if (patch.clockConfig) {
+          nextNode.clockConfig = {
+            ...resolveNodeClockConfig(n),
+            ...patch.clockConfig,
           };
         }
         return nextNode;

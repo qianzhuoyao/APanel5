@@ -1,31 +1,42 @@
 import type {
+  ClockNodeConfig,
   FetchRequestConfig,
   JsonNodeConfig,
+  LogicNodeConfig,
   PageLifecyclePhase,
 } from "@arron/blueprint-dsl";
 import {
   BLUEPRINT_NODE_TYPE,
+  CLOCK_NODE_TYPE,
+  AND_NODE_TYPE,
+  DEFAULT_CLOCK_NODE_CONFIG,
   DEFAULT_FETCH_REQUEST_CONFIG,
   DEFAULT_JSON_NODE_CONFIG,
+  DEFAULT_LOGIC_NODE_CONFIG,
   DEFAULT_LOGIC_NODE_TYPE,
   FETCH_NODE_TYPE,
   JSON_NODE_TYPE,
   LIFECYCLE_NODE_TYPE,
+  normalizeClockConfig,
 } from "@arron/blueprint-dsl";
 
 export type { FetchRequestConfig as BlueprintFetchConfig } from "@arron/blueprint-dsl";
 export type { JsonNodeConfig as BlueprintJsonConfig } from "@arron/blueprint-dsl";
+export type { LogicNodeConfig as BlueprintLogicConfig } from "@arron/blueprint-dsl";
+export type { ClockNodeConfig as BlueprintClockConfig } from "@arron/blueprint-dsl";
 
-export type BlueprintNodeRole = "blueprint" | "logic" | "lifecycle" | "fetch" | "json";
+export type BlueprintNodeRole = "blueprint" | "logic" | "and" | "lifecycle" | "fetch" | "json" | "clock";
 
 /** 决定右侧配置面板展示哪类配置 */
 export type BlueprintConfigSource =
   | "blueprint"
   | "logic"
+  | "and"
   | "lifecycle"
   | "view"
   | "fetch"
-  | "json";
+  | "json"
+  | "clock";
 
 export type BlueprintGraphNode = {
   id: string;
@@ -36,8 +47,10 @@ export type BlueprintGraphNode = {
   position: { x: number; y: number };
   /** 配置面板类型；默认由 role 推断 */
   configSource?: BlueprintConfigSource;
-  /** 关联视图画布节点 id 时，配置面板展示视图节点配置 */
+  /** @deprecated 请使用 viewElementIds；读取时由 resolveViewElementIds 兼容 */
   viewElementId?: string;
+  /** 关联的视图画布节点 id 列表，配置类型为 view 时可一次绑定多个 */
+  viewElementIds?: string[];
   /** logic 节点所属的蓝图节点 */
   parentId?: string;
   /** blueprint 节点嵌套子蓝图 id（内部标识，保留兼容） */
@@ -50,14 +63,31 @@ export type BlueprintGraphNode = {
   fetchConfig?: FetchRequestConfig;
   /** JSON 节点的 JSON 字符串配置 */
   jsonConfig?: JsonNodeConfig;
+  /** 逻辑节点的 JavaScript 脚本配置 */
+  logicConfig?: LogicNodeConfig;
+  /** 时钟节点的间隔与时间格式配置 */
+  clockConfig?: ClockNodeConfig;
 };
 
+export function resolveViewElementIds(
+  node: Pick<BlueprintGraphNode, "viewElementId" | "viewElementIds">
+): string[] {
+  if (node.viewElementIds?.length) return [...node.viewElementIds];
+  if (node.viewElementId) return [node.viewElementId];
+  return [];
+}
+
 export function resolveBlueprintConfigSource(
-  node: Pick<BlueprintGraphNode, "role" | "configSource" | "viewElementId">
+  node: Pick<
+    BlueprintGraphNode,
+    "role" | "configSource" | "viewElementId" | "viewElementIds"
+  >
 ): BlueprintConfigSource {
   if (node.configSource) return node.configSource;
-  if (node.viewElementId) return "view";
+  if (resolveViewElementIds(node).length > 0) return "view";
   if (node.role === "lifecycle") return "lifecycle";
+  if (node.role === "clock") return "clock";
+  if (node.role === "and") return "and";
   if (node.role === "fetch") return "fetch";
   if (node.role === "json") return "json";
   return node.role === "logic" ? "logic" : "blueprint";
@@ -70,14 +100,19 @@ export const BLUEPRINT_CONFIG_TYPE_LABELS: Record<
 > = {
   blueprint: "蓝图",
   logic: "逻辑",
+  and: "并运算",
   lifecycle: "生命周期",
   view: "视图",
   fetch: "数据源获取",
   json: "JSON 节点",
+  clock: "时钟",
 };
 
 export function resolveBlueprintNodeTypeLabel(
-  node: Pick<BlueprintGraphNode, "role" | "configSource" | "viewElementId">
+  node: Pick<
+    BlueprintGraphNode,
+    "role" | "configSource" | "viewElementId" | "viewElementIds"
+  >
 ): string {
   return BLUEPRINT_CONFIG_TYPE_LABELS[resolveBlueprintConfigSource(node)];
 }
@@ -112,6 +147,24 @@ export function resolveNodeJsonConfig(
   };
 }
 
+export function resolveNodeLogicConfig(
+  node: Pick<BlueprintGraphNode, "logicConfig">
+): LogicNodeConfig {
+  return {
+    ...DEFAULT_LOGIC_NODE_CONFIG,
+    ...node.logicConfig,
+  };
+}
+
+export function resolveNodeClockConfig(
+  node: Pick<BlueprintGraphNode, "clockConfig">
+): ClockNodeConfig {
+  return normalizeClockConfig({
+    ...DEFAULT_CLOCK_NODE_CONFIG,
+    ...node.clockConfig,
+  });
+}
+
 export type BlueprintGraphEdge = {
   id: string;
   source: string;
@@ -125,6 +178,8 @@ export type BlueprintDocument = {
   name?: string;
   nodes: BlueprintGraphNode[];
   edges: BlueprintGraphEdge[];
+  /** 为 true 时，假信号不阻塞任务链，会继续向下游传递 */
+  allowFalseSignalPropagation?: boolean;
 };
 
 export function createBlueprintDocument(id = "default"): BlueprintDocument {
@@ -135,28 +190,41 @@ export function createNodeId(prefix = "node"): string {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
 }
 
-const lifecycleNodeIds = (document: BlueprintDocument) =>
+const noInputTargetNodeIds = (document: BlueprintDocument) =>
   new Set(
-    document.nodes.filter((node) => node.role === "lifecycle").map((node) => node.id)
+    document.nodes
+      .filter((node) => node.role === "lifecycle")
+      .map((node) => node.id)
   );
 
 /** 生命周期节点无输入口：移除连入边，并修正节点配置 */
 export function sanitizeBlueprintDocument(
   document: BlueprintDocument
 ): BlueprintDocument {
-  const lifecycleIds = lifecycleNodeIds(document);
+  const blockedTargets = noInputTargetNodeIds(document);
 
   const nodes = document.nodes.map((node) => {
-    if (node.role === "lifecycle") {
-      return { ...node, configSource: "lifecycle" as const };
+    let next = node;
+    if (node.viewElementId && !node.viewElementIds?.length) {
+      next = {
+        ...next,
+        viewElementIds: [node.viewElementId],
+        viewElementId: undefined,
+      };
     }
-    if (node.configSource === "lifecycle") {
-      return { ...node, configSource: undefined };
+    if (next.role === "lifecycle") {
+      return { ...next, configSource: "lifecycle" as const };
     }
-    return node;
+    if (next.role === "clock") {
+      return { ...next, configSource: "clock" as const };
+    }
+    if (next.configSource === "lifecycle" || next.configSource === "clock") {
+      return { ...next, configSource: undefined };
+    }
+    return next;
   });
 
-  const edges = document.edges.filter((edge) => !lifecycleIds.has(edge.target));
+  const edges = document.edges.filter((edge) => !blockedTargets.has(edge.target));
 
   return { ...document, nodes, edges };
 }
@@ -165,8 +233,8 @@ export function filterInvalidBlueprintEdges(
   document: BlueprintDocument,
   edges: BlueprintGraphEdge[]
 ): BlueprintGraphEdge[] {
-  const lifecycleIds = lifecycleNodeIds(document);
-  return edges.filter((edge) => !lifecycleIds.has(edge.target));
+  const blockedTargets = noInputTargetNodeIds(document);
+  return edges.filter((edge) => !blockedTargets.has(edge.target));
 }
 
 /** 切换配置类型时同步节点 role / nodeType，确保生命周期节点渲染为无输入口 */
@@ -182,9 +250,28 @@ export function patchNodeConfigSource(
       configSource: "lifecycle",
       lifecyclePhase: phase,
       viewElementId: undefined,
+      viewElementIds: undefined,
       libraryBlueprintId: undefined,
       fetchConfig: undefined,
       jsonConfig: undefined,
+      logicConfig: undefined,
+      clockConfig: undefined,
+    };
+  }
+
+  if (configSource === "clock") {
+    return {
+      role: "clock",
+      nodeType: CLOCK_NODE_TYPE,
+      configSource: "clock",
+      clockConfig: resolveNodeClockConfig(node),
+      lifecyclePhase: undefined,
+      viewElementId: undefined,
+      viewElementIds: undefined,
+      libraryBlueprintId: undefined,
+      fetchConfig: undefined,
+      jsonConfig: undefined,
+      logicConfig: undefined,
     };
   }
 
@@ -195,9 +282,12 @@ export function patchNodeConfigSource(
       configSource: "fetch",
       lifecyclePhase: undefined,
       viewElementId: undefined,
+      viewElementIds: undefined,
       libraryBlueprintId: undefined,
       fetchConfig: resolveNodeFetchConfig(node),
       jsonConfig: undefined,
+      logicConfig: undefined,
+      clockConfig: undefined,
     };
   }
 
@@ -208,9 +298,12 @@ export function patchNodeConfigSource(
       configSource: "json",
       lifecyclePhase: undefined,
       viewElementId: undefined,
+      viewElementIds: undefined,
       libraryBlueprintId: undefined,
       fetchConfig: undefined,
       jsonConfig: resolveNodeJsonConfig(node),
+      logicConfig: undefined,
+      clockConfig: undefined,
     };
   }
 
@@ -222,8 +315,11 @@ export function patchNodeConfigSource(
       lifecyclePhase: undefined,
       nestedBlueprintId: node.nestedBlueprintId ?? createNodeId("nested_bp"),
       viewElementId: undefined,
+      viewElementIds: undefined,
       fetchConfig: undefined,
       jsonConfig: undefined,
+      logicConfig: undefined,
+      clockConfig: undefined,
     };
   }
 
@@ -234,9 +330,28 @@ export function patchNodeConfigSource(
       configSource: "logic",
       lifecyclePhase: undefined,
       viewElementId: undefined,
+      viewElementIds: undefined,
       libraryBlueprintId: undefined,
       fetchConfig: undefined,
       jsonConfig: undefined,
+      logicConfig: resolveNodeLogicConfig(node),
+      clockConfig: undefined,
+    };
+  }
+
+  if (configSource === "and") {
+    return {
+      role: "and",
+      nodeType: AND_NODE_TYPE,
+      configSource: "and",
+      lifecyclePhase: undefined,
+      viewElementId: undefined,
+      viewElementIds: undefined,
+      libraryBlueprintId: undefined,
+      fetchConfig: undefined,
+      jsonConfig: undefined,
+      logicConfig: undefined,
+      clockConfig: undefined,
     };
   }
 
@@ -248,5 +363,7 @@ export function patchNodeConfigSource(
     libraryBlueprintId: undefined,
     fetchConfig: undefined,
     jsonConfig: undefined,
+    logicConfig: undefined,
+    clockConfig: undefined,
   };
 }
