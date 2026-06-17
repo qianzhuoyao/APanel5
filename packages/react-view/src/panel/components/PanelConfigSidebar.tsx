@@ -30,7 +30,7 @@ import type {
   PanelElementStyle,
   ReferenceCopyMode,
 } from "../types";
-import { buildChartOption, CHART_TYPES } from "../utils/chartOptionBuilder";
+import { buildChartOption, CHART_TYPES, getChartValuesDisplayText } from "../utils/chartOptionBuilder";
 import type { PanelLayer } from "../types";
 import { PANEL_MESSAGES } from "../constants/messages";
 import { ViewElementScopePanel } from "./ViewElementScopePanel";
@@ -592,6 +592,7 @@ export function PanelConfigSidebar({
   let renderedSectionCount = 0;
   return (
     <ScopeConfigProvider
+      scope={showScopePanel ? viewElementScope : undefined}
       warnings={scopeWarnings}
       scrollContainerRef={sidebarScrollRef}
     >
@@ -630,6 +631,7 @@ export function PanelConfigSidebar({
                 onChange={(e) => setConfigSearch(e.target.value)}
                 placeholder="搜索配置，如：边框、tooltip、音频、网格..."
                 className="h-7"
+                data-scope-autocomplete="off"
               />
               {hasSearch ? (
                 <div className="mt-1 text-[11px] text-muted-foreground">
@@ -1118,15 +1120,12 @@ export function PanelConfigSidebar({
                         <div>数值（逗号分隔）</div>
                         <Input
                           className="h-7"
-                          value={(el.chart?.values ?? []).join(",")}
+                          value={getChartValuesDisplayText(el.chart)}
                           onChange={(e) =>
                             updateElement(el.id, {
                               chart: {
                                 ...(el.chart ?? {}),
-                                values: e.target.value
-                                  .split(",")
-                                  .map((s) => Number(s.trim()))
-                                  .filter((n) => Number.isFinite(n)),
+                                valuesText: e.target.value,
                               },
                             })
                           }
@@ -2381,13 +2380,10 @@ export function PanelConfigSidebar({
                       <label className="block space-y-1">
                         <div>数值（逗号分隔）</div>
                         <Input
-                          value={(selectedElement.chart?.values ?? []).join(",")}
+                          value={getChartValuesDisplayText(selectedElement.chart)}
                           onChange={(e) =>
                             updateSelectedChart({
-                              values: e.target.value
-                                .split(",")
-                                .map((s) => Number(s.trim()))
-                                .filter((n) => Number.isFinite(n)),
+                              valuesText: e.target.value,
                             })
                           }
                           className="h-7"

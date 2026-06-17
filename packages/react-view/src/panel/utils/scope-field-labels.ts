@@ -19,6 +19,7 @@ const LABELS: Record<string, string> = {
   "chart.tooltipBackgroundColor": "Tooltip 背景色",
   "chart.tooltipTextColor": "Tooltip 文字色",
   "chart.tooltipFormatter": "Tooltip 格式化",
+  "chart.valuesText": "图表数值",
   "style.backgroundColor": "背景色",
   "style.backgroundImage": "背景图",
   "style.backgroundImageRemoteUrl": "背景图远程地址",

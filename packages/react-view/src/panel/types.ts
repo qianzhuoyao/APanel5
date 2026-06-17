@@ -29,6 +29,8 @@ export type PanelChartConfig = {
   tooltipFormatter?: string;
   labels?: string[];
   values?: number[];
+  /** 逗号分隔的原始数值文本，支持 scope 模版；存在时优先于 values */
+  valuesText?: string;
   smooth?: boolean;
   barWidth?: number;
   pieInnerRadius?: number;

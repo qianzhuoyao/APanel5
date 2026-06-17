@@ -1,5 +1,36 @@
 import type { EChartsOption } from "echarts";
-import type { PanelElement } from "../types";
+import type { PanelChartConfig, PanelElement } from "../types";
+
+const DEFAULT_CHART_VALUES = [12, 18, 9, 24];
+
+export function getChartValuesDisplayText(chart?: PanelChartConfig): string {
+  if (chart?.valuesText !== undefined) return chart.valuesText;
+  return (chart?.values ?? []).join(",");
+}
+
+export function parseChartValuesFromText(
+  text: string | undefined,
+  fallback: number[] = DEFAULT_CHART_VALUES
+): number[] {
+  if (text === undefined) return fallback;
+  const trimmed = text.trim();
+  if (!trimmed) return fallback;
+  const parts = trimmed.split(",").map((s) => s.trim()).filter(Boolean);
+  if (!parts.length) return fallback;
+  return parts.map((s) => {
+    const n = Number(s);
+    return Number.isFinite(n) ? n : 0;
+  });
+}
+
+export function resolveChartValues(element: PanelElement): number[] {
+  const chart = element.chart;
+  if (chart?.valuesText !== undefined) {
+    const parsed = parseChartValuesFromText(chart.valuesText, []);
+    return parsed.length ? parsed : DEFAULT_CHART_VALUES;
+  }
+  return chart?.values?.length ? chart.values : DEFAULT_CHART_VALUES;
+}
 
 export const CHART_TYPES = new Set([
   "bar",
@@ -45,7 +76,7 @@ function deepMerge<T extends Record<string, any>>(base: T, patch?: Record<string
 export function buildChartOption(element: PanelElement): EChartsOption {
   const chartType = (element.materialType ?? "") as ChartType;
   const labels = element.chart?.labels?.length ? element.chart.labels : ["A", "B", "C", "D"];
-  const values = element.chart?.values?.length ? element.chart.values : [12, 18, 9, 24];
+  const values = resolveChartValues(element);
   const color = element.chart?.color || "#3b82f6";
   const gradientFrom = element.chart?.gradientFrom || color;
   const gradientTo = element.chart?.gradientTo || "#22d3ee";

@@ -12,6 +12,8 @@ import type { ScopeTemplateWarning } from "../../utils/scope-template-warnings";
 import { scopeFieldDomId } from "../../utils/scope-field-labels";
 import { groupScopeWarningsByField } from "../../utils/scope-template-warnings";
 
+import { ScopeTemplateAutocompleteHost } from "./ScopeTemplateAutocompleteHost";
+
 type ScopeConfigContextValue = {
   warnings: ScopeTemplateWarning[];
   warningsByField: Map<string, ScopeTemplateWarning[]>;
@@ -80,10 +82,12 @@ function attachInlineHints(
 }
 
 export function ScopeConfigProvider({
+  scope,
   warnings,
   scrollContainerRef,
   children,
 }: {
+  scope?: unknown;
   warnings: ScopeTemplateWarning[];
   scrollContainerRef?: RefObject<HTMLElement | null>;
   children: ReactNode;
@@ -146,7 +150,13 @@ export function ScopeConfigProvider({
   );
 
   return (
-    <ScopeConfigContext.Provider value={value}>{children}</ScopeConfigContext.Provider>
+    <ScopeConfigContext.Provider value={value}>
+      {children}
+      <ScopeTemplateAutocompleteHost
+        scope={scope}
+        containerRef={scrollContainerRef}
+      />
+    </ScopeConfigContext.Provider>
   );
 }
 
