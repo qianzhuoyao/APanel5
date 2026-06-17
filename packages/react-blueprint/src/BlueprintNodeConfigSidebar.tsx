@@ -1,4 +1,4 @@
-import type { ChangeEvent } from "react";
+import { useEffect, useMemo, type ChangeEvent } from "react";
 import {
   Input,
   Select,
@@ -21,6 +21,7 @@ import { LogicNodeConfigPanel } from "./components/LogicNodeConfigPanel";
 import { ViewElementMultiSelect } from "./components/ViewElementMultiSelect";
 import {
   patchNodeConfigSource,
+  pruneViewElementIds,
   resolveBlueprintConfigSource,
   resolveViewElementIds,
   type BlueprintConfigSource,
@@ -76,9 +77,33 @@ export function BlueprintNodeConfigSidebar({
 }: BlueprintNodeConfigSidebarProps) {
   const configSource = resolveBlueprintConfigSource(node);
   const linkedViewElementIds = resolveViewElementIds(node);
+  const existingViewElementIdSet = useMemo(
+    () => new Set(viewElementOptions.map((opt) => opt.id)),
+    [viewElementOptions]
+  );
   const viewElementLabelById = new Map(
     viewElementOptions.map((opt) => [opt.id, opt.label])
   );
+
+  useEffect(() => {
+    if (configSource !== "view") return;
+    const linked = resolveViewElementIds(node);
+    if (linked.length === 0) return;
+    const pruned = pruneViewElementIds(linked, existingViewElementIdSet);
+    if (pruned.length === linked.length) return;
+    onUpdateNode(node.id, {
+      viewElementIds: pruned.length > 0 ? pruned : undefined,
+      viewElementId: undefined,
+      configSource: "view",
+    });
+  }, [
+    configSource,
+    existingViewElementIdSet,
+    node.id,
+    node.viewElementId,
+    node.viewElementIds,
+    onUpdateNode,
+  ]);
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-background text-foreground">

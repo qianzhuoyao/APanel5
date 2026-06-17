@@ -78,6 +78,14 @@ export function resolveViewElementIds(
   return [];
 }
 
+/** 仅保留仍存在于视图画布中的关联 id */
+export function pruneViewElementIds(
+  ids: readonly string[],
+  existingViewElementIds: ReadonlySet<string>
+): string[] {
+  return ids.filter((id) => existingViewElementIds.has(id));
+}
+
 export function resolveBlueprintConfigSource(
   node: Pick<
     BlueprintGraphNode,

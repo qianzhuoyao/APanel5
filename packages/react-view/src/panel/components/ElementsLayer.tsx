@@ -1,7 +1,8 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import * as echarts from "echarts";
 import type { PanelElement } from "../types";
 import { buildChartOption, CHART_TYPES } from "../utils/chartOptionBuilder";
+import { PREVIEW_LAYOUT_EVENT } from "../utils/panelStateIO";
 
 export type ElementsLayerProps = {
   elements: PanelElement[];
@@ -14,6 +15,10 @@ export type ElementsLayerProps = {
     options?: { batchId?: string; meta?: Record<string, unknown> }
   ) => void;
   layerLocked?: boolean;
+  /** 在线预览模式：隐藏网格编辑占位等辅助 UI */
+  previewMode?: boolean;
+  /** 预览布局变更时递增，用于触发图表/画布重绘 */
+  previewLayoutKey?: number;
 };
 
 function TextNodeContent({
@@ -60,9 +65,11 @@ function TextNodeContent({
 function GridNodeContent({
   element,
   allElements,
+  previewMode = false,
 }: {
   element: PanelElement;
   allElements: PanelElement[];
+  previewMode?: boolean;
 }) {
   const rows = Math.max(1, Math.floor(element.gridRows ?? 2));
   const cols = Math.max(1, Math.floor(element.gridCols ?? 3));
@@ -110,6 +117,9 @@ function GridNodeContent({
         };
       });
   }, [allElements, cols, element.id, element.layerId, rows]);
+  if (previewMode) {
+    return <div className="relative h-full w-full" />;
+  }
   return (
     <div className="relative h-full w-full">
       <div
@@ -559,26 +569,51 @@ function GeometryNodeContent({ element }: { element: PanelElement }) {
   return <canvas ref={canvasRef} className="h-full w-full" />;
 }
 
-function ChartNodeContent({ element }: { element: PanelElement }) {
+function ChartNodeContent({
+  element,
+  previewLayoutKey,
+  previewMode = false,
+}: {
+  element: PanelElement;
+  previewLayoutKey?: number;
+  previewMode?: boolean;
+}) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<echarts.ECharts | null>(null);
   const rendererRef = useRef<"canvas" | "svg">("canvas");
   const option = useMemo(() => buildChartOption(element), [element]);
   const renderer = (element.chart?.renderMode ?? "canvas") as "canvas" | "svg";
 
-  useEffect(() => {
-    if (!hostRef.current) return;
+  const resizeChart = useCallback(() => {
+    chartRef.current?.resize();
+  }, []);
+
+  useLayoutEffect(() => {
+    const host = hostRef.current;
+    if (!host) return;
     if (!chartRef.current || rendererRef.current !== renderer) {
       chartRef.current?.dispose();
-      chartRef.current = echarts.init(hostRef.current, undefined, { renderer });
+      chartRef.current = echarts.init(host, undefined, { renderer });
       rendererRef.current = renderer;
     }
     chartRef.current.setOption(option as echarts.EChartsOption, true);
-    chartRef.current.resize();
-    const obs = new ResizeObserver(() => chartRef.current?.resize());
-    obs.observe(hostRef.current);
-    return () => obs.disconnect();
-  }, [option, renderer]);
+    resizeChart();
+  }, [element.height, element.width, option, previewLayoutKey, renderer, resizeChart]);
+
+  useEffect(() => {
+    const host = hostRef.current;
+    if (!host) return;
+    const onLayout = () => resizeChart();
+    window.addEventListener(PREVIEW_LAYOUT_EVENT, onLayout);
+    const obs = new ResizeObserver(onLayout);
+    obs.observe(host);
+    const parent = host.parentElement;
+    if (parent) obs.observe(parent);
+    return () => {
+      window.removeEventListener(PREVIEW_LAYOUT_EVENT, onLayout);
+      obs.disconnect();
+    };
+  }, [resizeChart]);
 
   useEffect(() => {
     return () => {
@@ -587,7 +622,22 @@ function ChartNodeContent({ element }: { element: PanelElement }) {
     };
   }, []);
 
-  return <div ref={hostRef} className="h-full w-full" />;
+  return (
+    <div
+      ref={hostRef}
+      className="h-full w-full"
+      style={
+        previewMode
+          ? {
+              width: Math.max(1, element.width),
+              height: Math.max(1, element.height),
+              minWidth: 1,
+              minHeight: 1,
+            }
+          : undefined
+      }
+    />
+  );
 }
 
 function getNodeVisualStyle(element: PanelElement): React.CSSProperties {
@@ -749,6 +799,8 @@ export function ElementsLayer({
   onSelectIds,
   updateElement,
   layerLocked = false,
+  previewMode = false,
+  previewLayoutKey,
 }: ElementsLayerProps) {
   const sortedElements = useMemo(() => {
     return [...elements].sort((a, b) => {
@@ -766,11 +818,13 @@ export function ElementsLayer({
           <div
             key={el.id}
             className={[
-              "rv-selectable absolute select-none",
-              isSelected ? "ring-2 ring-blue-500/90 ring-offset-0" : "",
+              "absolute select-none",
+              previewMode ? "" : "rv-selectable",
+              !previewMode && isSelected ? "ring-2 ring-blue-500/90 ring-offset-0" : "",
             ].join(" ")}
             data-element-id={el.id}
             onMouseDown={(e) => {
+              if (previewMode) return;
               if (e.button !== 0) return;
               // 单击选中（与 Selecto 的框选互补）
               if (e.shiftKey) {
@@ -786,8 +840,8 @@ export function ElementsLayer({
             style={{
               left: el.x,
               top: el.y,
-              width: el.width,
-              height: el.height,
+              width: Math.max(1, el.width),
+              height: Math.max(1, el.height),
               zIndex: el.zIndex ?? 1,
               transform: `rotate(${el.rotate ?? 0}deg)`,
               transformOrigin: "center center",
@@ -796,11 +850,19 @@ export function ElementsLayer({
             }}
           >
             {CHART_TYPES.has(el.materialType ?? "") ? (
-              <ChartNodeContent element={el} />
+              <ChartNodeContent
+                element={el}
+                previewLayoutKey={previewLayoutKey}
+                previewMode={previewMode}
+              />
             ) : el.materialType === "reference" ? (
               <ReferenceNodeContent element={el} allElements={allElements} />
             ) : el.materialType === "grid" ? (
-              <GridNodeContent element={el} allElements={allElements} />
+              <GridNodeContent
+                element={el}
+                allElements={allElements}
+                previewMode={previewMode}
+              />
             ) : el.materialType === "text" ? (
               <TextNodeContent
                 element={el}

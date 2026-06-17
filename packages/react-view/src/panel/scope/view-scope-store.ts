@@ -14,6 +14,12 @@ function subscribe(listener: () => void) {
   return () => listeners.delete(listener);
 }
 
+export function clearViewElementScopes() {
+  if (scopes.size === 0) return;
+  scopes.clear();
+  emit();
+}
+
 export function setViewElementScope(elementId: string, scope: unknown) {
   scopes.set(elementId, scope);
   emit();

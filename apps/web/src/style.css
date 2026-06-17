@@ -11,8 +11,14 @@
 }
 
 html,
-body {
+body,
+#app {
   height: 100%;
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
 }
 
 body {
@@ -70,4 +76,11 @@ table {
 
 #app {
   height: 100%;
+}
+
+[data-preview-mode="online"] canvas,
+[data-preview-mode="online"] img,
+[data-preview-mode="online"] video {
+  max-width: none;
+  max-height: none;
 }

@@ -4,6 +4,7 @@ import Moveable from "react-moveable";
 
 import type { PanelElement } from "../types";
 import { uniformViewportZoom } from "../viewportZoom";
+import { notifyPreviewLayoutChanged } from "../utils/panelStateIO";
 
 function LockGlyph({ className = "h-3.5 w-3.5" }: { className?: string }) {
   return (
@@ -569,6 +570,7 @@ export function MoveableLayer({
         const ty = toCanvasDeltaY(e.drag.beforeTranslate?.[1] ?? 0);
         e.target.style.left = `${sx + tx}px`;
         e.target.style.top = `${sy + ty}px`;
+        notifyPreviewLayoutChanged();
       }}
       onResizeGroupStart={(e: any) => {
         e.events.forEach((ev: any) => {
@@ -597,6 +599,7 @@ export function MoveableLayer({
           ev.target.style.left = `${sx + tx}px`;
           ev.target.style.top = `${sy + ty}px`;
         });
+        notifyPreviewLayoutChanged();
       }}
       onRotateStart={(e: any) => {
         const id = resolveSingleEventId(e.target as HTMLElement | null);

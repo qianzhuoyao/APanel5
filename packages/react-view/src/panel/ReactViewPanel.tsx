@@ -3,6 +3,9 @@ import type { State } from "../../../rx-store/src/types";
 import type { PanelElement } from "./types";
 
 import { usePanelElements } from "./hooks/usePanelElements";
+import { useWorkspaceProjects } from "./hooks/useWorkspaceProjects";
+import type { WorkspaceProjectRecord } from "./library/workspace-project-db";
+import { WorkspaceProjectNav } from "./components/WorkspaceProjectNav";
 import { PanelCanvas } from "./components/PanelCanvas";
 import { PanelRulers } from "./components/PanelRulers";
 import { type ViewportZoom } from "./viewportZoom";
@@ -47,6 +50,7 @@ import {
 import {
   getViewElementScope,
   setViewElementScopes,
+  clearViewElementScopes,
   useViewElementScope,
   useViewScopeStoreVersion,
 } from "./scope/view-scope-store";
@@ -1148,9 +1152,48 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
     ]
   );
 
+  useEffect(() => {
+    if (blueprintOpen) return;
+    stopAllClockSchedules();
+  }, [blueprintOpen]);
+
+  const handleWorkspaceProjectApplied = useCallback(
+    (record: WorkspaceProjectRecord) => {
+      workspaceBlueprintRef.current = {
+        document: record.blueprintDocument,
+        meta: {
+          name: record.blueprintMeta?.name ?? "未命名蓝图",
+          remark: record.blueprintMeta?.remark ?? "",
+        },
+      };
+      setActiveBlueprintLibraryId(null);
+      setBlueprintSyncedDocument(null);
+      setSelectedBlueprintNodeId(null);
+      setBlueprintOpen(true);
+      setConfigFocus("blueprint");
+    },
+    []
+  );
+
+  const workspaceProjects = useWorkspaceProjects({
+    exportPanelData,
+    importPanelData,
+    blueprintDocument: blueprintGraph.document,
+    blueprintMeta,
+    setBlueprintGraph,
+    setBlueprintMeta,
+    productName,
+    setProductName,
+    titleIconDataUrl,
+    setTitleIconDataUrl,
+    panelRevision: `${historyCursor}|${allElements.length}`,
+    onProjectApplied: handleWorkspaceProjectApplied,
+  });
+
   useBlueprintPageLifecycle({
     graph: blueprintGraph,
     active: blueprintOpen,
+    bootKey: workspaceProjects.activeProjectId ?? undefined,
     onUpdated: `${activeLayerId}|${historyCursor}`,
     resolveLibraryBlueprint,
     libraryNameById: blueprintLibraryNameById,
@@ -1159,10 +1202,66 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
     onViewScopeUpdate: handleViewScopeUpdate,
   });
 
-  useEffect(() => {
-    if (blueprintOpen) return;
-    stopAllClockSchedules();
-  }, [blueprintOpen]);
+  const handleWorkspaceCreateProject = useCallback(async () => {
+    const result = await workspaceProjects.handleCreateProject();
+    if (result?.name) {
+      toast({ title: `已创建工作区「${result.name}」` });
+    }
+    return result;
+  }, [workspaceProjects]);
+
+  const handleWorkspaceOpenProject = useCallback(
+    async (id: string) => {
+      try {
+        clearViewElementScopes();
+        await workspaceProjects.handleOpenProject(id);
+        setSelectedIds([]);
+        toast({
+          title: "工作区已加载",
+          description: "视图与蓝图已恢复",
+        });
+      } catch (error) {
+        toast({
+          title: error instanceof Error ? error.message : "打开工作区失败",
+        });
+      }
+    },
+    [workspaceProjects]
+  );
+
+  const handleWorkspaceSyncProject = useCallback(async () => {
+    try {
+      const name = await workspaceProjects.handleSyncProject();
+      if (name) {
+        toast({ title: `已同步「${name}」` });
+      }
+    } catch (error) {
+      toast({
+        title: error instanceof Error ? error.message : "同步失败",
+      });
+    }
+  }, [workspaceProjects]);
+
+  const handleWorkspaceDeleteProject = useCallback(
+    async (id: string) => {
+      await workspaceProjects.handleDeleteProject(id);
+      toast({ title: "工作区已删除" });
+    },
+    [workspaceProjects]
+  );
+
+  const openOnlinePreviewForProject = useCallback(
+    async (projectId: string, options?: { syncFirst?: boolean }) => {
+      try {
+        await workspaceProjects.handlePreviewProject(projectId, options);
+      } catch (error) {
+        toast({
+          title: error instanceof Error ? error.message : "打开预览失败",
+        });
+      }
+    },
+    [workspaceProjects]
+  );
 
   const selectedElement = selectedIds.length === 1 ? byId.get(selectedIds[0]) ?? null : null;
   const selectedElements = useMemo(
@@ -1557,15 +1656,31 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
   }, [allElements, layers, productName, titleIconDataUrl]);
 
   const handlePreviewLayer = useCallback(() => {
-    const previewLayer = primaryLayer;
-    if (!previewLayer) return;
-    if (activeLayerId !== previewLayer.id) {
-      setPendingPreviewLayerId(previewLayer.id);
-      setActiveLayer(previewLayer.id);
-      return;
-    }
-    buildPreviewForLayer(previewLayer.id);
-  }, [activeLayerId, buildPreviewForLayer, primaryLayer, setActiveLayer]);
+    void (async () => {
+      try {
+        let projectId = workspaceProjects.activeProjectId;
+        if (!projectId) {
+          const created = await handleWorkspaceCreateProject();
+          projectId = created?.id ?? null;
+        } else if (workspaceProjects.dirty) {
+          await handleWorkspaceSyncProject();
+        }
+        if (projectId) {
+          await openOnlinePreviewForProject(projectId);
+        }
+      } catch (error) {
+        toast({
+          title: error instanceof Error ? error.message : "打开预览失败",
+        });
+      }
+    })();
+  }, [
+    handleWorkspaceCreateProject,
+    handleWorkspaceSyncProject,
+    openOnlinePreviewForProject,
+    workspaceProjects.activeProjectId,
+    workspaceProjects.dirty,
+  ]);
 
   useEffect(() => {
     if (!pendingPreviewLayerId) return;
@@ -1647,7 +1762,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
           <MenubarMenu>
             <MenubarTrigger className="px-2 py-1 text-xs font-normal">文件</MenubarTrigger>
             <MenubarContent className="z-[10100]">
-              <MenubarItem onClick={handlePreviewLayer}>预览</MenubarItem>
+              {/* <MenubarItem onClick={handlePreviewLayer}>预览</MenubarItem> */}
               <MenubarItem onClick={handleExport}>导出</MenubarItem>
               <MenubarItem onClick={() => importInputRef.current?.click()}>导入</MenubarItem>
             </MenubarContent>
@@ -1702,6 +1817,17 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
             </MenubarContent>
           </MenubarMenu>
         </Menubar>
+        <WorkspaceProjectNav
+          projects={workspaceProjects.projects}
+          activeProjectId={workspaceProjects.activeProjectId}
+          activeProjectName={workspaceProjects.activeProjectName}
+          dirty={workspaceProjects.dirty}
+          onCreateProject={handleWorkspaceCreateProject}
+          onOpenProject={handleWorkspaceOpenProject}
+          onSyncProject={handleWorkspaceSyncProject}
+          onDeleteProject={handleWorkspaceDeleteProject}
+          onPreviewProject={openOnlinePreviewForProject}
+        />
         <div className="flex-1" />
       </nav>
       <ResizablePanelGroup direction="horizontal" className="min-h-0 w-full flex-1">
