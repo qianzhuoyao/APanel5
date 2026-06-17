@@ -33,6 +33,11 @@ import type {
 import { buildChartOption, CHART_TYPES } from "../utils/chartOptionBuilder";
 import type { PanelLayer } from "../types";
 import { PANEL_MESSAGES } from "../constants/messages";
+import { ViewElementScopePanel } from "./ViewElementScopePanel";
+import { hasViewElementScope } from "../scope/view-scope-store";
+import { collectElementScopeWarnings } from "../utils/scope-template-warnings";
+import { ScopeConfigProvider } from "./scope-config/ScopeConfigContext";
+import { ScopeTemplateWarningsPanel } from "./scope-config/ScopeTemplateWarningsPanel";
 
 type UpdateElement = (
   id: string,
@@ -52,6 +57,8 @@ export type PanelConfigSidebarProps = {
     nodeId: string,
     action: "bringForward" | "sendBackward" | "bringToFront" | "sendToBack"
   ) => void;
+  /** 蓝图视图绑定节点写入的信号 scope，用于展示与模版解析 */
+  viewElementScope?: unknown;
 };
 
 export function PanelConfigSidebar({
@@ -63,6 +70,7 @@ export function PanelConfigSidebar({
   nodeZOrderLabel,
   onExcludeSelectedNode,
   onAdjustNodeZOrder,
+  viewElementScope,
 }: PanelConfigSidebarProps) {
   const [isAdvancedOptionMode, setIsAdvancedOptionMode] = useState(false);
   const [optionJsonText, setOptionJsonText] = useState("{}");
@@ -83,6 +91,7 @@ export function PanelConfigSidebar({
   const recordStreamRef = useRef<MediaStream | null>(null);
   const audioChunksRef = useRef<BlobPart[]>([]);
   const [isRecordingAudio, setIsRecordingAudio] = useState(false);
+  const sidebarScrollRef = useRef<HTMLElement | null>(null);
   const themedScrollbarClass =
     "scrollbar-thin [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-muted/40 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border/80 [&::-webkit-scrollbar-thumb]:hover:bg-border";
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
@@ -123,6 +132,14 @@ export function PanelConfigSidebar({
     | "";
   const normalizedSearch = useMemo(() => configSearch.trim().toLowerCase(), [configSearch]);
   const hasSearch = normalizedSearch.length > 0;
+  const showScopePanel =
+    !!selectedElement &&
+    viewElementScope !== undefined &&
+    hasViewElementScope(selectedElement.id);
+  const scopeWarnings = useMemo(() => {
+    if (!selectedElement || viewElementScope === undefined) return [];
+    return collectElementScopeWarnings(selectedElement, viewElementScope);
+  }, [selectedElement, viewElementScope]);
   const effectiveSelectedElements = useMemo(() => {
     if (selectedElements.length > 0) return selectedElements;
     return selectedElement ? [selectedElement] : [];
@@ -574,33 +591,54 @@ export function PanelConfigSidebar({
 
   let renderedSectionCount = 0;
   return (
+    <ScopeConfigProvider
+      warnings={scopeWarnings}
+      scrollContainerRef={sidebarScrollRef}
+    >
     <aside
-      className={`h-full overflow-auto border-l border-border bg-muted/[0.14] px-3 py-3 text-foreground [&_button[role=checkbox]]:border-2 [&_button[role=checkbox]]:border-foreground/80 [&_button[role=checkbox]]:bg-background [&_button[role=checkbox]]:ring-1 [&_button[role=checkbox]]:ring-foreground/40 [&_button[role=checkbox][data-state=checked]]:border-primary [&_button[role=checkbox][data-state=checked]]:ring-primary/40 ${themedScrollbarClass}`}
+      ref={sidebarScrollRef}
+      className={`scope-config-sidebar h-full overflow-auto border-l border-border bg-muted/[0.14] px-3 py-3 text-foreground [&_.scope-field--highlight]:rounded-md [&_.scope-field--highlight]:ring-2 [&_.scope-field--highlight]:ring-amber-400/80 [&_button[role=checkbox]]:border-2 [&_button[role=checkbox]]:border-foreground/80 [&_button[role=checkbox]]:bg-background [&_button[role=checkbox]]:ring-1 [&_button[role=checkbox]]:ring-foreground/40 [&_button[role=checkbox][data-state=checked]]:border-primary [&_button[role=checkbox][data-state=checked]]:ring-primary/40 ${themedScrollbarClass}`}
     >
       <div className="sticky top-0 z-20 mb-3 rounded-lg border border-border/70 bg-card/95 px-2.5 py-2 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/80">
         <div className="flex items-center justify-between gap-2">
           <div className="text-xs font-semibold tracking-wide">配置面板</div>
-          <button
-            type="button"
-            className="rounded border border-border px-1.5 py-0.5 text-[11px] text-muted-foreground hover:bg-accent"
-            onClick={() => setIsSearchCollapsed((prev) => !prev)}
-          >
-            {isSearchCollapsed ? "展开搜索" : "收起搜索"}
-          </button>
         </div>
-        {!isSearchCollapsed ? (
-          <div className="mt-2">
-            <Input
-              value={configSearch}
-              onChange={(e) => setConfigSearch(e.target.value)}
-              placeholder="搜索配置，如：边框、tooltip、音频、网格..."
-              className="h-7"
-            />
-            {hasSearch ? (
-              <div className="mt-1 text-[11px] text-muted-foreground">搜索中：{configSearch}</div>
-            ) : null}
-          </div>
+        {showScopePanel ? (
+          <ViewElementScopePanel scope={viewElementScope} />
         ) : null}
+        <ScopeTemplateWarningsPanel />
+        <div
+          className={
+            showScopePanel || scopeWarnings.length > 0
+              ? "mt-2 border-t border-border/50 pt-2"
+              : "mt-0"
+          }
+        >
+          <div className="flex items-center justify-end gap-2">
+            <button
+              type="button"
+              className="rounded border border-border px-1.5 py-0.5 text-[11px] text-muted-foreground hover:bg-accent"
+              onClick={() => setIsSearchCollapsed((prev) => !prev)}
+            >
+              {isSearchCollapsed ? "展开搜索" : "收起搜索"}
+            </button>
+          </div>
+          {!isSearchCollapsed ? (
+            <div className="mt-2">
+              <Input
+                value={configSearch}
+                onChange={(e) => setConfigSearch(e.target.value)}
+                placeholder="搜索配置，如：边框、tooltip、音频、网格..."
+                className="h-7"
+              />
+              {hasSearch ? (
+                <div className="mt-1 text-[11px] text-muted-foreground">
+                  搜索中：{configSearch}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
       </div>
       {isMultiSelectMode ? (
         <div className="space-y-3">
@@ -3663,6 +3701,7 @@ export function PanelConfigSidebar({
         </div>
       ) : null}
     </aside>
+    </ScopeConfigProvider>
   );
 }
 

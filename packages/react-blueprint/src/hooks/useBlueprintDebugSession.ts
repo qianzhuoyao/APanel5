@@ -41,6 +41,11 @@ export type UseBlueprintDebugSessionOptions = {
   libraryNameById?: ReadonlyMap<string, string>;
   /** 检测到蓝图相互引用死循环时回调 */
   onExecutionBlocked?: (message: string) => void;
+  /** 视图绑定节点收到真信号时，为关联视图元素写入 scope */
+  onViewScopeUpdate?: (
+    viewElementIds: string[],
+    scope: unknown
+  ) => void;
 };
 
 function buildNodeLabelMap(graph: BlueprintGraph): Record<string, string> {
@@ -60,6 +65,7 @@ export function useBlueprintDebugSession({
   resolveLibraryBlueprint,
   libraryNameById,
   onExecutionBlocked,
+  onViewScopeUpdate,
 }: UseBlueprintDebugSessionOptions) {
   const runnerRef = useRef<BlueprintGraphRunner | null>(null);
   const runIdRef = useRef<string | null>(null);
@@ -147,12 +153,14 @@ export function useBlueprintDebugSession({
       resolveLibraryBlueprint,
       rootLibraryBlueprintId: blueprintId,
       resolveBlueprintName,
+      onViewScopeUpdate,
     });
     runnerRef.current = runner;
     return runner;
   }, [
     blueprintId,
     buildRunnableGraph,
+    onViewScopeUpdate,
     resolveBlueprintName,
     resolveLibraryBlueprint,
   ]);
@@ -448,6 +456,10 @@ export function useBlueprintDebugSession({
     setChainComplete(false);
   }, []);
 
+  const abortClock = useCallback((nodeId: string) => {
+    runnerRef.current?.abortClockNode(nodeId);
+  }, []);
+
   const clearLog = resetSession;
 
   const selectLifecycleNode = useCallback(
@@ -494,6 +506,7 @@ export function useBlueprintDebugSession({
     resetSession,
     clearLog,
     totalSavedRunCount,
+    abortClock,
   };
 }
 

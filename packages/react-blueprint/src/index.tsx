@@ -43,6 +43,8 @@ export type BluePrintReactRootProps = {
   onGraphChange: Dispatch<SetStateAction<BlueprintGraph>>;
   selectedNodeId?: string | null;
   onSelectNode?: (nodeId: string | null) => void;
+  /** 中止正在运行的时钟节点 */
+  onAbortClock?: (nodeId: string) => void;
   /** 调试执行时的画布高亮（节点 + 边线信号色） */
   executionOverlay?: BlueprintExecutionOverlay | null;
   /** 蓝图库 id -> 名称，用于画布节点展示引用蓝图名 */
@@ -61,6 +63,7 @@ function BlueprintCanvas({
   selectedNodeId = null,
   executionOverlay = null,
   onSelectNode,
+  onAbortClock,
   libraryNameById,
   containerRef,
 }: BlueprintCanvasProps) {
@@ -230,6 +233,7 @@ export const BluePrintReactRoot: FC<BluePrintReactRootProps> = ({
   selectedNodeId,
   executionOverlay,
   onSelectNode,
+  onAbortClock,
   libraryNameById,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -246,7 +250,10 @@ export const BluePrintReactRoot: FC<BluePrintReactRootProps> = ({
         ...style,
       }}
     >
-      <BlueprintCanvasProvider onSelectNode={onSelectNode}>
+      <BlueprintCanvasProvider
+        onSelectNode={onSelectNode}
+        onAbortClock={onAbortClock}
+      >
         <ReactFlowProvider>
           <BlueprintCanvas
             containerRef={containerRef}

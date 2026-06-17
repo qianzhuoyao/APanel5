@@ -7,6 +7,7 @@ export const FETCH_NODE_TYPE = "DataFetch";
 export const JSON_NODE_TYPE = "JsonNode";
 export const CLOCK_NODE_TYPE = "Clock";
 export const AND_NODE_TYPE = "AndLogic";
+export const VIEW_NODE_TYPE = "ViewBind";
 
 /** 蓝图引用节点：单入单出，收到真信号后执行嵌套蓝图 */
 export const blueprintNodeDefinition: NodeDefinition = {
@@ -66,6 +67,14 @@ export const andLogicNodeDefinition: NodeDefinition = {
   behavior: { kind: "js", ref: "and-run" },
 };
 
+/** 视图绑定节点：收到信号后为关联视图元素写入 scope，并向下游透传 */
+export const viewBindNodeDefinition: NodeDefinition = {
+  type: VIEW_NODE_TYPE,
+  inputs: [{ name: "in", kind: "data" }],
+  outputs: [{ name: "out", kind: "data" }],
+  behavior: { kind: "js", ref: "view-bind-run" },
+};
+
 export const nodeDefinitionRegistry: Record<string, NodeDefinition> = {
   [BLUEPRINT_NODE_TYPE]: blueprintNodeDefinition,
   [DEFAULT_LOGIC_NODE_TYPE]: defaultLogicNodeDefinition,
@@ -74,6 +83,7 @@ export const nodeDefinitionRegistry: Record<string, NodeDefinition> = {
   [JSON_NODE_TYPE]: jsonNodeDefinition,
   [CLOCK_NODE_TYPE]: clockNodeDefinition,
   [AND_NODE_TYPE]: andLogicNodeDefinition,
+  [VIEW_NODE_TYPE]: viewBindNodeDefinition,
 };
 
 export function getNodeDefinition(type: string): NodeDefinition {

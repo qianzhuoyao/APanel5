@@ -18,5 +18,12 @@ export {
   buildClockSessionKey,
   scheduleClockOutputs,
   createClockOutputValue,
+  abortClockNode,
+  isClockScheduleActive,
 } from "./runtime/clock-scheduler.js";
+export {
+  isClockNodeActive,
+  getActiveClockNodeIds,
+  subscribeActiveClockNodes,
+} from "./runtime/clock-active-registry.js";
 export * from "./nodes/definitions.js";

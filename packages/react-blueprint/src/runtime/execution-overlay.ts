@@ -123,16 +123,18 @@ export function buildExecutionOverlay(
   const edgeSignals: Record<string, BlueprintEdgeSignalKind> = {};
   const clockEdgeTicks: Record<string, number> = {};
 
-  applyEntryOutputEdgeSignals(graph, lastEntry, edgeSignals);
+  // 按执行顺序累积各输出口最近一次信号；未再次输出的连线保持变色
+  for (const entry of entries) {
+    applyEntryOutputEdgeSignals(graph, entry, edgeSignals);
+    if (
+      entry.nodeType === CLOCK_NODE_TYPE &&
+      getTraceEntryOutputKind(entry) === "true"
+    ) {
+      applyClockEdgeTicks(graph, entry, clockEdgeTicks);
+    }
+  }
 
-  // 时钟每次输出后下游会继续执行；保留最近一次时钟 tick 的输出口连线颜色
   const lastClockEntry = findLastClockTraceEntry(entries);
-  if (lastClockEntry && lastEntry.nodeType !== CLOCK_NODE_TYPE) {
-    applyEntryOutputEdgeSignals(graph, lastClockEntry, edgeSignals);
-  }
-  if (lastClockEntry) {
-    applyClockEdgeTicks(graph, lastClockEntry, clockEdgeTicks);
-  }
 
   const clockNodeProgress: Record<string, { current: number; total: number }> =
     {};

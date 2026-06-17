@@ -18,6 +18,7 @@ import {
   JSON_NODE_TYPE,
   LIFECYCLE_NODE_TYPE,
   normalizeClockConfig,
+  VIEW_NODE_TYPE,
 } from "@arron/blueprint-dsl";
 
 export type { FetchRequestConfig as BlueprintFetchConfig } from "@arron/blueprint-dsl";
@@ -212,6 +213,12 @@ export function sanitizeBlueprintDocument(
         viewElementId: undefined,
       };
     }
+    if (
+      resolveBlueprintConfigSource(next) === "view" &&
+      next.nodeType !== VIEW_NODE_TYPE
+    ) {
+      next = { ...next, nodeType: VIEW_NODE_TYPE };
+    }
     if (next.role === "lifecycle") {
       return { ...next, configSource: "lifecycle" as const };
     }
@@ -357,7 +364,7 @@ export function patchNodeConfigSource(
 
   return {
     role: "blueprint",
-    nodeType: BLUEPRINT_NODE_TYPE,
+    nodeType: VIEW_NODE_TYPE,
     configSource: "view",
     lifecyclePhase: undefined,
     libraryBlueprintId: undefined,

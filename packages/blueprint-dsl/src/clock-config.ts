@@ -99,7 +99,7 @@ export function buildClockSignalValue(
   };
 }
 
-function sleep(ms: number, abort: { aborted: boolean }): Promise<void> {
+function sleep(ms: number, abort: { aborted: boolean }, sessionKey?: string): Promise<void> {
   if (ms <= 0 || abort.aborted) return Promise.resolve();
   return new Promise((resolve) => {
     const timerId = setTimeout(() => {
@@ -107,7 +107,10 @@ function sleep(ms: number, abort: { aborted: boolean }): Promise<void> {
       resolve();
     }, ms);
     const pollId = setInterval(() => {
-      if (abort.aborted) {
+      if (
+        abort.aborted ||
+        (sessionKey !== undefined && isClockSessionAborted(sessionKey))
+      ) {
         clearTimeout(timerId);
         clearInterval(pollId);
         resolve();
@@ -151,6 +154,7 @@ export function getClockTickWaitMs(
 }
 
 const activeSessions = new Map<string, { aborted: boolean }>();
+const abortedClockSessions = new Set<string>();
 
 /** 停止指定会话的时钟调度 */
 export function stopClockSchedule(sessionKey: string): void {
@@ -158,6 +162,24 @@ export function stopClockSchedule(sessionKey: string): void {
   if (!session) return;
   session.aborted = true;
   activeSessions.delete(sessionKey);
+}
+
+export function isClockScheduleActive(sessionKey: string): boolean {
+  return activeSessions.has(sessionKey);
+}
+
+/** 中止时钟：取消剩余 tick，并标记会话供下游传播循环检测 */
+export function abortClockSession(sessionKey: string): void {
+  stopClockSchedule(sessionKey);
+  abortedClockSessions.add(sessionKey);
+}
+
+export function isClockSessionAborted(sessionKey: string): boolean {
+  return abortedClockSessions.has(sessionKey);
+}
+
+export function clearClockSessionAbort(sessionKey: string): void {
+  abortedClockSessions.delete(sessionKey);
 }
 
 /**
@@ -168,31 +190,34 @@ export function startClockSchedule(options: {
   sessionKey: string;
   config: ClockNodeConfig;
   onTick: () => void | Promise<void>;
+  onSettled?: () => void;
 }): () => void {
   stopClockSchedule(options.sessionKey);
+  clearClockSessionAbort(options.sessionKey);
 
   const abort = { aborted: false };
   activeSessions.set(options.sessionKey, abort);
 
   void (async () => {
-    const config = normalizeClockConfig(options.config);
-    const total = config.outputCount;
-    const scheduleStartMs = Date.now();
+    try {
+      const config = normalizeClockConfig(options.config);
+      const total = config.outputCount;
+      const scheduleStartMs = Date.now();
 
-    for (let tickIndex = 0; tickIndex < total; tickIndex++) {
-      if (abort.aborted) return;
+      for (let tickIndex = 0; tickIndex < total; tickIndex++) {
+        if (abort.aborted || isClockSessionAborted(options.sessionKey)) return;
 
-      const waitMs = getClockTickWaitMs(config, tickIndex, scheduleStartMs);
-      if (waitMs > 0) {
-        await sleep(waitMs, abort);
+        const waitMs = getClockTickWaitMs(config, tickIndex, scheduleStartMs);
+        if (waitMs > 0) {
+          await sleep(waitMs, abort, options.sessionKey);
+        }
+
+        if (abort.aborted || isClockSessionAborted(options.sessionKey)) return;
+        await options.onTick();
       }
-
-      if (abort.aborted) return;
-      await options.onTick();
-    }
-
-    if (!abort.aborted) {
+    } finally {
       activeSessions.delete(options.sessionKey);
+      options.onSettled?.();
     }
   })();
 
@@ -202,6 +227,6 @@ export function startClockSchedule(options: {
 /** 停止全部时钟调度（如蓝图面板卸载时） */
 export function stopAllClockSchedules(): void {
   for (const key of [...activeSessions.keys()]) {
-    stopClockSchedule(key);
+    abortClockSession(key);
   }
 }

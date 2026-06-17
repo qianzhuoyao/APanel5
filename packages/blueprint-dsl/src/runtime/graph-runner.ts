@@ -22,7 +22,14 @@ import {
   buildClockSessionKey,
   scheduleClockOutputs,
   stopAllClockSchedules,
+  abortClockNode as abortClockNodeSession,
+  isClockSessionAborted,
+  clearClockSessionAbort,
 } from "./clock-scheduler.js";
+import {
+  markClockNodeActive,
+  markClockNodeInactive,
+} from "./clock-active-registry.js";
 import {
   registerDefaultBehaviors,
   BLUEPRINT_ACTIVATION_INPUT_KEY,
@@ -47,6 +54,7 @@ import {
   CLOCK_NODE_TYPE,
   getNodeDefinition,
   LIFECYCLE_NODE_TYPE,
+  VIEW_NODE_TYPE,
 } from "../nodes/definitions.js";
 import type { BlueprintRefOutput, BlueprintNodeOutputs } from "../blueprint-signal.js";
 import {
@@ -69,6 +77,8 @@ export type RunnableGraphNode = {
   /** 蓝图库记录 id，Blueprint 节点引用嵌套蓝图时使用 */
   libraryBlueprintId?: string;
   blueprintName?: string;
+  /** 视图绑定节点关联的视图画布元素 id */
+  viewElementIds?: string[];
   fetchConfig?: FetchRequestConfig;
   jsonConfig?: JsonNodeConfig;
   logicConfig?: LogicNodeConfig;
@@ -92,6 +102,11 @@ export type RunnableGraph = {
 export type LibraryBlueprintResolver = (
   libraryBlueprintId: string
 ) => Promise<RunnableGraph | null>;
+
+export type ViewScopeUpdateCallback = (
+  viewElementIds: string[],
+  scope: unknown
+) => void;
 
 type NodeOutputStore = Map<string, Map<string, Value>>;
 
@@ -149,6 +164,7 @@ export class BlueprintGraphRunner {
   private resolveBlueprintName?: (libraryBlueprintId: string) => string;
   private cycleValidated = false;
   private debugProgressCallback: DebugProgressCallback | null = null;
+  private onViewScopeUpdate?: ViewScopeUpdateCallback;
 
   constructor(
     private graph: RunnableGraph,
@@ -156,11 +172,13 @@ export class BlueprintGraphRunner {
       resolveLibraryBlueprint?: LibraryBlueprintResolver;
       rootLibraryBlueprintId?: string | null;
       resolveBlueprintName?: (libraryBlueprintId: string) => string;
+      onViewScopeUpdate?: ViewScopeUpdateCallback;
     }
   ) {
     this.resolveLibraryBlueprint = options?.resolveLibraryBlueprint;
     this.rootLibraryBlueprintId = options?.rootLibraryBlueprintId ?? null;
     this.resolveBlueprintName = options?.resolveBlueprintName;
+    this.onViewScopeUpdate = options?.onViewScopeUpdate;
     this.behaviors = new BehaviorRegistry();
     registerDefaultBehaviors(this.behaviors);
     this.registerBlueprintRefBehavior();
@@ -169,6 +187,7 @@ export class BlueprintGraphRunner {
     this.registerLogicBehavior();
     this.registerClockBehavior();
     this.registerAndBehavior();
+    this.registerViewBindBehavior();
   }
 
   async ensureNoBlueprintCycle(): Promise<void> {
@@ -218,7 +237,15 @@ export class BlueprintGraphRunner {
   }
 
   /** 时钟节点单次输出：向下游传播含当前时间的真信号 */
-  async propagateClockOutput(nodeId: string, parentScope?: Scope): Promise<void> {
+  async propagateClockOutput(
+    nodeId: string,
+    parentScope?: Scope,
+    sessionKey?: string
+  ): Promise<void> {
+    const resolvedSessionKey =
+      sessionKey ?? buildClockSessionKey(this.clockScopeId(), nodeId);
+    if (isClockSessionAborted(resolvedSessionKey)) return;
+
     await this.ensureNoBlueprintCycle();
     const node = this.requireNode(nodeId);
     if (node.nodeType !== CLOCK_NODE_TYPE) return;
@@ -243,6 +270,10 @@ export class BlueprintGraphRunner {
 
     const executor = this.createExecutor(queue);
     while (queue.length > 0) {
+      if (isClockSessionAborted(resolvedSessionKey)) {
+        queue.length = 0;
+        return;
+      }
       const token = queue.shift()!;
       try {
         await executor.executeToken(token);
@@ -275,11 +306,21 @@ export class BlueprintGraphRunner {
 
   private startClockSchedule(nodeId: string, config: ClockNodeConfig, scope?: Scope) {
     const sessionKey = buildClockSessionKey(this.clockScopeId(), nodeId);
+    markClockNodeActive(nodeId);
     scheduleClockOutputs({
       sessionKey,
       config,
-      onTick: () => this.propagateClockOutput(nodeId, scope),
+      onTick: async () => {
+        if (isClockSessionAborted(sessionKey)) return;
+        await this.propagateClockOutput(nodeId, scope, sessionKey);
+      },
+      onSettled: () => markClockNodeInactive(nodeId),
     });
+  }
+
+  /** 中止指定时钟节点：停止剩余 tick 与正在执行的下游任务 */
+  abortClockNode(nodeId: string): void {
+    abortClockNodeSession(this.clockScopeId(), nodeId);
   }
 
   /** 从所有无入流 signal 的节点开始执行（嵌套蓝图调用） */
@@ -541,11 +582,16 @@ export class BlueprintGraphRunner {
     this.debugProgressCallback?.([...this.traceEntries]);
   }
 
-  private async awaitClockDelay(ms: number): Promise<void> {
+  private async awaitClockDelay(ms: number, sessionKey?: string): Promise<void> {
     if (ms <= 0) return;
-    await new Promise<void>((resolve) => {
-      setTimeout(resolve, ms);
-    });
+    const step = 50;
+    let elapsed = 0;
+    while (elapsed < ms) {
+      if (sessionKey && isClockSessionAborted(sessionKey)) return;
+      const chunk = Math.min(step, ms - elapsed);
+      await new Promise<void>((resolve) => setTimeout(resolve, chunk));
+      elapsed += chunk;
+    }
   }
 
   private buildTraceInputsForNode(
@@ -619,11 +665,17 @@ export class BlueprintGraphRunner {
 
   private async runDebugTokenSubqueue(
     queue: ExecutionToken[],
-    nodeLabelById?: Record<string, string>
+    nodeLabelById?: Record<string, string>,
+    abortSessionKey?: string
   ): Promise<boolean> {
     const executor = this.createExecutor(queue);
 
     while (queue.length > 0) {
+      if (abortSessionKey && isClockSessionAborted(abortSessionKey)) {
+        queue.length = 0;
+        return false;
+      }
+
       const token = queue.shift()!;
 
       if (token.nodeType === CLOCK_NODE_TYPE) {
@@ -642,6 +694,10 @@ export class BlueprintGraphRunner {
       }
 
       await this.executeDebugToken(token, nodeLabelById, executor, queue);
+      if (abortSessionKey && isClockSessionAborted(abortSessionKey)) {
+        queue.length = 0;
+        return false;
+      }
       if (this.isDebugHaltedByFalseOutput(token.nodeId)) {
         return true;
       }
@@ -700,82 +756,96 @@ export class BlueprintGraphRunner {
     config: ClockNodeConfig,
     nodeLabelById?: Record<string, string>
   ): Promise<boolean> {
-    const normalized = normalizeClockConfig(config);
-    const baseInputs = this.buildTraceInputsForNode(
-      token.nodeId,
-      token.nodeType
-    );
-    const input = this.resolvePortInputValue(token.nodeId, "in");
-
-    const finishWithOutput = async (
-      output: Value,
-      tickLabel?: string
-    ): Promise<boolean> => {
-      this.setNodeOutput(token.nodeId, "out", output);
-      this.appendDebugTraceEntry(token, nodeLabelById, Date.now(), {
-        tickLabel,
-        inputs: baseInputs,
-      });
-      this.pushDebugSnapshot();
-      const subQueue = this.enqueueDebugTargets(
+    const sessionKey = buildClockSessionKey(this.clockScopeId(), token.nodeId);
+    clearClockSessionAbort(sessionKey);
+    markClockNodeActive(token.nodeId);
+    try {
+      const normalized = normalizeClockConfig(config);
+      const baseInputs = this.buildTraceInputsForNode(
         token.nodeId,
-        "out",
-        token.scope
+        token.nodeType
       );
-      return this.runDebugTokenSubqueue(subQueue, nodeLabelById);
-    };
+      const input = this.resolvePortInputValue(token.nodeId, "in");
 
-    if (isFalseSignal(input)) {
-      return finishWithOutput(input);
-    }
+      const finishWithOutput = async (
+        output: Value,
+        tickLabel?: string
+      ): Promise<boolean> => {
+        this.setNodeOutput(token.nodeId, "out", output);
+        this.appendDebugTraceEntry(token, nodeLabelById, Date.now(), {
+          tickLabel,
+          inputs: baseInputs,
+        });
+        this.pushDebugSnapshot();
+        const subQueue = this.enqueueDebugTargets(
+          token.nodeId,
+          "out",
+          token.scope
+        );
+        return this.runDebugTokenSubqueue(subQueue, nodeLabelById, sessionKey);
+      };
 
-    if (!isTrueSignal(input)) {
-      return finishWithOutput(
-        createFalseSignal("时钟节点需要收到真信号后才会启动")
-      );
-    }
-
-    const validation = validateClockScheduleConfig(normalized);
-    if (!validation.ok) {
-      return finishWithOutput(createFalseSignal(validation.error));
-    }
-
-    const baseLabel = nodeLabelById?.[token.nodeId] ?? token.nodeId;
-    const scheduleStartMs = Date.now();
-
-    for (let i = 0; i < normalized.outputCount; i++) {
-      const waitMs = getClockTickWaitMs(normalized, i, scheduleStartMs);
-      if (waitMs > 0) {
-        await this.awaitClockDelay(waitMs);
+      if (isFalseSignal(input)) {
+        return finishWithOutput(input);
       }
 
-      const tickStarted = Date.now();
-      const value = buildClockSignalValue(normalized);
-      this.setNodeOutput(token.nodeId, "out", createTrueSignal(value));
+      if (!isTrueSignal(input)) {
+        return finishWithOutput(
+          createFalseSignal("时钟节点需要收到真信号后才会启动")
+        );
+      }
 
-      const tickLabel =
-        normalized.outputCount > 1
-          ? `${baseLabel} (${i + 1}/${normalized.outputCount})`
-          : baseLabel;
+      const validation = validateClockScheduleConfig(normalized);
+      if (!validation.ok) {
+        return finishWithOutput(createFalseSignal(validation.error));
+      }
 
-      this.appendDebugTraceEntry(token, nodeLabelById, tickStarted, {
-        tickLabel,
-        inputs: baseInputs,
-        clockTickIndex: i + 1,
-        clockTickTotal: normalized.outputCount,
-      });
-      this.pushDebugSnapshot();
+      const baseLabel = nodeLabelById?.[token.nodeId] ?? token.nodeId;
+      const scheduleStartMs = Date.now();
 
-      const subQueue = this.enqueueDebugTargets(
-        token.nodeId,
-        "out",
-        token.scope
-      );
-      const halted = await this.runDebugTokenSubqueue(subQueue, nodeLabelById);
-      if (halted) return true;
+      for (let i = 0; i < normalized.outputCount; i++) {
+        if (isClockSessionAborted(sessionKey)) return false;
+
+        const waitMs = getClockTickWaitMs(normalized, i, scheduleStartMs);
+        if (waitMs > 0) {
+          await this.awaitClockDelay(waitMs, sessionKey);
+        }
+        if (isClockSessionAborted(sessionKey)) return false;
+
+        const tickStarted = Date.now();
+        const value = buildClockSignalValue(normalized);
+        this.setNodeOutput(token.nodeId, "out", createTrueSignal(value));
+
+        const tickLabel =
+          normalized.outputCount > 1
+            ? `${baseLabel} (${i + 1}/${normalized.outputCount})`
+            : baseLabel;
+
+        this.appendDebugTraceEntry(token, nodeLabelById, tickStarted, {
+          tickLabel,
+          inputs: baseInputs,
+          clockTickIndex: i + 1,
+          clockTickTotal: normalized.outputCount,
+        });
+        this.pushDebugSnapshot();
+
+        const subQueue = this.enqueueDebugTargets(
+          token.nodeId,
+          "out",
+          token.scope
+        );
+        const halted = await this.runDebugTokenSubqueue(
+          subQueue,
+          nodeLabelById,
+          sessionKey
+        );
+        if (halted || isClockSessionAborted(sessionKey)) return halted;
+      }
+
+      return false;
+    } finally {
+      markClockNodeInactive(token.nodeId);
     }
-
-    return false;
   }
 
   isDebugHaltedByFalseOutput(nodeId?: string): boolean {
@@ -1069,6 +1139,27 @@ export class BlueprintGraphRunner {
     });
   }
 
+  private registerViewBindBehavior() {
+    const runner = this;
+    this.behaviors.registerJS("view-bind-run", async ({ token, io }) => {
+      const node = runner.requireNode(token.nodeId);
+      const input = await io.getInput("in");
+
+      if (isTrueSignal(input) && node.viewElementIds?.length) {
+        runner.onViewScopeUpdate?.(node.viewElementIds, input.value);
+      }
+
+      if (isFalseSignal(input)) {
+        io.setOutput("out", input);
+      } else if (isTrueSignal(input)) {
+        io.setOutput("out", createTrueSignal(input.value));
+      } else {
+        io.setOutput("out", createTrueSignal(undefined));
+      }
+      io.emitFlow("out");
+    });
+  }
+
   private async runFromNode(
     nodeId: string,
     lifecycleSignal?: LifecycleSignal,
@@ -1232,4 +1323,4 @@ export class BlueprintGraphRunner {
   }
 }
 
-export { BLUEPRINT_NODE_TYPE };
+export { BLUEPRINT_NODE_TYPE, VIEW_NODE_TYPE };

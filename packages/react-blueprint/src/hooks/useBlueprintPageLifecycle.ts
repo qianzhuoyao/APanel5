@@ -34,6 +34,11 @@ export type UseBlueprintPageLifecycleOptions = {
   rootLibraryBlueprintId?: string | null;
   /** 检测到蓝图相互引用死循环时回调 */
   onExecutionBlocked?: (message: string) => void;
+  /** 视图绑定节点收到真信号时，为关联视图元素写入 scope */
+  onViewScopeUpdate?: (
+    viewElementIds: string[],
+    scope: unknown
+  ) => void;
 };
 
 type RunnerOptions = Pick<
@@ -42,6 +47,7 @@ type RunnerOptions = Pick<
   | "libraryNameById"
   | "rootLibraryBlueprintId"
   | "onExecutionBlocked"
+  | "onViewScopeUpdate"
 >;
 
 function resolveBlueprintName(
@@ -61,6 +67,7 @@ function createRunner(graph: BlueprintGraph, options: RunnerOptions) {
       rootLibraryBlueprintId: options.rootLibraryBlueprintId,
       resolveBlueprintName: (id) =>
         resolveBlueprintName(options.libraryNameById, id),
+      onViewScopeUpdate: options.onViewScopeUpdate,
     }
   );
 }
@@ -104,6 +111,7 @@ export function useBlueprintPageLifecycle({
   libraryNameById,
   rootLibraryBlueprintId = null,
   onExecutionBlocked,
+  onViewScopeUpdate,
 }: UseBlueprintPageLifecycleOptions) {
   const graphRef = useRef(graph);
   graphRef.current = graph;
@@ -113,12 +121,14 @@ export function useBlueprintPageLifecycle({
     libraryNameById,
     rootLibraryBlueprintId,
     onExecutionBlocked,
+    onViewScopeUpdate,
   });
   runnerOptionsRef.current = {
     resolveLibraryBlueprint,
     libraryNameById,
     rootLibraryBlueprintId,
     onExecutionBlocked,
+    onViewScopeUpdate,
   };
 
   useEffect(() => {

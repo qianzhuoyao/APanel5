@@ -38,11 +38,19 @@ import {
   type BlueprintMetaDraft,
 } from "@arron/react-blueprint";
 import type { LibraryBlueprintResolver } from "@arron/blueprint-dsl";
+import { abortClockNode } from "@arron/blueprint-dsl";
 import { WorkspaceStageSplit } from "./components/WorkspaceStageSplit";
 import {
   WorkspaceConfigSidebar,
   type WorkspaceConfigFocus,
 } from "./components/WorkspaceConfigSidebar";
+import {
+  getViewElementScope,
+  setViewElementScopes,
+  useViewElementScope,
+  useViewScopeStoreVersion,
+} from "./scope/view-scope-store";
+import { resolvePanelElementScope } from "./utils/scope-template";
 import { PANEL_MESSAGES } from "./constants/messages";
 import { PANEL_Z_INDEX } from "./constants/zIndex";
 import {
@@ -806,6 +814,13 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
     toast({ title: message });
   }, []);
 
+  const handleViewScopeUpdate = useCallback(
+    (viewElementIds: string[], scope: unknown) => {
+      setViewElementScopes(viewElementIds, scope);
+    },
+    []
+  );
+
   const blueprintDebugSession = useBlueprintDebugSession({
     graph: blueprintGraph,
     blueprintId: activeBlueprintLibraryId,
@@ -813,6 +828,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
     resolveLibraryBlueprint,
     libraryNameById: blueprintLibraryNameById,
     onExecutionBlocked: handleBlueprintExecutionBlocked,
+    onViewScopeUpdate: handleViewScopeUpdate,
   });
 
   const { selectLifecycleNode, selectedLifecycleNodeId: debugLifecycleNodeId } =
@@ -885,12 +901,21 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
     [blueprintDebugSession, selectedDebugLifecyclePhase]
   );
 
+  const handleAbortClock = useCallback(
+    (nodeId: string) => {
+      blueprintDebugSession.abortClock(nodeId);
+      abortClockNode(activeBlueprintLibraryId ?? "local", nodeId);
+    },
+    [activeBlueprintLibraryId, blueprintDebugSession]
+  );
+
   const blueprintCanvasProps = useMemo(
     () => ({
       graph: blueprintGraph,
       onGraphChange: setBlueprintGraph,
       selectedNodeId: selectedBlueprintNodeId,
       onSelectNode: onSelectBlueprintNode,
+      onAbortClock: handleAbortClock,
       libraryNameById: blueprintLibraryNameById,
       executionOverlay: blueprintDebugSession.executionOverlay,
     }),
@@ -898,6 +923,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
       blueprintGraph,
       blueprintDebugSession.executionOverlay,
       blueprintLibraryNameById,
+      handleAbortClock,
       onSelectBlueprintNode,
       selectedBlueprintNodeId,
     ]
@@ -1130,6 +1156,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
     libraryNameById: blueprintLibraryNameById,
     rootLibraryBlueprintId: activeBlueprintLibraryId,
     onExecutionBlocked: handleBlueprintExecutionBlocked,
+    onViewScopeUpdate: handleViewScopeUpdate,
   });
 
   useEffect(() => {
@@ -1142,6 +1169,14 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
     () => selectedIds.map((id) => byId.get(id)).filter((el): el is PanelElement => !!el),
     [byId, selectedIds]
   );
+  const selectedElementScope = useViewElementScope(selectedElement?.id ?? null);
+  const scopeStoreVersion = useViewScopeStoreVersion();
+  const scopedCanvasElements = useMemo(() => {
+    void scopeStoreVersion;
+    return elements.map((el) =>
+      resolvePanelElementScope(el, getViewElementScope(el.id))
+    );
+  }, [elements, scopeStoreVersion]);
   const selectedNodeZOrderLabel = useMemo(() => {
     if (!selectedElement) return "-";
     return String(selectedElement.zIndex ?? 1);
@@ -2264,7 +2299,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                     className="h-full w-full"
                   >
                     <ElementsLayer
-                      elements={elements}
+                      elements={scopedCanvasElements}
                       allElements={allElements}
                       selectedIds={selectedIds}
                       onSelectIds={selectViewElements}
@@ -2812,6 +2847,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
               blueprintLibraryOptions={blueprintLibraryOptions}
               selectedElement={selectedElement}
               selectedElements={selectedElements}
+              viewElementScope={selectedElementScope}
               allViewElements={allElements}
               layers={layers}
               updateElement={updateElement}
