@@ -13,6 +13,17 @@ export default defineConfig({
   resolve: {
     alias: [
       {
+        find: "@arron/abuilder/styles.css",
+        replacement: path.resolve(
+          monorepoRoot,
+          "packages/abuilder/dist/styles.css"
+        ),
+      },
+      {
+        find: "@arron/abuilder",
+        replacement: path.resolve(monorepoRoot, "packages/abuilder/src/index.ts"),
+      },
+      {
         find: "@arron/ui/styles.css",
         replacement: path.resolve(monorepoRoot, "packages/ui/dist/styles.css"),
       },

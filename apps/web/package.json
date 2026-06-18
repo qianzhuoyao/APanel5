@@ -12,6 +12,7 @@
     "lint:legacy": "eslint \"src/**/*.ts\""
   },
   "dependencies": {
+    "@arron/abuilder": "workspace:*",
     "@arron/blueprint-dsl": "workspace:*",
     "@arron/react-blueprint": "workspace:*",
     "@arron/react-view": "workspace:*",
