@@ -1,0 +1,65 @@
+name: Publish to NPM
+
+# 触发条件：当你在 GitHub 上创建一个新的 Release 并且发布时
+on:
+  release:
+    types: [published]
+
+jobs:
+  publish-npm:
+    runs-on: ubuntu-latest
+    steps:
+      # 1. 检出仓库代码
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2. 安装 Node.js 环境，并指定 npm 的注册表地址
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org/'
+
+      # 3. 安装依赖（根据你的项目决定是 npm ci 还是 yarn install）
+      - name: Install dependencies
+        run: npm ci
+
+      # 4. 如果你的项目包含打包步骤（比如用 build 脚本打包到 dist 目录），请取消下面这两行的注释
+      - name: pnpm i
+        run: pnpm i
+
+      - name: pnpm -C packages/ui run build:css
+        run: pnpm -C packages/ui run build:css
+
+      - name: pnpm -C packages/react-view run build:css
+        run: pnpm -C packages/react-view run build:css
+
+      - name: pnpm -C packages/abuilder build
+        run: pnpm -C packages/abuilder build
+
+      - name: pnpm --filter @arronqzy/blueprint-dsl publish --access public --no-git-checks
+        run: pnpm --filter @arronqzy/blueprint-dsl publish --access public --no-git-checks
+
+      - name: pnpm --filter @arronqzy/rx-store publish --access public --no-git-checks
+        run: pnpm --filter @arronqzy/rx-store publish --access public --no-git-checks
+
+      - name: pnpm --filter @arronqzy/react-rx-store publish --access public --no-git-checks
+        run: pnpm --filter @arronqzy/react-rx-store publish --access public --no-git-checks
+
+      - name: pnpm --filter @arronqzy/ui publish --access public --no-git-checks
+        run: pnpm --filter @arronqzy/ui publish --access public --no-git-checks
+
+      - name: pnpm --filter @arronqzy/react-blueprint publish --access public --no-git-checks
+        run: pnpm --filter @arronqzy/react-blueprint publish --access public --no-git-checks
+
+      - name: pnpm --filter @arronqzy/react-view publish --access public --no-git-checks
+        run: pnpm --filter @arronqzy/react-view publish --access public --no-git-checks
+
+      - name: pnpm --filter @arronqzy/abuilder publish --access public --no-git-checks
+        run: pnpm --filter @arronqzy/abuilder publish --access public --no-git-checks
+
+      # 5. 执行发布命令，通过环境变量传入我们藏好的加密 Token
+      - name: Publish to NPM
+        run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
