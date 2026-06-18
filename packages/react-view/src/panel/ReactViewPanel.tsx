@@ -57,6 +57,7 @@ import {
 import { resolvePanelElementScope } from "./utils/scope-template";
 import { PANEL_MESSAGES } from "./constants/messages";
 import { PANEL_Z_INDEX } from "./constants/zIndex";
+import { useRafThrottledScroll } from "./hooks/useRafThrottledScroll";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -305,6 +306,7 @@ function shouldClearSelectionOnBlank(target: HTMLElement | null) {
   if (
     target.closest(".rv-selectable") ||
     target.closest(".moveable-control-box") ||
+    target.closest(".moveable-group") ||
     target.closest(".moveable-line") ||
     target.closest(".moveable-control") ||
     target.closest(".moveable-direction")
@@ -398,7 +400,9 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
       return { x: rounded, y: rounded };
     });
   }, []);
-  const [scroll, setScroll] = useState({ left: 0, top: 0 });
+  const { scroll, scrollRef: scrollPosRef, onScrollChange: onViewportScrollChange } =
+    useRafThrottledScroll();
+  const viewportSyncRef = useRef<(() => void) | null>(null);
 
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [selectedTargets, setSelectedTargets] = useState<HTMLElement[]>([]);
@@ -2373,6 +2377,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                     const nodeIdFromElement = nodeEl?.dataset.elementId ?? null;
                     const onMoveable =
                       !!target?.closest(".moveable-control-box") ||
+                      !!target?.closest(".moveable-group") ||
                       !!target?.closest(".moveable-line") ||
                       !!target?.closest(".moveable-control") ||
                       !!target?.closest(".moveable-direction");
@@ -2398,8 +2403,9 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                     ref={syncScrollRef}
                     zoom={zoom}
                     onZoomChange={setZoom}
-                    onScrollChange={setScroll}
+                    onScrollChange={onViewportScrollChange}
                     canvasRef={syncCanvasRef}
+                    viewportSyncRef={viewportSyncRef}
                     viewportOverlay={
                       <MoveableLayer
                         zoomX={zoom.x}
@@ -2409,8 +2415,8 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                         selectedTargets={selectedTargets}
                         elementsById={byId}
                         updateElement={updateElement}
-                        refreshToken={`${historyCursor}|${scroll.left}|${scroll.top}|${zoom.x}|${zoom.y}`}
-                        viewportScroll={scroll}
+                        refreshToken={historyCursor}
+                        viewportSyncRef={viewportSyncRef}
                       />
                     }
                     onCanvasMouseDownCapture={(e) => {
@@ -2603,10 +2609,10 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                               const centerX = rect.left + rect.width / 2;
                               const centerY = rect.top + rect.height / 2;
                               targetX =
-                                (centerX - rect.left + scroll.left) /
+                                (centerX - rect.left + scrollPosRef.current.left) /
                                 Math.max(0.0001, zoom.x);
                               targetY =
-                                (centerY - rect.top + scroll.top) /
+                                (centerY - rect.top + scrollPosRef.current.top) /
                                 Math.max(0.0001, zoom.y);
                             }
                             duplicateElement(

@@ -607,8 +607,6 @@ function ChartNodeContent({
     window.addEventListener(PREVIEW_LAYOUT_EVENT, onLayout);
     const obs = new ResizeObserver(onLayout);
     obs.observe(host);
-    const parent = host.parentElement;
-    if (parent) obs.observe(parent);
     return () => {
       window.removeEventListener(PREVIEW_LAYOUT_EVENT, onLayout);
       obs.disconnect();
@@ -792,7 +790,7 @@ function ReferenceNodeContent({
   );
 }
 
-export function ElementsLayer({
+export const ElementsLayer = React.memo(function ElementsLayer({
   elements,
   allElements,
   selectedIds,
@@ -887,5 +885,5 @@ export function ElementsLayer({
       })}
     </>
   );
-}
+});
 

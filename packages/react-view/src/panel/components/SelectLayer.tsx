@@ -74,6 +74,7 @@ export function SelectLayer({
         if (selectedIdSet.size > 0) {
           if (
             target?.closest(".moveable-control-box") ||
+            target?.closest(".moveable-group") ||
             target?.closest(".moveable-line") ||
             target?.closest(".moveable-control") ||
             target?.closest(".moveable-direction")

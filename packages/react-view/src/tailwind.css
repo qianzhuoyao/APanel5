@@ -29,6 +29,33 @@
 /* Moveable：仅角点控制柄固定屏幕像素；勿作用于 moveable-direction 边线 */
 .rv-moveable-layer {
   --moveable-color: #1990ff;
+  z-index: 9999 !important;
+}
+
+.rv-moveable-layer.moveable-group,
+.rv-moveable-layer .moveable-group,
+.rv-moveable-layer.moveable-control-box,
+.rv-moveable-layer .moveable-control-box {
+  z-index: 1 !important;
+}
+
+.rv-moveable-layer .moveable-line {
+  --moveable-color: #1990ff;
+  background: var(--moveable-color) !important;
+}
+
+/* 组选/单边控制线：厚度由 moveable zoom 补偿，保持屏幕 1px */
+.rv-moveable-layer .moveable-line.moveable-direction {
+  background: var(--moveable-color) !important;
+}
+
+.rv-moveable-layer .moveable-group .moveable-control-box,
+.rv-moveable-layer.moveable-group .moveable-control-box {
+  z-index: 2 !important;
+}
+
+.rv-moveable-layer .moveable-around-control {
+  background: transparent !important;
 }
 
 .rv-moveable-layer .moveable-control {
@@ -41,18 +68,4 @@
   border: 2px solid hsl(var(--background)) !important;
   background: #1990ff !important;
   background: var(--moveable-color) !important;
-}
-
-.rv-moveable-layer .moveable-line.moveable-direction {
-  width: 1px !important;
-  height: 1px !important;
-  margin: 0 !important;
-}
-
-.rv-moveable-layer .moveable-line {
-  --moveable-color: #1990ff;
-}
-
-.rv-moveable-layer .moveable-around-control {
-  background: transparent !important;
 }

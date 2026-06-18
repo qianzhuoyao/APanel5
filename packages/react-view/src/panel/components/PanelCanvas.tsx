@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import InfiniteViewer from "react-infinite-viewer";
 
 import {
@@ -22,6 +22,8 @@ export type PanelCanvasProps = {
   onDropMaterial?: (payload: { materialId: string; x: number; y: number }) => void;
   /** 渲染在 InfiniteViewer 内、画布 scale 层之外（如 Moveable 控制框） */
   viewportOverlay?: React.ReactNode;
+  /** 平移等视口变换后同步 Moveable 控制框（绕过 React scroll 节流） */
+  viewportSyncRef?: React.MutableRefObject<(() => void) | null>;
 };
 
 export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
@@ -39,6 +41,7 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
       onCanvasContextMenuCapture,
       onDropMaterial,
       viewportOverlay,
+      viewportSyncRef,
     },
     scrollRef
   ) => {
@@ -74,6 +77,14 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
     height: number;
   } | null>(null);
 
+  const applyCanvasTransform = useCallback((scale: number) => {
+    const el = canvasElRef.current;
+    if (!el) return;
+    el.style.transform = `scale(${scale})`;
+    el.style.transformOrigin = "0 0";
+    el.dataset.canvasScale = String(scale);
+  }, []);
+
   const commitScroll = useCallback(
     (left: number, top: number) => {
       const next = { left, top };
@@ -82,6 +93,10 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
     },
     [onScrollChange]
   );
+
+  const notifyViewportSync = useCallback(() => {
+    viewportSyncRef?.current?.();
+  }, [viewportSyncRef]);
 
   useEffect(() => {
     zoomRef.current = zoom;
@@ -185,10 +200,12 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
       const worldY = (pointerY + currentScrollTop) / Math.max(0.0001, zy);
       const nextScrollLeft = worldX * nextZoom.x - pointerX;
       const nextScrollTop = worldY * nextZoom.y - pointerY;
+      const nextScale = uniformViewportZoom(nextZoom);
 
       syncingZoomRef.current = true;
+      zoomRef.current = nextZoom;
+      applyCanvasTransform(nextScale);
       viewer.scrollTo(nextScrollLeft, nextScrollTop);
-      commitScroll(nextScrollLeft, nextScrollTop);
       const { width: vw, height: vh } = viewportSizeRef.current;
       resizeLayoutAnchorRef.current = {
         viewportWidth: vw,
@@ -204,13 +221,9 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
         zoomX: nextZoom.x,
         zoomY: nextZoom.y,
       };
-      zoomRef.current = nextZoom;
       onZoomChange({
         x: Number(nextZoom.x.toFixed(4)),
         y: Number(nextZoom.y.toFixed(4)),
-      });
-      requestAnimationFrame(() => {
-        syncingZoomRef.current = false;
       });
     };
 
@@ -218,11 +231,12 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
     return () => {
       el.removeEventListener("wheel", onWheelZoom, true);
     };
-  }, [commitScroll, onZoomChange, viewport.width, viewport.height]);
+  }, [applyCanvasTransform, onZoomChange, viewport.width, viewport.height]);
 
   const applyViewportResizeZoom = useCallback(
     (w: number, h: number) => {
       if (w < 8 || h < 8) return;
+      if (syncingZoomRef.current) return;
 
       const viewer = viewerRef.current as {
         scrollTo?: (x: number, y: number) => void;
@@ -281,8 +295,9 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
       const nextZoom = { x: nextZoomValue, y: nextZoomValue };
 
       syncingZoomRef.current = true;
+      zoomRef.current = nextZoom;
+      applyCanvasTransform(nextZoomValue);
       viewer.scrollTo?.(nextScrollLeft, nextScrollTop);
-      commitScroll(nextScrollLeft, nextScrollTop);
       resizeLayoutAnchorRef.current = {
         viewportWidth: w,
         viewportHeight: h,
@@ -297,16 +312,12 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
         zoomX: nextZoomValue,
         zoomY: nextZoomValue,
       };
-      zoomRef.current = nextZoom;
       onZoomChange({
         x: Number(nextZoomValue.toFixed(4)),
         y: Number(nextZoomValue.toFixed(4)),
       });
-      requestAnimationFrame(() => {
-        syncingZoomRef.current = false;
-      });
     },
-    [commitScroll, onZoomChange]
+    [applyCanvasTransform, onZoomChange]
   );
 
   const syncViewportElement = useCallback(
@@ -322,11 +333,14 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
   const syncCanvasElement = useCallback(
     (el: HTMLDivElement | null) => {
       canvasElRef.current = el;
+      if (el) {
+        applyCanvasTransform(uniformViewportZoom(zoomRef.current));
+      }
       if (!canvasRef) return;
       if (typeof canvasRef === "function") canvasRef(el);
       else (canvasRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
     },
-    [canvasRef]
+    [applyCanvasTransform, canvasRef]
   );
 
   useEffect(() => {
@@ -461,15 +475,9 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
         const nextLeft = panRef.current.startLeft - dx;
         const nextTop = panRef.current.startTop - dy;
         viewer.scrollTo(nextLeft, nextTop);
-        const left =
-          typeof viewer.getScrollLeft === "function"
-            ? viewer.getScrollLeft()
-            : nextLeft;
-        const top =
-          typeof viewer.getScrollTop === "function"
-            ? viewer.getScrollTop()
-            : nextTop;
-        commitScroll(left, top);
+        lastScrollRef.current = { left: nextLeft, top: nextTop };
+        onScrollChange?.({ left: nextLeft, top: nextTop });
+        notifyViewportSync();
       };
 
       const up = (ev: MouseEvent) => {
@@ -494,7 +502,7 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
       el.removeEventListener("contextmenu", onContextMenu, true);
       el.removeEventListener("mousedown", onMouseDown, true);
     };
-  }, [clearWindowPanListeners, commitScroll]);
+  }, [clearWindowPanListeners, commitScroll, notifyViewportSync, onScrollChange]);
 
   const resolvedContentSize = useMemo(() => {
     if (contentSize) return contentSize;
@@ -507,6 +515,35 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
 
   const canvasScale = useMemo(() => uniformViewportZoom(zoom), [zoom.x, zoom.y]);
 
+  const reconcileCanvasTransform = useCallback(() => {
+    const scale = syncingZoomRef.current
+      ? uniformViewportZoom(zoomRef.current)
+      : uniformViewportZoom(zoom);
+    applyCanvasTransform(scale);
+  }, [applyCanvasTransform, zoom.x, zoom.y]);
+
+  useLayoutEffect(() => {
+    reconcileCanvasTransform();
+  }, [canvasScale, reconcileCanvasTransform]);
+
+  useEffect(() => {
+    if (
+      Math.abs(zoom.x - zoomRef.current.x) < 0.0001 &&
+      Math.abs(zoom.y - zoomRef.current.y) < 0.0001
+    ) {
+      syncingZoomRef.current = false;
+    }
+  }, [zoom.x, zoom.y]);
+
+  const worldStyle = useMemo<React.CSSProperties>(
+    () => ({
+      width: resolvedContentSize.width,
+      height: resolvedContentSize.height,
+      position: "relative",
+    }),
+    [resolvedContentSize.height, resolvedContentSize.width]
+  );
+
   const style = useMemo<React.CSSProperties>(
     () => ({
       width: resolvedContentSize.width,
@@ -514,10 +551,9 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
       minWidth: "100%",
       minHeight: "100%",
       position: "relative",
-      transform: `scale(${canvasScale})`,
       transformOrigin: "0 0",
     }),
-    [canvasScale, resolvedContentSize.height, resolvedContentSize.width]
+    [resolvedContentSize.height, resolvedContentSize.width]
   );
 
   const hasMaterialPayload = useCallback((types: ArrayLike<string> | null | undefined) => {
@@ -609,20 +645,25 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
         const next = { left: e.scrollLeft ?? 0, top: e.scrollTop ?? 0 };
         lastScrollRef.current = next;
         onScrollChange?.(next);
+        if (!syncingZoomRef.current) {
+          notifyViewportSync();
+        }
       }}
     >
-      <div
-        ref={syncCanvasElement}
-        data-panel-canvas
-        style={style}
-        className="h-full w-full"
-        onMouseDownCapture={onCanvasMouseDownCapture}
-        onClickCapture={onCanvasClickCapture}
-        onContextMenuCapture={onCanvasContextMenuCapture}
-      >
-        {children}
+      <div style={worldStyle}>
+        <div
+          ref={syncCanvasElement}
+          data-panel-canvas
+          style={style}
+          className="h-full w-full"
+          onMouseDownCapture={onCanvasMouseDownCapture}
+          onClickCapture={onCanvasClickCapture}
+          onContextMenuCapture={onCanvasContextMenuCapture}
+        >
+          {children}
+        </div>
         {viewportOverlay ? (
-          <div className="rv-viewport-overlay pointer-events-none absolute inset-0 z-[70] overflow-visible [&_.moveable-control-box]:pointer-events-auto">
+          <div className="rv-viewport-overlay pointer-events-none absolute inset-0 z-[70] overflow-visible [&_.moveable-control-box]:pointer-events-auto [&_.moveable-group]:pointer-events-auto [&_.moveable-area]:pointer-events-auto">
             {viewportOverlay}
           </div>
         ) : null}
