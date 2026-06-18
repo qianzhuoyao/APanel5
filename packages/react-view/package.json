@@ -3,6 +3,7 @@
   "version": "1.0.3",
   "files": [
     "src",
+    "dist",
     "readme.md"
   ],
   "publishConfig": {
