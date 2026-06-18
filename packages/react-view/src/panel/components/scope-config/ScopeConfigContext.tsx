@@ -8,11 +8,13 @@ import {
   type RefObject,
 } from "react";
 
+import type { PanelElement } from "../../types";
 import type { ScopeTemplateWarning } from "../../utils/scope-template-warnings";
 import { scopeFieldDomId } from "../../utils/scope-field-labels";
 import { groupScopeWarningsByField } from "../../utils/scope-template-warnings";
 
 import { ScopeTemplateAutocompleteHost } from "./ScopeTemplateAutocompleteHost";
+import { ScopeTemplatePreviewHost } from "./ScopeTemplatePreviewHost";
 
 type ScopeConfigContextValue = {
   warnings: ScopeTemplateWarning[];
@@ -83,11 +85,13 @@ function attachInlineHints(
 
 export function ScopeConfigProvider({
   scope,
+  element,
   warnings,
   scrollContainerRef,
   children,
 }: {
   scope?: unknown;
+  element?: PanelElement | null;
   warnings: ScopeTemplateWarning[];
   scrollContainerRef?: RefObject<HTMLElement | null>;
   children: ReactNode;
@@ -154,6 +158,11 @@ export function ScopeConfigProvider({
       {children}
       <ScopeTemplateAutocompleteHost
         scope={scope}
+        containerRef={scrollContainerRef}
+      />
+      <ScopeTemplatePreviewHost
+        scope={scope}
+        element={element ?? null}
         containerRef={scrollContainerRef}
       />
     </ScopeConfigContext.Provider>

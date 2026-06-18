@@ -3,7 +3,7 @@ import {
 } from "./chunk-2DRCKFAO.js";
 import {
   createSlot
-} from "./chunk-DSYZZ4OM.js";
+} from "./chunk-6BWOLZMC.js";
 import {
   useComposedRefs
 } from "./chunk-GQA7DUHW.js";
@@ -88,4 +88,4 @@ function createCollection(name) {
 export {
   createCollection
 };
-//# sourceMappingURL=chunk-FBK43JFJ.js.map
+//# sourceMappingURL=chunk-YPFUYLFA.js.map

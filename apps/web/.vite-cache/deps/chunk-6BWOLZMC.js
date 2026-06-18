@@ -1,29 +1,18 @@
 import {
+  require_react_dom
+} from "./chunk-TU732EOO.js";
+import {
   composeRefs
 } from "./chunk-GQA7DUHW.js";
 import {
   require_jsx_runtime
 } from "./chunk-MKG6J3U4.js";
 import {
-  require_react_dom
-} from "./chunk-TU732EOO.js";
-import {
   require_react
 } from "./chunk-FYB3GGWZ.js";
 import {
   __toESM
 } from "./chunk-DC5AMYBS.js";
-
-// ../../node_modules/.pnpm/@radix-ui+primitive@1.1.3/node_modules/@radix-ui/primitive/dist/index.mjs
-var canUseDOM = !!(typeof window !== "undefined" && window.document && window.document.createElement);
-function composeEventHandlers(originalEventHandler, ourEventHandler, { checkForDefaultPrevented = true } = {}) {
-  return function handleEvent(event) {
-    originalEventHandler == null ? void 0 : originalEventHandler(event);
-    if (checkForDefaultPrevented === false || !event.defaultPrevented) {
-      return ourEventHandler == null ? void 0 : ourEventHandler(event);
-    }
-  };
-}
 
 // ../../node_modules/.pnpm/@radix-ui+react-slot@1.2.3_@types+react@19.1.0_react@19.2.0/node_modules/@radix-ui/react-slot/dist/index.mjs
 var React = __toESM(require_react(), 1);
@@ -120,6 +109,17 @@ function getElementRef(element) {
   return element.props.ref || element.ref;
 }
 
+// ../../node_modules/.pnpm/@radix-ui+primitive@1.1.3/node_modules/@radix-ui/primitive/dist/index.mjs
+var canUseDOM = !!(typeof window !== "undefined" && window.document && window.document.createElement);
+function composeEventHandlers(originalEventHandler, ourEventHandler, { checkForDefaultPrevented = true } = {}) {
+  return function handleEvent(event) {
+    originalEventHandler == null ? void 0 : originalEventHandler(event);
+    if (checkForDefaultPrevented === false || !event.defaultPrevented) {
+      return ourEventHandler == null ? void 0 : ourEventHandler(event);
+    }
+  };
+}
+
 // ../../node_modules/.pnpm/@radix-ui+react-primitive@2.1.3_@types+react-dom@19.1.1_@types+react@19.1.0_react-dom@19.2.0_react@19.2.0/node_modules/@radix-ui/react-primitive/dist/index.mjs
 var React2 = __toESM(require_react(), 1);
 var ReactDOM = __toESM(require_react_dom(), 1);
@@ -161,10 +161,10 @@ function dispatchDiscreteCustomEvent(target, event) {
 }
 
 export {
-  composeEventHandlers,
   createSlot,
   createSlottable,
+  composeEventHandlers,
   Primitive,
   dispatchDiscreteCustomEvent
 };
-//# sourceMappingURL=chunk-DSYZZ4OM.js.map
+//# sourceMappingURL=chunk-6BWOLZMC.js.map

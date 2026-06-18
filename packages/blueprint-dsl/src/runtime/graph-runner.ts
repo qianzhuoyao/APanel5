@@ -1,5 +1,9 @@
 import type { FetchRequestConfig } from "../fetch-config.js";
-import { executeFetch, DEFAULT_FETCH_REQUEST_CONFIG } from "../fetch-config.js";
+import {
+  executeFetch,
+  normalizeFetchRequestConfig,
+  resolveFetchRequestUrl,
+} from "../fetch-config.js";
 import type { JsonNodeConfig } from "../json-config.js";
 import {
   DEFAULT_JSON_NODE_CONFIG,
@@ -275,6 +279,7 @@ export class BlueprintGraphRunner {
         return;
       }
       const token = queue.shift()!;
+      if (!this.syncTokenFromGraph(token)) continue;
       try {
         await executor.executeToken(token);
       } catch (error) {
@@ -357,6 +362,7 @@ export class BlueprintGraphRunner {
   /** 调试过程中同步最新蓝图拓扑与节点配置 */
   updateGraph(graph: RunnableGraph): void {
     this.graph = graph;
+    this.syncDebugQueueWithLatestGraph();
   }
 
   /**
@@ -367,14 +373,7 @@ export class BlueprintGraphRunner {
     if (!this.debugQueue) return;
 
     if (this.traceEntries.length === 0) {
-      const head = this.debugQueue[0];
-      if (!head) return;
-      const node = this.graph.nodes.find((n) => n.id === head.nodeId);
-      if (!node) {
-        this.debugQueue = [];
-        return;
-      }
-      head.nodeType = node.nodeType;
+      this.syncDebugQueueWithLatestGraph();
       return;
     }
 
@@ -423,7 +422,9 @@ export class BlueprintGraphRunner {
         });
       }
     }
-    this.debugQueue = newQueue;
+    if (newQueue.length > 0 || this.debugQueue.length === 0) {
+      this.debugQueue = newQueue;
+    }
   }
 
   canDebugStepBack(): boolean {
@@ -479,7 +480,9 @@ export class BlueprintGraphRunner {
 
     this.applyLifecycleScopeForNode(lifecycleNodeId);
 
-    this.debugExecutor = this.createExecutor(this.debugQueue);
+    this.debugExecutor = this.createExecutor(this.debugQueue, {
+      emitToActiveDebugQueue: true,
+    });
     this.debugHistory = [this.captureDebugSnapshot()];
   }
 
@@ -542,6 +545,13 @@ export class BlueprintGraphRunner {
     try {
       this.pushDebugSnapshot();
       const token = this.debugQueue.shift()!;
+      if (!this.syncTokenFromGraph(token)) {
+        this.pushDebugSnapshot();
+        return {
+          done: this.debugQueue.length === 0,
+          haltedByFalseSignal: false,
+        };
+      }
 
       if (token.nodeType === CLOCK_NODE_TYPE) {
         const node = this.requireNode(token.nodeId);
@@ -720,6 +730,12 @@ export class BlueprintGraphRunner {
       executor ??
       this.debugExecutor ??
       this.createExecutor(this.debugQueue ?? []);
+
+    if (!this.syncTokenFromGraph(token)) {
+      return this.appendDebugTraceEntry(token, nodeLabelById, startedAt, {
+        error: "节点已从蓝图中移除",
+      });
+    }
 
     try {
       await runExecutor.executeToken(token);
@@ -941,6 +957,7 @@ export class BlueprintGraphRunner {
           resolveLibraryBlueprint: runner.resolveLibraryBlueprint,
           rootLibraryBlueprintId: libraryId,
           resolveBlueprintName: runner.resolveBlueprintName,
+          onViewScopeUpdate: runner.onViewScopeUpdate,
         });
         await subRunner.emitBlueprintActivated(input.value, nestedScope);
         const nestedOutputs = await subRunner.runFromFlowEntries(nestedScope, {
@@ -975,22 +992,32 @@ export class BlueprintGraphRunner {
       const node = runner.requireNode(token.nodeId);
 
       try {
-        const input = await io.getInput("in");
+        const inputPort = token.inPort || "in";
+        const input = await io.getInput(inputPort);
+        if (isFalseSignal(input)) {
+          io.setOutput("out", input);
+          io.emitFlow("out");
+          return;
+        }
         if (!isTrueSignal(input)) {
           io.setOutput(
             "out",
-            createFalseSignal("数据源节点需要收到真信号后才会发起请求")
+            createFalseSignal(
+              input === undefined
+                ? "数据源节点未收到上游输出，请确认连线与上游节点已执行"
+                : "数据源节点需要收到真信号后才会发起请求"
+            )
           );
           io.emitFlow("out");
           return;
         }
 
-        const config: FetchRequestConfig = {
-          ...DEFAULT_FETCH_REQUEST_CONFIG,
-          ...node.fetchConfig,
-        };
+        const config = normalizeFetchRequestConfig(node.fetchConfig);
+        resolveFetchRequestUrl(config);
 
-        const result = await executeFetch(config);
+        const result = await executeFetch(config, {
+          allowHttpError: runner.isDebugSessionActive(),
+        });
         io.setOutput("out", createTrueSignal(result));
       } catch (error) {
         io.setOutput(
@@ -1190,6 +1217,7 @@ export class BlueprintGraphRunner {
 
     while (queue.length > 0) {
       const token = queue.shift()!;
+      if (!this.syncTokenFromGraph(token)) continue;
       try {
         await executor.executeToken(token);
       } catch (error) {
@@ -1215,7 +1243,10 @@ export class BlueprintGraphRunner {
     }
   }
 
-  private createExecutor(queue: ExecutionToken[]) {
+  private createExecutor(
+    queue: ExecutionToken[],
+    options?: { emitToActiveDebugQueue?: boolean }
+  ) {
     return new Executor({
       getNodeDefinition,
       behaviors: this.behaviors,
@@ -1223,15 +1254,20 @@ export class BlueprintGraphRunner {
         // 由 blueprint-ref-run 行为处理
       },
       getInputValue: async (token, port) => {
-        return this.resolvePortInputValue(token.nodeId, port);
+        const resolvedPort = port || token.inPort || "in";
+        return this.resolvePortInputValue(token.nodeId, resolvedPort);
       },
       setNodeOutput: (token, port, value) => {
         this.setNodeOutput(token.nodeId, port, value);
       },
       emitFlow: (token, outPort) => {
+        const targetQueue =
+          options?.emitToActiveDebugQueue && this.debugQueue
+            ? this.debugQueue
+            : queue;
         const nextNodes = this.findSignalTargets(token.nodeId, outPort);
         for (const target of nextNodes) {
-          queue.push({
+          targetQueue.push({
             tokenId: createTokenId(),
             nodeId: target.nodeId,
             nodeType: target.nodeType,
@@ -1269,6 +1305,21 @@ export class BlueprintGraphRunner {
       throw new Error(`Graph node not found: ${nodeId}`);
     }
     return node;
+  }
+
+  /** 队列中的 token 可能是在节点改类型（如视图绑定）之前入队的，执行前与最新图对齐 */
+  private syncTokenFromGraph(token: ExecutionToken): boolean {
+    const node = this.graph.nodes.find((n) => n.id === token.nodeId);
+    if (!node) return false;
+    token.nodeType = node.nodeType;
+    return true;
+  }
+
+  private syncDebugQueueWithLatestGraph(): void {
+    if (!this.debugQueue) return;
+    this.debugQueue = this.debugQueue.filter((token) =>
+      this.syncTokenFromGraph(token)
+    );
   }
 
   private findSignalTargets(nodeId: string, outPort: string) {

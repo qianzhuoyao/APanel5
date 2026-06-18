@@ -53,8 +53,8 @@ function IconClearDb({ className }: { className?: string }) {
       aria-hidden="true"
     >
       <ellipse cx="12" cy="6" rx="7" ry="2.5" />
-      <path d="M5 6v12c0 1.5 3.1 2.5 7 2.5s7-1 2.5-7-2.5V6" />
-      <path d="M5 12c0 1.5 3.1 2.5 7 2.5s7-1 7-2.5" />
+      <path d="M5 6v12c0 1.5 3.134 2.5 7 2.5s7-1.343 7-2.5V6" />
+      <path d="M5 12c0 1.5 3.134 2.5 7 2.5s7-1.343 7-2.5" />
       <path d="m16 16 4 4M20 16l-4 4" />
     </svg>
   );

@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import InfiniteViewer from "react-infinite-viewer";
-import { TransformComponent, TransformWrapper } from "react-zoom-pan-pinch";
 
 import {
   clampViewportZoom,
@@ -45,7 +44,6 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
   ) => {
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const viewerRef = useRef<any>(null);
-  const transformRef = useRef<any>(null);
   const canvasElRef = useRef<HTMLDivElement | null>(null);
   const syncingZoomRef = useRef(false);
   const didAutoCenterRef = useRef(false);
@@ -155,8 +153,6 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
     if (!el) return;
 
     const onWheelZoom = (e: WheelEvent) => {
-      const api = transformRef.current;
-      if (!api) return;
       const viewer = viewerRef.current as any;
       if (!viewer) return;
       const target = e.target as HTMLElement | null;
@@ -615,42 +611,22 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
         onScrollChange?.(next);
       }}
     >
-      <TransformWrapper
-        ref={transformRef}
-        initialScale={1}
-        minScale={1}
-        maxScale={1}
-        centerOnInit={false}
-        limitToBounds={false}
-        panning={{ disabled: true }}
-        doubleClick={{ disabled: true }}
-        pinch={{ disabled: true }}
-        wheel={{ step: 0.008, disabled: true, wheelDisabled: true }}
-        centerZoomedOut={false}
+      <div
+        ref={syncCanvasElement}
+        data-panel-canvas
+        style={style}
+        className="h-full w-full"
+        onMouseDownCapture={onCanvasMouseDownCapture}
+        onClickCapture={onCanvasClickCapture}
+        onContextMenuCapture={onCanvasContextMenuCapture}
       >
-        <TransformComponent
-          // 始终占满操作容器，但不在这一层裁切放大后的内容
-          wrapperStyle={{ width: "100%", height: "100%", overflow: "visible" }}
-          contentStyle={{ width: "100%", height: "100%", overflow: "visible" }}
-        >
-          <div
-            ref={syncCanvasElement}
-            data-panel-canvas
-            style={style}
-            className=""
-            onMouseDownCapture={onCanvasMouseDownCapture}
-            onClickCapture={onCanvasClickCapture}
-            onContextMenuCapture={onCanvasContextMenuCapture}
-          >
-            {children}
-            {viewportOverlay ? (
-              <div className="rv-viewport-overlay pointer-events-none absolute inset-0 z-[70] overflow-visible [&_.moveable-control-box]:pointer-events-auto">
-                {viewportOverlay}
-              </div>
-            ) : null}
+        {children}
+        {viewportOverlay ? (
+          <div className="rv-viewport-overlay pointer-events-none absolute inset-0 z-[70] overflow-visible [&_.moveable-control-box]:pointer-events-auto">
+            {viewportOverlay}
           </div>
-        </TransformComponent>
-      </TransformWrapper>
+        ) : null}
+      </div>
     </InfiniteViewer>
   );
 }

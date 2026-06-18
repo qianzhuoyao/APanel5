@@ -28,6 +28,8 @@ export type PanelChartConfig = {
   tooltipTextColor?: string;
   tooltipFormatter?: string;
   labels?: string[];
+  /** 逗号分隔的原始类目文本，支持 scope 模版；存在时优先于 labels */
+  labelsText?: string;
   values?: number[];
   /** 逗号分隔的原始数值文本，支持 scope 模版；存在时优先于 values */
   valuesText?: string;

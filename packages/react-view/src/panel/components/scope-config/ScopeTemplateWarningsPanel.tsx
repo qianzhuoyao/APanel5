@@ -42,7 +42,7 @@ export function ScopeTemplateWarningsPanel() {
       {!isCollapsed ? (
         <ul className="mt-2 max-h-[200px] space-y-1 overflow-auto text-[10px] leading-relaxed">
           {ctx.warnings.map((warning) => (
-            <li key={`${warning.fieldId}-${warning.missingPath}-${warning.expression}`}>
+            <li key={`${warning.fieldId}-${warning.kind}-${warning.missingPath}-${warning.expression}`}>
               <button
                 type="button"
                 className="w-full rounded border border-amber-500/30 bg-amber-500/10 px-2 py-1.5 text-left text-amber-800 hover:bg-amber-500/15 dark:text-amber-200"

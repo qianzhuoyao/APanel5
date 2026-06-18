@@ -8,6 +8,17 @@ export function getChartValuesDisplayText(chart?: PanelChartConfig): string {
   return (chart?.values ?? []).join(",");
 }
 
+export function getChartLabelsDisplayText(chart?: PanelChartConfig): string {
+  if (chart?.labelsText !== undefined) return chart.labelsText;
+  return (chart?.labels ?? []).join(",");
+}
+
+export function resolveChartLabels(element: PanelElement): string[] {
+  const chart = element.chart;
+  if (chart?.labels?.length) return chart.labels;
+  return ["A", "B", "C", "D"];
+}
+
 export function parseChartValuesFromText(
   text: string | undefined,
   fallback: number[] = DEFAULT_CHART_VALUES
@@ -75,7 +86,7 @@ function deepMerge<T extends Record<string, any>>(base: T, patch?: Record<string
 
 export function buildChartOption(element: PanelElement): EChartsOption {
   const chartType = (element.materialType ?? "") as ChartType;
-  const labels = element.chart?.labels?.length ? element.chart.labels : ["A", "B", "C", "D"];
+  const labels = resolveChartLabels(element);
   const values = resolveChartValues(element);
   const color = element.chart?.color || "#3b82f6";
   const gradientFrom = element.chart?.gradientFrom || color;

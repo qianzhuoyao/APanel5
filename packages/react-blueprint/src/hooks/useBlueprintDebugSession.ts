@@ -112,15 +112,21 @@ export function useBlueprintDebugSession({
     [graph.document, libraryNameById]
   );
 
-  const syncRunnerWithLatestGraph = useCallback(() => {
+  const syncRunnerGraphConfig = useCallback(() => {
     const runner = runnerRef.current;
     if (!runner?.isDebugSessionActive()) return;
     runner.updateGraph(buildRunnableGraph());
     if (selectedLifecycleNodeId) {
       runner.refreshDebugLifecycleScope(selectedLifecycleNodeId);
     }
-    runner.refreshPendingQueueFromLatestGraph();
   }, [buildRunnableGraph, selectedLifecycleNodeId]);
+
+  const syncRunnerWithLatestGraph = useCallback(() => {
+    syncRunnerGraphConfig();
+    const runner = runnerRef.current;
+    if (!runner?.isDebugSessionActive()) return;
+    runner.refreshPendingQueueFromLatestGraph();
+  }, [syncRunnerGraphConfig]);
 
   const resolveBlueprintName = useCallback(
     (id: string) => libraryNameById?.get(id) ?? id,
@@ -242,12 +248,9 @@ export function useBlueprintDebugSession({
   useEffect(() => {
     const runner = runnerRef.current;
     if (!runner?.isDebugSessionActive()) return;
-    runner.updateGraph(buildRunnableGraph());
-    if (selectedLifecycleNodeId) {
-      runner.refreshDebugLifecycleScope(selectedLifecycleNodeId);
-    }
+    syncRunnerGraphConfig();
     runner.refreshPendingQueueFromLatestGraph();
-  }, [buildRunnableGraph, graphDebugSig, selectedLifecycleNodeId]);
+  }, [graphDebugSig, syncRunnerGraphConfig]);
 
   useEffect(() => {
     if (running) return;
@@ -277,24 +280,14 @@ export function useBlueprintDebugSession({
     try {
       const runner = beginRun();
       if (!runner) return;
+      runner.updateGraph(buildRunnableGraph());
+      runner.refreshDebugLifecycleScope(selectedLifecycleNodeId);
       const labels = buildNodeLabelMap(graph);
       const onProgress = (trace: ExecutionTraceEntry[]) => {
         setEntries([...trace]);
       };
-      while (runner.isDebugSessionActive() && !runner.isDebugQueueEmpty()) {
-        syncRunnerWithLatestGraph();
-        await runner.debugStep(labels, onProgress);
-        const trace = runner.getTraceEntries();
-        setEntries(trace);
-        if (shouldHaltDebugOnFalseSignal(trace, allowFalseSignalPropagation)) {
-          setChainComplete(true);
-          break;
-        }
-        await new Promise<void>((resolve) => {
-          requestAnimationFrame(() => resolve());
-        });
-      }
-      const result = runner.getTraceEntries();
+      const result = await runner.debugRunAll(labels, onProgress);
+      setEntries(result);
       setChainComplete(
         shouldHaltDebugOnFalseSignal(result, allowFalseSignalPropagation) ||
           (runner.isDebugQueueEmpty() && result.length > 0)
@@ -304,7 +297,16 @@ export function useBlueprintDebugSession({
     } finally {
       setRunning(false);
     }
-  }, [allowFalseSignalPropagation, beginRun, buildRunRecord, graph, persistRunIfNeeded, selectedLifecycleNodeId, syncRunnerWithLatestGraph, validateBlueprintGraph]);
+  }, [
+    allowFalseSignalPropagation,
+    beginRun,
+    buildRunRecord,
+    buildRunnableGraph,
+    graph,
+    persistRunIfNeeded,
+    selectedLifecycleNodeId,
+    validateBlueprintGraph,
+  ]);
 
   const stepNext = useCallback(async () => {
     if (

@@ -1,6 +1,20 @@
 import type { PanelElement } from "../types";
 import { hasScopeTemplate } from "./scope-template";
 import { resolveScopeFieldLabel } from "./scope-field-labels";
+import {
+  SCOPE_SPREAD_TEMPLATE_RE,
+  buildSpreadInvalidExpressionWarningMessage,
+  buildSpreadNotArrayWarningMessage,
+  formatScopePathSegments,
+  isSpreadTemplateBrace,
+  parseScopePathSegments,
+  resolveSpreadScopePath,
+} from "./scope-template-spread";
+
+export type ScopeTemplateWarningKind =
+  | "missing-path"
+  | "spread-not-array"
+  | "spread-invalid-expression";
 
 export type ScopeTemplateWarning = {
   fieldId: string;
@@ -9,6 +23,7 @@ export type ScopeTemplateWarning = {
   expression: string;
   missingPath: string;
   message: string;
+  kind: ScopeTemplateWarningKind;
 };
 
 const SCOPE_PATH_RE = /scope(?:\?\.|\.)(\w+(?:\?\.\w+)*)/g;
@@ -41,6 +56,95 @@ function pathExistsInScope(scope: unknown, path: string): boolean {
   return true;
 }
 
+function analyzeSpreadTemplateValue(
+  fieldId: string,
+  value: string,
+  scope: unknown
+): ScopeTemplateWarning[] {
+  const warnings: ScopeTemplateWarning[] = [];
+  const fieldLabel = resolveScopeFieldLabel(fieldId);
+  const spreadRe = new RegExp(SCOPE_SPREAD_TEMPLATE_RE.source, "g");
+  let match: RegExpExecArray | null;
+
+  while ((match = spreadRe.exec(value)) !== null) {
+    const spreadTemplate = match[0];
+    const expression = match[1].trim();
+    const segments = parseScopePathSegments(expression);
+
+    if (segments === null || segments.length === 0) {
+      warnings.push({
+        fieldId,
+        fieldLabel,
+        template: value,
+        expression,
+        missingPath: "",
+        kind: "spread-invalid-expression",
+        message: buildSpreadInvalidExpressionWarningMessage(
+          fieldLabel,
+          spreadTemplate
+        ),
+      });
+      continue;
+    }
+
+    const resolved = resolveSpreadScopePath(expression, scope);
+    if (resolved.ok) continue;
+
+    if (resolved.issue === "invalid-expression") {
+      warnings.push({
+        fieldId,
+        fieldLabel,
+        template: value,
+        expression,
+        missingPath: "",
+        kind: "spread-invalid-expression",
+        message: buildSpreadInvalidExpressionWarningMessage(
+          fieldLabel,
+          spreadTemplate
+        ),
+      });
+      continue;
+    }
+
+    const arrayPath =
+      resolved.arrayPath ?? formatScopePathSegments(segments.slice(0, -1));
+
+    if (resolved.issue === "path-missing") {
+      if (!pathExistsInScope(scope, arrayPath)) {
+        warnings.push({
+          fieldId,
+          fieldLabel,
+          template: value,
+          expression,
+          missingPath: arrayPath,
+          kind: "missing-path",
+          message: `「${fieldLabel}」引用了 scope.${arrayPath}，但当前 scope 数据中并没有「${arrayPath}」字段，建议检查一下。`,
+        });
+      }
+      continue;
+    }
+
+    if (resolved.issue === "not-array") {
+      warnings.push({
+        fieldId,
+        fieldLabel,
+        template: value,
+        expression,
+        missingPath: arrayPath,
+        kind: "spread-not-array",
+        message: buildSpreadNotArrayWarningMessage(
+          fieldLabel,
+          spreadTemplate,
+          expression,
+          arrayPath
+        ),
+      });
+    }
+  }
+
+  return warnings;
+}
+
 function analyzeTemplateValue(
   fieldId: string,
   value: string,
@@ -48,12 +152,15 @@ function analyzeTemplateValue(
 ): ScopeTemplateWarning[] {
   if (!hasScopeTemplate(value)) return [];
 
-  const warnings: ScopeTemplateWarning[] = [];
+  const warnings: ScopeTemplateWarning[] = [
+    ...analyzeSpreadTemplateValue(fieldId, value, scope),
+  ];
   const fieldLabel = resolveScopeFieldLabel(fieldId);
   const expressionRe = /\{([^}]+)\}/g;
   let match: RegExpExecArray | null;
 
   while ((match = expressionRe.exec(value)) !== null) {
+    if (isSpreadTemplateBrace(value, match.index)) continue;
     const expression = match[1].trim();
     const paths = extractScopePropertyPaths(expression);
     for (const path of paths) {
@@ -64,6 +171,7 @@ function analyzeTemplateValue(
         template: value,
         expression,
         missingPath: path,
+        kind: "missing-path",
         message: `「${fieldLabel}」引用了 scope.${path}，但当前 scope 数据中并没有「${path}」字段，建议检查一下。`,
       });
     }
@@ -115,7 +223,7 @@ export function collectElementScopeWarnings(
 
   const seen = new Set<string>();
   return warnings.filter((warning) => {
-    const key = `${warning.fieldId}|${warning.missingPath}|${warning.expression}`;
+    const key = `${warning.fieldId}|${warning.kind}|${warning.missingPath}|${warning.expression}`;
     if (seen.has(key)) return false;
     seen.add(key);
     return true;

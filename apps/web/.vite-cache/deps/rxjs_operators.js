@@ -12,7 +12,7 @@ import {
   combineLatest2 as combineLatest,
   combineLatestAll,
   combineLatestWith,
-  concat2 as concat,
+  concat,
   concatAll,
   concatMap,
   concatMapTo,
@@ -112,7 +112,7 @@ import {
   zip2 as zip,
   zipAll,
   zipWith
-} from "./chunk-VDNF6VCW.js";
+} from "./chunk-WSK5CXSI.js";
 import {
   __read,
   __spreadArray

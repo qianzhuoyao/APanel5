@@ -19,6 +19,7 @@ import {
   FETCH_CREDENTIALS,
   FETCH_HTTP_METHODS,
   FETCH_MODES,
+  FETCH_NODE_TYPE,
   FETCH_REDIRECTS,
   FETCH_RESPONSE_TYPES,
 } from "@arronqzy/blueprint-dsl";
@@ -238,8 +239,10 @@ function patchFetchConfig(
   patch: Partial<FetchRequestConfig>
 ) {
   return {
-    fetchConfig: { ...resolveNodeFetchConfig(node), ...patch },
+    role: "fetch" as const,
+    nodeType: FETCH_NODE_TYPE,
     configSource: "fetch" as const,
+    fetchConfig: { ...resolveNodeFetchConfig(node), ...patch },
   };
 }
 

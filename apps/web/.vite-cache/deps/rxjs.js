@@ -36,7 +36,7 @@ import {
   combineLatest,
   combineLatestAll,
   combineLatestWith,
-  concat,
+  concat2 as concat,
   concatAll,
   concatMap,
   concatMapTo,
@@ -160,7 +160,7 @@ import {
   zip,
   zipAll,
   zipWith
-} from "./chunk-VDNF6VCW.js";
+} from "./chunk-WSK5CXSI.js";
 import {
   __extends,
   __generator,

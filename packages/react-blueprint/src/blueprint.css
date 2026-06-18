@@ -19,6 +19,8 @@
   --xy-edge-stroke-selected: #1d4ed8;
   --xy-connectionline-stroke: #2563eb;
   --xy-connectionline-stroke-width: 2.5;
+  --xy-handle-background-color: hsl(var(--primary));
+  --xy-handle-border-color: hsl(var(--background));
   background-color: transparent;
 }
 
@@ -174,11 +176,11 @@
   height: 10px;
   min-width: 10px;
   min-height: 10px;
-  border: 2px solid hsl(var(--background));
+  border: 2px solid hsl(var(--background)) !important;
   border-radius: 9999px;
-  background: hsl(var(--muted-foreground) / 0.45);
+  background-color: hsl(var(--foreground) / 0.42) !important;
   transition:
-    background 0.15s ease,
+    background-color 0.15s ease,
     border-color 0.15s ease,
     box-shadow 0.15s ease;
 }
@@ -186,30 +188,34 @@
 .bp-canvas .react-flow__handle.bp-flow-handle:hover,
 .bp-flow .react-flow__handle.bp-flow-handle:hover,
 [data-workspace-region="blueprint"] .react-flow__handle.bp-flow-handle:hover {
-  background: hsl(var(--primary));
-  border-color: hsl(var(--background));
+  background-color: hsl(var(--primary)) !important;
+  border-color: hsl(var(--background)) !important;
   box-shadow: 0 0 0 3px hsl(var(--primary) / 0.28);
 }
 
 .bp-canvas .react-flow__handle.bp-flow-handle--target,
 .bp-flow .react-flow__handle.bp-flow-handle--target,
 [data-workspace-region="blueprint"] .react-flow__handle.bp-flow-handle--target {
-  background: hsl(var(--muted-foreground) / 0.35);
+  background-color: hsl(var(--foreground) / 0.48) !important;
 }
 
 .bp-canvas .react-flow__handle.bp-flow-handle--source,
 .bp-flow .react-flow__handle.bp-flow-handle--source,
 [data-workspace-region="blueprint"] .react-flow__handle.bp-flow-handle--source {
-  background: hsl(var(--primary) / 0.55);
+  background-color: hsl(var(--primary) / 0.72) !important;
 }
 
 .bp-node--selected .bp-flow-handle {
-  border-color: hsl(var(--card));
+  border-color: hsl(var(--card)) !important;
   box-shadow: 0 0 0 2px hsl(var(--primary) / 0.35);
 }
 
+.bp-node--selected .bp-flow-handle--target {
+  background-color: hsl(var(--foreground) / 0.55) !important;
+}
+
 .bp-node--selected .bp-flow-handle--source {
-  background: hsl(var(--primary));
+  background-color: hsl(var(--primary)) !important;
 }
 
 .bp-node--execution-true .bp-node-card {
@@ -225,11 +231,11 @@
 }
 
 .bp-node--execution-true .bp-flow-handle--source {
-  background: #16a34a;
+  background-color: #16a34a !important;
 }
 
 .bp-node--execution-true .bp-flow-handle--target {
-  background: rgb(22 163 74 / 0.55);
+  background-color: rgb(22 163 74 / 0.55) !important;
 }
 
 .bp-node--execution-false .bp-node-card {
@@ -245,11 +251,11 @@
 }
 
 .bp-node--execution-false .bp-flow-handle--source {
-  background: hsl(var(--destructive));
+  background-color: hsl(var(--destructive)) !important;
 }
 
 .bp-node--execution-false .bp-flow-handle--target {
-  background: hsl(var(--destructive) / 0.55);
+  background-color: hsl(var(--destructive) / 0.55) !important;
 }
 
 /* 生命周期节点无输入口：隐藏任何左侧/目标连接点（含旧数据产生的幽灵 handle） */
@@ -267,13 +273,13 @@
 .bp-canvas .react-flow__handle.bp-flow-handle--signal,
 .bp-flow .react-flow__handle.bp-flow-handle--signal,
 [data-workspace-region="blueprint"] .react-flow__handle.bp-flow-handle--signal {
-  background: hsl(38 92% 50% / 0.75);
+  background-color: hsl(38 92% 50% / 0.75) !important;
   width: 8px;
   height: 8px;
 }
 
 .bp-node--selected .bp-flow-handle--signal {
-  background: hsl(38 92% 50%);
+  background-color: hsl(38 92% 50%) !important;
 }
 
 /* 右键菜单 */

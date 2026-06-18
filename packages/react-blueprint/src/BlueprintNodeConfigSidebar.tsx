@@ -87,6 +87,8 @@ export function BlueprintNodeConfigSidebar({
 
   useEffect(() => {
     if (configSource !== "view") return;
+    // 视图画布尚未就绪时不清理，避免误删有效绑定导致绑定节点「执行了但不写 scope」
+    if (viewElementOptions.length === 0) return;
     const linked = resolveViewElementIds(node);
     if (linked.length === 0) return;
     const pruned = pruneViewElementIds(linked, existingViewElementIdSet);
@@ -103,6 +105,7 @@ export function BlueprintNodeConfigSidebar({
     node.viewElementId,
     node.viewElementIds,
     onUpdateNode,
+    viewElementOptions.length,
   ]);
 
   return (

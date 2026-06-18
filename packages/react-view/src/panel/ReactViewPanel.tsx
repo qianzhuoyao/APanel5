@@ -111,6 +111,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
   toast,
+  useTheme,
 } from "@arronqzy/ui";
 
 function IconPlus() {
@@ -333,6 +334,7 @@ export type ReactViewPanelProps = {
 export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelProps) {
   const THEME_STORAGE_KEY = "panel:theme";
   const TITLE_ICON_STORAGE_KEY = "panel:titleIconDataUrl";
+  const { setTheme } = useTheme();
   const themedScrollbarClass =
     "scrollbar-thin [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-muted/40 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border/80 [&::-webkit-scrollbar-thumb]:hover:bg-border";
   const {
@@ -487,7 +489,9 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
   const applyTheme = useCallback((checked: boolean) => {
     const root = document.documentElement;
     root.classList.toggle("dark", checked);
+    root.classList.toggle("light", !checked);
     root.dataset.theme = checked ? "dark" : "light";
+    setTheme(checked ? "dark" : "light");
     try {
       // panel 独立持久化键，避免与宿主应用的通用 theme 键互相覆盖
       localStorage.setItem(THEME_STORAGE_KEY, checked ? "dark" : "light");
@@ -497,7 +501,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
       // ignore storage errors
     }
     setIsDark(checked);
-  }, [THEME_STORAGE_KEY]);
+  }, [THEME_STORAGE_KEY, setTheme]);
 
   useEffect(() => {
     const root = document.documentElement;

@@ -89,17 +89,48 @@ export function pruneViewElementIds(
 export function resolveBlueprintConfigSource(
   node: Pick<
     BlueprintGraphNode,
-    "role" | "configSource" | "viewElementId" | "viewElementIds"
+    "role" | "nodeType" | "configSource" | "viewElementId" | "viewElementIds"
   >
 ): BlueprintConfigSource {
   if (node.configSource) return node.configSource;
-  if (resolveViewElementIds(node).length > 0) return "view";
   if (node.role === "lifecycle") return "lifecycle";
   if (node.role === "clock") return "clock";
   if (node.role === "and") return "and";
   if (node.role === "fetch") return "fetch";
   if (node.role === "json") return "json";
+  if (node.nodeType === FETCH_NODE_TYPE) return "fetch";
+  if (node.nodeType === JSON_NODE_TYPE) return "json";
+  if (node.nodeType === CLOCK_NODE_TYPE) return "clock";
+  if (node.nodeType === VIEW_NODE_TYPE) return "view";
+  if (resolveViewElementIds(node).length > 0) return "view";
   return node.role === "logic" ? "logic" : "blueprint";
+}
+
+/** 可执行图节点类型：与配置类型对齐，避免文档里残留旧 nodeType */
+export function resolveRunnableNodeType(
+  node: Pick<
+    BlueprintGraphNode,
+    "role" | "nodeType" | "configSource" | "viewElementId" | "viewElementIds"
+  >
+): string {
+  switch (resolveBlueprintConfigSource(node)) {
+    case "view":
+      return VIEW_NODE_TYPE;
+    case "lifecycle":
+      return LIFECYCLE_NODE_TYPE;
+    case "clock":
+      return CLOCK_NODE_TYPE;
+    case "and":
+      return AND_NODE_TYPE;
+    case "fetch":
+      return FETCH_NODE_TYPE;
+    case "json":
+      return JSON_NODE_TYPE;
+    case "logic":
+      return DEFAULT_LOGIC_NODE_TYPE;
+    default:
+      return BLUEPRINT_NODE_TYPE;
+  }
 }
 
 /** 画布节点顶部（拖拽区）展示的配置类型文案 */
@@ -120,7 +151,7 @@ export const BLUEPRINT_CONFIG_TYPE_LABELS: Record<
 export function resolveBlueprintNodeTypeLabel(
   node: Pick<
     BlueprintGraphNode,
-    "role" | "configSource" | "viewElementId" | "viewElementIds"
+    "role" | "nodeType" | "configSource" | "viewElementId" | "viewElementIds"
   >
 ): string {
   return BLUEPRINT_CONFIG_TYPE_LABELS[resolveBlueprintConfigSource(node)];
@@ -221,17 +252,24 @@ export function sanitizeBlueprintDocument(
         viewElementId: undefined,
       };
     }
-    if (
-      resolveBlueprintConfigSource(next) === "view" &&
-      next.nodeType !== VIEW_NODE_TYPE
-    ) {
-      next = { ...next, nodeType: VIEW_NODE_TYPE };
+    const runnableNodeType = resolveRunnableNodeType(next);
+    if (next.nodeType !== runnableNodeType) {
+      next = { ...next, nodeType: runnableNodeType };
     }
     if (next.role === "lifecycle") {
       return { ...next, configSource: "lifecycle" as const };
     }
     if (next.role === "clock") {
       return { ...next, configSource: "clock" as const };
+    }
+    if (next.role === "fetch") {
+      return { ...next, configSource: "fetch" as const };
+    }
+    if (next.role === "json") {
+      return { ...next, configSource: "json" as const };
+    }
+    if (next.role === "and") {
+      return { ...next, configSource: "and" as const };
     }
     if (next.configSource === "lifecycle" || next.configSource === "clock") {
       return { ...next, configSource: undefined };

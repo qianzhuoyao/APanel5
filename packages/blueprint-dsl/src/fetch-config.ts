@@ -67,6 +67,21 @@ export const DEFAULT_FETCH_REQUEST_CONFIG: FetchRequestConfig = {
   timeoutMs: 30000,
 };
 
+/** 合并默认项与节点上保存的 fetch 配置，供运行时发起请求 */
+export function normalizeFetchRequestConfig(
+  config?: FetchRequestConfig
+): FetchRequestConfig {
+  return {
+    ...DEFAULT_FETCH_REQUEST_CONFIG,
+    ...config,
+    headers: {
+      ...DEFAULT_FETCH_REQUEST_CONFIG.headers,
+      ...config?.headers,
+    },
+    swaggerEndpoints: config?.swaggerEndpoints,
+  };
+}
+
 export type FetchResultValue = {
   status: number;
   statusText: string;

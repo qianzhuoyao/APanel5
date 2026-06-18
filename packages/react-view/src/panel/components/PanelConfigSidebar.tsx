@@ -19,10 +19,6 @@ import {
   SelectTrigger,
   SelectValue,
   Textarea,
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
 } from "@arronqzy/ui";
 import type {
   PanelChartConfig,
@@ -30,10 +26,11 @@ import type {
   PanelElementStyle,
   ReferenceCopyMode,
 } from "../types";
-import { buildChartOption, CHART_TYPES, getChartValuesDisplayText } from "../utils/chartOptionBuilder";
+import { buildChartOption, CHART_TYPES, getChartLabelsDisplayText, getChartValuesDisplayText } from "../utils/chartOptionBuilder";
 import type { PanelLayer } from "../types";
 import { PANEL_MESSAGES } from "../constants/messages";
 import { ViewElementScopePanel } from "./ViewElementScopePanel";
+import { ConfigHintIcon } from "./ConfigHintIcon";
 import { hasViewElementScope } from "../scope/view-scope-store";
 import { collectElementScopeWarnings } from "../utils/scope-template-warnings";
 import { ScopeConfigProvider } from "./scope-config/ScopeConfigContext";
@@ -415,7 +412,8 @@ export function PanelConfigSidebar({
     title: string,
     children: React.ReactNode,
     defaultOpen = true,
-    searchTerms: string[] = []
+    searchTerms: string[] = [],
+    hint?: React.ReactNode
   ) => {
     const hit =
       !hasSearch ||
@@ -437,7 +435,10 @@ export function PanelConfigSidebar({
             {isSectionExpanded(key, defaultOpen) ? "▾" : "▸"}
           </button>
         </CollapsibleTrigger>
-        <div className="text-[11px] font-semibold tracking-wide text-muted-foreground">{title}</div>
+        <div className="flex min-w-0 flex-1 items-center gap-1">
+          <div className="text-[11px] font-semibold tracking-wide text-muted-foreground">{title}</div>
+          {hint ? <ConfigHintIcon label={title}>{hint}</ConfigHintIcon> : null}
+        </div>
       </div>
       <CollapsibleContent className="space-y-3 border-t border-border/60 bg-muted/[0.1] px-3 pb-3 pt-2.5">
         {children}
@@ -446,9 +447,16 @@ export function PanelConfigSidebar({
     );
   };
 
-  const renderFieldGroup = (title: string, children: React.ReactNode) => (
+  const renderFieldGroup = (
+    title: string,
+    children: React.ReactNode,
+    hint?: React.ReactNode
+  ) => (
     <div className="space-y-2.5 rounded-lg border border-border/55 bg-background/80 p-2.5">
-      <div className="text-[11px] font-semibold text-muted-foreground">{title}</div>
+      <div className="flex items-center gap-1">
+        <div className="text-[11px] font-semibold text-muted-foreground">{title}</div>
+        {hint ? <ConfigHintIcon label={title}>{hint}</ConfigHintIcon> : null}
+      </div>
       {children}
     </div>
   );
@@ -494,50 +502,24 @@ export function PanelConfigSidebar({
   const renderOptionLabel = (label: string, keyPath: string, desc: string) => (
     <div className="flex min-w-0 items-center gap-1">
       <span className={optionLabelTextClass} title={`${label}（${keyPath}）`}>{label}</span>
-      <TooltipProvider delayDuration={120}>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              type="button"
-              className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-border text-[10px] text-muted-foreground"
-              aria-label={`${label}说明`}
-            >
-              ?
-            </button>
-          </TooltipTrigger>
-          <TooltipContent className="max-w-[260px] text-[11px]">
-            <div>Key: {keyPath}</div>
-            <div>{desc}</div>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
+      <ConfigHintIcon label={label}>
+        <div>Key: {keyPath}</div>
+        <div>{desc}</div>
+      </ConfigHintIcon>
     </div>
   );
   const renderFormatterLabel = (label = "Tooltip Formatter（可选）") => (
     <div className="flex min-w-0 items-center gap-1">
       <span className={optionLabelTextClass} title={label}>{label}</span>
-      <TooltipProvider delayDuration={120}>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              type="button"
-              className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-border text-[10px] text-muted-foreground"
-              aria-label="Tooltip Formatter 说明"
-            >
-              ?
-            </button>
-          </TooltipTrigger>
-          <TooltipContent className="max-w-[360px] text-[11px] leading-5">
-            <div className="font-medium">可用占位符</div>
-            <div>{"{a}=系列名, {b}=类目名, {c}=数值, {d}=百分比(饼图)"}</div>
-            <div className="mt-1 font-medium">常用模板 + 输出示例</div>
-            <div>{"1) {b}: {c}  ->  周一: 120"}</div>
-            <div>{"2) {a}<br/>{b}: {c}  ->  销量<br/>周一: 120"}</div>
-            <div>{"3) {b}: {c} ({d}%)  ->  访问来源: 335 (42%)"}</div>
-            <div>{"4) ￥{c} / {b}  ->  ￥120 / 周一"}</div>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
+      <ConfigHintIcon label="Tooltip Formatter" contentClassName="max-w-[360px]">
+        <div className="font-medium">可用占位符</div>
+        <div>{"{a}=系列名, {b}=类目名, {c}=数值, {d}=百分比(饼图)"}</div>
+        <div className="mt-1 font-medium">常用模板 + 输出示例</div>
+        <div>{"1) {b}: {c}  ->  周一: 120"}</div>
+        <div>{"2) {a}<br/>{b}: {c}  ->  销量<br/>周一: 120"}</div>
+        <div>{"3) {b}: {c} ({d}%)  ->  访问来源: 335 (42%)"}</div>
+        <div>{"4) ￥{c} / {b}  ->  ￥120 / 周一"}</div>
+      </ConfigHintIcon>
     </div>
   );
   const mergeOptionPatch = useCallback(
@@ -593,6 +575,7 @@ export function PanelConfigSidebar({
   return (
     <ScopeConfigProvider
       scope={showScopePanel ? viewElementScope : undefined}
+      element={selectedElement}
       warnings={scopeWarnings}
       scrollContainerRef={sidebarScrollRef}
     >
@@ -1102,15 +1085,12 @@ export function PanelConfigSidebar({
                         <div>类目（逗号分隔）</div>
                         <Input
                           className="h-7"
-                          value={(el.chart?.labels ?? []).join(",")}
+                          value={getChartLabelsDisplayText(el.chart)}
                           onChange={(e) =>
                             updateElement(el.id, {
                               chart: {
                                 ...(el.chart ?? {}),
-                                labels: e.target.value
-                                  .split(",")
-                                  .map((s) => s.trim())
-                                  .filter(Boolean),
+                                labelsText: e.target.value,
                               },
                             })
                           }
@@ -2364,13 +2344,10 @@ export function PanelConfigSidebar({
                       <label className="block space-y-1">
                         <div>类目（逗号分隔）</div>
                         <Input
-                          value={(selectedElement.chart?.labels ?? []).join(",")}
+                          value={getChartLabelsDisplayText(selectedElement.chart)}
                           onChange={(e) =>
                             updateSelectedChart({
-                              labels: e.target.value
-                                .split(",")
-                                .map((s) => s.trim())
-                                .filter(Boolean),
+                              labelsText: e.target.value,
                             })
                           }
                           className="h-7"
@@ -2846,10 +2823,10 @@ export function PanelConfigSidebar({
                           onCheckedChange={(checked) => setIsAdvancedOptionMode(checked === true)}
                         />
                         <span>开启高级模式（直接编辑图表 JSON 配置）</span>
+                        <ConfigHintIcon label="图表 JSON 高级模式">
+                          基础配置会先生成图表配置，高级模式会在此基础上覆盖（深度合并）。
+                        </ConfigHintIcon>
                       </label>
-                      <div className="rounded border border-border/60 bg-background px-2 py-1.5 text-[11px] text-muted-foreground">
-                        基础配置会先生成图表配置，高级模式会在此基础上覆盖（深度合并）。
-                      </div>
                       {isAdvancedOptionMode ? (
                         <>
                           <Textarea
@@ -3241,8 +3218,11 @@ export function PanelConfigSidebar({
                         className="h-20 w-full rounded border border-border/60 object-cover"
                       />
                     ) : null}
-                    <div className="text-[11px] text-muted-foreground">
-                      设置占位图或图标后，节点上将隐藏进度条，改为点击图标播放/暂停。
+                    <div className="flex items-center gap-1">
+                      <div className="text-[11px] text-muted-foreground">音频占位图</div>
+                      <ConfigHintIcon label="音频占位图">
+                        设置占位图或图标后，节点上将隐藏进度条，改为点击图标播放/暂停。
+                      </ConfigHintIcon>
                     </div>
                   </>
                 )}
@@ -3358,12 +3338,10 @@ export function PanelConfigSidebar({
                       </label>
                     </div>
                   )}
-                  <div className="rounded border border-border/60 bg-background px-2 py-1.5 text-[11px] text-muted-foreground">
-                    网格子节点可跨越多格，占据更大区域，便于复杂布局。
-                  </div>
                 </>,
                 true,
-                ["网格", "跨列", "跨行", "span", "slot"]
+                ["网格", "跨列", "跨行", "span", "slot"],
+                <>网格子节点可跨越多格，占据更大区域，便于复杂布局。</>
               )
               : null
             : null}
@@ -3409,9 +3387,6 @@ export function PanelConfigSidebar({
                 {renderFieldGroup(
                   "高级（Canvas 脚本）",
                   <>
-                    <div className="rounded border border-border/60 bg-background px-2 py-1.5 text-[11px] text-muted-foreground">
-                      可输入 Canvas 绘制逻辑，变量：ctx、width、height、element。脚本异常会被安全忽略。
-                    </div>
                     <Textarea
                       value={selectedElement.geometryScript ?? ""}
                       onChange={(e) => updateSelectedGeometry({ geometryScript: e.target.value || undefined })}
@@ -3419,6 +3394,9 @@ export function PanelConfigSidebar({
                       className="h-36 font-mono text-[11px]"
                       placeholder="// 例: ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fillRect(8,8,width-16,height-16);"
                     />
+                  </>,
+                  <>
+                    可输入 Canvas 绘制逻辑，变量：ctx、width、height、element。脚本异常会被安全忽略。
                   </>
                 )}
                 {renderFieldGroup(
@@ -3610,12 +3588,12 @@ export function PanelConfigSidebar({
                     </label>
                   </div>
                 )}
-                <div className="rounded border border-border/60 bg-background px-2 py-1.5 text-[11px] text-muted-foreground">
-                  其他节点拖拽靠近该网格槽位中心时会自动吸附，并在节点树显示为该网格子节点。
-                </div>
               </>,
               true,
-              ["网格", "grid", "行", "列", "间距", "内边距", "吸附", "阈值"]
+              ["网格", "grid", "行", "列", "间距", "内边距", "吸附", "阈值"],
+              <>
+                其他节点拖拽靠近该网格槽位中心时会自动吸附，并在节点树显示为该网格子节点。
+              </>
             )
           ) : selectedElement.materialType === "reference" ? (
             renderSection(
@@ -3673,9 +3651,9 @@ export function PanelConfigSidebar({
                         </SelectContent>
                       </Select>
                     </label>
-                    <div className="rounded border border-border/60 bg-background px-2 py-1.5 text-[11px] text-muted-foreground">
-                      浅拷贝会实时同步被引用图层；深拷贝会固定当前快照，不再随源变化。
-                    </div>
+                  </>,
+                  <>
+                    浅拷贝会实时同步被引用图层；深拷贝会固定当前快照，不再随源变化。
                   </>
                 )}
               </>,

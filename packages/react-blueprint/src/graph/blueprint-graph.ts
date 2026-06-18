@@ -8,6 +8,7 @@ import {
   resolveNodeFetchConfig,
   resolveNodeJsonConfig,
   resolveNodeLogicConfig,
+  resolveRunnableNodeType,
   sanitizeBlueprintDocument,
   type BlueprintDocument,
   type BlueprintGraphEdge,
@@ -250,7 +251,10 @@ export class BlueprintGraph {
             ...patch.clockConfig,
           };
         }
-        return nextNode;
+        return {
+          ...nextNode,
+          nodeType: resolveRunnableNodeType(nextNode),
+        };
       }),
     });
   }

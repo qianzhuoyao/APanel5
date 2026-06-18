@@ -1,5 +1,7 @@
 "use client"
 
+import { createPortal } from "react-dom"
+
 import { useToast } from "../hooks/use-toast"
 import {
   Toast,
@@ -13,8 +15,10 @@ import {
 export function Toaster() {
   const { toasts } = useToast()
 
-  return (
-    <ToastProvider>
+  if (typeof document === "undefined") return null
+
+  return createPortal(
+    <ToastProvider swipeDirection="right">
       {toasts.map(function ({ id, title, description, action, ...props }) {
         return (
           <Toast key={id} {...props}>
@@ -30,6 +34,7 @@ export function Toaster() {
         )
       })}
       <ToastViewport />
-    </ToastProvider>
+    </ToastProvider>,
+    document.body
   )
 }

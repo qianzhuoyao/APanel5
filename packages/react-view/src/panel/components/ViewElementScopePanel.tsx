@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 
 import { formatViewElementScope } from "../utils/scope-template";
+import { ConfigHintIcon } from "./ConfigHintIcon";
+import { ScopeTemplateUsageHint } from "./scope-config/ScopeTemplateUsageHint";
 
 const SCOPE_COLLAPSE_STORAGE_KEY = "panel:config-scope-collapsed";
 
@@ -43,6 +45,9 @@ export function ViewElementScopePanel({ scope }: ViewElementScopePanelProps) {
       <div className="flex items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-1.5">
           <div className="text-[11px] font-medium text-foreground">Scope 数据</div>
+          <ConfigHintIcon label="Scope 模版" contentClassName="max-w-[380px]">
+            <ScopeTemplateUsageHint />
+          </ConfigHintIcon>
           {scopeUpdated ? (
             <span className="shrink-0 rounded bg-sky-500/15 px-1.5 py-0.5 text-[10px] font-medium text-sky-700 dark:text-sky-300">
               已更新
@@ -64,14 +69,6 @@ export function ViewElementScopePanel({ scope }: ViewElementScopePanelProps) {
           >
             {formatViewElementScope(scope)}
           </pre>
-          <p className="mt-1.5 text-[10px] leading-relaxed text-muted-foreground">
-            表单中可使用模版字符串引用 scope，例如{" "}
-            <code className="rounded bg-muted px-1">{`{scope?.a||0}`}</code>
-            、
-            <code className="rounded bg-muted px-1">{`{scope?.name||''}`}</code>
-            。支持 <code className="rounded bg-muted px-1">?.</code> 与{" "}
-            <code className="rounded bg-muted px-1">||</code> 占位。
-          </p>
         </>
       ) : null}
     </div>

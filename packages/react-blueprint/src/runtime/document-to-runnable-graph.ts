@@ -1,10 +1,11 @@
 import {
-  VIEW_NODE_TYPE,
+  FETCH_NODE_TYPE,
   type RunnableGraph,
 } from "@arronqzy/blueprint-dsl";
 
 import {
-  resolveBlueprintConfigSource,
+  resolveNodeFetchConfig,
+  resolveRunnableNodeType,
   resolveViewElementIds,
   type BlueprintDocument,
 } from "../graph/document";
@@ -17,17 +18,19 @@ export function documentToRunnableGraph(
 ): RunnableGraph {
   return {
     nodes: document.nodes.map((node) => {
-      const configSource = resolveBlueprintConfigSource(node);
       const viewElementIds = resolveViewElementIds(node);
+      const nodeType = resolveRunnableNodeType(node);
       return {
         id: node.id,
-        nodeType:
-          configSource === "view" ? VIEW_NODE_TYPE : node.nodeType,
+        nodeType,
         lifecyclePhase: node.lifecyclePhase,
         libraryBlueprintId: node.libraryBlueprintId,
         viewElementIds:
           viewElementIds.length > 0 ? viewElementIds : undefined,
-        fetchConfig: node.fetchConfig,
+        fetchConfig:
+          nodeType === FETCH_NODE_TYPE
+            ? resolveNodeFetchConfig(node)
+            : node.fetchConfig,
         jsonConfig: node.jsonConfig,
         logicConfig: node.logicConfig,
         clockConfig: node.clockConfig,
