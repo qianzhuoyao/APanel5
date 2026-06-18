@@ -12,15 +12,18 @@
     "lint:legacy": "eslint \"src/**/*.ts\""
   },
   "dependencies": {
-    "@arron/ui": "workspace:*",
-    "@arron/react-blueprint": "workspace:*",
+    "@arronqzy/abuilder": "workspace:*",
+    "@arronqzy/blueprint-dsl": "workspace:*",
+    "@arronqzy/react-blueprint": "workspace:*",
+    "@arronqzy/react-view": "workspace:*",
+    "@arronqzy/rx-store": "workspace:*",
+    "@arronqzy/ui": "workspace:*",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "@arron/react-view": "workspace:*"
+    "react-dom": "^18.2.0"
   },
   "devDependencies": {
-    "@arron/eslint-config": "workspace:*",
-    "@arron/typescript-config": "workspace:*",
+    "@arronqzy/eslint-config": "workspace:*",
+    "@arronqzy/typescript-config": "workspace:*",
     "@types/react": "^19.0.1",
     "@types/react-dom": "^19.0.2",
     "@vitejs/plugin-react": "^3.1.0",

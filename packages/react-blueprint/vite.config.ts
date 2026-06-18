@@ -1,8 +1,15 @@
-import { defineConfig } from "vite";
+import path from "node:path";
+
 import react from "@vitejs/plugin-react";
+import { defineConfig } from "vite";
 
 export default defineConfig({
   plugins: [react()],
+  resolve: {
+    alias: {
+      "@arronqzy/ui": path.resolve(process.cwd(), "../ui/index.ts"),
+    },
+  },
   server: {
     port: 31012,
   },

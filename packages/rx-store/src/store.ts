@@ -43,7 +43,7 @@ export class RxStore {
   updateById(
     nodeId: string,
     updater: (node: Draft<Node>) => void,
-    options?: { skipHistory?: boolean; meta?: any }
+    options?: { skipHistory?: boolean; meta?: any; batchId?: string }
   ) {
     this.update((draft) => {
       const node = this.findNodeById(draft.root, nodeId);
@@ -145,7 +145,7 @@ export class RxStore {
 
     if (!skipHistory) {
       this.history.push({
-        state: oldState,
+        state: newState,
         timestamp: Date.now(),
         groupId: options.batchId ?? this.currentBatchId ?? undefined,
         meta: options.meta,
@@ -176,8 +176,20 @@ export class RxStore {
     if (state) this.state$.next(state);
   }
 
+  goToHistory(index: number) {
+    const state = this.history.jumpTo(index);
+    if (state) this.state$.next(state);
+  }
+
   canUndo$ = this.history.canUndo$;
   canRedo$ = this.history.canRedo$;
+  getHistoryEntries() {
+    return this.history.entries;
+  }
+
+  getHistoryCursorIndex() {
+    return this.history.cursorIndex;
+  }
 
   // ==================== Batch ====================
   startBatch(id?: string) {

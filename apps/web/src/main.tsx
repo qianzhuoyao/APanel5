@@ -1,10 +1,6 @@
 import { createRoot } from "react-dom/client";
 
-import { ReactViewPanel } from "@arron/react-view";
-const App = () => (
-  <div>
-    <ReactViewPanel />
-  </div>
-);
+import { App } from "@arronqzy/abuilder";
+import "@arronqzy/abuilder/styles.css";
 
 createRoot(document.getElementById("app")!).render(<App />);

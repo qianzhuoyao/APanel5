@@ -17,6 +17,7 @@ export * from "./context-menu";
 export * from "./dialog";
 export * from "./drawer";
 export * from "./dropdown-menu";
+export * from "./empty";
 export * from "./form";
 export * from "./hover-card";
 export * from "./input";

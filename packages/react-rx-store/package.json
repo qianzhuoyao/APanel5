@@ -1,28 +1,38 @@
 {
-  "name": "@arron/react-rx-store",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.ts",
+  "name": "@arronqzy/react-rx-store",
+  "version": "1.1.1",
+  "description": "React hooks for @arronqzy/rx-store",
+  "license": "MIT",
+  "files": [
+    "src"
+  ],
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
   "scripts": {
     "lint": "eslint \"src/**/*.{ts,tsx}\"",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "pnpm run typecheck"
   },
   "dependencies": {
-    "@arron/rx-store": "workspace:*",
-    "react": "^19",
+    "@arronqzy/rx-store": "workspace:*",
     "use-sync-external-store": "^1.6.0"
+  },
+  "peerDependencies": {
+    "react": ">=18"
   },
   "devDependencies": {
     "@types/react": "^19.0.1",
     "@types/react-dom": "^19.0.2",
-    "@arron/eslint-config": "workspace:*",
-    "@types/use-sync-external-store":"^1.5.0",
-    "@arron/typescript-config": "workspace:*",
+    "@arronqzy/eslint-config": "workspace:*",
+    "@types/use-sync-external-store": "^1.5.0",
+    "@arronqzy/typescript-config": "workspace:*",
     "eslint": "^8.57.0",
+    "react": "^19",
     "typescript": "^5.5.4"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC"
+  "publishConfig": {
+    "access": "public"
+  }
 }

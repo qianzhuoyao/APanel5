@@ -1,0 +1,45 @@
+name: Publish to NPM
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  publish-npm:
+    runs-on: ubuntu-latest
+    env:
+      NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 8.15.6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          registry-url: "https://registry.npmjs.org/"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build publish artifacts
+        run: |
+          pnpm -C packages/ui run build:css
+          pnpm -C packages/react-view run build:css
+          pnpm -C packages/abuilder build
+
+      - name: Publish packages (dependency order)
+        run: |
+          pnpm --filter @arronqzy/blueprint-dsl publish --access public --no-git-checks
+          pnpm --filter @arronqzy/rx-store publish --access public --no-git-checks
+          pnpm --filter @arronqzy/react-rx-store publish --access public --no-git-checks
+          pnpm --filter @arronqzy/ui publish --access public --no-git-checks
+          pnpm --filter @arronqzy/react-blueprint publish --access public --no-git-checks
+          pnpm --filter @arronqzy/react-view publish --access public --no-git-checks
+          pnpm --filter @arronqzy/abuilder publish --access public --no-git-checks

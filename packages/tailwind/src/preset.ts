@@ -1,4 +1,3 @@
-// @ts-expect-error tailwindcss-animate is runtime dependency; types may be missing in-editor
 import tailwindcssAnimate from "tailwindcss-animate"
 
 /**
@@ -69,6 +68,13 @@ const preset = {
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+      },
+      zIndex: {
+        tooltip: "10000",
+        dropdown: "10100",
+        popover: "10120",
+        "alert-dialog": "10150",
+        toast: "99999",
       },
     },
   },

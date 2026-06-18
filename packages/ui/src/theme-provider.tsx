@@ -1,10 +1,36 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { ThemeProvider as NextThemesProvider } from "next-themes"
-import type { ThemeProviderProps } from "next-themes/dist/types"
+import * as React from "react";
+import { ThemeProvider as NextThemesProvider } from "next-themes";
+import type { ThemeProviderProps } from "next-themes";
 
-export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
-  return <NextThemesProvider {...props}>{children}</NextThemesProvider>
+export type AppTheme = "light" | "dark";
+
+export type ArronqzyThemeProviderProps = Omit<
+  ThemeProviderProps,
+  "attribute" | "defaultTheme" | "enableSystem"
+> & {
+  defaultTheme?: AppTheme;
+  enableSystem?: boolean;
+};
+
+export function ThemeProvider({
+  children,
+  defaultTheme = "dark",
+  enableSystem = true,
+  ...props
+}: ArronqzyThemeProviderProps) {
+  return (
+    <NextThemesProvider
+      attribute="class"
+      defaultTheme={defaultTheme}
+      enableSystem={enableSystem}
+      {...props}
+    >
+      {children}
+    </NextThemesProvider>
+  );
 }
+
+export { useTheme } from "next-themes";
 

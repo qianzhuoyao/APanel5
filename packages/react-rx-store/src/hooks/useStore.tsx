@@ -1,4 +1,4 @@
-import { State, store } from "@arron/rx-store";
+import { State, store } from "@arronqzy/rx-store";
 import { useSyncExternalStoreWithSelector } from "use-sync-external-store/with-selector";
 
 /**

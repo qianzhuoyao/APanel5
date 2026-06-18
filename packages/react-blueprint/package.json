@@ -1,8 +1,12 @@
 {
-  "name": "@arron/react-blueprint",
-  "version": "1.0.0",
+  "name": "@arronqzy/react-blueprint",
+  "version": "1.0.2",
   "description": "",
   "main": "index.ts",
+  "exports": {
+    ".": "./index.ts",
+    "./blueprint.css": "./src/blueprint.css"
+  },
   "scripts": {
     "lint": "eslint \"src/**/*.{ts,tsx}\"",
     "typecheck": "tsc -p tsconfig.json --noEmit",
@@ -11,17 +15,24 @@
   },
   "dependencies": {
     "react": "^19",
+    "dayjs": "^1.11.13",
     "react-dom": "^19",
-    "@arron/react-rx-store": "workspace:*",
+    "@arronqzy/blueprint-dsl": "workspace:*",
+    "@arronqzy/react-rx-store": "workspace:*",
+    "@arronqzy/ui": "workspace:*",
     "@xyflow/react": "^12.9.3"
   },
   "devDependencies": {
+    "@arronqzy/tailwind": "workspace:*",
     "@types/react": "^19.0.1",
     "@types/react-dom": "^19.0.2",
     "@vitejs/plugin-react": "^3.1.0",
-    "@arron/eslint-config": "workspace:*",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.17",
+    "@arronqzy/eslint-config": "workspace:*",
     "@types/use-sync-external-store": "^1.5.0",
-    "@arron/typescript-config": "workspace:*",
+    "@arronqzy/typescript-config": "workspace:*",
     "eslint": "^8.57.0",
     "typescript": "^5.5.4",
     "vite": "^5.1.4"

@@ -1,5 +1,12 @@
 {
-  "extends": "@arron/typescript-config/react-library.json",
+  "extends": "@arronqzy/typescript-config/react-library.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@arronqzy/blueprint-dsl": ["../blueprint-dsl/src/index.ts"],
+      "@arronqzy/ui": ["../ui/index.ts"]
+    }
+  },
   "include": ["."],
   "exclude": ["node_modules"]
 }

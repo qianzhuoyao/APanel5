@@ -1,4 +1,4 @@
-import { store } from "@arron/rx-store";
+import { store } from "@arronqzy/rx-store";
 import { useStore } from "./useStore";
 
 /**
