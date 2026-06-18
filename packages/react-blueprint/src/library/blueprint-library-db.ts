@@ -3,7 +3,7 @@ import type {
   BlueprintLibraryRecord,
 } from "./types";
 
-const DB_NAME = "arron-blueprint-library";
+const DB_NAME = "arronqzy-blueprint-library";
 const DB_VERSION = 1;
 const STORE_NAME = "blueprints";
 

@@ -18,7 +18,7 @@ import {
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@arron/ui";
+} from "@arronqzy/ui";
 import type { WorkspaceProjectListItem } from "../library/workspace-project-db";
 
 function formatUpdatedAt(ts: number): string {

@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useSyncExternalStore } from "react";
-import { store } from "../../../../rx-store/src/store";
-import type { Node, State } from "../../../../rx-store/src/types";
+import { store, type Node, type State } from "@arronqzy/rx-store";
 import type {
   PanelActionResult,
   PanelElement,

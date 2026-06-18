@@ -1,8 +1,8 @@
-import type { BlueprintDocument } from "@arron/react-blueprint";
-import type { BlueprintMetaDraft } from "@arron/react-blueprint";
-import type { State } from "../../../../rx-store/src/types";
+import type { BlueprintDocument } from "@arronqzy/react-blueprint";
+import type { BlueprintMetaDraft } from "@arronqzy/react-blueprint";
+import type { State } from "@arronqzy/rx-store";
 
-const DB_NAME = "arron-workspace-projects";
+const DB_NAME = "arronqzy-workspace-projects";
 const DB_VERSION = 1;
 const STORE_NAME = "projects";
 

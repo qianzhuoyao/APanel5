@@ -10,7 +10,7 @@ import {
   Input,
   Label,
   Textarea,
-} from "@arron/ui";
+} from "@arronqzy/ui";
 
 import type { BlueprintMetaDraft } from "../library/types";
 

@@ -5,7 +5,7 @@ export type ExecutionLogSettings = {
   maxSavedRuns: number;
 };
 
-const SETTINGS_KEY = "arron-blueprint-execution-log-settings";
+const SETTINGS_KEY = "arronqzy-blueprint-execution-log-settings";
 
 export const DEFAULT_EXECUTION_LOG_SETTINGS: ExecutionLogSettings = {
   retentionDays: 7,

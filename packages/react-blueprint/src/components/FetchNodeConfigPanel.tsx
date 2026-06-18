@@ -8,12 +8,12 @@ import {
   SelectTrigger,
   SelectValue,
   cn,
-} from "@arron/ui";
+} from "@arronqzy/ui";
 import type {
   FetchHttpMethod,
   FetchRequestConfig,
   FetchResponseType,
-} from "@arron/blueprint-dsl";
+} from "@arronqzy/blueprint-dsl";
 import {
   FETCH_CACHES,
   FETCH_CREDENTIALS,
@@ -21,7 +21,7 @@ import {
   FETCH_MODES,
   FETCH_REDIRECTS,
   FETCH_RESPONSE_TYPES,
-} from "@arron/blueprint-dsl";
+} from "@arronqzy/blueprint-dsl";
 
 import type { BlueprintGraphNode } from "../graph/document";
 import { resolveNodeFetchConfig } from "../graph/document";

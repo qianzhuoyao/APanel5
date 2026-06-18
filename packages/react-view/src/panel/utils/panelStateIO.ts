@@ -1,4 +1,4 @@
-import type { State } from "../../../../rx-store/src/types";
+import type { State } from "@arronqzy/rx-store";
 import type { PanelElement, PanelLayer } from "../types";
 import {
   DEFAULT_LAYER,
@@ -117,7 +117,7 @@ export function computePanelSceneBounds(elements: PanelElement[]): PanelSceneBou
   };
 }
 
-export const PREVIEW_LAYOUT_EVENT = "arron-preview-layout";
+export const PREVIEW_LAYOUT_EVENT = "arronqzy-preview-layout";
 
 export function notifyPreviewLayoutChanged() {
   window.dispatchEvent(new Event(PREVIEW_LAYOUT_EVENT));

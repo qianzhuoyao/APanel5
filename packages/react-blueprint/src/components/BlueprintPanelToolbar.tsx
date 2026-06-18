@@ -13,11 +13,11 @@ import {
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@arron/ui";
+} from "@arronqzy/ui";
 
 import type { BlueprintLibraryListItem } from "../library/types";
 import type { LifecycleNodeOption } from "../hooks/useBlueprintDebugSession";
-import { PAGE_LIFECYCLE_LABELS, type PageLifecyclePhase } from "@arron/blueprint-dsl";
+import { PAGE_LIFECYCLE_LABELS, type PageLifecyclePhase } from "@arronqzy/blueprint-dsl";
 
 export type BlueprintRenameDialogProps = {
   open: boolean;

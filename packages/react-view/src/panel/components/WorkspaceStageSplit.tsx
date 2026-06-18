@@ -6,12 +6,12 @@ import {
   type BluePrintReactRootProps,
   type BlueprintDebugToolbarProps,
   type BlueprintLibraryListItem,
-} from "@arron/react-blueprint";
+} from "@arronqzy/react-blueprint";
 import {
   ResizableHandle,
   ResizablePanel,
   ResizablePanelGroup,
-} from "@arron/ui";
+} from "@arronqzy/ui";
 
 type WorkspaceStageSplitProps = {
   blueprintOpen: boolean;

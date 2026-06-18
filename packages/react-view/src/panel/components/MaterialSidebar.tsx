@@ -20,7 +20,7 @@ import {
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@arron/ui";
+} from "@arronqzy/ui";
 import type { PanelElement, ReferenceCopyMode } from "../types";
 import type { PanelLayer } from "../types";
 import { PANEL_MESSAGES } from "../constants/messages";
@@ -614,7 +614,7 @@ export function MaterialSidebar({
               }
               setDraggingTreeNodeId(node.id);
               e.dataTransfer.setData(
-                "application/x-arron-tree-node",
+                "application/x-arronqzy-tree-node",
                 JSON.stringify({ nodeId: node.id, sourceLayerId: node.layerId })
               );
               e.dataTransfer.effectAllowed = "move";
@@ -848,7 +848,7 @@ export function MaterialSidebar({
                     className="cursor-pointer rounded-xl border border-border bg-card px-2 py-2 text-left text-xs text-card-foreground hover:bg-accent/60"
                     onDragStart={(e) => {
                       e.dataTransfer.setData(
-                        "application/x-arron-material",
+                        "application/x-arronqzy-material",
                         JSON.stringify({ id: it.id, title: it.title })
                       );
                       e.dataTransfer.effectAllowed = "copy";
@@ -1042,7 +1042,7 @@ export function MaterialSidebar({
                             ].join(" ")}
                             onDragOver={(e) => {
                               const hasNodeData =
-                                e.dataTransfer.types.includes("application/x-arron-tree-node");
+                                e.dataTransfer.types.includes("application/x-arronqzy-tree-node");
                               if (!hasNodeData) return;
                               if (canDropIntoLayer) {
                                 e.preventDefault();
@@ -1056,7 +1056,7 @@ export function MaterialSidebar({
                               if (dragOverLayerId === layer.id) setDragOverLayerId(null);
                             }}
                             onDrop={(e) => {
-                              const payload = e.dataTransfer.getData("application/x-arron-tree-node");
+                              const payload = e.dataTransfer.getData("application/x-arronqzy-tree-node");
                               if (!payload) return;
                               e.preventDefault();
                               try {

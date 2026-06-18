@@ -1,6 +1,6 @@
 {
-  "name": "@arron/abuilder",
-  "version": "0.1.0",
+  "name": "@arronqzy/abuilder",
+  "version": "0.1.4",
   "description": "Abuilder 可视化编辑器 — 安装后即可通过 <App /> 渲染完整应用",
   "license": "MIT",
   "type": "module",
@@ -27,23 +27,24 @@
     "typecheck": "tsc -p tsconfig.json --noEmit --skipLibCheck",
     "build:css": "node ./scripts/build-css.mjs",
     "build:js": "tsup",
-    "build": "pnpm run build:css && pnpm run build:js",
+    "build": "pnpm run build:js && pnpm run build:css",
+    "prepublishOnly": "pnpm run build",
     "dev": "tsup --watch"
   },
   "dependencies": {
-    "@arron/blueprint-dsl": "workspace:*",
-    "@arron/react-blueprint": "workspace:*",
-    "@arron/react-view": "workspace:*",
-    "@arron/rx-store": "workspace:*",
-    "@arron/ui": "workspace:*"
+    "@arronqzy/blueprint-dsl": "workspace:*",
+    "@arronqzy/react-blueprint": "workspace:*",
+    "@arronqzy/react-view": "workspace:*",
+    "@arronqzy/rx-store": "workspace:*",
+    "@arronqzy/ui": "workspace:*"
   },
   "peerDependencies": {
     "react": ">=18",
     "react-dom": ">=18"
   },
   "devDependencies": {
-    "@arron/eslint-config": "workspace:*",
-    "@arron/typescript-config": "workspace:*",
+    "@arronqzy/eslint-config": "workspace:*",
+    "@arronqzy/typescript-config": "workspace:*",
     "@types/react": "^19.0.1",
     "@types/react-dom": "^19.0.2",
     "@xyflow/react": "^12.9.3",

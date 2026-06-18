@@ -1,10 +1,10 @@
 import { useMemo } from "react";
-import { ThemeProvider } from "@arron/ui";
+import { ThemeProvider } from "@arronqzy/ui";
 import {
   ReactViewOnlinePreview,
   ReactViewPanel,
   parseOnlinePreviewSearchParams,
-} from "@arron/react-view";
+} from "@arronqzy/react-view";
 
 export type AbuilderAppProps = {
   className?: string;

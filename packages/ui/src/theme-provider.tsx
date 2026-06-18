@@ -6,7 +6,7 @@ import type { ThemeProviderProps } from "next-themes";
 
 export type AppTheme = "light" | "dark";
 
-export type ArronThemeProviderProps = Omit<
+export type ArronqzyThemeProviderProps = Omit<
   ThemeProviderProps,
   "attribute" | "defaultTheme" | "enableSystem"
 > & {
@@ -19,7 +19,7 @@ export function ThemeProvider({
   defaultTheme = "dark",
   enableSystem = true,
   ...props
-}: ArronThemeProviderProps) {
+}: ArronqzyThemeProviderProps) {
   return (
     <NextThemesProvider
       attribute="class"

@@ -4,7 +4,7 @@ import type {
   JsonNodeConfig,
   LogicNodeConfig,
   PageLifecyclePhase,
-} from "@arron/blueprint-dsl";
+} from "@arronqzy/blueprint-dsl";
 import {
   BLUEPRINT_NODE_TYPE,
   CLOCK_NODE_TYPE,
@@ -19,12 +19,12 @@ import {
   LIFECYCLE_NODE_TYPE,
   normalizeClockConfig,
   VIEW_NODE_TYPE,
-} from "@arron/blueprint-dsl";
+} from "@arronqzy/blueprint-dsl";
 
-export type { FetchRequestConfig as BlueprintFetchConfig } from "@arron/blueprint-dsl";
-export type { JsonNodeConfig as BlueprintJsonConfig } from "@arron/blueprint-dsl";
-export type { LogicNodeConfig as BlueprintLogicConfig } from "@arron/blueprint-dsl";
-export type { ClockNodeConfig as BlueprintClockConfig } from "@arron/blueprint-dsl";
+export type { FetchRequestConfig as BlueprintFetchConfig } from "@arronqzy/blueprint-dsl";
+export type { JsonNodeConfig as BlueprintJsonConfig } from "@arronqzy/blueprint-dsl";
+export type { LogicNodeConfig as BlueprintLogicConfig } from "@arronqzy/blueprint-dsl";
+export type { ClockNodeConfig as BlueprintClockConfig } from "@arronqzy/blueprint-dsl";
 
 export type BlueprintNodeRole = "blueprint" | "logic" | "and" | "lifecycle" | "fetch" | "json" | "clock";
 
@@ -42,7 +42,7 @@ export type BlueprintConfigSource =
 export type BlueprintGraphNode = {
   id: string;
   role: BlueprintNodeRole;
-  /** 对应 @arron/blueprint-dsl NodeDefinition.type */
+  /** 对应 @arronqzy/blueprint-dsl NodeDefinition.type */
   nodeType: string;
   label: string;
   position: { x: number; y: number };

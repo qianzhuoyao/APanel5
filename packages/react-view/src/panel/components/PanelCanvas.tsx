@@ -526,12 +526,12 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
 
   const hasMaterialPayload = useCallback((types: ArrayLike<string> | null | undefined) => {
     if (!types) return false;
-    return Array.from(types).includes("application/x-arron-material");
+    return Array.from(types).includes("application/x-arronqzy-material");
   }, []);
 
   const commitDropFromPoint = useCallback(
     (clientX: number, clientY: number, dataTransfer: DataTransfer | null) => {
-      const raw = dataTransfer?.getData("application/x-arron-material");
+      const raw = dataTransfer?.getData("application/x-arronqzy-material");
       if (!raw) return;
       try {
         const material = JSON.parse(raw) as { id?: string };

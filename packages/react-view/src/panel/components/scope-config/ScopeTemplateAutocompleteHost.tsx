@@ -6,7 +6,7 @@ import {
   type RefObject,
 } from "react";
 import { createPortal } from "react-dom";
-import { cn } from "@arron/ui";
+import { cn } from "@arronqzy/ui";
 
 import {
   applyScopeAutocompleteSelection,

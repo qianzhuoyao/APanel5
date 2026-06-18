@@ -1,4 +1,4 @@
-import { store, Node } from "@arron/rx-store";
+import { store, Node } from "@arronqzy/rx-store";
 import { useStore } from "./useStore";
 
 export function useSelectedNodes(): Record<string, any> {

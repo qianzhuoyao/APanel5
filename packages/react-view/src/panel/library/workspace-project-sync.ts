@@ -1,4 +1,4 @@
-const CHANNEL_PREFIX = "arron-workspace-project";
+const CHANNEL_PREFIX = "arronqzy-workspace-project";
 
 export type WorkspaceProjectSyncMessage = {
   type: "updated";

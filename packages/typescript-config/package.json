@@ -1,8 +1,18 @@
 {
-  "name": "@arron/typescript-config",
+  "name": "@arronqzy/typescript-config",
   "version": "0.0.0",
   "private": false,
   "license": "MIT",
+  "files": [
+    "base.json",
+    "vite.json",
+    "react-library.json"
+  ],
+  "exports": {
+    "./base.json": "./base.json",
+    "./vite.json": "./vite.json",
+    "./react-library.json": "./react-library.json"
+  },
   "publishConfig": {
     "access": "public"
   }

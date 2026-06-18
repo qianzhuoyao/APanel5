@@ -1,12 +1,13 @@
 {
-  "extends": "@arron/typescript-config/react-library.json",
+  "extends": "@arronqzy/typescript-config/react-library.json",
   "compilerOptions": {
     "jsx": "react-jsx",
     "baseUrl": ".",
     "paths": {
-      "@arron/blueprint-dsl": ["../blueprint-dsl/src/index.ts"],
-      "@arron/react-blueprint": ["../react-blueprint/index.ts"],
-      "@arron/ui": ["../ui/index.ts"]
+      "@arronqzy/blueprint-dsl": ["../blueprint-dsl/src/index.ts"],
+      "@arronqzy/react-blueprint": ["../react-blueprint/index.ts"],
+      "@arronqzy/rx-store": ["../rx-store/src/index.ts"],
+      "@arronqzy/ui": ["../ui/index.ts"]
     }
   },
   "include": ["."],

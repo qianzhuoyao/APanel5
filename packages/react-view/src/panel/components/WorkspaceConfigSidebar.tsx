@@ -6,13 +6,13 @@ import {
   type BlueprintGraphNode,
   type ExecutionLogSettings,
   type ExecutionTraceEntry,
-} from "@arron/react-blueprint";
+} from "@arronqzy/react-blueprint";
 import {
   Empty,
   EmptyDescription,
   EmptyIcon,
   EmptyTitle,
-} from "@arron/ui";
+} from "@arronqzy/ui";
 
 import type { PanelConfigSidebarProps } from "./PanelConfigSidebar";
 import { PanelConfigSidebar } from "./PanelConfigSidebar";

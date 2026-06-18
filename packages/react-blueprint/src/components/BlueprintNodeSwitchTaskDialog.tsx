@@ -6,7 +6,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@arron/ui";
+} from "@arronqzy/ui";
 
 export type BlueprintNodeSwitchTaskDialogProps = {
   open: boolean;

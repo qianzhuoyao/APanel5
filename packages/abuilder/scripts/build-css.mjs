@@ -27,13 +27,13 @@ function findXyflowStyleCss() {
 }
 
 function resolvePackageCss(id) {
-  if (id === "@arron/ui/styles.css") {
+  if (id === "@arronqzy/ui/styles.css") {
     return path.join(monorepoRoot, "packages/ui/dist/styles.css");
   }
-  if (id === "@arron/react-view/styles.css") {
+  if (id === "@arronqzy/react-view/styles.css") {
     return path.join(monorepoRoot, "packages/react-view/dist/styles.css");
   }
-  if (id === "@arron/react-blueprint/blueprint.css") {
+  if (id === "@arronqzy/react-blueprint/blueprint.css") {
     return path.join(monorepoRoot, "packages/react-blueprint/src/blueprint.css");
   }
   if (id === "@xyflow/react/dist/style.css") {

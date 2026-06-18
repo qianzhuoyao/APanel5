@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState, type ChangeEvent } from "react";
-import { validateLogicSourceCode } from "@arron/blueprint-dsl";
-import type { LogicNodeConfig } from "@arron/blueprint-dsl";
+import { validateLogicSourceCode } from "@arronqzy/blueprint-dsl";
+import type { LogicNodeConfig } from "@arronqzy/blueprint-dsl";
 
 import type { BlueprintGraphNode } from "../graph/document";
 import { resolveNodeLogicConfig } from "../graph/document";

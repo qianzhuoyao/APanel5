@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { State } from "../../../rx-store/src/types";
+import type { State } from "@arronqzy/rx-store";
 import type { PanelElement } from "./types";
 
 import { usePanelElements } from "./hooks/usePanelElements";
@@ -39,9 +39,9 @@ import {
   type BlueprintGraphNode,
   type BlueprintLibraryListItem,
   type BlueprintMetaDraft,
-} from "@arron/react-blueprint";
-import type { LibraryBlueprintResolver } from "@arron/blueprint-dsl";
-import { abortClockNode } from "@arron/blueprint-dsl";
+} from "@arronqzy/react-blueprint";
+import type { LibraryBlueprintResolver } from "@arronqzy/blueprint-dsl";
+import { abortClockNode } from "@arronqzy/blueprint-dsl";
 import { WorkspaceStageSplit } from "./components/WorkspaceStageSplit";
 import {
   WorkspaceConfigSidebar,
@@ -111,7 +111,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
   toast,
-} from "@arron/ui";
+} from "@arronqzy/ui";
 
 function IconPlus() {
   return (

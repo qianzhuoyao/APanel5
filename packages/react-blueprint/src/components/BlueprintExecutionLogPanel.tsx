@@ -15,12 +15,12 @@ import {
   TooltipProvider,
   TooltipTrigger,
   cn,
-} from "@arron/ui";
+} from "@arronqzy/ui";
 import {
   PAGE_LIFECYCLE_LABELS,
   type ExecutionTraceEntry,
   type PageLifecyclePhase,
-} from "@arron/blueprint-dsl";
+} from "@arronqzy/blueprint-dsl";
 
 import type { ExecutionLogSettings } from "../library/execution-log-settings";
 

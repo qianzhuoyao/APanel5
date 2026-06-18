@@ -17,7 +17,7 @@ export type BlueprintLibraryListItem = Pick<
   "id" | "name" | "remark" | "source" | "updatedAt"
 >;
 
-export const BLUEPRINT_EXPORT_KIND = "arron-blueprint" as const;
+export const BLUEPRINT_EXPORT_KIND = "arronqzy-blueprint" as const;
 export const BLUEPRINT_EXPORT_VERSION = 1 as const;
 
 export type BlueprintExportPayload = {

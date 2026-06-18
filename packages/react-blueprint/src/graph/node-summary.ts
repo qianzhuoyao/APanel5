@@ -1,7 +1,7 @@
 import {
   PAGE_LIFECYCLE_LABELS,
   resolveFetchRequestUrl,
-} from "@arron/blueprint-dsl";
+} from "@arronqzy/blueprint-dsl";
 
 import {
   resolveBlueprintConfigSource,

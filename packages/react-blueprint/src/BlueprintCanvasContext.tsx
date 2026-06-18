@@ -6,7 +6,7 @@ import {
   type ReactNode,
   type RefObject,
 } from "react";
-import { isClockNodeActive, subscribeActiveClockNodes } from "@arron/blueprint-dsl";
+import { isClockNodeActive, subscribeActiveClockNodes } from "@arronqzy/blueprint-dsl";
 
 type BlueprintCanvasContextValue = {
   onSelectNodeRef: RefObject<((nodeId: string | null) => void) | undefined>;

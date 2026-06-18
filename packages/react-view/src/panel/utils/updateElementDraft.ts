@@ -1,4 +1,4 @@
-import type { Node, State } from "../../../../rx-store/src/types";
+import type { Node, State } from "@arronqzy/rx-store";
 import type { PanelElement } from "../types";
 import { getGridChildSpanRect, getGridSlotLayout } from "./gridPlacement";
 import {

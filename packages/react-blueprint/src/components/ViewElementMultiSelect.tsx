@@ -11,7 +11,7 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@arron/ui";
+} from "@arronqzy/ui";
 
 export type ViewElementMultiSelectOption = {
   id: string;

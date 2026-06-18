@@ -1,7 +1,7 @@
 import {
   parseSwaggerDocument,
   type ParsedSwaggerDocument,
-} from "@arron/blueprint-dsl";
+} from "@arronqzy/blueprint-dsl";
 
 export async function loadSwaggerDocument(
   docsUrl: string,

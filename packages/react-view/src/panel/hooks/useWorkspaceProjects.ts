@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { BlueprintGraph } from "@arron/react-blueprint";
-import type { BlueprintDocument, BlueprintMetaDraft } from "@arron/react-blueprint";
-import type { State } from "../../../../rx-store/src/types";
+import { BlueprintGraph } from "@arronqzy/react-blueprint";
+import type { BlueprintDocument, BlueprintMetaDraft } from "@arronqzy/react-blueprint";
+import type { State } from "@arronqzy/rx-store";
 import {
   createWorkspaceProjectId,
   deleteWorkspaceProject,

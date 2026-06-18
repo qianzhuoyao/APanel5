@@ -4,7 +4,7 @@ import {
   detectBlueprintReferenceCycle,
   type LibraryBlueprintResolver,
   type PageLifecyclePhase,
-} from "@arron/blueprint-dsl";
+} from "@arronqzy/blueprint-dsl";
 
 import type { BlueprintGraph } from "../graph/blueprint-graph";
 import { documentToRunnableGraph } from "../runtime/document-to-runnable-graph";

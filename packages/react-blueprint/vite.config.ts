@@ -7,7 +7,7 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      "@arron/ui": path.resolve(process.cwd(), "../ui/index.ts"),
+      "@arronqzy/ui": path.resolve(process.cwd(), "../ui/index.ts"),
     },
   },
   server: {

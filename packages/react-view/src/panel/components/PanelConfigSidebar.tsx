@@ -23,7 +23,7 @@ import {
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@arron/ui";
+} from "@arronqzy/ui";
 import type {
   PanelChartConfig,
   PanelElement,

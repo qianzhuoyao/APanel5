@@ -6,7 +6,7 @@ import {
   SelectLabel,
   SelectTrigger,
   SelectValue,
-} from "@arron/ui";
+} from "@arronqzy/ui";
 
 import type { BlueprintLibraryListItem } from "../library/types";
 

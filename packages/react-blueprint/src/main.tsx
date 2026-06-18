@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { createRoot } from "react-dom/client";
-import { ThemeProvider } from "@arron/ui";
-import "@arron/ui/styles.css";
+import { ThemeProvider } from "@arronqzy/ui";
+import "@arronqzy/ui/styles.css";
 import "@xyflow/react/dist/style.css";
 import "./dev.css";
 import "./blueprint.css";

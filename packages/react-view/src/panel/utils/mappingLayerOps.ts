@@ -1,4 +1,4 @@
-import type { Node, State } from "../../../../rx-store/src/types";
+import type { Node, State } from "@arronqzy/rx-store";
 import type { PanelElement, PanelLayer } from "../types";
 import { DEFAULT_LAYER_ID, DEFAULT_LAYER } from "./panelElementDefaults";
 import { isPanelElementNode } from "./panelElementNodes";

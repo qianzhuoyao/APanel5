@@ -5,7 +5,7 @@ import {
   type ExecutionRunRecord,
   type ExecutionTraceEntry,
   type LibraryBlueprintResolver,
-} from "@arron/blueprint-dsl";
+} from "@arronqzy/blueprint-dsl";
 
 import type { BlueprintGraph } from "../graph/blueprint-graph";
 import {

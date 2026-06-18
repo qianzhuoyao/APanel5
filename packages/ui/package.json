@@ -1,5 +1,5 @@
 {
-  "name": "@arron/ui",
+  "name": "@arronqzy/ui",
   "version": "0.0.0",
   "exports": {
     ".": "./index.ts",
@@ -12,8 +12,8 @@
   "scripts": {
     "lint": "eslint \"**/*.{ts,tsx}\"",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "build:css": "arron-tailwind -c tailwind.config.ts -i ./src/styles.css -o ./dist/styles.css",
-    "dev:css": "arron-tailwind -c tailwind.config.ts -i ./src/styles.css -o ./dist/styles.css --watch",
+    "build:css": "arronqzy-tailwind -c tailwind.config.ts -i ./src/styles.css -o ./dist/styles.css",
+    "dev:css": "arronqzy-tailwind -c tailwind.config.ts -i ./src/styles.css -o ./dist/styles.css --watch",
     "build": "pnpm run lint && pnpm run typecheck && pnpm run build:css"
   },
   "dependencies": {
@@ -67,9 +67,9 @@
   "devDependencies": {
     "@types/react": "^19.0.1",
     "@types/react-dom": "^19.0.2",
-    "@arron/eslint-config": "workspace:*",
-    "@arron/typescript-config": "workspace:*",
-    "@arron/tailwind": "workspace:*",
+    "@arronqzy/eslint-config": "workspace:*",
+    "@arronqzy/typescript-config": "workspace:*",
+    "@arronqzy/tailwind": "workspace:*",
     "eslint": "^8.57.0",
     "typescript": "^5.5.4"
   }

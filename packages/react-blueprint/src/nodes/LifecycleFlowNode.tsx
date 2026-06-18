@@ -1,5 +1,5 @@
 import { Handle, Position, type NodeProps } from "@xyflow/react";
-import { cn } from "@arron/ui";
+import { cn } from "@arronqzy/ui";
 
 import { resolveBlueprintNodeTypeLabel } from "../graph/document";
 import { resolveBlueprintNodeSummary } from "../graph/node-summary";

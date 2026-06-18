@@ -5,6 +5,6 @@ export {
   ReactViewPanel,
   ReactViewOnlinePreview,
   parseOnlinePreviewSearchParams,
-} from "@arron/react-view";
+} from "@arronqzy/react-view";
 
-export type { ReactViewPanelProps } from "@arron/react-view";
+export type { ReactViewPanelProps } from "@arronqzy/react-view";

@@ -1,6 +1,6 @@
-import type { ExecutionRunRecord } from "@arron/blueprint-dsl";
+import type { ExecutionRunRecord } from "@arronqzy/blueprint-dsl";
 
-const DB_NAME = "arron-blueprint-execution-log";
+const DB_NAME = "arronqzy-blueprint-execution-log";
 const DB_VERSION = 1;
 const STORE_NAME = "runs";
 

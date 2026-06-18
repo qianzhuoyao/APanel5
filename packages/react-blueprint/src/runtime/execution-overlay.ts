@@ -1,7 +1,7 @@
 import {
   CLOCK_NODE_TYPE,
   type ExecutionTraceEntry,
-} from "@arron/blueprint-dsl";
+} from "@arronqzy/blueprint-dsl";
 
 import type { BlueprintGraph } from "../graph/blueprint-graph";
 

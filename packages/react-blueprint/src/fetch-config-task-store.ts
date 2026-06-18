@@ -4,8 +4,8 @@ import type {
   FetchRequestConfig,
   FetchResultValue,
   ParsedSwaggerDocument,
-} from "@arron/blueprint-dsl";
-import { executeFetch } from "@arron/blueprint-dsl";
+} from "@arronqzy/blueprint-dsl";
+import { executeFetch } from "@arronqzy/blueprint-dsl";
 
 import { loadSwaggerDocument } from "./library/swagger-docs";
 

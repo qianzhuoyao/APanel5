@@ -1,4 +1,4 @@
-# `@arron/rx-store`  
+# `@arronqzy/rx-store`  
 
 **一个专为低代码/画布编辑器打造的极简、高性能、工业级状态管理库**  
 基于 **Immer + RxJS**，天生支持：
@@ -15,13 +15,13 @@
 
 ```bash
 # yarn / pnpm / npm 任意
-yarn add @arron/rx-store rxjs immer
+yarn add @arronqzy/rx-store rxjs immer
 ```
 
 ## 快速开始
 
 ```ts
-import { store } from '@arron/rx-store';
+import { store } from '@arronqzy/rx-store';
 
 // 1. 普通更新（写法跟 mutable 完全一样）
 store.update(draft => {
@@ -94,7 +94,7 @@ store.endBatch();   // 整个过程只记一次历史
 ### 插件系统
 
 ```ts
-import { store } from '@arron/rx-store';
+import { store } from '@arronqzy/rx-store';
 
 const autoSavePlugin = {
   name: 'auto-save',
@@ -118,7 +118,7 @@ store.registerPlugin(autoSavePlugin);
 ## 完整示例：React Hook
 
 ```tsx
-import { store } from '@arron/rx-store';
+import { store } from '@arronqzy/rx-store';
 import { useEffect, useState } from 'react';
 
 function useNode(id: string) {
@@ -147,7 +147,7 @@ function useNode(id: string) {
 
 ## 许可证
 
-MIT © arron
+MIT © arronqzy
 
 ---
 

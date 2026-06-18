@@ -1,7 +1,7 @@
 import {
   VIEW_NODE_TYPE,
   type RunnableGraph,
-} from "@arron/blueprint-dsl";
+} from "@arronqzy/blueprint-dsl";
 
 import {
   resolveBlueprintConfigSource,

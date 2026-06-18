@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState, type ChangeEvent } from "react";
-import { validateJsonString } from "@arron/blueprint-dsl";
-import type { JsonNodeConfig } from "@arron/blueprint-dsl";
+import { validateJsonString } from "@arronqzy/blueprint-dsl";
+import type { JsonNodeConfig } from "@arronqzy/blueprint-dsl";
 
 import type { BlueprintGraphNode } from "../graph/document";
 import { resolveNodeJsonConfig } from "../graph/document";

@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { cn } from "@arron/ui";
+import { cn } from "@arronqzy/ui";
 import {
   buildEndpointSuggestions,
   filterEndpointSuggestions,
   resolveFetchRequestUrl,
   type FetchHttpMethod,
   type SwaggerApiEndpoint,
-} from "@arron/blueprint-dsl";
+} from "@arronqzy/blueprint-dsl";
 
 export type FetchUrlAutocompleteProps = {
   value: string;

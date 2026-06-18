@@ -1,4 +1,4 @@
-import { cn } from "@arron/ui";
+import { cn } from "@arronqzy/ui";
 
 export type BlueprintNodeCardProps = {
   nodeId: string;

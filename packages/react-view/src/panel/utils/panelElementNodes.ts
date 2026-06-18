@@ -1,4 +1,4 @@
-import type { Node } from "../../../../rx-store/src/types";
+import type { Node } from "@arronqzy/rx-store";
 import type { PanelElement } from "../types";
 
 export function isPanelElementNode(node: Node): boolean {

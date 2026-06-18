@@ -18,7 +18,7 @@ import {
   DEFAULT_LOGIC_NODE_TYPE,
   LIFECYCLE_NODE_TYPE,
 } from "./node-types";
-import type { PageLifecyclePhase } from "@arron/blueprint-dsl";
+import type { PageLifecyclePhase } from "@arronqzy/blueprint-dsl";
 
 export class BlueprintGraph {
   readonly document: BlueprintDocument;

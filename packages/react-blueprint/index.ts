@@ -28,7 +28,7 @@ export {
 } from "./src/library/execution-log-db";
 export type { UseBlueprintPageLifecycleOptions } from "./src/hooks/useBlueprintPageLifecycle";
 export { useBlueprintPageLifecycle } from "./src/hooks/useBlueprintPageLifecycle";
-export { stopAllClockSchedules } from "@arron/blueprint-dsl";
+export { stopAllClockSchedules } from "@arronqzy/blueprint-dsl";
 export { BlueprintNodeSwitchTaskDialog } from "./src/components/BlueprintNodeSwitchTaskDialog";
 export type { BlueprintNodeSwitchTaskDialogProps } from "./src/components/BlueprintNodeSwitchTaskDialog";
 export { useBlueprintNodeSelectionGuard } from "./src/hooks/useBlueprintNodeSelectionGuard";
@@ -48,7 +48,7 @@ export type { ExecutionLogSettings } from "./src/library/execution-log-settings"
 export type {
   ExecutionTraceEntry,
   ExecutionRunRecord,
-} from "@arron/blueprint-dsl";
+} from "@arronqzy/blueprint-dsl";
 export type { BlueprintExecutionOverlay } from "./src/runtime/execution-overlay";
 export { buildExecutionOverlay, shouldHaltDebugOnFalseSignal } from "./src/runtime/execution-overlay";
 export * from "./src/library/types";

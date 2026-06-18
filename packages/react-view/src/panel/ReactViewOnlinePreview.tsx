@@ -6,9 +6,9 @@ import {
   listBlueprintLibrary,
   useBlueprintPageLifecycle,
   type BlueprintLibraryListItem,
-} from "@arron/react-blueprint";
-import type { LibraryBlueprintResolver, PageLifecyclePhase } from "@arron/blueprint-dsl";
-import type { State } from "../../../rx-store/src/types";
+} from "@arronqzy/react-blueprint";
+import type { LibraryBlueprintResolver, PageLifecyclePhase } from "@arronqzy/blueprint-dsl";
+import type { State } from "@arronqzy/rx-store";
 import { ElementsLayer } from "./components/ElementsLayer";
 import type { PanelElement } from "./types";
 import {

@@ -6,13 +6,13 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@arron/ui";
+} from "@arronqzy/ui";
 import {
   LIFECYCLE_NODE_TYPE,
   PAGE_LIFECYCLE_LABELS,
   PAGE_LIFECYCLE_PHASES,
   type PageLifecyclePhase,
-} from "@arron/blueprint-dsl";
+} from "@arronqzy/blueprint-dsl";
 
 import { FetchNodeConfigPanel } from "./components/FetchNodeConfigPanel";
 import { ClockNodeConfigPanel } from "./components/ClockNodeConfigPanel";

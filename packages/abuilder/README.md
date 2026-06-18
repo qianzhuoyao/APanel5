@@ -1,21 +1,21 @@
-# @arron/abuilder
+# @arronqzy/abuilder
 
 Abuilder 可视化编辑器 npm 包。安装后在 React 应用中引入 `App` 即可渲染完整编辑器（含蓝图、工作区、在线预览）。
 
 ## 安装
 
 ```bash
-npm install @arron/abuilder react react-dom
+npm install @arronqzy/abuilder react react-dom
 # 或
-pnpm add @arron/abuilder react react-dom
+pnpm add @arronqzy/abuilder react react-dom
 ```
 
 ## 使用
 
 ```tsx
 import { createRoot } from "react-dom/client";
-import { App } from "@arron/abuilder";
-import "@arron/abuilder/styles.css";
+import { App } from "@arronqzy/abuilder";
+import "@arronqzy/abuilder/styles.css";
 
 createRoot(document.getElementById("root")!).render(<App />);
 ```
@@ -43,22 +43,8 @@ URL 带 `?preview=online&projectId=<工作区ID>` 时自动进入预览模式。
 除 `App` 外，也可直接使用底层组件：
 
 ```tsx
-import { ReactViewPanel, ReactViewOnlinePreview } from "@arron/abuilder";
+import { ReactViewPanel, ReactViewOnlinePreview } from "@arronqzy/abuilder";
 ```
-
-## 发布到 npm
-
-在 monorepo 根目录构建并发布：
-
-```bash
-pnpm -C packages/ui build
-pnpm -C packages/react-view build
-pnpm -C packages/react-blueprint build
-pnpm -C packages/abuilder build
-pnpm -C packages/abuilder publish --access public
-```
-
-> 发布前请确保所有 `@arron/*` 依赖包已同步发布到 npm，或改为将内部包一并打包进本包。
 
 ## 宿主应用要求
 

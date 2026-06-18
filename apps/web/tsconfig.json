@@ -1,5 +1,5 @@
 {
-  "extends": "@arron/typescript-config/vite.json",
+  "extends": "@arronqzy/typescript-config/vite.json",
   "include": ["src"],
   "compilerOptions": {
     "jsx": "react-jsx"

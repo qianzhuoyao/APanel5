@@ -1,6 +1,6 @@
-import { blueprintDocumentsEqual } from "@arron/react-blueprint";
-import type { BlueprintDocument, BlueprintMetaDraft } from "@arron/react-blueprint";
-import type { State } from "../../../../rx-store/src/types";
+import { blueprintDocumentsEqual } from "@arronqzy/react-blueprint";
+import type { BlueprintDocument, BlueprintMetaDraft } from "@arronqzy/react-blueprint";
+import type { State } from "@arronqzy/rx-store";
 
 export type WorkspaceSnapshot = {
   panelState: State;

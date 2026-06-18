@@ -1,5 +1,5 @@
 import { Handle, Position } from "@xyflow/react";
-import { cn } from "@arron/ui";
+import { cn } from "@arronqzy/ui";
 
 import type { BlueprintNodeExecutionTone } from "../runtime/execution-overlay";
 import { BlueprintNodeCard, type BlueprintNodeCardProps } from "./BlueprintNodeCard";
