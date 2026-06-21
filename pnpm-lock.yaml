@@ -295,9 +295,6 @@ importers:
       react-selecto:
         specifier: ^1.26.3
         version: 1.26.3
-      react-zoom-pan-pinch:
-        specifier: ^4.0.3
-        version: 4.0.3(react-dom@19.2.0)(react@19.2.0)
       rxjs:
         specifier: ^7.8.2
         version: 7.8.2
@@ -4690,17 +4687,6 @@ packages:
       get-nonce: 1.0.1
       react: 19.2.0
       tslib: 2.8.1
-    dev: false
-
-  /react-zoom-pan-pinch@4.0.3(react-dom@19.2.0)(react@19.2.0):
-    resolution: {integrity: sha512-N2Hi6L78fFmhRra+ORpFSW7WST5x6kxpOPplIvtB0b7b+U2anpo1z1wLgaWRPS2kUSqcraRG+JgBCIlDJnqqAg==}
-    engines: {node: '>=8', npm: '>=5'}
-    peerDependencies:
-      react: '*'
-      react-dom: '*'
-    dependencies:
-      react: 19.2.0
-      react-dom: 19.2.0(react@19.2.0)
     dev: false
 
   /react@18.3.1:
