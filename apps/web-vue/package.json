@@ -1,0 +1,25 @@
+{
+  "name": "web-vue",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "vue-tsc --noEmit"
+  },
+  "dependencies": {
+    "@arronqzy/abuilder-vue": "workspace:*",
+    "@arronqzy/vue-view": "workspace:*",
+    "ant-design-vue": "^4.2.6",
+    "vue": "^3.5.13"
+  },
+  "devDependencies": {
+    "@arronqzy/typescript-config": "workspace:*",
+    "@vitejs/plugin-vue": "^5.2.1",
+    "typescript": "^5.5.4",
+    "vite": "^5.4.17",
+    "vue-tsc": "^2.2.0"
+  }
+}

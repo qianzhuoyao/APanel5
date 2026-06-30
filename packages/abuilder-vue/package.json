@@ -1,0 +1,35 @@
+{
+  "name": "@arronqzy/abuilder-vue",
+  "version": "0.1.0",
+  "description": "Abuilder Vue 3 可视化编辑器入口包",
+  "license": "MIT",
+  "type": "module",
+  "files": ["src", "dist"],
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "lint": "eslint \"src/**/*.{ts,vue}\"",
+    "typecheck": "vue-tsc -p tsconfig.json --noEmit",
+    "build": "pnpm run typecheck"
+  },
+  "dependencies": {
+    "@arronqzy/vue-view": "workspace:*",
+    "ant-design-vue": "^4.2.6",
+    "vue": "^3.5.13"
+  },
+  "peerDependencies": {
+    "vue": "^3.4.0"
+  },
+  "devDependencies": {
+    "@arronqzy/eslint-config": "workspace:*",
+    "@arronqzy/typescript-config": "workspace:*",
+    "@vitejs/plugin-vue": "^5.2.1",
+    "eslint": "^8.57.0",
+    "typescript": "^5.5.4",
+    "vue-tsc": "^2.2.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

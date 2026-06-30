@@ -1,0 +1,45 @@
+<script setup lang="ts">
+import { Handle, Position, type NodeProps } from "@vue-flow/core";
+import { resolveBlueprintNodeTypeLabel } from "../graph/document";
+import { resolveBlueprintNodeSummary } from "../graph/node-summary";
+import { useBlueprintNodeSelect } from "../BlueprintCanvasContext";
+import { resolveBlueprintNodeExecutionTone } from "../runtime/execution-overlay";
+import type { BlueprintFlowNodeData } from "../types";
+import BlueprintNodeCard from "./BlueprintNodeCard.vue";
+import { cn } from "../utils/cn";
+
+const props = defineProps<NodeProps<BlueprintFlowNodeData>>();
+const onSelect = useBlueprintNodeSelect();
+const nodeData = props.data;
+const executionTone = resolveBlueprintNodeExecutionTone(nodeData);
+</script>
+
+<template>
+  <div
+    :class="
+      cn(
+        'bp-node bp-node--lifecycle',
+        executionTone === 'success' && 'bp-node--execution-true',
+        executionTone === 'error' && 'bp-node--execution-false'
+      )
+    "
+  >
+    <BlueprintNodeCard
+      :node-id="props.id"
+      :label="nodeData.label"
+      :meta="resolveBlueprintNodeTypeLabel(nodeData)"
+      :subtitle="resolveBlueprintNodeSummary(nodeData)"
+      variant="lifecycle"
+      :selected="Boolean(nodeData.isSelected)"
+      hide-leading-dot
+      @select="onSelect"
+    />
+    <Handle
+      type="source"
+      :position="Position.Right"
+      id="out"
+      class="bp-flow-handle bp-flow-handle--source"
+      title="生命周期满足时输出真/假信号"
+    />
+  </div>
+</template>

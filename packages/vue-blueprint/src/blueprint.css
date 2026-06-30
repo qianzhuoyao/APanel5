@@ -1,0 +1,327 @@
+/* 画布：与 panel / next-themes 主题一致 */
+.bp-canvas,
+[data-workspace-region="blueprint"] .bp-canvas {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+
+.bp-canvas .vue-flow__pane,
+.bp-flow.vue-flow__pane {
+  cursor: default;
+}
+
+.bp-canvas .vue-flow,
+.bp-flow.vue-flow,
+[data-workspace-region="blueprint"] .vue-flow {
+  --xy-background-color: transparent;
+  --xy-edge-stroke: #2563eb;
+  --xy-edge-stroke-width: 2.5;
+  --xy-edge-stroke-selected: #1d4ed8;
+  --xy-connectionline-stroke: #2563eb;
+  --xy-connectionline-stroke-width: 2.5;
+  --xy-handle-background-color: hsl(var(--primary));
+  --xy-handle-border-color: hsl(var(--background));
+  background-color: transparent;
+}
+
+/*
+ * 全局 reset（apps/web style.css、Tailwind preflight）会给 svg 设 max-width:100%，
+ * 导致 Vue Flow 边线 SVG 坐标系被压扁；连线预览单独有 z-index:1001 所以能看见。
+ */
+.bp-canvas svg.vue-flow__connectionline,
+.bp-canvas .vue-flow__edges svg,
+.bp-flow svg.vue-flow__connectionline,
+.bp-flow .vue-flow__edges svg,
+[data-workspace-region="blueprint"] svg.vue-flow__connectionline,
+[data-workspace-region="blueprint"] .vue-flow__edges svg {
+  display: block;
+  max-width: none !important;
+  max-height: none !important;
+  width: auto !important;
+  height: auto !important;
+  overflow: visible !important;
+}
+
+/*
+ * 边层必须在节点之上：.vue-flow__edges 与 .vue-flow__nodes 为兄弟节点，
+ * 默认 DOM 顺序下节点后渲染会盖住边；连接线因有 z-index:1001 不受影响。
+ */
+.bp-canvas .vue-flow__edges,
+.bp-flow .vue-flow__edges,
+[data-workspace-region="blueprint"] .vue-flow__edges {
+  z-index: 1000 !important;
+  pointer-events: none;
+}
+
+.bp-canvas .vue-flow__nodes,
+.bp-flow .vue-flow__nodes,
+[data-workspace-region="blueprint"] .vue-flow__nodes {
+  z-index: 0 !important;
+}
+
+.bp-canvas .vue-flow__edge,
+.bp-flow .vue-flow__edge,
+[data-workspace-region="blueprint"] .vue-flow__edge {
+  pointer-events: visibleStroke;
+}
+
+/* 持久边 path：强制描边（覆盖 currentColor / 主题色） */
+.bp-canvas .vue-flow__edges path.vue-flow__edge-path,
+.bp-canvas .vue-flow__edges path.bp-edge-visible,
+.bp-flow .vue-flow__edges path.vue-flow__edge-path,
+.bp-flow .vue-flow__edges path.bp-edge-visible,
+[data-workspace-region="blueprint"] .vue-flow__edges path.vue-flow__edge-path,
+[data-workspace-region="blueprint"] .vue-flow__edges path.bp-edge-visible {
+  fill: none !important;
+  stroke: #2563eb !important;
+  stroke-width: 2.5px !important;
+  opacity: 1 !important;
+}
+
+.bp-canvas .vue-flow__edge.selected path.vue-flow__edge-path,
+.bp-flow .vue-flow__edge.selected path.vue-flow__edge-path,
+[data-workspace-region="blueprint"] .vue-flow__edge.selected path.vue-flow__edge-path {
+  stroke: #1d4ed8 !important;
+  stroke-width: 3px !important;
+}
+
+.bp-canvas .vue-flow__edge.bp-edge--signal-true path.vue-flow__edge-path,
+.bp-flow .vue-flow__edge.bp-edge--signal-true path.vue-flow__edge-path,
+[data-workspace-region="blueprint"] .vue-flow__edge.bp-edge--signal-true path.vue-flow__edge-path {
+  stroke: #16a34a !important;
+  stroke-width: 3px !important;
+}
+
+.bp-canvas .vue-flow__edge.bp-edge--signal-false path.vue-flow__edge-path,
+.bp-flow .vue-flow__edge.bp-edge--signal-false path.vue-flow__edge-path,
+[data-workspace-region="blueprint"] .vue-flow__edge.bp-edge--signal-false path.vue-flow__edge-path {
+  stroke: #dc2626 !important;
+  stroke-width: 3px !important;
+}
+
+.bp-canvas .vue-flow__edge.bp-edge--signal-true .vue-flow__arrowhead polyline,
+.bp-flow .vue-flow__edge.bp-edge--signal-true .vue-flow__arrowhead polyline,
+[data-workspace-region="blueprint"] .vue-flow__edge.bp-edge--signal-true .vue-flow__arrowhead polyline {
+  stroke: #16a34a;
+  fill: #16a34a;
+}
+
+.bp-canvas .vue-flow__edge.bp-edge--signal-false .vue-flow__arrowhead polyline,
+.bp-flow .vue-flow__edge.bp-edge--signal-false .vue-flow__arrowhead polyline,
+[data-workspace-region="blueprint"] .vue-flow__edge.bp-edge--signal-false .vue-flow__arrowhead polyline {
+  stroke: #dc2626;
+  fill: #dc2626;
+}
+
+.bp-canvas .vue-flow__edge.bp-edge--signal-clock-blue path.vue-flow__edge-path,
+.bp-flow .vue-flow__edge.bp-edge--signal-clock-blue path.vue-flow__edge-path,
+[data-workspace-region="blueprint"] .vue-flow__edge.bp-edge--signal-clock-blue path.vue-flow__edge-path {
+  stroke: #2563eb !important;
+  stroke-width: 3px !important;
+}
+
+.bp-canvas .vue-flow__edge.bp-edge--signal-clock-blue .vue-flow__arrowhead polyline,
+.bp-flow .vue-flow__edge.bp-edge--signal-clock-blue .vue-flow__arrowhead polyline,
+[data-workspace-region="blueprint"] .vue-flow__edge.bp-edge--signal-clock-blue .vue-flow__arrowhead polyline {
+  stroke: #2563eb;
+  fill: #2563eb;
+}
+
+.bp-canvas .vue-flow__arrowhead polyline,
+.bp-flow .vue-flow__arrowhead polyline,
+[data-workspace-region="blueprint"] .vue-flow__arrowhead polyline {
+  stroke: #2563eb;
+  fill: #2563eb;
+}
+
+.bp-canvas .vue-flow__connection-path,
+.bp-flow .vue-flow__connection-path,
+[data-workspace-region="blueprint"] .vue-flow__connection-path {
+  fill: none !important;
+  stroke: #2563eb !important;
+  stroke-width: 2.5px !important;
+}
+
+.bp-canvas .vue-flow__edge-interaction,
+.bp-flow .vue-flow__edge-interaction,
+[data-workspace-region="blueprint"] .vue-flow__edge-interaction {
+  pointer-events: stroke;
+  stroke: transparent !important;
+  stroke-opacity: 0 !important;
+  stroke-width: 18px !important;
+}
+
+.bp-canvas .vue-flow__edge.selected .vue-flow__edge-interaction,
+.bp-flow .vue-flow__edge.selected .vue-flow__edge-interaction,
+[data-workspace-region="blueprint"] .vue-flow__edge.selected .vue-flow__edge-interaction {
+  pointer-events: stroke;
+}
+
+/* 节点容器：去掉默认包裹样式 */
+.bp-canvas .vue-flow__node,
+.bp-flow .vue-flow__node,
+[data-workspace-region="blueprint"] .vue-flow__node {
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+}
+
+/* 连接点：禁止 transform，避免覆盖 Vue Flow 的 translate(-50%, -50%) 定位 */
+.bp-canvas .vue-flow__handle.bp-flow-handle,
+.bp-flow .vue-flow__handle.bp-flow-handle,
+[data-workspace-region="blueprint"] .vue-flow__handle.bp-flow-handle {
+  z-index: 3;
+  width: 10px;
+  height: 10px;
+  min-width: 10px;
+  min-height: 10px;
+  border: 2px solid hsl(var(--background)) !important;
+  border-radius: 9999px;
+  background-color: hsl(var(--foreground) / 0.42) !important;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.bp-canvas .vue-flow__handle.bp-flow-handle:hover,
+.bp-flow .vue-flow__handle.bp-flow-handle:hover,
+[data-workspace-region="blueprint"] .vue-flow__handle.bp-flow-handle:hover {
+  background-color: hsl(var(--primary)) !important;
+  border-color: hsl(var(--background)) !important;
+  box-shadow: 0 0 0 3px hsl(var(--primary) / 0.28);
+}
+
+.bp-canvas .vue-flow__handle.bp-flow-handle--target,
+.bp-flow .vue-flow__handle.bp-flow-handle--target,
+[data-workspace-region="blueprint"] .vue-flow__handle.bp-flow-handle--target {
+  background-color: hsl(var(--foreground) / 0.48) !important;
+}
+
+.bp-canvas .vue-flow__handle.bp-flow-handle--source,
+.bp-flow .vue-flow__handle.bp-flow-handle--source,
+[data-workspace-region="blueprint"] .vue-flow__handle.bp-flow-handle--source {
+  background-color: hsl(var(--primary) / 0.72) !important;
+}
+
+.bp-node--selected .bp-flow-handle {
+  border-color: hsl(var(--card)) !important;
+  box-shadow: 0 0 0 2px hsl(var(--primary) / 0.35);
+}
+
+.bp-node--selected .bp-flow-handle--target {
+  background-color: hsl(var(--foreground) / 0.55) !important;
+}
+
+.bp-node--selected .bp-flow-handle--source {
+  background-color: hsl(var(--primary)) !important;
+}
+
+.bp-node--execution-true .bp-node-card {
+  border-color: rgb(22 163 74 / 0.65);
+  box-shadow:
+    0 0 0 1px rgb(22 163 74 / 0.35),
+    0 4px 14px rgb(22 163 74 / 0.18);
+}
+
+.bp-node--execution-true .bp-flow-handle {
+  border-color: hsl(var(--card));
+  box-shadow: 0 0 0 2px rgb(22 163 74 / 0.45);
+}
+
+.bp-node--execution-true .bp-flow-handle--source {
+  background-color: #16a34a !important;
+}
+
+.bp-node--execution-true .bp-flow-handle--target {
+  background-color: rgb(22 163 74 / 0.55) !important;
+}
+
+.bp-node--execution-false .bp-node-card {
+  border-color: hsl(var(--destructive) / 0.65);
+  box-shadow:
+    0 0 0 1px hsl(var(--destructive) / 0.4),
+    0 4px 14px hsl(var(--destructive) / 0.16);
+}
+
+.bp-node--execution-false .bp-flow-handle {
+  border-color: hsl(var(--card));
+  box-shadow: 0 0 0 2px hsl(var(--destructive) / 0.4);
+}
+
+.bp-node--execution-false .bp-flow-handle--source {
+  background-color: hsl(var(--destructive)) !important;
+}
+
+.bp-node--execution-false .bp-flow-handle--target {
+  background-color: hsl(var(--destructive) / 0.55) !important;
+}
+
+/* 生命周期节点无输入口：隐藏任何左侧/目标连接点（含旧数据产生的幽灵 handle） */
+.bp-node--lifecycle .vue-flow__handle.bp-flow-handle--target,
+.bp-node--lifecycle .vue-flow__handle-left,
+.bp-node--lifecycle .vue-flow__handle[data-handlepos="left"] {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  opacity: 0 !important;
+}
+
+.bp-canvas .vue-flow__handle.bp-flow-handle--signal,
+.bp-flow .vue-flow__handle.bp-flow-handle--signal,
+[data-workspace-region="blueprint"] .vue-flow__handle.bp-flow-handle--signal {
+  background-color: hsl(38 92% 50% / 0.75) !important;
+  width: 8px;
+  height: 8px;
+}
+
+.bp-node--selected .bp-flow-handle--signal {
+  background-color: hsl(38 92% 50%) !important;
+}
+
+/* 右键菜单 */
+.bp-context-menu {
+  position: fixed;
+  z-index: 10050;
+  min-width: 148px;
+  padding: 4px;
+  border-radius: 8px;
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--card));
+  color: hsl(var(--card-foreground));
+  box-shadow: 0 8px 24px rgb(0 0 0 / 12%);
+}
+
+.bp-context-menu__item {
+  display: block;
+  width: 100%;
+  padding: 6px 10px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  text-align: left;
+  font-size: 12px;
+  color: inherit;
+  cursor: pointer;
+}
+
+.bp-context-menu__item:hover {
+  background: hsl(var(--accent));
+}
+
+.bp-context-menu__item--danger {
+  color: hsl(var(--destructive));
+}
+
+.bp-context-menu__item--danger:hover {
+  background: hsl(var(--destructive) / 0.1);
+}
+
+.bp-context-menu__separator {
+  height: 1px;
+  margin: 4px 0;
+  background: hsl(var(--border));
+}

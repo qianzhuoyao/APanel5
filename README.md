@@ -1,6 +1,6 @@
 # Abuilder
 
-面向数据驱动界面的**可视化低代码编辑器**：拖拽画布搭建视图、用蓝图编排逻辑、工作区持久化与在线预览，可一键嵌入任意 React 应用。
+面向数据驱动界面的**可视化低代码编辑器**：拖拽画布搭建视图、用蓝图编排逻辑、工作区持久化与在线预览。提供 **React** 与 **Vue 3** 两套 UI 栈，可嵌入对应框架应用。
 
 基于 **pnpm + Turborepo** 的 monorepo，核心能力拆分为多个可独立发布的 `@arronqzy/*` 包。
 
@@ -20,10 +20,21 @@
 
 ```bash
 pnpm install
+```
+
+**React 演示**（默认 `pnpm dev`）：
+
+```bash
 pnpm dev
 ```
 
-浏览器访问 Vite 开发服务器即可使用完整编辑器。若修改了 UI / 视图样式，可另开终端监听 CSS：
+**Vue 3 演示**（端口 `31012`）：
+
+```bash
+pnpm -C apps/web-vue dev
+```
+
+若修改了 React UI / 视图样式，可另开终端监听 CSS：
 
 ```bash
 pnpm -C packages/ui dev:css
@@ -46,20 +57,42 @@ createRoot(document.getElementById("root")!).render(<App />);
 
 更多配置见 [packages/abuilder/README.md](./packages/abuilder/README.md)。
 
+### 集成到自有 Vue 3 项目
+
+```bash
+pnpm add @arronqzy/abuilder-vue vue ant-design-vue
+```
+
+```ts
+import { createApp } from "vue";
+import Antd from "ant-design-vue";
+import "ant-design-vue/dist/reset.css";
+import { App } from "@arronqzy/abuilder-vue";
+
+createApp(App).use(Antd).mount("#app");
+```
+
+Vue 栈功能与 React 版对齐：无限画布、Moveable/Selecto、完整配置侧栏、工作区、Scope 模版、蓝图调试与在线预览。详见 [packages/abuilder-vue/README.md](./packages/abuilder-vue/README.md)。
+
 ## 仓库结构
 
 ```
 Abuilder26/
 ├── apps/
-│   └── web/                 # Vite 本地演示应用
+│   ├── web/                 # React 演示应用
+│   └── web-vue/             # Vue 3 演示应用
 ├── packages/
-│   ├── abuilder/            # 聚合入口，对外发布的主包
-│   ├── react-view/          # 视图画布与工作区
-│   ├── react-blueprint/     # 蓝图编辑器 UI
-│   ├── blueprint-dsl/       # 蓝图 DSL 与运行时
-│   ├── rx-store/            # 画布状态（Immer + RxJS）
+│   ├── abuilder/            # React 聚合入口
+│   ├── abuilder-vue/        # Vue 3 聚合入口
+│   ├── react-view/          # React 视图画布与工作区
+│   ├── vue-view/            # Vue 3 视图画布（Ant Design Vue）
+│   ├── react-blueprint/     # React 蓝图编辑器
+│   ├── vue-blueprint/       # Vue 3 蓝图编辑器（Vue Flow）
+│   ├── blueprint-dsl/       # 蓝图 DSL 与运行时（框架无关）
+│   ├── rx-store/            # 画布状态（Immer + RxJS，框架无关）
 │   ├── react-rx-store/      # rx-store 的 React Hooks
-│   ├── ui/                  # 共享 UI 组件（shadcn/Radix）
+│   ├── vue-rx-store/        # rx-store 的 Vue Composables
+│   ├── ui/                  # React UI（shadcn/Radix）
 │   ├── tailwind/            # 共享 Tailwind 预设与构建 CLI
 │   ├── typescript-config/   # 共享 TS 配置
 │   ├── eslint-config/       # 共享 ESLint 配置
@@ -83,21 +116,31 @@ Abuilder26/
 | `@arronqzy/eslint-config` | 共享 ESLint 规则 | [README](./packages/eslint-config/README.md) |
 | `@arronqzy/service` | HTTP 服务层（规划中） | [README](./packages/service/README.md) |
 
+### Vue 3 栈
+
+| 包 | 说明 | 文档 |
+|----|------|------|
+| `@arronqzy/abuilder-vue` | Vue 一站式入口 `<App />` | [README](./packages/abuilder-vue/README.md) |
+| `@arronqzy/vue-view` | Vue 视图面板（Ant Design Vue） | [README](./packages/vue-view/README.md) |
+| `@arronqzy/vue-blueprint` | Vue 蓝图画布（Vue Flow） | [README](./packages/vue-blueprint/README.md) |
+| `@arronqzy/vue-rx-store` | `useStoreRef` / `useNode` 等 | [README](./packages/vue-rx-store/README.md) |
+
 ### 依赖关系（简图）
 
 ```
-@arronqzy/abuilder
-  ├── @arronqzy/react-view
-  │     ├── @arronqzy/ui
-  │     ├── @arronqzy/rx-store
-  │     ├── @arronqzy/react-blueprint
-  │     └── @arronqzy/blueprint-dsl
-  └── （间接依赖上述包）
+@arronqzy/abuilder                          @arronqzy/abuilder-vue
+  ├── @arronqzy/react-view                     ├── @arronqzy/vue-view
+  │     ├── @arronqzy/ui                       │     ├── ant-design-vue
+  │     ├── @arronqzy/rx-store                 │     ├── @arronqzy/rx-store
+  │     ├── @arronqzy/react-blueprint          │     ├── @arronqzy/vue-blueprint
+  │     └── @arronqzy/blueprint-dsl            │     ├── @arronqzy/vue-rx-store
+  └── （间接依赖上述包）                        │     └── @arronqzy/blueprint-dsl
+                                               └── （间接依赖上述包）
 
-@arronqzy/react-blueprint
-  ├── @arronqzy/blueprint-dsl
-  ├── @arronqzy/react-rx-store → @arronqzy/rx-store
-  └── @arronqzy/ui
+@arronqzy/react-blueprint                   @arronqzy/vue-blueprint
+  ├── @arronqzy/blueprint-dsl                 ├── @arronqzy/blueprint-dsl
+  ├── @arronqzy/react-rx-store → rx-store     ├── @arronqzy/vue-rx-store → rx-store
+  └── @arronqzy/ui                             └── ant-design-vue + @vue-flow/core
 ```
 
 ## 常用脚本
@@ -107,22 +150,46 @@ Abuilder26/
 | `pnpm dev` | 启动 monorepo 开发（Turbo） |
 | `pnpm build` | 构建所有包 |
 | `pnpm lint` | 全仓库 ESLint |
-| `pnpm -C packages/abuilder build` | 构建对外发布的 abuilder 产物 |
-| `pnpm -C apps/web build` | 构建演示应用 |
+| `pnpm -C packages/abuilder build` | 构建对外发布的 React abuilder 产物 |
+| `pnpm -C packages/abuilder-vue build` | 校验 Vue abuilder 包（typecheck） |
+| `pnpm -C apps/web build` | 构建 React 演示应用 |
+| `pnpm -C apps/web-vue dev` | 启动 Vue 3 演示应用（端口 31012） |
+| `pnpm -C apps/web-vue build` | 构建 Vue 3 演示应用 |
 
 ## 技术栈
 
-- **React 18+** / **TypeScript**
-- **Vite**、**Turborepo**、**pnpm workspace**
-- **RxJS** + **Immer**（状态）
-- **React Flow**（蓝图）
-- **ECharts**（图表）
+**共享**
+
+- **TypeScript**、**Vite**、**Turborepo**、**pnpm workspace**
+- **RxJS** + **Immer**（画布状态）
+- **ECharts**（图表物料）
 - **Moveable** / **Selecto** / **Infinite Viewer**（画布交互）
-- **Tailwind CSS** + **Radix UI**（样式与组件）
+
+**React 栈**
+
+- **React 18+**、**React Flow**（蓝图）
+- **Tailwind CSS** + **Radix UI**（`@arronqzy/ui`）
+
+**Vue 3 栈**
+
+- **Vue 3**、**@vue-flow/core**（蓝图）
+- **Ant Design Vue**（UI 组件）
 
 ## 发布
 
-在 GitHub 创建 **Release** 后，CI 会按依赖顺序将以下包发布到 npm：`blueprint-dsl` → `rx-store` → `react-rx-store` → `ui` → `react-blueprint` → `react-view` → `abuilder`。
+在 GitHub 创建 **Release** 后，CI 会按依赖顺序将包发布到 npm：
+
+| 顺序 | React 栈 | Vue 栈 |
+|------|----------|--------|
+| 1 | `blueprint-dsl` | （同上，共享） |
+| 2 | `rx-store` | （同上，共享） |
+| 3 | `react-rx-store` | `vue-rx-store` |
+| 4 | `ui` | — |
+| 5 | `react-blueprint` | `vue-blueprint` |
+| 6 | `react-view` | `vue-view` |
+| 7 | `abuilder` | `abuilder-vue` |
+
+Vue 栈当前以源码 + `typecheck` 形式发布（`exports` 指向 `src/`）；React 栈的 `abuilder` 会构建 `dist/` 与 CSS 产物。
 
 详见 [.github/workflows/publish.yml](./.github/workflows/publish.yml)。
 

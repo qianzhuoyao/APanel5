@@ -30,16 +30,29 @@ jobs:
 
       - name: Build publish artifacts
         run: |
+          # React 栈
           pnpm -C packages/ui run build:css
           pnpm -C packages/react-view run build:css
           pnpm -C packages/abuilder build
+          # Vue 栈（typecheck 作为发布前校验）
+          pnpm -C packages/vue-rx-store build
+          pnpm -C packages/vue-blueprint build
+          pnpm -C packages/vue-view build
+          pnpm -C packages/abuilder-vue build
 
       - name: Publish packages (dependency order)
         run: |
+          # 框架无关
           pnpm --filter @arronqzy/blueprint-dsl publish --access public --no-git-checks
           pnpm --filter @arronqzy/rx-store publish --access public --no-git-checks
+          # React 绑定
           pnpm --filter @arronqzy/react-rx-store publish --access public --no-git-checks
           pnpm --filter @arronqzy/ui publish --access public --no-git-checks
           pnpm --filter @arronqzy/react-blueprint publish --access public --no-git-checks
           pnpm --filter @arronqzy/react-view publish --access public --no-git-checks
           pnpm --filter @arronqzy/abuilder publish --access public --no-git-checks
+          # Vue 绑定
+          pnpm --filter @arronqzy/vue-rx-store publish --access public --no-git-checks
+          pnpm --filter @arronqzy/vue-blueprint publish --access public --no-git-checks
+          pnpm --filter @arronqzy/vue-view publish --access public --no-git-checks
+          pnpm --filter @arronqzy/abuilder-vue publish --access public --no-git-checks
