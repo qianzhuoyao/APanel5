@@ -711,12 +711,24 @@ importers:
       dayjs:
         specifier: ^1.11.13
         version: 1.11.21
+      echarts:
+        specifier: ^6.0.0
+        version: 6.0.0
       immer:
         specifier: ^11.0.1
         version: 11.0.1
+      infinite-viewer:
+        specifier: ^0.29.1
+        version: 0.29.1
+      moveable:
+        specifier: ^0.53.0
+        version: 0.53.0
       rxjs:
         specifier: ^7.8.2
         version: 7.8.2
+      selecto:
+        specifier: ^1.26.3
+        version: 1.26.3
       uuid:
         specifier: ^13.0.0
         version: 13.0.0
@@ -3842,6 +3854,43 @@ packages:
     requiresBuild: true
     dev: false
 
+  /croact-css-styled@1.1.9:
+    resolution: {integrity: sha512-G7yvRiVJ3Eoj0ov2h2xR4312hpOzATay2dGS9clK8yJQothjH1sBXIyvOeRP5wBKD9mPcKcoUXPCPsl0tQog4w==}
+    dependencies:
+      '@daybrush/utils': 1.13.0
+      css-styled: 1.0.8
+      framework-utils: 1.1.0
+    dev: false
+
+  /croact-moveable@0.9.0(croact@1.0.4):
+    resolution: {integrity: sha512-fc3bieV6CdqqZFtzsSLi9KmvUMFW3oakUfhPCls1BxKjOfUfn8rktteGED2341A/Qghy8tI3Hm6SdocIc68IKg==}
+    peerDependencies:
+      croact: ^1.0.4
+    dependencies:
+      '@daybrush/utils': 1.13.0
+      '@egjs/agent': 2.4.4
+      '@egjs/children-differ': 1.0.1
+      '@egjs/list-differ': 1.0.1
+      '@scena/dragscroll': 1.4.0
+      '@scena/event-emitter': 1.0.5
+      '@scena/matrix': 1.1.1
+      croact: 1.0.4
+      croact-css-styled: 1.1.9
+      css-to-mat: 1.1.1
+      framework-utils: 1.1.0
+      gesto: 1.19.4
+      overlap-area: 1.1.0
+      react-css-styled: 1.1.9
+      react-moveable: 0.56.0
+    dev: false
+
+  /croact@1.0.4:
+    resolution: {integrity: sha512-9GhvyzTY/IVUrMQ2iz/mzgZ8+NcjczmIo/t4FkC1CU0CEcau6v6VsEih4jkTa4ZmRgYTF0qXEZLObCzdDFplpw==}
+    dependencies:
+      '@daybrush/utils': 1.13.0
+      '@egjs/list-differ': 1.0.1
+    dev: false
+
   /cross-spawn@7.0.6:
     resolution: {integrity: sha512-uV2QOWP2nWzsy2aMp8aRibhi9dlzF5Hgh5SHaB9OiTGEyDTiJJyx0uy51QXdyWbtAHNua4XJzUKca3OzKUd3vA==}
     engines: {node: '>= 8'}
@@ -4807,6 +4856,16 @@ packages:
       pkg-types: 1.3.1
       ufo: 1.6.4
     dev: true
+
+  /moveable@0.53.0:
+    resolution: {integrity: sha512-71jS9zIoQzMhnNvduhg4tUEdm23+fO/40FN7muVMbZvVwbTku2MIxxLhnU4qFvxI4oVxn75l79SbtgjuA+s7Pw==}
+    dependencies:
+      '@daybrush/utils': 1.13.0
+      '@scena/event-emitter': 1.0.5
+      croact: 1.0.4
+      croact-moveable: 0.9.0(croact@1.0.4)
+      react-moveable: 0.56.0
+    dev: false
 
   /ms@2.1.3:
     resolution: {integrity: sha512-6FlzubTLZG3J2a/NVCAleEhjzq5oxgHyaCU9yYXvcLsvoVaHJq/s5xXI6/XXP6tz7R9xAOtHnSO/tXtF3WRTlA==}
