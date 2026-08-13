@@ -19,7 +19,7 @@ export { default as BlueprintNodeSwitchTaskDialog } from "./components/Blueprint
 export type { BlueprintNodeSwitchTaskDialogProps } from "./components/BlueprintNodeSwitchTaskDialog.vue";
 export type { ExecutionLogSettings } from "./library/execution-log-settings";
 export type { ExecutionTraceEntry, ExecutionRunRecord } from "@arronqzy/blueprint-dsl";
-export { resolveBlueprintConfigSource, resolveBlueprintNodeTypeLabel } from "./graph/document";
+export { resolveBlueprintConfigSource, resolveBlueprintNodeTypeLabel, getBlueprintNodeTypeLabel, getLifecyclePhaseLabel, BLUEPRINT_CONFIG_TYPE_LABEL_KEYS, BLUEPRINT_LIFECYCLE_PHASE_KEYS } from "./graph/document";
 export type { BlueprintConfigSource } from "./graph/document";
 export * from "./library/blueprint-io";
 export * from "./library/blueprint-library-db";

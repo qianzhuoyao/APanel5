@@ -10,6 +10,7 @@ import {
   type VNode,
   type Component,
 } from "vue";
+import { useI18n } from "@arronqzy/i18n/vue";
 import * as echarts from "echarts";
 import type { PanelElement } from "../types";
 import { buildChartOption, CHART_TYPES } from "../utils/chartOptionBuilder";
@@ -62,8 +63,11 @@ export const TextNodeContent = defineComponent({
   },
   emits: ["change"],
   setup(p, { emit }) {
+    const { t } = useI18n();
     const nodeRef = ref<HTMLDivElement | null>(null);
-    const html = computed(() => p.element.textHtml ?? "<p>双击输入文本</p>");
+    const html = computed(
+      () => p.element.textHtml ?? `<p>${t("panel.defaults.doubleClickTextHtml")}</p>`
+    );
     const textStyle = computed(() => ({
       fontFamily: p.element.textFontFamily || undefined,
       fontSize: p.element.textFontSize ? `${p.element.textFontSize}px` : undefined,
@@ -101,6 +105,7 @@ export const GridNodeContent = defineComponent({
     previewMode: { type: Boolean, default: false },
   },
   setup(p) {
+    const { t } = useI18n();
     const rows = computed(() => Math.max(1, Math.floor(p.element.gridRows ?? 2)));
     const cols = computed(() => Math.max(1, Math.floor(p.element.gridCols ?? 3)));
     const gap = computed(() => Math.max(0, p.element.gridGap ?? 8));
@@ -167,7 +172,9 @@ export const GridNodeContent = defineComponent({
                   ? "border-primary/70 bg-primary/10"
                   : "border-border/60 bg-muted/20",
               ].join(" "),
-              title: `槽位 ${idx + 1}${occupied.value.has(idx) ? "（已占用）" : "（空）"}`,
+              title: occupied.value.has(idx)
+                ? t("panel.config.slotOccupied", { n: idx + 1 })
+                : t("panel.config.slotEmpty", { n: idx + 1 }),
             })
           )
         ),
@@ -266,6 +273,7 @@ export const AudioNodeContent = defineComponent({
     selected: { type: Boolean, default: false },
   },
   setup(p) {
+    const { t } = useI18n();
     const audioRef = ref<HTMLAudioElement | null>(null);
     const playing = ref(false);
     const src = computed(() => p.element.audioSrc || p.element.audioRemoteUrl || "");
@@ -369,12 +377,12 @@ export const AudioNodeContent = defineComponent({
                     onMousedown: (e: Event) => e.stopPropagation(),
                     onPointerdown: (e: Event) => e.stopPropagation(),
                     onClick: togglePlay,
-                    title: !src.value ? "请先配置音频源" : playing.value ? "点击暂停" : "点击播放",
+                    title: !src.value ? t("panel.config.configureAudioFirst") : playing.value ? t("panel.config.clickPause") : t("panel.config.clickPlay"),
                   },
                   [
                     h("img", {
                       src: poster.value,
-                      alt: "音频占位图",
+                      alt: t("panel.config.audioPoster"),
                       class: "h-full w-full object-cover",
                       draggable: false,
                       onDragstart: (e: Event) => e.preventDefault(),
@@ -389,7 +397,7 @@ export const AudioNodeContent = defineComponent({
                     onMousedown: (e: Event) => e.stopPropagation(),
                     onPointerdown: (e: Event) => e.stopPropagation(),
                     onClick: togglePlay,
-                    title: !src.value ? "请先配置音频源" : playing.value ? "点击暂停" : "点击播放",
+                    title: !src.value ? t("panel.config.configureAudioFirst") : playing.value ? t("panel.config.clickPause") : t("panel.config.clickPlay"),
                   },
                   [renderIcon()]
                 ),
@@ -416,7 +424,7 @@ export const AudioNodeContent = defineComponent({
                 class:
                   "pointer-events-none absolute right-2 top-2 rounded bg-black/55 px-1.5 py-0.5 text-[10px] text-white",
               },
-              !src.value ? "未配置音频" : playing.value ? "暂停" : "播放"
+              !src.value ? t("panel.config.audioNotConfigured") : playing.value ? t("panel.config.pause") : t("panel.config.play")
             ),
             h("audio", { ref: audioRef, src: src.value, preload: "metadata", class: "hidden" }),
           ]
@@ -429,11 +437,11 @@ export const AudioNodeContent = defineComponent({
             class:
               "flex h-full w-full items-center justify-center rounded border border-dashed border-border/70 bg-muted/15 px-2 text-[11px] text-muted-foreground",
           },
-          "音频占位"
+          t("panel.config.audioPlaceholder")
         );
       }
       return h("div", { class: "relative flex h-full w-full items-center justify-center rounded border border-border/60 bg-muted/10 px-2" }, [
-        h("div", { class: "pointer-events-none text-[11px] text-muted-foreground" }, playing.value ? "音频播放中" : "音频已就绪"),
+        h("div", { class: "pointer-events-none text-[11px] text-muted-foreground" }, playing.value ? t("panel.config.audioPlaying") : t("panel.config.audioReady")),
         h(
           "button",
           {
@@ -442,9 +450,9 @@ export const AudioNodeContent = defineComponent({
             onMousedown: (e: Event) => e.stopPropagation(),
             onPointerdown: (e: Event) => e.stopPropagation(),
             onClick: togglePlay,
-            title: playing.value ? "点击暂停" : "点击播放",
+            title: playing.value ? t("panel.config.clickPause") : t("panel.config.clickPlay"),
           },
-          playing.value ? "暂停" : "播放"
+          playing.value ? t("panel.config.pause") : t("panel.config.play")
         ),
         h("audio", { ref: audioRef, src: src.value, preload: "metadata", class: "hidden" }),
       ]);
@@ -459,6 +467,7 @@ export const VideoNodeContent = defineComponent({
     selected: { type: Boolean, default: false },
   },
   setup(p) {
+    const { t } = useI18n();
     const videoRef = ref<HTMLVideoElement | null>(null);
     const playing = ref(false);
     const src = computed(() => p.element.videoSrc || p.element.videoRemoteUrl || "");
@@ -504,7 +513,7 @@ export const VideoNodeContent = defineComponent({
             class:
               "flex h-full w-full items-center justify-center rounded border border-dashed border-border/70 bg-muted/15 px-2 text-[11px] text-muted-foreground",
           },
-          "视频占位"
+          t("panel.config.videoPlaceholder")
         );
       }
       return h("div", { class: "relative h-full w-full p-1" }, [
@@ -521,9 +530,9 @@ export const VideoNodeContent = defineComponent({
             onMousedown: (e: Event) => e.stopPropagation(),
             onPointerdown: (e: Event) => e.stopPropagation(),
             onClick: togglePlay,
-            title: playing.value ? "点击暂停" : "点击播放",
+            title: playing.value ? t("panel.config.clickPause") : t("panel.config.clickPlay"),
           },
-          playing.value ? "暂停" : "播放"
+          playing.value ? t("panel.config.pause") : t("panel.config.play")
         ),
       ]);
     };
@@ -681,6 +690,7 @@ export const ReferenceNodeContent = defineComponent({
     previewMode: { type: Boolean, default: false },
   },
   setup(p) {
+    const { t } = useI18n();
     const sourceNodes = computed(() => {
       const fromDeep =
         p.element.refCopyMode === "deep"
@@ -715,7 +725,7 @@ export const ReferenceNodeContent = defineComponent({
 
     return () => {
       if (!layout.value || sourceNodes.value.length === 0) {
-        const hintText = p.element.refLayerId ? "引用图层暂无节点" : "请在右侧选择引用图层";
+        const hintText = p.element.refLayerId ? t("panel.config.refLayerEmpty") : t("panel.config.selectRefLayer");
         return h("div", { class: "flex h-full w-full items-center justify-center" }, [
           h(
             "div",
@@ -794,6 +804,7 @@ export const ImageNodeContent = defineComponent({
     element: { type: Object as PropType<PanelElement>, required: true },
   },
   setup(p) {
+    const { t } = useI18n();
     return () => {
       if (hasBackgroundImage(p.element)) return null;
       return h(
@@ -802,7 +813,7 @@ export const ImageNodeContent = defineComponent({
           class:
             "flex h-full w-full items-center justify-center rounded border border-dashed border-border/70 bg-muted/15 px-2 text-[11px] text-muted-foreground",
         },
-        "图片占位"
+        t("panel.config.imagePlaceholder")
       );
     };
   },
@@ -814,9 +825,14 @@ export const EmptyNodePlaceholder = defineComponent({
     element: { type: Object as PropType<PanelElement>, required: true },
   },
   setup(p) {
+    const { t } = useI18n();
     return () => {
-      const labelMap: Record<string, string> = { video: "视频占位", audio: "音频占位" };
-      const label = labelMap[p.element.materialType ?? ""] ?? `${p.element.materialType ?? "节点"} 占位`;
+      const labelMap: Record<string, string> = { video: t("panel.config.videoPlaceholder"), audio: t("panel.config.audioPlaceholder") };
+      const label =
+        labelMap[p.element.materialType ?? ""] ??
+        t("panel.config.materialPlaceholder", {
+          type: p.element.materialType ?? t("common.node"),
+        });
       return h(
         "div",
         {

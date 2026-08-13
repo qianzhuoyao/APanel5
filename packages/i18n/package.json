@@ -1,0 +1,39 @@
+{
+  "name": "@arronqzy/i18n",
+  "version": "0.1.0",
+  "description": "Shared Chinese/English i18n for Abuilder (React + Vue)",
+  "license": "MIT",
+  "type": "module",
+  "files": ["src"],
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./react": "./src/react/index.ts",
+    "./vue": "./src/vue/index.ts"
+  },
+  "scripts": {
+    "lint": "eslint \"src/**/*.{ts,tsx}\"",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "build": "pnpm run typecheck"
+  },
+  "peerDependencies": {
+    "react": ">=18",
+    "vue": "^3.4.0"
+  },
+  "peerDependenciesMeta": {
+    "react": { "optional": true },
+    "vue": { "optional": true }
+  },
+  "devDependencies": {
+    "@arronqzy/eslint-config": "workspace:*",
+    "@arronqzy/typescript-config": "workspace:*",
+    "@types/react": "^19.0.1",
+    "eslint": "^8.57.0",
+    "react": "^19",
+    "typescript": "^5.5.4",
+    "vue": "^3.5.13"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

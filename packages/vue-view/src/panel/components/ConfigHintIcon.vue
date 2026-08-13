@@ -1,13 +1,15 @@
 <script setup lang="ts">
+import { useI18n } from "@arronqzy/i18n/vue";
 import { Tooltip } from "ant-design-vue";
 
+const { t, locale } = useI18n();
 withDefaults(
   defineProps<{
     label?: string;
     contentClass?: string;
     buttonClass?: string;
   }>(),
-  { label: "说明" }
+  { label: t("common.hint") }
 );
 </script>
 
@@ -26,7 +28,7 @@ withDefaults(
         buttonClass ??
         'inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-border text-[10px] leading-none text-muted-foreground hover:bg-accent/50'
       "
-      :aria-label="`${label}说明`"
+      :aria-label="t('common.hintAria', { label })"
     >
       ?
     </button>

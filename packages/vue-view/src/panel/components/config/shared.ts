@@ -1,5 +1,4 @@
 import type { PanelChartConfig } from "../../types";
-import { PANEL_MESSAGES } from "../../constants/messages";
 
 export function mergeOptionPatch(
   base: Record<string, unknown> | undefined,
@@ -70,5 +69,3 @@ export function patchChart(
 ): PanelChartConfig {
   return { ...(chart ?? {}), ...patch };
 }
-
-export { PANEL_MESSAGES };

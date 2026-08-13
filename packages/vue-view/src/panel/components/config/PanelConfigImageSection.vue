@@ -1,15 +1,16 @@
 <script setup lang="ts">
+import { useI18n } from "@arronqzy/i18n/vue";
 import { ref } from "vue";
 import { Input, Select } from "ant-design-vue";
 import type { PanelElement } from "../../types";
-import {
-  PANEL_MESSAGES,
-  readFileAsDataUrl,
-  uploadFileToRemote,
-} from "./shared";
+import { readFileAsDataUrl, uploadFileToRemote } from "./shared";
+import { getPanelMessages } from "../../constants/messages";
 import ConfigFieldGroup from "./ConfigFieldGroup.vue";
 import ConfigSection from "./ConfigSection.vue";
 import ConfigHintIcon from "../ConfigHintIcon.vue";
+
+const { t, locale } = useI18n();
+const msgs = () => getPanelMessages(t);
 
 const props = defineProps<{
   element: PanelElement;
@@ -36,15 +37,15 @@ function patchStyle(patch: Record<string, string | undefined>) {
 }
 
 async function handleUploadImage(file: File) {
-  const base64 = await readFileAsDataUrl(file, PANEL_MESSAGES.readImageFailed);
+  const base64 = await readFileAsDataUrl(file, msgs().readImageFailed);
   patchStyle({ backgroundImage: `url("${base64}")` });
-  uploadStatus.value = "已写入 base64";
+  uploadStatus.value = t("panel.config.uploadWrittenBase64");
   const url = await uploadFileToRemote(file);
   if (url) {
     patchStyle({ backgroundImageRemoteUrl: url });
-    uploadStatus.value = "已上传服务器并写入 base64";
+    uploadStatus.value = t("panel.config.uploadServerAndBase64");
   } else {
-    uploadStatus.value = "服务器上传失败，仅保留 base64";
+    uploadStatus.value = t("panel.config.uploadServerFailedKeepBase64");
   }
 }
 
@@ -58,17 +59,17 @@ function onFileChange(e: Event) {
 
 <template>
   <ConfigSection
-    title="图片配置"
+    :title="t('panel.config.sectionImage')"
     :open="open"
     :force-open="forceOpen"
     @update:open="emit('update:open', $event)"
   >
-    <ConfigFieldGroup title="图片来源">
+    <ConfigFieldGroup :title="t('panel.config.groupImageSource')">
       <label class="block space-y-1">
         <div class="flex items-center gap-1">
-          <span>图片 URL / CSS</span>
-          <ConfigHintIcon label="图片地址">
-            可填写远程 URL 或 url("data:...") 形式；上传后会自动写入 base64。
+          <span>{{ t("panel.config.imageUrlCss") }}</span>
+          <ConfigHintIcon :label="t('panel.config.imageUrlHintLabel')">
+            {{ t("panel.config.imageUrlHint") }}
           </ConfigHintIcon>
         </div>
         <Input
@@ -93,15 +94,15 @@ function onFileChange(e: Event) {
           class="inline-flex cursor-pointer items-center rounded border border-gray-200 px-2 py-1 text-[11px] hover:bg-gray-50"
           :class="{ 'pointer-events-none opacity-50': !isEditable }"
         >
-          上传图片
+          {{ t("panel.config.uploadImage") }}
           <input type="file" accept="image/*" class="hidden" :disabled="!isEditable" @change="onFileChange" />
         </label>
         <span v-if="uploadStatus" class="text-[11px] text-gray-500">{{ uploadStatus }}</span>
       </div>
     </ConfigFieldGroup>
-    <ConfigFieldGroup title="显示方式">
+    <ConfigFieldGroup :title="t('panel.config.groupDisplayMode')">
       <label class="block space-y-1">
-        <div>适应方式（object-fit / background-size）</div>
+        <div>{{ t("panel.config.objectFitFull") }}</div>
         <Select
           size="small"
           class="w-full"
@@ -109,14 +110,14 @@ function onFileChange(e: Event) {
           :disabled="!isEditable"
           @update:value="(v) => patchStyle({ backgroundSize: String(v) })"
         >
-          <Select.Option value="cover">cover（裁剪铺满）</Select.Option>
-          <Select.Option value="contain">contain（完整显示）</Select.Option>
-          <Select.Option value="100% 100%">fill（拉伸填满）</Select.Option>
+          <Select.Option value="cover">{{ t("panel.config.fitCover") }}</Select.Option>
+          <Select.Option value="contain">{{ t("panel.config.fitContain") }}</Select.Option>
+          <Select.Option value="100% 100%">{{ t("panel.config.fitFill") }}</Select.Option>
           <Select.Option value="auto">auto</Select.Option>
         </Select>
       </label>
       <label class="block space-y-1">
-        <div>对齐位置</div>
+        <div>{{ t("panel.config.alignPosition") }}</div>
         <Select
           size="small"
           class="w-full"

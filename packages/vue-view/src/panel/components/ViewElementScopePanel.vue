@@ -1,9 +1,11 @@
 <script setup lang="ts">
+import { useI18n } from "@arronqzy/i18n/vue";
 import { formatViewElementScope } from "../utils/scope-template";
 import ConfigHintIcon from "./ConfigHintIcon.vue";
 import ScopeTemplateUsageHint from "./scope-config/ScopeTemplateUsageHint.vue";
 import { onMounted, ref, watch } from "vue";
 
+const { t, locale } = useI18n();
 const SCOPE_COLLAPSE_STORAGE_KEY = "panel:config-scope-collapsed";
 
 const props = defineProps<{
@@ -49,15 +51,15 @@ watch(
   <div class="mt-2 border-t border-border/50 pt-2">
     <div class="flex items-center justify-between gap-2">
       <div class="flex min-w-0 items-center gap-1.5">
-        <div class="text-[11px] font-medium text-foreground">Scope 数据</div>
-        <ConfigHintIcon label="Scope 模版" content-class="max-w-[380px]">
+        <div class="text-[11px] font-medium text-foreground">{{ t("panel.scope.dataTitle") }}</div>
+        <ConfigHintIcon :label="t('panel.scope.templateHintLabel')" content-class="max-w-[380px]">
           <ScopeTemplateUsageHint />
         </ConfigHintIcon>
         <span
           v-if="scopeUpdated"
           class="shrink-0 rounded bg-sky-500/15 px-1.5 py-0.5 text-[10px] font-medium text-sky-700 dark:text-sky-300"
         >
-          已更新
+          {{ t("panel.scope.updated") }}
         </span>
       </div>
       <button
@@ -65,7 +67,7 @@ watch(
         class="rounded border border-border px-1.5 py-0.5 text-[11px] text-muted-foreground hover:bg-accent"
         @click="isCollapsed = !isCollapsed"
       >
-        {{ isCollapsed ? "展开 Scope" : "收起 Scope" }}
+        {{ isCollapsed ? t("panel.scope.expand") : t("panel.scope.collapse") }}
       </button>
     </div>
     <pre

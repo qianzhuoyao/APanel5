@@ -1,14 +1,15 @@
 <script setup lang="ts">
+import { useI18n } from "@arronqzy/i18n/vue";
 import { ref } from "vue";
 import { Checkbox, Input } from "ant-design-vue";
 import type { PanelElement } from "../../types";
-import {
-  PANEL_MESSAGES,
-  readFileAsDataUrl,
-  uploadFileToRemote,
-} from "./shared";
+import { readFileAsDataUrl, uploadFileToRemote } from "./shared";
+import { getPanelMessages } from "../../constants/messages";
 import ConfigFieldGroup from "./ConfigFieldGroup.vue";
 import ConfigSection from "./ConfigSection.vue";
+
+const { t, locale } = useI18n();
+const msgs = () => getPanelMessages(t);
 
 const props = defineProps<{
   element: PanelElement;
@@ -34,15 +35,15 @@ function patch(patch: Partial<PanelElement>) {
 }
 
 async function handleUploadVideoFile(file: File) {
-  const base64 = await readFileAsDataUrl(file, PANEL_MESSAGES.readVideoFailed);
+  const base64 = await readFileAsDataUrl(file, msgs().readVideoFailed);
   patch({ videoSrc: base64 });
-  videoStatus.value = PANEL_MESSAGES.videoLocalSaved;
+  videoStatus.value = msgs().videoLocalSaved;
   const url = await uploadFileToRemote(file);
   if (url) {
     patch({ videoRemoteUrl: url });
-    videoStatus.value = PANEL_MESSAGES.videoRemoteUploaded;
+    videoStatus.value = msgs().videoRemoteUploaded;
   } else {
-    videoStatus.value = PANEL_MESSAGES.videoServerUploadFailed;
+    videoStatus.value = msgs().videoServerUploadFailed;
   }
 }
 
@@ -55,14 +56,14 @@ function onVideoFileChange(e: Event) {
 
 <template>
   <ConfigSection
-    title="视频配置"
+    :title="t('panel.config.sectionVideo')"
     :open="open"
     :force-open="forceOpen"
     @update:open="emit('update:open', $event)"
   >
-    <ConfigFieldGroup title="视频来源">
+    <ConfigFieldGroup :title="t('panel.config.groupVideoSource')">
       <label class="block space-y-1">
-        <div>视频 URL</div>
+        <div>{{ t("panel.config.videoUrl") }}</div>
         <Input
           size="small"
           :value="element.videoRemoteUrl ?? ''"
@@ -79,7 +80,7 @@ function onVideoFileChange(e: Event) {
           class="inline-flex cursor-pointer items-center rounded border border-gray-200 px-2 py-1 text-[11px] hover:bg-gray-50"
           :class="{ 'pointer-events-none opacity-50': !isEditable }"
         >
-          上传视频
+          {{ t("panel.config.uploadVideo") }}
           <input type="file" accept="video/*" class="hidden" :disabled="!isEditable" @change="onVideoFileChange" />
         </label>
       </div>
@@ -100,7 +101,7 @@ function onVideoFileChange(e: Event) {
           :disabled="!isEditable"
           @update:checked="(v) => patch({ mediaAutoPauseOnEdit: v !== false })"
         />
-        <span>编辑时自动暂停媒体</span>
+        <span>{{ t("panel.config.autoPauseMedia") }}</span>
       </label>
     </ConfigFieldGroup>
   </ConfigSection>

@@ -1,9 +1,11 @@
 <script setup lang="ts">
+import { useI18n } from "@arronqzy/i18n/vue";
 import { Select } from "ant-design-vue";
 import type { PanelElement, PanelLayer, ReferenceCopyMode } from "../../types";
 import ConfigFieldGroup from "./ConfigFieldGroup.vue";
 import ConfigSection from "./ConfigSection.vue";
 
+const { t, locale } = useI18n();
 const props = defineProps<{
   element: PanelElement;
   layers: PanelLayer[];
@@ -29,14 +31,14 @@ function patch(patch: Partial<PanelElement>) {
 
 <template>
   <ConfigSection
-    title="引用组件配置"
+    :title="t('panel.config.sectionReference')"
     :open="open"
     :force-open="forceOpen"
     @update:open="emit('update:open', $event)"
   >
-    <ConfigFieldGroup title="引用源">
+    <ConfigFieldGroup :title="t('panel.config.groupRefSource')">
       <label class="block space-y-1">
-        <div>引用图层</div>
+        <div>{{ t("panel.config.refLayer") }}</div>
         <Select
           size="small"
           class="w-full"
@@ -44,7 +46,7 @@ function patch(patch: Partial<PanelElement>) {
           :disabled="!isEditable"
           @update:value="(v) => patch({ refLayerId: v === '__none__' ? undefined : String(v) })"
         >
-          <Select.Option value="__none__">无（不引用）</Select.Option>
+          <Select.Option value="__none__">{{ t("panel.config.noneNoRef") }}</Select.Option>
           <Select.Option
             v-for="layer in layers.filter((l) => l.id !== element.layerId)"
             :key="layer.id"
@@ -55,12 +57,12 @@ function patch(patch: Partial<PanelElement>) {
         </Select>
       </label>
     </ConfigFieldGroup>
-    <ConfigFieldGroup title="拷贝策略">
+    <ConfigFieldGroup :title="t('panel.config.groupCopyStrategy')">
       <template #hint>
-        浅拷贝会实时同步被引用图层；深拷贝会固定当前快照，不再随源变化。
+        {{ t("panel.config.copyStrategyHint") }}
       </template>
       <label class="block space-y-1">
-        <div>拷贝模式</div>
+        <div>{{ t("panel.config.copyMode") }}</div>
         <Select
           size="small"
           class="w-full"
@@ -68,8 +70,8 @@ function patch(patch: Partial<PanelElement>) {
           :disabled="!isEditable"
           @update:value="(v) => setReferenceCopyMode?.(element.id, v as ReferenceCopyMode)"
         >
-          <Select.Option value="shallow">浅拷贝（跟随源图层变化）</Select.Option>
-          <Select.Option value="deep">深拷贝（冻结当前引用快照）</Select.Option>
+          <Select.Option value="shallow">{{ t("panel.config.shallowFollow") }}</Select.Option>
+          <Select.Option value="deep">{{ t("panel.config.deepFreeze") }}</Select.Option>
         </Select>
       </label>
     </ConfigFieldGroup>

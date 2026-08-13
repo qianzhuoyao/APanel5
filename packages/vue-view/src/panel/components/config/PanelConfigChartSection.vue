@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from "@arronqzy/i18n/vue";
 import { computed, ref, watch } from "vue";
 import { Checkbox, Collapse, Input, InputNumber, Select, Textarea } from "ant-design-vue";
 import type { PanelChartConfig, PanelElement } from "../../types";
@@ -13,6 +14,8 @@ import ConfigColorField from "./ConfigColorField.vue";
 import ConfigFieldGroup from "./ConfigFieldGroup.vue";
 import ConfigHintIcon from "../ConfigHintIcon.vue";
 import ConfigSection from "./ConfigSection.vue";
+
+const { t, locale } = useI18n();
 
 type ChartType =
   | "bar"
@@ -112,21 +115,21 @@ function onOptionJsonChange(v: string) {
     updateChart({ option: parsed });
     optionJsonError.value = null;
   } catch {
-    optionJsonError.value = "JSON 格式错误，修正后会自动应用";
+    optionJsonError.value = t("panel.config.jsonInvalid");
   }
 }
 </script>
 
 <template>
   <ConfigSection
-    title="图表配置 / 基础"
+    :title="t('panel.config.sectionChartBasic')"
     :open="basicOpen"
     :force-open="forceOpen"
     @update:open="emit('update:basicOpen', $event)"
   >
-    <ConfigFieldGroup title="基础显示">
+    <ConfigFieldGroup :title="t('panel.config.groupBasicDisplay')">
       <label class="block space-y-1.5">
-        <div>标题</div>
+        <div>{{ t("panel.config.title") }}</div>
         <Input
           size="small"
           :value="element.chart?.title ?? ''"
@@ -135,7 +138,7 @@ function onOptionJsonChange(v: string) {
         />
       </label>
       <ConfigColorField
-        label="主色"
+        :label="t('panel.config.primaryColor')"
         :value="element.chart?.color ?? '#3b82f6'"
         :disabled="!isEditable"
         @update:value="(v) => updateChart({ color: v || '#3b82f6' })"
@@ -146,23 +149,23 @@ function onOptionJsonChange(v: string) {
           :disabled="!isEditable"
           @update:checked="(v) => updateChart({ colorMode: v ? 'gradient' : 'solid' })"
         />
-        <span>主色使用渐变</span>
+        <span>{{ t("panel.config.usePrimaryGradient") }}</span>
       </label>
       <div v-if="element.chart?.colorMode === 'gradient'" class="grid grid-cols-2 gap-2">
         <ConfigColorField
-          label="渐变起始色"
+          :label="t('panel.scope.fieldChartGradientFrom')"
           :value="element.chart?.gradientFrom ?? element.chart?.color ?? '#3b82f6'"
           :disabled="!isEditable"
           @update:value="(v) => updateChart({ gradientFrom: v || '#3b82f6' })"
         />
         <ConfigColorField
-          label="渐变结束色"
+          :label="t('panel.scope.fieldChartGradientTo')"
           :value="element.chart?.gradientTo ?? '#22d3ee'"
           :disabled="!isEditable"
           @update:value="(v) => updateChart({ gradientTo: v || '#22d3ee' })"
         />
         <label class="col-span-2 block space-y-1">
-          <div>渐变方向</div>
+          <div>{{ t("panel.config.gradientDirection") }}</div>
           <Select
             size="small"
             class="w-full"
@@ -170,14 +173,14 @@ function onOptionJsonChange(v: string) {
             :disabled="!isEditable"
             @update:value="(v) => updateChart({ gradientDirection: v as PanelChartConfig['gradientDirection'] })"
           >
-            <Select.Option value="to-right">左 → 右</Select.Option>
-            <Select.Option value="to-bottom">上 → 下</Select.Option>
-            <Select.Option value="to-bottom-right">左上 → 右下</Select.Option>
-            <Select.Option value="to-top-right">左下 → 右上</Select.Option>
+            <Select.Option value="to-right">{{ t("panel.config.dirToRight") }}</Select.Option>
+            <Select.Option value="to-bottom">{{ t("panel.config.dirToBottom") }}</Select.Option>
+            <Select.Option value="to-bottom-right">{{ t("panel.config.dirToBottomRight") }}</Select.Option>
+            <Select.Option value="to-top-right">{{ t("panel.config.dirToTopRight") }}</Select.Option>
           </Select>
         </label>
         <div class="col-span-2 space-y-1">
-          <div class="text-[11px] text-gray-500">渐变预览</div>
+          <div class="text-[11px] text-gray-500">{{ t("panel.config.gradientPreview") }}</div>
           <div
             class="h-6 rounded border border-gray-200/60"
             :style="{
@@ -191,7 +194,7 @@ function onOptionJsonChange(v: string) {
         </div>
       </div>
       <label class="block space-y-1.5">
-        <div>显示模式</div>
+        <div>{{ t("panel.config.renderMode") }}</div>
         <Select
           size="small"
           class="w-full"
@@ -205,7 +208,7 @@ function onOptionJsonChange(v: string) {
       </label>
     </ConfigFieldGroup>
 
-    <ConfigFieldGroup title="提示框 Tooltip">
+    <ConfigFieldGroup :title="t('panel.config.groupTooltip')">
       <div class="grid grid-cols-2 gap-2">
         <label class="flex items-center gap-2">
           <Checkbox
@@ -213,10 +216,10 @@ function onOptionJsonChange(v: string) {
             :disabled="!isEditable"
             @update:checked="(v) => updateChart({ tooltipShow: v === true })"
           />
-          <span>显示 Tooltip</span>
+          <span>{{ t("panel.config.showTooltip") }}</span>
         </label>
         <label class="block space-y-1">
-          <div>Tooltip 触发方式</div>
+          <div>{{ t("panel.config.tooltipTrigger") }}</div>
           <Select
             size="small"
             class="w-full"
@@ -231,13 +234,13 @@ function onOptionJsonChange(v: string) {
       </div>
       <div class="grid grid-cols-2 gap-2">
         <ConfigColorField
-          label="Tooltip 背景色"
+          :label="t('panel.scope.fieldChartTooltipBackgroundColor')"
           :value="element.chart?.tooltipBackgroundColor ?? '#0f172a'"
           :disabled="!isEditable"
           @update:value="(v) => updateChart({ tooltipBackgroundColor: v || '#0f172a' })"
         />
         <ConfigColorField
-          label="Tooltip 文字色"
+          :label="t('panel.scope.fieldChartTooltipTextColor')"
           :value="element.chart?.tooltipTextColor ?? '#f8fafc'"
           :disabled="!isEditable"
           @update:value="(v) => updateChart({ tooltipTextColor: v || '#f8fafc' })"
@@ -245,25 +248,25 @@ function onOptionJsonChange(v: string) {
       </div>
       <label class="block space-y-1">
         <div class="flex items-center gap-1">
-          <span>Tooltip Formatter（可选）</span>
+          <span>{{ t("panel.config.tooltipFormatter") }}</span>
           <ConfigHintIcon label="Tooltip Formatter" content-class="max-w-[360px]">
-            <div class="font-medium">可用占位符</div>
-            <div>{"{a}=系列名, {b}=类目名, {c}=数值, {d}=百分比(饼图)"}</div>
+            <div class="font-medium">{{ t("panel.config.formatterPlaceholdersTitle") }}</div>
+            <div>{{ t("panel.config.formatterPlaceholders") }}</div>
           </ConfigHintIcon>
         </div>
         <Input
           size="small"
           :value="element.chart?.tooltipFormatter ?? ''"
           :disabled="!isEditable"
-          placeholder="例如：{b}: {c}"
+          :placeholder="t('panel.config.tooltipFormatterPlaceholder')" 
           @update:value="(v: string) => updateChart({ tooltipFormatter: v || undefined })"
         />
       </label>
     </ConfigFieldGroup>
 
-    <ConfigFieldGroup title="数据">
+    <ConfigFieldGroup :title="t('panel.config.groupData')">
       <label class="block space-y-1">
-        <div>类目（逗号分隔）</div>
+        <div>{{ t("panel.config.labelsCsv") }}</div>
         <Input
           size="small"
           :value="getChartLabelsDisplayText(element.chart)"
@@ -272,7 +275,7 @@ function onOptionJsonChange(v: string) {
         />
       </label>
       <label class="block space-y-1">
-        <div>数值（逗号分隔）</div>
+        <div>{{ t("panel.config.valuesCsv") }}</div>
         <Input
           size="small"
           :value="getChartValuesDisplayText(element.chart)"
@@ -284,11 +287,11 @@ function onOptionJsonChange(v: string) {
 
     <ConfigFieldGroup
       v-if="['bar', 'line', 'area', 'scatter'].includes(selectedChartType)"
-      title="坐标轴"
+      :title="t('panel.config.groupAxes')"
     >
       <div class="grid grid-cols-2 gap-2">
         <label class="block">
-          <div class="mb-1">X 轴名称</div>
+          <div class="mb-1">{{ t("panel.scope.fieldChartXAxisName") }}</div>
           <Input
             size="small"
             :value="element.chart?.xAxisName ?? ''"
@@ -297,7 +300,7 @@ function onOptionJsonChange(v: string) {
           />
         </label>
         <label class="block">
-          <div class="mb-1">Y 轴名称</div>
+          <div class="mb-1">{{ t("panel.scope.fieldChartYAxisName") }}</div>
           <Input
             size="small"
             :value="element.chart?.yAxisName ?? ''"
@@ -313,7 +316,7 @@ function onOptionJsonChange(v: string) {
             :disabled="!isEditable"
             @update:checked="(v) => updateChart({ xAxisTickShow: v === true })"
           />
-          <span>X 轴刻度线</span>
+          <span>{{ t("panel.config.xAxisTick") }}</span>
         </label>
         <label class="flex items-center gap-2">
           <Checkbox
@@ -321,18 +324,18 @@ function onOptionJsonChange(v: string) {
             :disabled="!isEditable"
             @update:checked="(v) => updateChart({ yAxisTickShow: v === true })"
           />
-          <span>Y 轴刻度线</span>
+          <span>{{ t("panel.config.yAxisTick") }}</span>
         </label>
       </div>
       <div class="grid grid-cols-2 gap-2">
         <ConfigColorField
-          label="X 轴刻度线颜色"
+          :label="t('panel.config.xAxisTickColor')"
           :value="element.chart?.xAxisTickColor ?? '#94a3b8'"
           :disabled="!isEditable"
           @update:value="(v) => updateChart({ xAxisTickColor: v || '#94a3b8' })"
         />
         <ConfigColorField
-          label="Y 轴刻度线颜色"
+          :label="t('panel.config.yAxisTickColor')"
           :value="element.chart?.yAxisTickColor ?? '#94a3b8'"
           :disabled="!isEditable"
           @update:value="(v) => updateChart({ yAxisTickColor: v || '#94a3b8' })"
@@ -345,7 +348,7 @@ function onOptionJsonChange(v: string) {
             :disabled="!isEditable"
             @update:checked="(v) => updateChart({ xAxisSplitLineShow: v === true })"
           />
-          <span>X 轴分割线</span>
+          <span>{{ t("panel.config.xAxisSplitLine") }}</span>
         </label>
         <label class="flex items-center gap-2">
           <Checkbox
@@ -353,18 +356,18 @@ function onOptionJsonChange(v: string) {
             :disabled="!isEditable"
             @update:checked="(v) => updateChart({ yAxisSplitLineShow: v === true })"
           />
-          <span>Y 轴分割线</span>
+          <span>{{ t("panel.config.yAxisSplitLine") }}</span>
         </label>
       </div>
       <div class="grid grid-cols-2 gap-2">
         <ConfigColorField
-          label="X 轴标签颜色"
+          :label="t('panel.scope.fieldChartXAxisLabelColor')"
           :value="element.chart?.xAxisLabelColor ?? '#64748b'"
           :disabled="!isEditable"
           @update:value="(v) => updateChart({ xAxisLabelColor: v || '#64748b' })"
         />
         <ConfigColorField
-          label="Y 轴标签颜色"
+          :label="t('panel.scope.fieldChartYAxisLabelColor')"
           :value="element.chart?.yAxisLabelColor ?? '#64748b'"
           :disabled="!isEditable"
           @update:value="(v) => updateChart({ yAxisLabelColor: v || '#64748b' })"
@@ -372,7 +375,7 @@ function onOptionJsonChange(v: string) {
       </div>
       <div class="grid grid-cols-2 gap-2">
         <label class="block">
-          <div class="mb-1">X 轴标签字号</div>
+          <div class="mb-1">{{ t("panel.config.xAxisLabelFontSize") }}</div>
           <InputNumber
             size="small"
             class="w-full"
@@ -387,7 +390,7 @@ function onOptionJsonChange(v: string) {
           />
         </label>
         <label class="block">
-          <div class="mb-1">Y 轴标签字号</div>
+          <div class="mb-1">{{ t("panel.config.yAxisLabelFontSize") }}</div>
           <InputNumber
             size="small"
             class="w-full"
@@ -406,10 +409,10 @@ function onOptionJsonChange(v: string) {
 
     <ConfigFieldGroup
       v-if="['bar', 'line', 'area', 'pie'].includes(selectedChartType)"
-      title="系列"
+      :title="t('panel.config.groupSeries')"
     >
       <label v-if="selectedChartType === 'bar'" class="block space-y-1">
-        <div>柱宽（px）</div>
+        <div>{{ t("panel.config.barWidthPx") }}</div>
         <InputNumber
           size="small"
           class="w-full"
@@ -431,11 +434,11 @@ function onOptionJsonChange(v: string) {
           :disabled="!isEditable"
           @update:checked="(v) => updateChart({ smooth: v === true })"
         />
-        <span>平滑曲线</span>
+        <span>{{ t("panel.config.smooth") }}</span>
       </label>
       <div v-if="selectedChartType === 'pie'" class="grid grid-cols-2 gap-2">
         <label class="block space-y-1">
-          <div>内半径（%）</div>
+          <div>{{ t("panel.config.pieInnerRadiusPct") }}</div>
           <InputNumber
             size="small"
             class="w-full"
@@ -450,7 +453,7 @@ function onOptionJsonChange(v: string) {
           />
         </label>
         <label class="block space-y-1">
-          <div>外半径（%）</div>
+          <div>{{ t("panel.config.pieOuterRadiusPct") }}</div>
           <InputNumber
             size="small"
             class="w-full"
@@ -469,17 +472,17 @@ function onOptionJsonChange(v: string) {
   </ConfigSection>
 
   <ConfigSection
-    title="图表配置 / 高级"
+    :title="t('panel.config.sectionChartAdvanced')"
     :open="advancedOpen"
     :force-open="forceOpen"
     @update:open="emit('update:advancedOpen', $event)"
   >
-    <ConfigFieldGroup title="常用项（表单）">
+    <ConfigFieldGroup :title="t('panel.config.groupCommonForm')">
       <Collapse ghost size="small">
-        <Collapse.Panel key="layout" header="布局与坐标">
+        <Collapse.Panel key="layout" :header="t('panel.config.groupLayoutAndCoord')">
           <div class="grid grid-cols-2 gap-2">
             <label class="block space-y-1">
-              <div class="text-[11px]">网格左距（grid.left）</div>
+              <div class="text-[11px]">{{ t("panel.config.gridLeftForm") }}</div>
               <InputNumber
                 size="small"
                 class="w-full"
@@ -489,7 +492,7 @@ function onOptionJsonChange(v: string) {
               />
             </label>
             <label class="block space-y-1">
-              <div class="text-[11px]">网格右距（grid.right）</div>
+              <div class="text-[11px]">{{ t("panel.config.gridRightForm") }}</div>
               <InputNumber
                 size="small"
                 class="w-full"
@@ -499,7 +502,7 @@ function onOptionJsonChange(v: string) {
               />
             </label>
             <label class="block space-y-1">
-              <div class="text-[11px]">图例位置（legend.top）</div>
+              <div class="text-[11px]">{{ t("panel.config.legendPositionForm") }}</div>
               <Select
                 size="small"
                 class="w-full"
@@ -507,14 +510,14 @@ function onOptionJsonChange(v: string) {
                 :disabled="!isEditable"
                 @update:value="(v) => updateOptionForm({ legend: { top: v } })"
               >
-                <Select.Option value="top">顶部</Select.Option>
-                <Select.Option value="bottom">底部</Select.Option>
-                <Select.Option value="left">左侧</Select.Option>
-                <Select.Option value="right">右侧</Select.Option>
+                <Select.Option value="top">{{ t("panel.config.legendTop") }}</Select.Option>
+                <Select.Option value="bottom">{{ t("panel.config.legendBottom") }}</Select.Option>
+                <Select.Option value="left">{{ t("panel.config.legendLeft") }}</Select.Option>
+                <Select.Option value="right">{{ t("panel.config.legendRight") }}</Select.Option>
               </Select>
             </label>
             <label class="block space-y-1">
-              <div class="text-[11px]">图例排列（legend.orient）</div>
+              <div class="text-[11px]">{{ t("panel.config.legendOrientForm") }}</div>
               <Select
                 size="small"
                 class="w-full"
@@ -522,13 +525,13 @@ function onOptionJsonChange(v: string) {
                 :disabled="!isEditable"
                 @update:value="(v) => updateOptionForm({ legend: { orient: v } })"
               >
-                <Select.Option value="horizontal">横向</Select.Option>
-                <Select.Option value="vertical">纵向</Select.Option>
+                <Select.Option value="horizontal">{{ t("panel.config.legendHorizontal") }}</Select.Option>
+                <Select.Option value="vertical">{{ t("panel.config.legendVertical") }}</Select.Option>
               </Select>
             </label>
           </div>
         </Collapse.Panel>
-        <Collapse.Panel key="highfreq" header="高频项">
+        <Collapse.Panel key="highfreq" :header="t('panel.config.groupHighFreq')">
           <div class="space-y-2">
             <label class="flex items-center gap-2">
               <Checkbox
@@ -536,7 +539,7 @@ function onOptionJsonChange(v: string) {
                 :disabled="!isEditable"
                 @update:checked="(v) => updateOptionForm({ legend: { show: v === true } })"
               />
-              <span>显示图例</span>
+              <span>{{ t("panel.config.showLegend") }}</span>
             </label>
             <label class="flex items-center gap-2">
               <Checkbox
@@ -544,7 +547,7 @@ function onOptionJsonChange(v: string) {
                 :disabled="!isEditable"
                 @update:checked="(v) => updateOptionForm({ grid: { containLabel: v === true } })"
               />
-              <span>网格包含标签</span>
+              <span>{{ t("panel.config.gridContainLabel") }}</span>
             </label>
             <label class="flex items-center gap-2">
               <Checkbox
@@ -552,7 +555,7 @@ function onOptionJsonChange(v: string) {
                 :disabled="!isEditable"
                 @update:checked="(v) => toggleDataZoom('inside', v === true)"
               />
-              <span>内置缩放</span>
+              <span>{{ t("panel.config.zoomInside") }}</span>
             </label>
             <label class="flex items-center gap-2">
               <Checkbox
@@ -560,7 +563,7 @@ function onOptionJsonChange(v: string) {
                 :disabled="!isEditable"
                 @update:checked="(v) => toggleDataZoom('slider', v === true)"
               />
-              <span>滑块缩放</span>
+              <span>{{ t("panel.config.zoomSlider") }}</span>
             </label>
             <label class="flex items-center gap-2">
               <Checkbox
@@ -568,10 +571,10 @@ function onOptionJsonChange(v: string) {
                 :disabled="!isEditable"
                 @update:checked="(v) => updateOptionForm({ animation: v === true })"
               />
-              <span>开启动画</span>
+              <span>{{ t("panel.config.enableAnimation") }}</span>
             </label>
             <label class="block space-y-1">
-              <div class="text-[11px]">动画时长（ms）</div>
+              <div class="text-[11px]">{{ t("panel.config.animationDurationMs") }}</div>
               <InputNumber
                 size="small"
                 class="w-full"
@@ -583,7 +586,7 @@ function onOptionJsonChange(v: string) {
             </label>
           </div>
         </Collapse.Panel>
-        <Collapse.Panel key="axisPointer" header="轴指示器与对齐">
+        <Collapse.Panel key="axisPointer" :header="t('panel.config.groupAxisPointer')">
           <div class="space-y-2">
             <label class="flex items-center gap-2">
               <Checkbox
@@ -591,10 +594,10 @@ function onOptionJsonChange(v: string) {
                 :disabled="!isEditable"
                 @update:checked="(v) => updateOptionForm({ axisPointer: { show: v === true } })"
               />
-              <span>显示轴指示器</span>
+              <span>{{ t("panel.config.showAxisPointer") }}</span>
             </label>
             <label class="block space-y-1">
-              <div class="text-[11px]">轴指示器类型</div>
+              <div class="text-[11px]">{{ t("panel.config.axisPointerType") }}</div>
               <Select
                 size="small"
                 class="w-full"
@@ -602,9 +605,9 @@ function onOptionJsonChange(v: string) {
                 :disabled="!isEditable"
                 @update:value="(v) => updateOptionForm({ axisPointer: { type: v } })"
               >
-                <Select.Option value="line">线</Select.Option>
-                <Select.Option value="shadow">阴影</Select.Option>
-                <Select.Option value="cross">十字</Select.Option>
+                <Select.Option value="line">{{ t("panel.config.axisPointerLine") }}</Select.Option>
+                <Select.Option value="shadow">{{ t("panel.config.axisPointerShadow") }}</Select.Option>
+                <Select.Option value="cross">{{ t("panel.config.axisPointerCross") }}</Select.Option>
               </Select>
             </label>
           </div>
@@ -612,15 +615,15 @@ function onOptionJsonChange(v: string) {
       </Collapse>
     </ConfigFieldGroup>
 
-    <ConfigFieldGroup title="JSON 高级模式">
+    <ConfigFieldGroup :title="t('panel.config.groupJsonAdvanced')">
       <label class="flex items-center gap-2">
         <Checkbox
           v-model:checked="isAdvancedOptionMode"
           :disabled="!isEditable"
         />
-        <span>开启高级模式（直接编辑图表 JSON 配置）</span>
-        <ConfigHintIcon label="图表 JSON 高级模式">
-          基础配置会先生成图表配置，高级模式会在此基础上覆盖（深度合并）。
+        <span>{{ t("panel.config.enableAdvancedJson") }}</span>
+        <ConfigHintIcon :label="t('panel.config.advancedJsonHintLabel')">
+          {{ t("panel.config.advancedJsonHint") }}
         </ConfigHintIcon>
       </label>
       <template v-if="isAdvancedOptionMode">
@@ -642,7 +645,7 @@ function onOptionJsonChange(v: string) {
           v-else
           class="rounded border border-emerald-500/30 bg-emerald-500/10 px-2 py-1.5 text-[11px] text-emerald-700"
         >
-          JSON 有效，已实时应用到当前图表。
+          {{ t("panel.config.jsonValidApplied") }}
         </div>
       </template>
     </ConfigFieldGroup>

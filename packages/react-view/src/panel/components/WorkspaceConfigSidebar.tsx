@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { useI18n } from "@arronqzy/i18n/react";
 
 import {
   BlueprintExecutionLogPanel,
@@ -82,6 +83,8 @@ export function WorkspaceConfigSidebar({
   allViewElements,
   ...viewPanelProps
 }: WorkspaceConfigSidebarProps) {
+  const { t } = useI18n();
+
   const viewElementOptions = useMemo(
     () =>
       allViewElements.map((el) => ({
@@ -136,9 +139,9 @@ export function WorkspaceConfigSidebar({
               <path d="M8 7l8 4M8 17l8-4" />
             </svg>
           </EmptyIcon>
-          <EmptyTitle>未选中蓝图节点</EmptyTitle>
+          <EmptyTitle>{t("panel.workspace.configEmptyTitle")}</EmptyTitle>
           <EmptyDescription>
-            在蓝图面板中选中一个节点后，这里会显示对应的配置。
+            {t("panel.workspace.configEmptyDesc")}
           </EmptyDescription>
         </Empty>
       </div>

@@ -1,6 +1,7 @@
 import { useCallback, type ChangeEvent } from "react";
 import { Input } from "@arronqzy/ui";
 import type { ClockNodeConfig } from "@arronqzy/blueprint-dsl";
+import { useI18n } from "@arronqzy/i18n/react";
 
 import type { BlueprintGraphNode } from "../graph/document";
 import { resolveNodeClockConfig } from "../graph/document";
@@ -27,6 +28,7 @@ export function ClockNodeConfigPanel({
   node,
   onUpdateNode,
 }: ClockNodeConfigPanelProps) {
+  const { t } = useI18n();
   const clockConfig = resolveNodeClockConfig(node);
 
   const handleIntervalChange = useCallback(
@@ -71,15 +73,17 @@ export function ClockNodeConfigPanel({
 
   return (
     <div className="space-y-2 rounded-md border border-border/70 bg-muted/20 p-2.5">
-      <div className="font-medium text-foreground">时钟节点</div>
+      <div className="font-medium text-foreground">
+        {t("blueprint.config.clockTitle")}
+      </div>
       <p className="text-[11px] text-muted-foreground">
-        收到<strong>真信号</strong>后才开始计时输出；每次输出向下游发出
-        <strong>真信号</strong>，值包含当前时间（formatted / timestamp / isoTime）。
-        假信号会原样向下游传递。
+        {t("blueprint.config.clockHint")}
       </p>
 
       <label className="block space-y-1">
-        <span className="text-muted-foreground">时钟信号间隔（秒）</span>
+        <span className="text-muted-foreground">
+          {t("blueprint.config.clockIntervalSeconds")}
+        </span>
         <Input
           type="number"
           min={0}
@@ -89,12 +93,14 @@ export function ClockNodeConfigPanel({
           className="h-8"
         />
         <p className="text-[11px] text-muted-foreground">
-          两次输出之间的间隔 n 秒；多次输出或未开启「立即发送」时须大于 0。
+          {t("blueprint.config.clockIntervalHint")}
         </p>
       </label>
 
       <label className="block space-y-1">
-        <span className="text-muted-foreground">输出次数</span>
+        <span className="text-muted-foreground">
+          {t("blueprint.config.outputCount")}
+        </span>
         <Input
           type="number"
           min={1}
@@ -104,7 +110,7 @@ export function ClockNodeConfigPanel({
           className="h-8"
         />
         <p className="text-[11px] text-muted-foreground">
-          收到真信号后总共输出的次数，默认 1。
+          {t("blueprint.config.outputCountHint")}
         </p>
       </label>
 
@@ -116,13 +122,14 @@ export function ClockNodeConfigPanel({
           className="mt-0.5 h-3.5 w-3.5 shrink-0 rounded border border-input"
         />
         <span className="text-[11px] leading-relaxed text-muted-foreground">
-          收到信号立即发送：开启且输出次数大于 1 时，会立刻执行第 1 次，剩余次数按间隔 m
-          秒依次执行；仅输出 1 次时也会立刻执行。关闭则每次（含首次）都先等待 m 秒。
+          {t("blueprint.config.emitImmediately")}
         </span>
       </label>
 
       <label className="block space-y-1">
-        <span className="text-muted-foreground">时间格式</span>
+        <span className="text-muted-foreground">
+          {t("blueprint.config.timeFormat")}
+        </span>
         <Input
           value={clockConfig.timeFormat}
           onChange={handleFormatChange}
@@ -131,7 +138,7 @@ export function ClockNodeConfigPanel({
           placeholder="YYYY-MM-DD HH:mm:ss"
         />
         <p className="text-[11px] text-muted-foreground">
-          支持 YYYY、MM、DD、HH、mm、ss，默认 YYYY-MM-DD HH:mm:ss。
+          {t("blueprint.config.timeFormatHint")}
         </p>
       </label>
     </div>

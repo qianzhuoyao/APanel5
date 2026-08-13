@@ -1,9 +1,11 @@
 <script setup lang="ts">
+import { useI18n } from "@arronqzy/i18n/vue";
 import { InputNumber } from "ant-design-vue";
 import type { PanelElement } from "../../types";
 import ConfigFieldGroup from "./ConfigFieldGroup.vue";
 import ConfigSection from "./ConfigSection.vue";
 
+const { t, locale } = useI18n();
 const props = defineProps<{
   element: PanelElement;
   isEditable: boolean;
@@ -28,18 +30,18 @@ function patch(patch: Partial<PanelElement>) {
 <template>
   <ConfigSection
     v-if="element.parentGridId"
-    title="网格子节点占位"
+    :title="t('panel.config.sectionGridChildSpan')"
     :open="open"
     :force-open="forceOpen"
     @update:open="emit('update:open', $event)"
   >
     <template #hint>
-      网格子节点可跨越多格，占据更大区域，便于复杂布局。
+      {{ t("panel.config.gridChildHint") }}
     </template>
-    <ConfigFieldGroup title="跨槽位">
+    <ConfigFieldGroup :title="t('panel.config.groupCrossSlots')">
       <div class="grid grid-cols-2 gap-2">
         <label class="block space-y-1">
-          <div>跨列（colSpan）</div>
+          <div>{{ t("panel.config.colSpan") }}</div>
           <InputNumber
             size="small"
             class="w-full"
@@ -51,7 +53,7 @@ function patch(patch: Partial<PanelElement>) {
           />
         </label>
         <label class="block space-y-1">
-          <div>跨行（rowSpan）</div>
+          <div>{{ t("panel.config.rowSpan") }}</div>
           <InputNumber
             size="small"
             class="w-full"

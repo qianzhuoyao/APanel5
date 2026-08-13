@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import { useI18n } from "@arronqzy/i18n/vue";
 import { computed } from "vue";
 import { Input } from "ant-design-vue";
 
+const { t, locale } = useI18n();
 const props = defineProps<{
   label: string;
   value: string;
@@ -44,7 +46,7 @@ function onColorInput(e: Event) {
         class="h-7 w-10 shrink-0 cursor-pointer rounded border border-gray-200 p-0.5"
         :value="pickerValue"
         :disabled="disabled"
-        :aria-label="`${label}调色盘`"
+        :aria-label="t('common.colorPickerAria', { label })"
         @input="onColorInput"
       />
     </div>

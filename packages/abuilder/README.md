@@ -34,8 +34,11 @@ createRoot(document.getElementById("root")!).render(<App />);
   className="h-screen"
   defaultTheme="dark"
   initialZoom={1}
+  locale="zh-CN" // 或 "en-US"；省略则按 localStorage / 浏览器语言 / zh-CN
 />
 ```
+
+编辑器顶栏「设置 → 语言」可运行时切换中文 / English（写入 `localStorage` key `abuilder.locale`）。
 
 ### 在线预览
 
@@ -61,6 +64,7 @@ import {
 | 包 | 职责 |
 |----|------|
 | `@arronqzy/abuilder` | 聚合入口（本包） |
+| `@arronqzy/i18n` | 共享中英文本 |
 | `@arronqzy/react-view` | 视图画布与工作区 |
 | `@arronqzy/react-blueprint` | 蓝图编辑器 UI |
 | `@arronqzy/blueprint-dsl` | 蓝图 DSL 与运行时 |

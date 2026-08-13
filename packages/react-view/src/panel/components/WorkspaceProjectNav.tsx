@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useI18n } from "@arronqzy/i18n/react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -52,6 +53,8 @@ export function WorkspaceProjectNav({
   onDeleteProject,
   onPreviewProject,
 }: WorkspaceProjectNavProps) {
+  const { t } = useI18n();
+
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -81,11 +84,11 @@ export function WorkspaceProjectNav({
                 disabled={busy}
                 onClick={() => void runAction(onCreateProject)}
               >
-                创建工作区
+                {t("panel.workspace.create")}
               </Button>
             </TooltipTrigger>
             <TooltipContent className="z-[10100]">
-              以当前产物名称新建一条 IndexedDB 工作区记录，不会覆盖已有工作区
+              {t("panel.workspace.createHint")}
             </TooltipContent>
           </Tooltip>
 
@@ -100,13 +103,17 @@ export function WorkspaceProjectNav({
                   disabled={busy || !dirty}
                   onClick={() => void runAction(onSyncProject)}
                 >
-                  同步{dirty ? " *" : ""}
+                  {dirty ? t("panel.workspace.syncDirty") : t("common.sync")}
                 </Button>
               </TooltipTrigger>
               <TooltipContent className="z-[10100]">
                 {dirty
-                  ? `同步更新「${activeProjectName ?? "当前工作区"}」到 IndexedDB`
-                  : "当前工作区已与 IndexedDB 同步"}
+                  ? t("panel.workspace.syncUpdate", {
+                      name:
+                        activeProjectName ??
+                        t("panel.workspace.currentWorkspaceFallback"),
+                    })
+                  : t("panel.workspace.syncUpToDate")}
               </TooltipContent>
             </Tooltip>
           ) : null}
@@ -120,12 +127,14 @@ export function WorkspaceProjectNav({
                 className="h-7 max-w-[200px] truncate px-2 text-xs"
                 disabled={busy}
               >
-                {activeProjectName ? `工作区：${activeProjectName}` : "已保存工作区"}
+                {activeProjectName
+                  ? t("panel.workspace.workspaceNamed", { name: activeProjectName })
+                  : t("panel.workspace.savedWorkspaces")}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="z-[10100] w-72">
               {projects.length === 0 ? (
-                <DropdownMenuItem disabled>暂无已保存工作区</DropdownMenuItem>
+                <DropdownMenuItem disabled>{t("panel.workspace.noSavedWorkspaces")}</DropdownMenuItem>
               ) : (
                 projects.map((project) => (
                   <div key={project.id} className="px-1 py-0.5">
@@ -160,7 +169,7 @@ export function WorkspaceProjectNav({
                           })
                         }
                       >
-                        预览
+                        {t("panel.workspace.previewDocTitle")}
                       </Button>
                       <Button
                         type="button"
@@ -169,7 +178,7 @@ export function WorkspaceProjectNav({
                         className="h-7 shrink-0 px-2 text-[10px] text-destructive hover:text-destructive"
                         onClick={() => setPendingDeleteId(project.id)}
                       >
-                        删除
+                        {t("common.delete")}
                       </Button>
                     </div>
                   </div>
@@ -177,7 +186,7 @@ export function WorkspaceProjectNav({
               )}
               {/* <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => void runAction(onCreateProject)}>
-                创建工作区
+                {t("panel.workspace.create")}
               </DropdownMenuItem> */}
             </DropdownMenuContent>
           </DropdownMenu>
@@ -192,13 +201,15 @@ export function WorkspaceProjectNav({
       >
         <AlertDialogContent className="z-[10150]">
           <AlertDialogHeader>
-            <AlertDialogTitle>删除工作区？</AlertDialogTitle>
+            <AlertDialogTitle>{t("panel.workspace.deleteConfirmTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              将永久删除 IndexedDB 中的「{pendingDelete?.name ?? ""}」，此操作不可恢复。
+              {t("panel.workspace.deleteConfirmBody", {
+                name: pendingDelete?.name ?? "",
+              })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={() => {
@@ -210,7 +221,7 @@ export function WorkspaceProjectNav({
                 });
               }}
             >
-              删除
+              {t("common.delete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

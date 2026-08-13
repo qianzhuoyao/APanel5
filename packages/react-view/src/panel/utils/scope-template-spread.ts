@@ -1,5 +1,8 @@
 /** 数组展开模版：[...{scope?.a?.b}] 从 scope 中定位数组并提取每项字段，输出逗号分隔值 */
 
+import type { TranslateFn } from "@arronqzy/i18n";
+import { tForLocale } from "@arronqzy/i18n";
+
 export const SCOPE_SPREAD_TEMPLATE_RE = /\[\.\.\.\{([^}]+)\}\]/g;
 
 export const SCOPE_SPREAD_TEMPLATE_DEMO = {
@@ -8,15 +11,22 @@ export const SCOPE_SPREAD_TEMPLATE_DEMO = {
   output: "1,2",
 } as const;
 
-export const SCOPE_SPREAD_DEEP_TEMPLATE_DEMO = {
-  scope: {
-    data: {
-      data: [{ statusName: "进行中" }, { statusName: "已完成" }],
+export function getScopeSpreadDeepTemplateDemo(t: TranslateFn = tForLocale("zh-CN")) {
+  const inProgress = t("panel.scope.demoInProgress");
+  const done = t("panel.scope.demoDone");
+  return {
+    scope: {
+      data: {
+        data: [{ statusName: inProgress }, { statusName: done }],
+      },
     },
-  },
-  template: "[...{scope?.data?.data?.statusName}]",
-  output: "进行中,已完成",
-} as const;
+    template: "[...{scope?.data?.data?.statusName}]",
+    output: t("panel.scope.demoJoined"),
+  } as const;
+}
+
+/** @deprecated Prefer getScopeSpreadDeepTemplateDemo(t) */
+export const SCOPE_SPREAD_DEEP_TEMPLATE_DEMO = getScopeSpreadDeepTemplateDemo();
 
 export type ScopeSpreadEvalIssue =
   | "invalid-expression"
@@ -205,25 +215,38 @@ export function buildSpreadNotArrayWarningMessage(
   fieldLabel: string,
   template: string,
   expression: string,
-  arrayPath: string
+  arrayPath: string,
+  t: TranslateFn = tForLocale("zh-CN")
 ): string {
+  void expression;
   const demoScope = JSON.stringify(SCOPE_SPREAD_TEMPLATE_DEMO.scope);
-  const deepDemo = SCOPE_SPREAD_DEEP_TEMPLATE_DEMO;
-  return (
-    `「${fieldLabel}」中的 ${template} 模版仅可做数组值的映射，当前 scope.${arrayPath} 不是数组，数据不符合规则。` +
-    `参考示例：scope 为 ${demoScope} 时使用 ${SCOPE_SPREAD_TEMPLATE_DEMO.template} 输出 ${SCOPE_SPREAD_TEMPLATE_DEMO.output}；` +
-    `深层路径可用 ${deepDemo.template}（scope 为 ${JSON.stringify(deepDemo.scope)} 时输出 ${deepDemo.output}）。`
-  );
+  const deepDemo = getScopeSpreadDeepTemplateDemo(t);
+  return t("panel.scope.warnSpreadNotArray", {
+    fieldLabel,
+    template,
+    arrayPath,
+    demoScope,
+    demoTemplate: SCOPE_SPREAD_TEMPLATE_DEMO.template,
+    demoOutput: SCOPE_SPREAD_TEMPLATE_DEMO.output,
+    deepTemplate: deepDemo.template,
+    deepScope: JSON.stringify(deepDemo.scope),
+    deepOutput: deepDemo.output,
+  });
 }
 
 export function buildSpreadInvalidExpressionWarningMessage(
   fieldLabel: string,
-  template: string
+  template: string,
+  t: TranslateFn = tForLocale("zh-CN")
 ): string {
   const demoScope = JSON.stringify(SCOPE_SPREAD_TEMPLATE_DEMO.scope);
-  const deepDemo = SCOPE_SPREAD_DEEP_TEMPLATE_DEMO;
-  return (
-    `「${fieldLabel}」中的 ${template} 写法无效，请使用 ${SCOPE_SPREAD_TEMPLATE_DEMO.template} 或 ${deepDemo.template} 形式。` +
-    `参考示例：scope 为 ${demoScope} 时输出 ${SCOPE_SPREAD_TEMPLATE_DEMO.output}。`
-  );
+  const deepDemo = getScopeSpreadDeepTemplateDemo(t);
+  return t("panel.scope.warnSpreadInvalid", {
+    fieldLabel,
+    template,
+    demoTemplate: SCOPE_SPREAD_TEMPLATE_DEMO.template,
+    deepTemplate: deepDemo.template,
+    demoScope,
+    demoOutput: SCOPE_SPREAD_TEMPLATE_DEMO.output,
+  });
 }

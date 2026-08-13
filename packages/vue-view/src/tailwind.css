@@ -1,14 +1,21 @@
-/* Moveable：仅角点控制柄固定屏幕像素；勿作用于 moveable-direction 边线 */
+/*
+ * Moveable 控制框：
+ * - 根节点必须高于画布元素 zIndex（节点默认 ≥1），否则多选组框线会被节点盖住，只剩锚点可见
+ * - 勿把 .moveable-group 压到 z-index:1（会覆盖根节点的 9999）
+ */
 .rv-moveable-layer {
   --moveable-color: #1990ff;
   z-index: 9999 !important;
 }
 
 .rv-moveable-layer.moveable-group,
-.rv-moveable-layer .moveable-group,
-.rv-moveable-layer.moveable-control-box,
-.rv-moveable-layer .moveable-control-box {
-  z-index: 1 !important;
+.rv-moveable-layer.moveable-control-box {
+  z-index: 9999 !important;
+}
+
+/* Moveable 默认 .group { z-index: -1 }，必须覆盖，避免整组掉到节点下方 */
+.rv-moveable-layer.moveable-group {
+  z-index: 9999 !important;
 }
 
 .rv-moveable-layer .moveable-line {
@@ -16,13 +23,13 @@
   background: var(--moveable-color) !important;
 }
 
-/* 组选/单边控制线：厚度由 moveable zoom 补偿，保持屏幕 1px */
-.rv-moveable-layer .moveable-line.moveable-direction {
+/* 组选/边线：保持颜色；厚度仍由 moveable zoom 的 scaleY 补偿 */
+.rv-moveable-layer .moveable-line.moveable-direction:not(.moveable-edge) {
   background: var(--moveable-color) !important;
 }
 
-.rv-moveable-layer .moveable-group .moveable-control-box,
-.rv-moveable-layer.moveable-group .moveable-control-box {
+/* 子 control-box 相对组内层叠，勿压低根节点 */
+.rv-moveable-layer.moveable-group > .moveable-control-box {
   z-index: 2 !important;
 }
 
@@ -37,7 +44,8 @@
   margin-left: -7px !important;
   border-radius: 50% !important;
   box-sizing: border-box !important;
-  border: 2px solid hsl(var(--background)) !important;
+  border: 2px solid #fff !important;
   background: #1990ff !important;
   background: var(--moveable-color) !important;
+  z-index: 10 !important;
 }

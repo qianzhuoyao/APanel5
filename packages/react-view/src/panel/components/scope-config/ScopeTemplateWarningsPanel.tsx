@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react";
+import { useI18n } from "@arronqzy/i18n/react";
 
 import { useScopeConfig } from "./ScopeConfigContext";
 
 const WARNINGS_COLLAPSE_STORAGE_KEY = "panel:config-scope-warnings-collapsed";
 
 export function ScopeTemplateWarningsPanel() {
+  const { t } = useI18n();
+
   const ctx = useScopeConfig();
   const [isCollapsed, setIsCollapsed] = useState(false);
 
@@ -26,7 +29,7 @@ export function ScopeTemplateWarningsPanel() {
     <div className="mt-2 border-t border-border/50 pt-2">
       <div className="flex items-center justify-between gap-2">
         <div className="text-[11px] font-medium text-amber-700 dark:text-amber-300">
-          异常调用警告
+          {t("panel.scope.warningsTitle")}
           <span className="ml-1.5 rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold">
             {ctx.warnings.length}
           </span>
@@ -36,7 +39,7 @@ export function ScopeTemplateWarningsPanel() {
           className="rounded border border-border px-1.5 py-0.5 text-[11px] text-muted-foreground hover:bg-accent"
           onClick={() => setIsCollapsed((prev) => !prev)}
         >
-          {isCollapsed ? "展开警告" : "收起警告"}
+          {isCollapsed ? t("panel.scope.expandWarnings") : t("panel.scope.collapseWarnings")}
         </button>
       </div>
       {!isCollapsed ? (

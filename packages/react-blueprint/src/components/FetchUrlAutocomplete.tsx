@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@arronqzy/ui";
+import { useI18n } from "@arronqzy/i18n/react";
 import {
   buildEndpointSuggestions,
   filterEndpointSuggestions,
@@ -28,6 +29,7 @@ export function FetchUrlAutocomplete({
   onChange,
   onSelectEndpoint,
 }: FetchUrlAutocompleteProps) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const [filterQuery, setFilterQuery] = useState("");
@@ -146,7 +148,7 @@ export function FetchUrlAutocomplete({
         <div className="absolute z-[10150] mt-1 max-h-52 w-full overflow-auto rounded-md border border-border bg-popover py-1 text-popover-foreground shadow-md">
           {filtered.length === 0 ? (
             <div className="px-2 py-1.5 text-[11px] text-muted-foreground">
-              无匹配接口
+              {t("blueprint.config.noMatchingEndpoint")}
             </div>
           ) : (
             filtered.map((item, index) => (

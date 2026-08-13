@@ -1,9 +1,12 @@
 <script setup lang="ts">
+import { useI18n } from "@arronqzy/i18n/vue";
 import { ref } from "vue";
 import {
   formatScopeTemplatePreview,
   resolveScopeTemplatePreview,
 } from "../../utils/scope-template-preview";
+
+const { t, locale } = useI18n();
 
 const props = defineProps<{
   template: string;
@@ -18,7 +21,7 @@ const previewValue = () =>
 const previewText = () => formatScopeTemplatePreview(previewValue());
 const previewType = () => {
   const value = previewValue();
-  return Array.isArray(value) ? `数组 · ${value.length} 项` : typeof value;
+  return Array.isArray(value) ? t("panel.scope.previewArray", { count: value.length }) : typeof value;
 };
 </script>
 
@@ -29,9 +32,9 @@ const previewType = () => {
       class="flex w-full items-center justify-between gap-2 px-2 py-1 text-left text-[10px] text-muted-foreground hover:bg-accent/40"
       @click="isExpanded = !isExpanded"
     >
-      <span class="font-medium text-foreground/80">解析预览</span>
+      <span class="font-medium text-foreground/80">{{ t("panel.scope.previewTitle") }}</span>
       <span class="shrink-0 text-[10px]">
-        {{ previewType() }} · {{ isExpanded ? "收起" : "展开" }}
+        {{ previewType() }} · {{ isExpanded ? t("panel.scope.collapsePreview") : t("panel.scope.expandPreview") }}
       </span>
     </button>
     <pre

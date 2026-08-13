@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from "@arronqzy/i18n/vue";
 import { onMounted, ref, watch } from "vue";
 import { Input, InputNumber, Select, Textarea } from "ant-design-vue";
 import type { PanelElement } from "../../types";
@@ -6,6 +7,7 @@ import ConfigColorField from "./ConfigColorField.vue";
 import ConfigFieldGroup from "./ConfigFieldGroup.vue";
 import ConfigSection from "./ConfigSection.vue";
 
+const { t, locale } = useI18n();
 const props = defineProps<{
   element: PanelElement;
   isEditable: boolean;
@@ -105,14 +107,14 @@ function clearSketch() {
 
 <template>
   <ConfigSection
-    title="几何配置"
+    :title="t('panel.config.sectionGeometry')"
     :open="open"
     :force-open="forceOpen"
     @update:open="emit('update:open', $event)"
   >
-    <ConfigFieldGroup title="基础形状">
+    <ConfigFieldGroup :title="t('panel.config.groupBasicShape')">
       <label class="block space-y-1">
-        <div>形状</div>
+        <div>{{ t("panel.config.shape") }}</div>
         <Select
           size="small"
           class="w-full"
@@ -120,25 +122,25 @@ function clearSketch() {
           :disabled="!isEditable"
           @update:value="(v) => patch({ geometryShape: v as PanelElement['geometryShape'] })"
         >
-          <Select.Option value="rect">矩形</Select.Option>
-          <Select.Option value="circle">圆形</Select.Option>
-          <Select.Option value="triangle">三角形</Select.Option>
-          <Select.Option value="diamond">菱形</Select.Option>
-          <Select.Option value="hexagon">六边形</Select.Option>
-          <Select.Option value="star">星形</Select.Option>
-          <Select.Option value="heart">爱心</Select.Option>
+          <Select.Option value="rect">{{ t("panel.config.shapeRect") }}</Select.Option>
+          <Select.Option value="circle">{{ t("panel.config.shapeCircle") }}</Select.Option>
+          <Select.Option value="triangle">{{ t("panel.config.shapeTriangle") }}</Select.Option>
+          <Select.Option value="diamond">{{ t("panel.config.shapeDiamond") }}</Select.Option>
+          <Select.Option value="hexagon">{{ t("panel.config.shapeHexagon") }}</Select.Option>
+          <Select.Option value="star">{{ t("panel.config.shapeStar") }}</Select.Option>
+          <Select.Option value="heart">{{ t("panel.config.shapeHeart") }}</Select.Option>
         </Select>
       </label>
       <ConfigColorField
-        label="几何颜色"
+        :label="t('panel.scope.fieldGeometryColor')"
         :value="element.geometryColor ?? '#3b82f6'"
         :disabled="!isEditable"
         @update:value="(v) => patch({ geometryColor: v || '#3b82f6' })"
       />
     </ConfigFieldGroup>
-    <ConfigFieldGroup title="高级（Canvas 脚本）">
+    <ConfigFieldGroup :title="t('panel.config.groupCanvasScript')">
       <template #hint>
-        可输入 Canvas 绘制逻辑，变量：ctx、width、height、element。脚本异常会被安全忽略。
+        {{ t("panel.config.canvasScriptHint") }}
       </template>
       <Textarea
         :value="element.geometryScript ?? ''"
@@ -146,14 +148,14 @@ function clearSketch() {
         :rows="6"
         spellcheck="false"
         class="font-mono text-[11px]"
-        placeholder="// 例: ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fillRect(8,8,width-16,height-16);"
+        :placeholder="t('panel.config.geometryScriptPlaceholder')"
         @update:value="(v: string) => patch({ geometryScript: v || undefined })"
       />
     </ConfigFieldGroup>
-    <ConfigFieldGroup title="手绘叠加">
+    <ConfigFieldGroup :title="t('panel.config.groupSketchOverlay')">
       <div class="flex items-center gap-2">
         <label class="block space-y-1">
-          <div class="text-[11px]">画笔颜色</div>
+          <div class="text-[11px]">{{ t("panel.config.penColor") }}</div>
           <input
             v-model="geometryDrawPenColor"
             type="color"
@@ -162,7 +164,7 @@ function clearSketch() {
           />
         </label>
         <label class="block space-y-1">
-          <div class="text-[11px]">画笔粗细</div>
+          <div class="text-[11px]">{{ t("panel.config.penWidth") }}</div>
           <InputNumber
             size="small"
             class="w-20"
@@ -193,7 +195,7 @@ function clearSketch() {
           :disabled="!isEditable"
           @click="applySketch"
         >
-          应用手绘到节点
+          {{ t("panel.config.applySketch") }}
         </button>
         <button
           type="button"
@@ -201,7 +203,7 @@ function clearSketch() {
           :disabled="!isEditable"
           @click="clearSketch"
         >
-          清空手绘
+          {{ t("panel.config.clearSketch") }}
         </button>
       </div>
     </ConfigFieldGroup>

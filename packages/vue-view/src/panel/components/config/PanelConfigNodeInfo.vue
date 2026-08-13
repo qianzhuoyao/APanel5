@@ -1,9 +1,12 @@
 <script setup lang="ts">
+import { useI18n } from "@arronqzy/i18n/vue";
 import { Checkbox, Input, InputNumber, Select } from "ant-design-vue";
 import type { PanelElement, PanelLayer } from "../../types";
-import { PANEL_MESSAGES } from "../../constants/messages";
+import { getPanelMessages } from "../../constants/messages";
 import ConfigSection from "./ConfigSection.vue";
 
+const { t, locale } = useI18n();
+const msgs = () => getPanelMessages(t);
 const props = defineProps<{
   element: PanelElement;
   layers: PanelLayer[];
@@ -34,18 +37,18 @@ function patch(patch: Partial<PanelElement>) {
 
 <template>
   <ConfigSection
-    title="节点信息"
+    :title="t('panel.config.sectionNodeInfo')"
     :open="open"
     :force-open="forceOpen"
     @update:open="emit('update:open', $event)"
   >
     <label class="block space-y-1">
-      <div>节点名称</div>
+      <div>{{ t("panel.config.nodeName") }}</div>
       <Input
         size="small"
         :value="element.name ?? ''"
         :disabled="!isEditable"
-        placeholder="自定义节点名称（显示在节点树）"
+        :placeholder="t('panel.config.nodeNamePlaceholder')"
         @update:value="(v: string) => patch({ name: v || undefined })"
       />
     </label>
@@ -73,7 +76,7 @@ function patch(patch: Partial<PanelElement>) {
     </div>
     <div class="grid grid-cols-3 gap-2">
       <label class="block space-y-1">
-        <div>旋转角度</div>
+        <div>{{ t("panel.config.rotate") }}</div>
         <InputNumber
           size="small"
           class="w-full"
@@ -83,7 +86,7 @@ function patch(patch: Partial<PanelElement>) {
         />
       </label>
       <label class="block space-y-1">
-        <div>宽</div>
+        <div>{{ t("panel.config.width") }}</div>
         <InputNumber
           size="small"
           class="w-full"
@@ -94,7 +97,7 @@ function patch(patch: Partial<PanelElement>) {
         />
       </label>
       <label class="block space-y-1">
-        <div>高</div>
+        <div>{{ t("panel.config.height") }}</div>
         <InputNumber
           size="small"
           class="w-full"
@@ -106,8 +109,8 @@ function patch(patch: Partial<PanelElement>) {
       </label>
     </div>
     <div class="space-y-1.5">
-      <div class="text-[11px] text-gray-500">节点层级</div>
-      <div class="text-[11px] text-gray-400">当前 zIndex：{{ nodeZOrderLabel ?? "-" }}</div>
+      <div class="text-[11px] text-gray-500">{{ t("panel.config.nodeZOrder") }}</div>
+      <div class="text-[11px] text-gray-400">{{ t("panel.config.currentZIndex", { value: nodeZOrderLabel ?? "-" }) }}</div>
       <div v-if="onAdjustNodeZOrder" class="grid grid-cols-2 gap-2">
         <button
           type="button"
@@ -115,7 +118,7 @@ function patch(patch: Partial<PanelElement>) {
           :disabled="!isEditable"
           @click="onAdjustNodeZOrder(element.id, 'bringForward')"
         >
-          上移一层
+          {{ t("panel.menubar.bringForward") }}
         </button>
         <button
           type="button"
@@ -123,7 +126,7 @@ function patch(patch: Partial<PanelElement>) {
           :disabled="!isEditable"
           @click="onAdjustNodeZOrder(element.id, 'sendBackward')"
         >
-          下移一层
+          {{ t("panel.menubar.sendBackward") }}
         </button>
         <button
           type="button"
@@ -131,7 +134,7 @@ function patch(patch: Partial<PanelElement>) {
           :disabled="!isEditable"
           @click="onAdjustNodeZOrder(element.id, 'bringToFront')"
         >
-          置顶
+          {{ t("panel.menubar.bringToFront") }}
         </button>
         <button
           type="button"
@@ -139,12 +142,12 @@ function patch(patch: Partial<PanelElement>) {
           :disabled="!isEditable"
           @click="onAdjustNodeZOrder(element.id, 'sendToBack')"
         >
-          置底
+          {{ t("panel.menubar.sendToBack") }}
         </button>
       </div>
     </div>
     <div class="truncate text-gray-400">ID: {{ element.id }}</div>
-    <div class="text-gray-400">类型: {{ element.materialType ?? element.id }}</div>
+    <div class="text-gray-400">{{ t("panel.config.type") }}: {{ element.materialType ?? element.id }}</div>
     <div class="rounded-lg border border-gray-200/60 bg-white/80 px-2.5 py-2">
       <label class="flex items-center gap-2">
         <Checkbox
@@ -152,14 +155,14 @@ function patch(patch: Partial<PanelElement>) {
           :disabled="!canToggleNodeLock"
           @update:checked="(v) => patch({ locked: v === true })"
         />
-        <span>锁定节点（禁止层级/位置/大小/旋转）</span>
+        <span>{{ t("panel.config.lockNode") }}</span>
       </label>
     </div>
     <div
       v-if="!isEditable"
       class="rounded border border-amber-500/40 bg-amber-500/10 px-2 py-1.5 text-[11px] text-amber-700"
     >
-      {{ element.locked ? PANEL_MESSAGES.nodeConfigLocked : PANEL_MESSAGES.nodeConfigLayerLocked }}
+      {{ element.locked ? msgs().nodeConfigLocked : msgs().nodeConfigLayerLocked }}
     </div>
   </ConfigSection>
 </template>

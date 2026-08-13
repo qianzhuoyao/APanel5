@@ -1,3 +1,5 @@
+import type { TranslateFn } from "@arronqzy/i18n";
+import { tForLocale } from "@arronqzy/i18n";
 import type { PanelElement } from "../types";
 import { hasScopeTemplate } from "./scope-template";
 import { resolveScopeFieldLabel } from "./scope-field-labels";
@@ -59,10 +61,11 @@ function pathExistsInScope(scope: unknown, path: string): boolean {
 function analyzeSpreadTemplateValue(
   fieldId: string,
   value: string,
-  scope: unknown
+  scope: unknown,
+  t: TranslateFn
 ): ScopeTemplateWarning[] {
   const warnings: ScopeTemplateWarning[] = [];
-  const fieldLabel = resolveScopeFieldLabel(fieldId);
+  const fieldLabel = resolveScopeFieldLabel(fieldId, t);
   const spreadRe = new RegExp(SCOPE_SPREAD_TEMPLATE_RE.source, "g");
   let match: RegExpExecArray | null;
 
@@ -81,7 +84,8 @@ function analyzeSpreadTemplateValue(
         kind: "spread-invalid-expression",
         message: buildSpreadInvalidExpressionWarningMessage(
           fieldLabel,
-          spreadTemplate
+          spreadTemplate,
+          t
         ),
       });
       continue;
@@ -100,7 +104,8 @@ function analyzeSpreadTemplateValue(
         kind: "spread-invalid-expression",
         message: buildSpreadInvalidExpressionWarningMessage(
           fieldLabel,
-          spreadTemplate
+          spreadTemplate,
+          t
         ),
       });
       continue;
@@ -118,7 +123,10 @@ function analyzeSpreadTemplateValue(
           expression,
           missingPath: arrayPath,
           kind: "missing-path",
-          message: `「${fieldLabel}」引用了 scope.${arrayPath}，但当前 scope 数据中并没有「${arrayPath}」字段，建议检查一下。`,
+          message: t("panel.scope.warnMissingPath", {
+            fieldLabel,
+            path: arrayPath,
+          }),
         });
       }
       continue;
@@ -136,7 +144,8 @@ function analyzeSpreadTemplateValue(
           fieldLabel,
           spreadTemplate,
           expression,
-          arrayPath
+          arrayPath,
+          t
         ),
       });
     }
@@ -148,14 +157,15 @@ function analyzeSpreadTemplateValue(
 function analyzeTemplateValue(
   fieldId: string,
   value: string,
-  scope: unknown
+  scope: unknown,
+  t: TranslateFn
 ): ScopeTemplateWarning[] {
   if (!hasScopeTemplate(value)) return [];
 
   const warnings: ScopeTemplateWarning[] = [
-    ...analyzeSpreadTemplateValue(fieldId, value, scope),
+    ...analyzeSpreadTemplateValue(fieldId, value, scope, t),
   ];
-  const fieldLabel = resolveScopeFieldLabel(fieldId);
+  const fieldLabel = resolveScopeFieldLabel(fieldId, t);
   const expressionRe = /\{([^}]+)\}/g;
   let match: RegExpExecArray | null;
 
@@ -172,7 +182,7 @@ function analyzeTemplateValue(
         expression,
         missingPath: path,
         kind: "missing-path",
-        message: `「${fieldLabel}」引用了 scope.${path}，但当前 scope 数据中并没有「${path}」字段，建议检查一下。`,
+        message: t("panel.scope.warnMissingPath", { fieldLabel, path }),
       });
     }
   }
@@ -188,18 +198,19 @@ function walkElementStrings(
   value: unknown,
   fieldId: string,
   scope: unknown,
-  warnings: ScopeTemplateWarning[]
+  warnings: ScopeTemplateWarning[],
+  t: TranslateFn
 ) {
   if (shouldSkipField(fieldId)) return;
 
   if (typeof value === "string") {
-    warnings.push(...analyzeTemplateValue(fieldId, value, scope));
+    warnings.push(...analyzeTemplateValue(fieldId, value, scope, t));
     return;
   }
 
   if (Array.isArray(value)) {
     value.forEach((item, index) => {
-      walkElementStrings(item, `${fieldId}.${index}`, scope, warnings);
+      walkElementStrings(item, `${fieldId}.${index}`, scope, warnings, t);
     });
     return;
   }
@@ -207,19 +218,20 @@ function walkElementStrings(
   if (value && typeof value === "object") {
     for (const [key, nested] of Object.entries(value)) {
       const nextId = fieldId ? `${fieldId}.${key}` : key;
-      walkElementStrings(nested, nextId, scope, warnings);
+      walkElementStrings(nested, nextId, scope, warnings, t);
     }
   }
 }
 
 export function collectElementScopeWarnings(
   element: PanelElement,
-  scope: unknown
+  scope: unknown,
+  t: TranslateFn = tForLocale("zh-CN")
 ): ScopeTemplateWarning[] {
   if (scope === undefined) return [];
 
   const warnings: ScopeTemplateWarning[] = [];
-  walkElementStrings(element, "", scope, warnings);
+  walkElementStrings(element, "", scope, warnings, t);
 
   const seen = new Set<string>();
   return warnings.filter((warning) => {

@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { useI18n } from "@arronqzy/i18n/react";
 import {
   Tooltip,
   TooltipContent,
@@ -14,11 +15,14 @@ export type ConfigHintIconProps = {
 };
 
 export function ConfigHintIcon({
-  label = "说明",
+  label,
   children,
   className,
   contentClassName,
 }: ConfigHintIconProps) {
+  const { t } = useI18n();
+  const resolvedLabel = label ?? t("common.hint");
+
   return (
     <TooltipProvider delayDuration={120}>
       <Tooltip>
@@ -29,7 +33,7 @@ export function ConfigHintIcon({
               className ??
               "inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-border text-[10px] leading-none text-muted-foreground hover:bg-accent/50"
             }
-            aria-label={`${label}说明`}
+            aria-label={t("common.hintAria", { label: resolvedLabel })}
           >
             ?
           </button>

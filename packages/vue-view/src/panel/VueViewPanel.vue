@@ -63,7 +63,12 @@ import {
   useViewElementScope,
 } from "./scope/view-scope-store";
 import { useRafThrottledScroll } from "./hooks/useRafThrottledScroll";
+import { useI18n } from "@arronqzy/i18n/vue";
+import { getPanelMessages } from "./constants/messages";
 import "../tailwind.css";
+
+const { t, locale, setLocale } = useI18n();
+const panelMessages = () => getPanelMessages(t);
 
 const props = withDefaults(
   defineProps<{
@@ -107,7 +112,7 @@ const {
 const selectedIds = ref<string[]>([]);
 const zoom = ref<ViewportZoom>({ x: props.initialZoom, y: props.initialZoom });
 const blueprintGraph = ref(BlueprintGraph.empty());
-const blueprintMeta = ref<BlueprintMetaDraft>({ name: "未命名蓝图", remark: "" });
+const blueprintMeta = ref<BlueprintMetaDraft>({ name: t("panel.defaults.unnamedBlueprint"), remark: "" });
 const blueprintOpen = ref(false);
 const selectedBlueprintNodeId = ref<string | null>(null);
 const blueprintLibraryItems = ref<BlueprintLibraryListItem[]>([]);
@@ -118,7 +123,7 @@ const workspaceBlueprintRef = shallowRef<{
   meta: BlueprintMetaDraft;
 } | null>(null);
 const configFocus = ref<WorkspaceConfigFocus>("view");
-const productName = ref("未命名产物");
+const productName = ref(t("panel.defaults.unnamedProduct"));
 const titleIconDataUrl = ref("");
 const editingLayerId = ref<string | null>(null);
 const editingLayerName = ref("");
@@ -305,7 +310,7 @@ function handleViewScopeUpdate(viewElementIds: string[], scope: unknown) {
 const blueprintDebugSession = useBlueprintDebugSession({
   graph: blueprintGraph,
   blueprintId: activeBlueprintLibraryId,
-  blueprintName: computed(() => blueprintMeta.value.name || "未命名蓝图"),
+  blueprintName: computed(() => { void locale.value; return blueprintMeta.value.name || t("panel.defaults.unnamedBlueprint"); }),
   resolveLibraryBlueprint,
   libraryNameById: blueprintLibraryNameById,
   onExecutionBlocked: handleBlueprintExecutionBlocked,
@@ -361,7 +366,7 @@ function handleWorkspaceProjectApplied(record: WorkspaceProjectRecord) {
   workspaceBlueprintRef.value = {
     document: record.blueprintDocument,
     meta: {
-      name: record.blueprintMeta?.name ?? "未命名蓝图",
+      name: record.blueprintMeta?.name ?? t("panel.defaults.unnamedBlueprint"),
       remark: record.blueprintMeta?.remark ?? "",
     },
   };
@@ -410,7 +415,7 @@ useBlueprintPageLifecycle({
 async function loadBlueprintFromLibrary(id: string) {
   const record = await getBlueprintLibraryRecord(id);
   if (!record) {
-    message.error("蓝图不存在或已被删除");
+    message.error(panelMessages().blueprintNotFound);
     void refreshBlueprintLibrary();
     return;
   }
@@ -461,7 +466,7 @@ async function syncBlueprintToLibrary() {
     remark: blueprintMeta.value.remark,
   });
   blueprintSyncedDocument.value = blueprintGraph.value.document;
-  message.success("蓝图已同步到库");
+  message.success(panelMessages().blueprintSyncedToLibrary);
   await refreshBlueprintLibrary();
 }
 
@@ -478,7 +483,7 @@ async function saveBlueprintToLibrary(meta: BlueprintMetaDraft) {
   blueprintSyncedDocument.value = blueprintGraph.value.document;
   blueprintMeta.value = meta;
   await refreshBlueprintLibrary();
-  message.success("蓝图已保存到库");
+  message.success(panelMessages().blueprintSavedToLibrary);
 }
 
 function handleExport() {
@@ -499,7 +504,7 @@ async function handleImportFile(file: File) {
   const text = await file.text();
   const parsed = JSON.parse(text) as State;
   const ok = importPanelData(parsed);
-  if (!ok) window.alert("导入失败：文件格式不正确");
+  if (!ok) window.alert(panelMessages().importInvalidFormat);
   else selectedIds.value = [];
 }
 
@@ -507,7 +512,7 @@ function openBlueprintExport() {
   downloadBlueprintExport(
     buildBlueprintExportPayload(blueprintGraph.value.document, blueprintMeta.value)
   );
-  message.success("蓝图已导出");
+  message.success(panelMessages().blueprintExported);
 }
 
 async function handleBlueprintImportFile(file: File) {
@@ -518,12 +523,12 @@ async function handleBlueprintImportFile(file: File) {
   await refreshBlueprintLibrary();
   if (!activeBlueprintLibraryId.value) snapshotWorkspaceBlueprint();
   await loadBlueprintFromLibrary(record.id);
-  message.success("蓝图已导入并加载");
+  message.success(panelMessages().blueprintImported);
 }
 
 async function handleWorkspaceCreateProject() {
   const result = await workspaceProjects.handleCreateProject();
-  if (result?.name) message.success(`已创建工作区「${result.name}」`);
+  if (result?.name) message.success(panelMessages().workspaceCreated(result.name));
 }
 
 async function handleWorkspaceOpenProject(id: string) {
@@ -531,24 +536,24 @@ async function handleWorkspaceOpenProject(id: string) {
     clearViewElementScopes();
     await workspaceProjects.handleOpenProject(id);
     selectedIds.value = [];
-    message.success("工作区已加载");
+    message.success(panelMessages().workspaceLoaded);
   } catch (error) {
-    message.error(error instanceof Error ? error.message : "打开工作区失败");
+    message.error(error instanceof Error ? error.message : panelMessages().openWorkspaceFailed);
   }
 }
 
 async function handleWorkspaceSyncProject() {
   try {
     const name = await workspaceProjects.handleSyncProject();
-    if (name) message.success(`已同步「${name}」`);
+    if (name) message.success(panelMessages().blueprintSynced(name));
   } catch (error) {
-    message.error(error instanceof Error ? error.message : "同步失败");
+    message.error(error instanceof Error ? error.message : panelMessages().syncFailed);
   }
 }
 
 async function handleWorkspaceDeleteProject(id: string) {
   await workspaceProjects.handleDeleteProject(id);
-  message.success("工作区已删除");
+  message.success(panelMessages().workspaceDeleted);
 }
 
 async function openOnlinePreviewForProject(
@@ -572,7 +577,7 @@ function commitRenameLayer() {
 
 function handleMergeLayers() {
   if (!canMergeLayers.value) {
-    message.warning("至少勾选 2 个图层后可合并");
+    message.warning(panelMessages().mergeNeedTwoLayers);
     return;
   }
   mergeSelectedLayers(mergeLayerName.value.trim() || undefined);
@@ -610,39 +615,39 @@ onUnmounted(() => window.removeEventListener("keydown", onKeyDown));
 </script>
 
 <template>
-  <Layout class="vue-view-panel h-screen overflow-hidden" :class="props.class">
+  <Layout class="vue-view-panel h-screen overflow-hidden" :class="props.class" :key="locale">
     <Layout.Header class="flex h-auto flex-wrap items-center gap-2 bg-[#001529] px-3 py-2">
       <Dropdown :trigger="['click']">
-        <Button type="text" class="!text-white">文件</Button>
+        <Button type="text" class="!text-white">{{ t("panel.menubar.file") }}</Button>
         <template #overlay>
           <Menu>
-            <Menu.Item @click="handleExport">导出面板 JSON</Menu.Item>
-            <Menu.Item @click="importInputRef?.click()">导入面板 JSON</Menu.Item>
+            <Menu.Item @click="handleExport">{{ t("panel.menubar.exportPanelJson") }}</Menu.Item>
+            <Menu.Item @click="importInputRef?.click()">{{ t("panel.menubar.importPanelJson") }}</Menu.Item>
           </Menu>
         </template>
       </Dropdown>
       <Dropdown :trigger="['click']">
-        <Button type="text" class="!text-white">编辑</Button>
+        <Button type="text" class="!text-white">{{ t("panel.menubar.edit") }}</Button>
         <template #overlay>
           <Menu>
-            <Menu.Item :disabled="!canUndo" @click="undo">撤销</Menu.Item>
-            <Menu.Item :disabled="!canRedo" @click="redo">重做</Menu.Item>
+            <Menu.Item :disabled="!canUndo" @click="undo">{{ t("panel.menubar.undo") }}</Menu.Item>
+            <Menu.Item :disabled="!canRedo" @click="redo">{{ t("panel.menubar.redo") }}</Menu.Item>
             <Menu.Divider />
-            <Menu.Item :disabled="!hasUnlockedSelection" @click="bringElementsForward(selectedIds)">上移一层</Menu.Item>
-            <Menu.Item :disabled="!hasUnlockedSelection" @click="sendElementsBackward(selectedIds)">下移一层</Menu.Item>
-            <Menu.Item :disabled="!hasUnlockedSelection" @click="bringElementsToFront(selectedIds)">置顶</Menu.Item>
-            <Menu.Item :disabled="!hasUnlockedSelection" @click="sendElementsToBack(selectedIds)">置底</Menu.Item>
+            <Menu.Item :disabled="!hasUnlockedSelection" @click="bringElementsForward(selectedIds)">{{ t("panel.menubar.bringForward") }}</Menu.Item>
+            <Menu.Item :disabled="!hasUnlockedSelection" @click="sendElementsBackward(selectedIds)">{{ t("panel.menubar.sendBackward") }}</Menu.Item>
+            <Menu.Item :disabled="!hasUnlockedSelection" @click="bringElementsToFront(selectedIds)">{{ t("panel.menubar.bringToFront") }}</Menu.Item>
+            <Menu.Item :disabled="!hasUnlockedSelection" @click="sendElementsToBack(selectedIds)">{{ t("panel.menubar.sendToBack") }}</Menu.Item>
             <Menu.Divider />
-            <Menu.Item :disabled="!hasUnlockedSelection" @click="handleDeleteSelected">删除选中</Menu.Item>
+            <Menu.Item :disabled="!hasUnlockedSelection" @click="handleDeleteSelected">{{ t("panel.menubar.deleteSelected") }}</Menu.Item>
           </Menu>
         </template>
       </Dropdown>
       <Dropdown :trigger="['click']">
-        <Button type="text" class="!text-white">蓝图</Button>
+        <Button type="text" class="!text-white">{{ t("panel.menubar.blueprint") }}</Button>
         <template #overlay>
           <Menu>
-            <Menu.Item @click="openBlueprintExport">导出蓝图</Menu.Item>
-            <Menu.Item @click="blueprintImportInputRef?.click()">导入蓝图</Menu.Item>
+            <Menu.Item @click="openBlueprintExport">{{ t("panel.menubar.exportBlueprint") }}</Menu.Item>
+            <Menu.Item @click="blueprintImportInputRef?.click()">{{ t("panel.menubar.importBlueprint") }}</Menu.Item>
           </Menu>
         </template>
       </Dropdown>
@@ -657,17 +662,26 @@ onUnmounted(() => window.removeEventListener("keydown", onKeyDown));
         @delete-project="handleWorkspaceDeleteProject"
         @preview-project="openOnlinePreviewForProject"
       />
+            <Dropdown :trigger="['click']">
+        <Button type="text" class="!text-white">{{ t("panel.theme.language") }}</Button>
+        <template #overlay>
+          <Menu>
+            <Menu.Item :class="{ 'ant-menu-item-selected': locale === 'zh-CN' }" @click="setLocale('zh-CN')">{{ t("panel.theme.zhCN") }}</Menu.Item>
+            <Menu.Item :class="{ 'ant-menu-item-selected': locale === 'en-US' }" @click="setLocale('en-US')">{{ t("panel.theme.enUS") }}</Menu.Item>
+          </Menu>
+        </template>
+      </Dropdown>
       <div class="flex-1" />
       <Space>
-        <Button size="small" :disabled="!canUndo" @click="undo">撤销</Button>
-        <Button size="small" :disabled="!canRedo" @click="redo">重做</Button>
+        <Button size="small" :disabled="!canUndo" @click="undo">{{ t("panel.menubar.undo") }}</Button>
+        <Button size="small" :disabled="!canRedo" @click="redo">{{ t("panel.menubar.redo") }}</Button>
         <Button
           size="small"
           type="primary"
           :disabled="!workspaceProjects.activeProjectId.value"
           @click="workspaceProjects.activeProjectId.value && openOnlinePreviewForProject(workspaceProjects.activeProjectId.value, { syncFirst: workspaceProjects.dirty.value })"
         >
-          预览
+          {{ t("common.preview") }}
         </Button>
       </Space>
     </Layout.Header>
@@ -689,9 +703,9 @@ onUnmounted(() => window.removeEventListener("keydown", onKeyDown));
               v-model:value="productName"
               size="small"
               class="w-[200px]"
-              placeholder="产物名称"
+              :placeholder="t('panel.menubar.productName')"
             />
-            <span class="text-xs text-gray-500">缩放</span>
+            <span class="text-xs text-gray-500">{{ t("panel.menubar.zoom") }}</span>
             <Slider
               :min="0.25"
               :max="4"
@@ -701,9 +715,9 @@ onUnmounted(() => window.removeEventListener("keydown", onKeyDown));
               @change="(v: number | [number, number]) => setUniformZoom(Array.isArray(v) ? v[0] : v)"
             />
             <Tag v-if="activeLayer">{{ activeLayer.name }}</Tag>
-            <Tag color="blue">已选 {{ selectedIds.length }}</Tag>
+            <Tag color="blue">{{ t("panel.menubar.selectedCount", { count: selectedIds.length }) }}</Tag>
             <div data-blueprint-toggle class="ml-auto flex items-center gap-2">
-              <span class="text-xs text-gray-500">蓝图</span>
+              <span class="text-xs text-gray-500">{{ t("panel.menubar.blueprint") }}</span>
               <Switch v-model:checked="blueprintOpen" size="small" />
             </div>
           </div>
@@ -765,9 +779,9 @@ onUnmounted(() => window.removeEventListener("keydown", onKeyDown));
 
           <div class="border-t bg-white px-2 py-2">
             <div class="mb-2 flex flex-wrap items-center gap-2">
-              <span class="text-xs font-semibold text-gray-500">图层</span>
-              <Button size="small" @click="addLayer()">新建</Button>
-              <Button size="small" :disabled="!canMergeLayers" @click="isMergingLayers = true">合并</Button>
+              <span class="text-xs font-semibold text-gray-500">{{ t("panel.layers.title") }}</span>
+              <Button size="small" @click="addLayer()">{{ t("panel.layers.addShort") }}</Button>
+              <Button size="small" :disabled="!canMergeLayers" @click="isMergingLayers = true">{{ t("panel.layers.mergeShort") }}</Button>
             </div>
             <Tabs
               size="small"
@@ -779,8 +793,8 @@ onUnmounted(() => window.removeEventListener("keydown", onKeyDown));
                 <template #tab>
                   <span class="inline-flex items-center gap-1">
                     {{ layer.name }}
-                    <Tag v-if="layer.isMapping" color="blue" class="!m-0">映射</Tag>
-                    <Tag v-if="layer.isPrimary" color="green" class="!m-0">主</Tag>
+                    <Tag v-if="layer.isMapping" color="blue" class="!m-0">{{ t("panel.layers.mapping") }}</Tag>
+                    <Tag v-if="layer.isPrimary" color="green" class="!m-0">{{ t("panel.layers.primary") }}</Tag>
                   </span>
                 </template>
               </Tabs.TabPane>
@@ -794,23 +808,23 @@ onUnmounted(() => window.removeEventListener("keydown", onKeyDown));
                   class="w-40"
                   @press-enter="commitRenameLayer"
                 />
-                <Button size="small" type="primary" @click="commitRenameLayer">确定</Button>
+                <Button size="small" type="primary" @click="commitRenameLayer">{{ t("common.ok") }}</Button>
               </template>
               <template v-else>
                 <span class="font-medium">{{ activeLayer.name }}</span>
-                <Button size="small" type="link" @click="startRenameLayer(activeLayer.id, activeLayer.name)">重命名</Button>
+                <Button size="small" type="link" @click="startRenameLayer(activeLayer.id, activeLayer.name)">{{ t("panel.layers.renameShort") }}</Button>
               </template>
               <Button size="small" @click="toggleLayerLock(activeLayer.id)">
-                {{ activeLayer.locked ? "解锁" : "锁定" }}
+                {{ activeLayer.locked ? t("panel.layers.unlockShort") : t("panel.layers.lockShort") }}
               </Button>
               <Checkbox
                 :checked="Boolean(activeLayer.mergeSelected)"
                 @change="() => toggleLayerMergeSelected(activeLayer!.id)"
               >
-                参与合并
+                {{ t("panel.layers.joinMerge") }}
               </Checkbox>
               <Button size="small" :disabled="activeLayer.isPrimary" @click="setPrimaryLayer(activeLayer.id)">
-                设为主图层
+                {{ t("panel.layers.setPrimary") }}
               </Button>
               <Button
                 size="small"
@@ -818,7 +832,7 @@ onUnmounted(() => window.removeEventListener("keydown", onKeyDown));
                 :disabled="!activeLayer.editable"
                 @click="deleteLayer(activeLayer.id)"
               >
-                删除图层
+                {{ t("panel.layers.delete") }}
               </Button>
             </div>
           </div>
@@ -852,12 +866,12 @@ onUnmounted(() => window.removeEventListener("keydown", onKeyDown));
 
     <Modal
       v-model:open="isMergingLayers"
-      title="合并图层"
-      ok-text="合并"
+      :title="t('panel.layers.mergeDialogTitle')"
+      :ok-text="t('panel.layers.mergeOk')"
       @ok="handleMergeLayers"
     >
-      <Input v-model:value="mergeLayerName" placeholder="合并后图层名称（可选）" />
-      <div class="mt-2 text-xs text-gray-500">已勾选 {{ mergeSelectedCount }} 个图层</div>
+      <Input v-model:value="mergeLayerName" :placeholder="t('panel.layers.mergedNamePlaceholderOptional')" />
+      <div class="mt-2 text-xs text-gray-500">{{ t("panel.layers.mergeSelectedCount", { count: mergeSelectedCount }) }}</div>
     </Modal>
   </Layout>
 </template>

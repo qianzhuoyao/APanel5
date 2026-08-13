@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from "@arronqzy/i18n/vue";
 import {
   computed,
   onMounted,
@@ -11,6 +12,8 @@ import Moveable from "moveable";
 import type { PanelElement } from "../types";
 import { uniformViewportZoom } from "../viewportZoom";
 import { notifyPreviewLayoutChanged } from "../utils/panelStateIO";
+
+const { t, locale } = useI18n();
 
 const props = defineProps<{
   zoomX: number;
@@ -814,7 +817,7 @@ const showPartialLockBadge = computed(
     <div
       class="pointer-events-none absolute z-[80] inline-flex select-none items-center gap-1 rounded border border-border bg-background/95 px-1.5 py-0.5 text-[11px] text-foreground shadow-sm"
       :style="{ left: `${lockBadgeScreen!.x + 6}px`, top: `${lockBadgeScreen!.y - 22}px` }"
-      title="节点已锁定"
+      :title="t('panel.config.nodeLockedTitle')"
     >
       <svg
         viewBox="0 0 24 24"
@@ -830,14 +833,14 @@ const showPartialLockBadge = computed(
         <path d="M8 10.5V8a4 4 0 0 1 8 0v2.5" />
         <circle cx="12" cy="15.5" r="1.2" />
       </svg>
-      <span>已锁定</span>
+      <span>{{ t("panel.config.nodeLockedBadge") }}</span>
     </div>
   </Teleport>
   <Teleport v-else-if="pointerRoot && showPartialLockBadge" :to="pointerRoot">
     <div
       class="pointer-events-none absolute z-[80] inline-flex select-none items-center gap-1 rounded border border-border bg-background/95 px-1.5 py-0.5 text-[11px] text-foreground shadow-sm"
       :style="{ left: `${lockBadgeScreen!.x + 6}px`, top: `${lockBadgeScreen!.y - 22}px` }"
-      title="部分节点已锁定，已自动排除"
+      :title="t('panel.config.lockedExcludedTitle')"
     >
       <svg
         viewBox="0 0 24 24"
@@ -853,7 +856,7 @@ const showPartialLockBadge = computed(
         <path d="M8 10.5V8a4 4 0 0 1 8 0v2.5" />
         <circle cx="12" cy="15.5" r="1.2" />
       </svg>
-      <span>锁定节点已排除</span>
+      <span>{{ t("panel.config.lockedExcludedBadge") }}</span>
     </div>
   </Teleport>
 </template>

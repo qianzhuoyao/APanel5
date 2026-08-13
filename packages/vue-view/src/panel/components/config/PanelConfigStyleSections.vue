@@ -1,15 +1,16 @@
 <script setup lang="ts">
+import { useI18n } from "@arronqzy/i18n/vue";
 import { ref } from "vue";
 import { Input, Select } from "ant-design-vue";
 import type { PanelElement, PanelElementStyle } from "../../types";
-import {
-  PANEL_MESSAGES,
-  readFileAsDataUrl,
-  uploadFileToRemote,
-} from "./shared";
+import { readFileAsDataUrl, uploadFileToRemote } from "./shared";
+import { getPanelMessages } from "../../constants/messages";
 import ConfigColorField from "./ConfigColorField.vue";
 import ConfigFieldGroup from "./ConfigFieldGroup.vue";
 import ConfigSection from "./ConfigSection.vue";
+
+const { t, locale } = useI18n();
+const msgs = () => getPanelMessages(t);
 
 const props = defineProps<{
   element: PanelElement;
@@ -40,15 +41,15 @@ function patchStyle(patch: Partial<PanelElementStyle>) {
 }
 
 async function handleUploadBackgroundImage(file: File) {
-  const base64 = await readFileAsDataUrl(file, PANEL_MESSAGES.readImageFailed);
+  const base64 = await readFileAsDataUrl(file, msgs().readImageFailed);
   patchStyle({ backgroundImage: `url("${base64}")` });
-  uploadStatus.value = "已写入 base64";
+  uploadStatus.value = t("panel.config.uploadWrittenBase64");
   const url = await uploadFileToRemote(file);
   if (url) {
     patchStyle({ backgroundImageRemoteUrl: url });
-    uploadStatus.value = "已上传服务器并写入 base64";
+    uploadStatus.value = t("panel.config.uploadServerAndBase64");
   } else {
-    uploadStatus.value = "服务器上传失败，仅保留 base64";
+    uploadStatus.value = t("panel.config.uploadServerFailedKeepBase64");
   }
 }
 
@@ -63,20 +64,20 @@ function onFileChange(e: Event) {
 <template>
   <ConfigSection
     v-if="showBackground !== false"
-    title="通用样式 / 背景"
+    :title="t('panel.config.sectionStyleBackground')"
     :open="backgroundOpen"
     :force-open="forceOpen"
     @update:open="emit('update:backgroundOpen', $event)"
   >
-    <ConfigFieldGroup title="背景填充">
+    <ConfigFieldGroup :title="t('panel.config.groupBgFill')">
       <ConfigColorField
-        label="背景色"
+        :label="t('panel.scope.fieldStyleBackgroundColor')"
         :value="element.style?.backgroundColor ?? ''"
         :disabled="!isEditable"
         @update:value="(v) => patchStyle({ backgroundColor: v || undefined })"
       />
       <label class="block space-y-1">
-        <div>背景图</div>
+        <div>{{ t("panel.scope.fieldStyleBackgroundImage") }}</div>
         <Input
           size="small"
           :value="element.style?.backgroundImage ?? ''"
@@ -90,7 +91,7 @@ function onFileChange(e: Event) {
           class="inline-flex cursor-pointer items-center rounded border border-gray-200 px-2 py-1 text-[11px] hover:bg-gray-50"
           :class="{ 'pointer-events-none opacity-50': !isEditable }"
         >
-          上传图片
+          {{ t("panel.config.uploadImage") }}
           <input
             type="file"
             accept="image/*"
@@ -102,10 +103,10 @@ function onFileChange(e: Event) {
         <span v-if="uploadStatus" class="text-[11px] text-gray-500">{{ uploadStatus }}</span>
       </div>
     </ConfigFieldGroup>
-    <ConfigFieldGroup title="背景布局">
+    <ConfigFieldGroup :title="t('panel.config.groupBgLayout')">
       <div class="grid grid-cols-2 gap-2">
         <label class="block space-y-1">
-          <div>背景尺寸</div>
+          <div>{{ t("panel.scope.fieldStyleBackgroundSize") }}</div>
           <Select
             size="small"
             class="w-full"
@@ -113,7 +114,7 @@ function onFileChange(e: Event) {
             :disabled="!isEditable"
             @update:value="(v) => patchStyle({ backgroundSize: v === '__none__' ? undefined : String(v) })"
           >
-            <Select.Option value="__none__">默认</Select.Option>
+            <Select.Option value="__none__">{{ t("common.default") }}</Select.Option>
             <Select.Option value="cover">cover</Select.Option>
             <Select.Option value="contain">contain</Select.Option>
             <Select.Option value="100% 100%">100% 100%</Select.Option>
@@ -121,7 +122,7 @@ function onFileChange(e: Event) {
           </Select>
         </label>
         <label class="block space-y-1">
-          <div>背景位置</div>
+          <div>{{ t("panel.scope.fieldStyleBackgroundPosition") }}</div>
           <Select
             size="small"
             class="w-full"
@@ -129,7 +130,7 @@ function onFileChange(e: Event) {
             :disabled="!isEditable"
             @update:value="(v) => patchStyle({ backgroundPosition: v === '__none__' ? undefined : String(v) })"
           >
-            <Select.Option value="__none__">默认</Select.Option>
+            <Select.Option value="__none__">{{ t("common.default") }}</Select.Option>
             <Select.Option value="center">center</Select.Option>
             <Select.Option value="top">top</Select.Option>
             <Select.Option value="bottom">bottom</Select.Option>
@@ -147,15 +148,15 @@ function onFileChange(e: Event) {
 
   <ConfigSection
     v-if="showBorder !== false"
-    title="通用样式 / 边框"
+    :title="t('panel.config.sectionStyleBorder')"
     :open="borderOpen"
     :force-open="forceOpen"
     @update:open="emit('update:borderOpen', $event)"
   >
-    <ConfigFieldGroup title="边框几何">
+    <ConfigFieldGroup :title="t('panel.config.groupBorderGeometry')">
       <div class="grid grid-cols-2 gap-2">
         <label class="block space-y-1">
-          <div>边框宽度（px）</div>
+          <div>{{ t("panel.config.borderWidth") }}</div>
           <Input
             size="small"
             type="number"
@@ -166,7 +167,7 @@ function onFileChange(e: Event) {
           />
         </label>
         <label class="block space-y-1">
-          <div>边框圆角（px）</div>
+          <div>{{ t("panel.config.borderRadius") }}</div>
           <Input
             size="small"
             type="number"
@@ -178,10 +179,10 @@ function onFileChange(e: Event) {
         </label>
       </div>
     </ConfigFieldGroup>
-    <ConfigFieldGroup title="边框视觉">
+    <ConfigFieldGroup :title="t('panel.config.groupBorderVisual')">
       <div class="grid grid-cols-2 gap-2">
         <label class="block space-y-1">
-          <div>边框样式</div>
+          <div>{{ t("panel.config.borderStyle") }}</div>
           <Select
             size="small"
             class="w-full"
@@ -197,7 +198,7 @@ function onFileChange(e: Event) {
           </Select>
         </label>
         <ConfigColorField
-          label="边框颜色"
+          :label="t('panel.scope.fieldStyleBorderColor')"
           :value="element.style?.borderColor ?? ''"
           :disabled="!isEditable"
           @update:value="(v) => patchStyle({ borderColor: v || undefined })"

@@ -1,41 +1,52 @@
+import type { TranslateFn } from "@arronqzy/i18n";
+import { tForLocale } from "@arronqzy/i18n";
 import type { PanelChartConfig, PanelLayer } from "../types";
 
-const DEFAULT_NODE_NAME_MAP: Record<string, string> = {
-  bar: "柱状图",
-  line: "折线图",
-  pie: "饼图",
-  area: "面积图",
-  scatter: "散点图",
-  radar: "雷达图",
-  gauge: "仪表盘",
-  funnel: "漏斗图",
-  text: "文本",
-  grid: "网格布局",
-  image: "图片",
-  video: "视频",
-  audio: "音频",
-  reference: "引用组件",
-  geometry: "几何",
+const DEFAULT_NODE_NAME_KEYS: Record<string, string> = {
+  bar: "panel.defaults.bar",
+  line: "panel.defaults.line",
+  pie: "panel.defaults.pie",
+  area: "panel.defaults.area",
+  scatter: "panel.defaults.scatter",
+  radar: "panel.defaults.radar",
+  gauge: "panel.defaults.gauge",
+  funnel: "panel.defaults.funnel",
+  text: "panel.defaults.text",
+  grid: "panel.defaults.grid",
+  image: "panel.defaults.image",
+  video: "panel.defaults.video",
+  audio: "panel.defaults.audio",
+  reference: "panel.defaults.reference",
+  geometry: "panel.defaults.geometry",
 };
 
 export const DEFAULT_LAYER_ID = "layer-1";
 
-export function getDefaultNodeName(materialType: string): string {
-  return DEFAULT_NODE_NAME_MAP[materialType] ?? materialType;
+export function getDefaultNodeName(
+  materialType: string,
+  t: TranslateFn = tForLocale("zh-CN")
+): string {
+  const key = DEFAULT_NODE_NAME_KEYS[materialType];
+  return key ? t(key) : materialType;
 }
 
-export const DEFAULT_LAYER: PanelLayer = {
-  id: DEFAULT_LAYER_ID,
-  name: "图层1",
-  locked: false,
-  editable: false,
-  isPrimary: true,
-  isMapping: false,
-  mappingBaseLayerId: undefined,
-};
+export function getDefaultLayer(t: TranslateFn = tForLocale("zh-CN")): PanelLayer {
+  return {
+    id: DEFAULT_LAYER_ID,
+    name: t("panel.defaults.layer1"),
+    locked: false,
+    editable: false,
+    isPrimary: true,
+    isMapping: false,
+    mappingBaseLayerId: undefined,
+  };
+}
+
+/** @deprecated Prefer getDefaultLayer(t) */
+export const DEFAULT_LAYER: PanelLayer = getDefaultLayer();
 
 export function normalizePrimaryLayer(layers: PanelLayer[]): PanelLayer[] {
-  if (layers.length === 0) return [DEFAULT_LAYER];
+  if (layers.length === 0) return [getDefaultLayer()];
   const explicitPrimary = layers.find((layer) => layer.isPrimary);
   const primaryId = explicitPrimary?.id ?? layers[0].id;
   return layers.map((layer) => {
@@ -73,10 +84,13 @@ export function getDefaultSizeByMaterial(materialType: string) {
   }
 }
 
-export function getDefaultTextContent(materialType: string) {
+export function getDefaultTextContent(
+  materialType: string,
+  t: TranslateFn = tForLocale("zh-CN")
+) {
   if (materialType !== "text") return {};
   return {
-    textHtml: "<p>双击输入文本</p>",
+    textHtml: `<p>${t("panel.defaults.doubleClickTextHtml")}</p>`,
     textAllowInput: true,
     textFontSize: 14,
     textFontWeight: "400",
@@ -96,7 +110,10 @@ export function getDefaultGridConfig(materialType: string) {
   } as const;
 }
 
-export function getDefaultChartConfig(materialType: string): PanelChartConfig | undefined {
+export function getDefaultChartConfig(
+  materialType: string,
+  t: TranslateFn = tForLocale("zh-CN")
+): PanelChartConfig | undefined {
   if (!["bar", "line", "pie", "area", "scatter", "radar", "gauge", "funnel"].includes(materialType))
     return undefined;
   const common = {
@@ -107,40 +124,40 @@ export function getDefaultChartConfig(materialType: string): PanelChartConfig | 
   };
   if (materialType === "bar") {
     return {
-      title: "柱状图",
+      title: t("panel.defaults.bar"),
       ...common,
       barWidth: 24,
     };
   }
   if (materialType === "line") {
     return {
-      title: "折线图",
+      title: t("panel.defaults.line"),
       ...common,
       smooth: true,
     };
   }
   if (materialType === "area") {
     return {
-      title: "面积图",
+      title: t("panel.defaults.area"),
       ...common,
       smooth: true,
     };
   }
   if (materialType === "scatter") {
     return {
-      title: "散点图",
+      title: t("panel.defaults.scatter"),
       ...common,
     };
   }
   if (materialType === "radar") {
     return {
-      title: "雷达图",
+      title: t("panel.defaults.radar"),
       ...common,
     };
   }
   if (materialType === "gauge") {
     return {
-      title: "仪表盘",
+      title: t("panel.defaults.gauge"),
       color: "#3b82f6",
       renderMode: "canvas",
       values: [68],
@@ -148,12 +165,12 @@ export function getDefaultChartConfig(materialType: string): PanelChartConfig | 
   }
   if (materialType === "funnel") {
     return {
-      title: "漏斗图",
+      title: t("panel.defaults.funnel"),
       ...common,
     };
   }
   return {
-    title: "饼图",
+    title: t("panel.defaults.pie"),
     ...common,
     pieInnerRadius: 30,
     pieOuterRadius: 65,

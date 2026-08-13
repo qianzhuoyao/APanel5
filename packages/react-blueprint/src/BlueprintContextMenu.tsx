@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { useI18n } from "@arronqzy/i18n/react";
 
 export type BlueprintContextMenuState =
   | {
@@ -35,6 +36,7 @@ export function BlueprintContextMenu({
   onDeleteNode,
   onDeleteEdge,
 }: BlueprintContextMenuProps) {
+  const { t } = useI18n();
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -74,7 +76,7 @@ export function BlueprintContextMenu({
             onClose();
           }}
         >
-          新增节点
+          {t("blueprint.toolbar.addNode")}
         </button>
       ) : null}
 
@@ -87,7 +89,7 @@ export function BlueprintContextMenu({
             onClose();
           }}
         >
-          删除节点
+          {t("blueprint.toolbar.deleteNode")}
         </button>
       ) : null}
 
@@ -100,7 +102,7 @@ export function BlueprintContextMenu({
             onClose();
           }}
         >
-          删除连线
+          {t("blueprint.toolbar.deleteEdge")}
         </button>
       ) : null}
     </div>

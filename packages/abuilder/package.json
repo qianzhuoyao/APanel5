@@ -33,6 +33,7 @@
   },
   "dependencies": {
     "@arronqzy/blueprint-dsl": "workspace:*",
+    "@arronqzy/i18n": "workspace:*",
     "@arronqzy/react-blueprint": "workspace:*",
     "@arronqzy/react-view": "workspace:*",
     "@arronqzy/rx-store": "workspace:*",

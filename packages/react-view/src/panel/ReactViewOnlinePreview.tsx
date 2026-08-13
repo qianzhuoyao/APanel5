@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useI18n } from "@arronqzy/i18n/react";
 import {
   BlueprintGraph,
   documentToRunnableGraph,
@@ -63,6 +64,8 @@ export function ReactViewOnlinePreview({
   projectId,
   previewInstanceId,
 }: ReactViewOnlinePreviewProps) {
+  const { t } = useI18n();
+
   const [loadError, setLoadError] = useState<string | null>(null);
   const [panelState, setPanelState] = useState<State | null>(null);
   const [projectRevision, setProjectRevision] = useState(0);
@@ -91,14 +94,14 @@ export function ReactViewOnlinePreview({
   const loadProject = useCallback(async () => {
     const record = await loadWorkspaceRecord(projectId);
     if (!record) {
-      setLoadError("工作区不存在或已被删除");
+      setLoadError(t("panel.messages.workspaceNotFound"));
       setPanelState(null);
       return;
     }
 
     const normalized = normalizeImportedPanelState(record.panelState);
     if (!normalized) {
-      setLoadError("工作区数据格式无效");
+      setLoadError(t("panel.messages.workspaceDataInvalid"));
       setPanelState(null);
       return;
     }
@@ -107,7 +110,7 @@ export function ReactViewOnlinePreview({
     clearViewElementScopes();
     setPanelState(normalized);
     setBlueprintGraph(BlueprintGraph.fromDocument(record.blueprintDocument));
-    document.title = record.productName.trim() || record.name || "预览";
+    document.title = record.productName.trim() || record.name || t("panel.workspace.previewDocTitle");
     applyTitleIcon(record.titleIconDataUrl);
     setProjectRevision((v) => v + 1);
   }, [projectId]);
@@ -261,7 +264,7 @@ export function ReactViewOnlinePreview({
   if (!panelState) {
     return (
       <div className="flex min-h-[100vh] w-full items-center justify-center bg-white text-sm text-gray-600">
-        加载预览中…
+        {t("panel.workspace.previewLoading")}
       </div>
     );
   }
@@ -269,9 +272,9 @@ export function ReactViewOnlinePreview({
   if (layerElements.length === 0) {
     return (
       <div className="flex min-h-[100vh] w-full flex-col items-center justify-center gap-2 bg-white px-6 text-center text-sm text-gray-600">
-        <div>当前工作区没有可预览的视图节点</div>
+        <div>{t("panel.workspace.previewNoNodes")}</div>
         <div className="text-xs text-gray-400">
-          请先在编辑器中点击「同步」或「创建工作区」后再预览
+          {t("panel.workspace.previewHint")}
         </div>
       </div>
     );

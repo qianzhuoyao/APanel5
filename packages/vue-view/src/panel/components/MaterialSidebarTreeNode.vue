@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from "@arronqzy/i18n/vue";
 import { computed } from "vue";
 import { Card, Tooltip } from "ant-design-vue";
 import type { PanelElement, PanelLayer, ReferenceCopyMode } from "../types";
@@ -6,6 +7,8 @@ import {
   compareGridTreeChildOrder,
   getNodeDisplayName,
 } from "./materialSidebarData";
+
+const { t, locale } = useI18n();
 
 const props = defineProps<{
   node: PanelElement;
@@ -148,7 +151,7 @@ function onDragStart(e: DragEvent) {
         @dragstart="onDragStart"
         @dragend="emit('dragEnd')"
       >
-        {{ getNodeDisplayName(node) }}
+        {{ getNodeDisplayName(node, t) }}
       </button>
 
       <span
@@ -156,30 +159,28 @@ function onDragStart(e: DragEvent) {
         class="inline-flex shrink-0 items-center rounded-md border-2 border-violet-600 bg-violet-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-violet-950 shadow-sm dark:border-violet-400 dark:bg-violet-500/35 dark:text-violet-50"
         :title="
           nodeHomeLayer.mappingBaseLayerId
-            ? `映射图层「${nodeHomeLayer.name}」· 基准图层：${
-                layerById.get(nodeHomeLayer.mappingBaseLayerId)?.name ??
-                nodeHomeLayer.mappingBaseLayerId
-              }`
-            : `映射图层「${nodeHomeLayer.name}」`
+            ? t('panel.material.mappingLayerWithBase', {
+                name: nodeHomeLayer.name,
+                base:
+                  layerById.get(nodeHomeLayer.mappingBaseLayerId)?.name ??
+                  nodeHomeLayer.mappingBaseLayerId,
+              })
+            : t('panel.material.mappingLayerTitle', { name: nodeHomeLayer.name })
         "
       >
-        映射图层节点
+        {{ t("panel.material.mappingLayerNode") }}
       </span>
       <span
         v-if="node.mappingSourceNodeId"
         class="inline-flex shrink-0 items-center rounded border border-primary/40 bg-primary/10 px-1 text-[10px] text-primary"
-        :title="`同源节点 ${node.mappingSourceNodeId}${
-          node.mappingSourceLayerId
-            ? ` · ${layerById.get(node.mappingSourceLayerId)?.name ?? node.mappingSourceLayerId}`
-            : ''
-        }`"
+        :title="t('panel.material.sameSourceTitle', { id: node.mappingSourceNodeId })"
       >
-        同源
+        {{ t("panel.material.sameSource") }}
       </span>
       <span
         v-if="node.locked"
         class="inline-flex h-5 w-5 items-center justify-center rounded border border-border/80 bg-background/80 text-muted-foreground"
-        title="节点已锁定"
+        :title="t('panel.config.nodeLockedTitle')"
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" class="h-3.5 w-3.5">
           <rect x="4.5" y="10.5" width="15" height="10" rx="2.5" />
@@ -196,15 +197,15 @@ function onDragStart(e: DragEvent) {
               ? 'border-violet-500/50 bg-violet-500/15 text-violet-300'
               : 'border-sky-500/40 bg-sky-500/10 text-sky-300',
           ]"
-          :title="isDeepRef ? '深拷贝引用（冻结快照）' : '浅拷贝引用（跟随源变化）'"
+          :title="isDeepRef ? t('panel.material.deepCopyTitle') : t('panel.material.shallowCopyTitle')"
         >
-          {{ isDeepRef ? "深拷贝" : "浅拷贝" }}
+          {{ isDeepRef ? t("panel.material.deepCopy") : t("panel.material.shallowCopy") }}
         </span>
-        <Tooltip title="浅拷贝">
+        <Tooltip :title="t('panel.material.shallowCopy')">
           <button
             type="button"
             class="inline-flex h-5 w-5 items-center justify-center rounded border border-border hover:bg-accent"
-            aria-label="浅拷贝"
+            :aria-label="t('panel.material.shallowCopy')"
             @click.stop="emit('copyNode', node.id, 'shallow')"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" class="h-3.5 w-3.5">
@@ -214,11 +215,11 @@ function onDragStart(e: DragEvent) {
             </svg>
           </button>
         </Tooltip>
-        <Tooltip title="深拷贝">
+        <Tooltip :title="t('panel.material.deepCopy')">
           <button
             type="button"
             class="inline-flex h-5 w-5 items-center justify-center rounded border border-border hover:bg-accent"
-            aria-label="深拷贝"
+            :aria-label="t('panel.material.deepCopy')"
             @click.stop="emit('copyNode', node.id, 'deep')"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" class="h-3.5 w-3.5">
@@ -229,11 +230,11 @@ function onDragStart(e: DragEvent) {
           </button>
         </Tooltip>
       </template>
-      <Tooltip v-else title="复制节点">
+      <Tooltip v-else :title="t('panel.material.duplicateNode')">
         <button
           type="button"
           class="inline-flex h-5 w-5 items-center justify-center rounded border border-border hover:bg-accent"
-          aria-label="复制节点"
+          :aria-label="t('panel.material.duplicateNode')"
           @click.stop="emit('copyNode', node.id)"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" class="h-3.5 w-3.5">
@@ -242,12 +243,12 @@ function onDragStart(e: DragEvent) {
           </svg>
         </button>
       </Tooltip>
-      <Tooltip :title="node.locked ? '锁定节点不可删除' : '删除节点'">
+      <Tooltip :title="node.locked ? t('panel.material.lockedNodeCannotDelete') : t('panel.material.deleteNode')">
         <button
           type="button"
           :disabled="node.locked"
           class="inline-flex h-5 w-5 items-center justify-center rounded border border-border hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40"
-          :aria-label="node.locked ? '锁定节点不可删除' : '删除节点'"
+          :aria-label="node.locked ? t('panel.material.lockedNodeCannotDelete') : t('panel.material.deleteNode')"
           @click.stop="!node.locked && emit('deleteNode', node.id)"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" class="h-3.5 w-3.5">
@@ -266,9 +267,9 @@ function onDragStart(e: DragEvent) {
           v-if="nextVisited.has(child.id)"
           class="py-1 text-[10px] text-muted-foreground/80"
           :style="{ paddingLeft: `${6 + (level + 1) * 14}px` }"
-          title="检测到循环引用，已停止向下展开"
+          :title="t('panel.material.circularRefStopped')"
         >
-          {{ getNodeDisplayName(child) }}（循环引用）
+          {{ getNodeDisplayName(child, t) }}{{ t("panel.material.circularRefSuffix") }}
         </div>
         <MaterialSidebarTreeNode
           v-else

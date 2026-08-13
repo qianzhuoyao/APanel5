@@ -1,6 +1,9 @@
 <script setup lang="ts">
+import { useI18n } from "@arronqzy/i18n/vue";
 import { computed } from "vue";
 import { Select } from "ant-design-vue";
+
+const { t } = useI18n();
 
 export type ViewElementMultiSelectOption = {
   id: string;
@@ -15,7 +18,7 @@ const props = withDefaults(
     disabled?: boolean;
   }>(),
   {
-    placeholder: "选择视图节点",
+    placeholder: undefined,
     disabled: false,
   }
 );
@@ -37,7 +40,7 @@ const emptyOptions = computed(() => props.options.length === 0);
     show-search
     :value="value"
     :disabled="disabled || emptyOptions"
-    :placeholder="emptyOptions ? '视图画布暂无节点' : placeholder"
+    :placeholder="emptyOptions ? t('blueprint.config.noViewOnCanvas') : (placeholder ?? t('blueprint.config.selectViewNode'))"
     :options="selectOptions"
     :filter-option="
       (input, option) =>

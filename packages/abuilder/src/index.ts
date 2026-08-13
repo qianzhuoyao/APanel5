@@ -1,5 +1,6 @@
 export { App } from "./App";
 export type { AbuilderAppProps } from "./App";
+export type { Locale } from "@arronqzy/i18n";
 
 export {
   ReactViewPanel,

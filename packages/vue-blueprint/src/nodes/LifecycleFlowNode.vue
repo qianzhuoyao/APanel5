@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from "@arronqzy/i18n/vue";
 import { Handle, Position, type NodeProps } from "@vue-flow/core";
 import { resolveBlueprintNodeTypeLabel } from "../graph/document";
 import { resolveBlueprintNodeSummary } from "../graph/node-summary";
@@ -7,6 +8,8 @@ import { resolveBlueprintNodeExecutionTone } from "../runtime/execution-overlay"
 import type { BlueprintFlowNodeData } from "../types";
 import BlueprintNodeCard from "./BlueprintNodeCard.vue";
 import { cn } from "../utils/cn";
+
+const { t } = useI18n();
 
 const props = defineProps<NodeProps<BlueprintFlowNodeData>>();
 const onSelect = useBlueprintNodeSelect();
@@ -27,8 +30,8 @@ const executionTone = resolveBlueprintNodeExecutionTone(nodeData);
     <BlueprintNodeCard
       :node-id="props.id"
       :label="nodeData.label"
-      :meta="resolveBlueprintNodeTypeLabel(nodeData)"
-      :subtitle="resolveBlueprintNodeSummary(nodeData)"
+      :meta="resolveBlueprintNodeTypeLabel(nodeData, t)"
+      :subtitle="resolveBlueprintNodeSummary(nodeData, t)"
       variant="lifecycle"
       :selected="Boolean(nodeData.isSelected)"
       hide-leading-dot
@@ -39,7 +42,7 @@ const executionTone = resolveBlueprintNodeExecutionTone(nodeData);
       :position="Position.Right"
       id="out"
       class="bp-flow-handle bp-flow-handle--source"
-      title="生命周期满足时输出真/假信号"
+      :title="t('blueprint.node.lifecycleOut')"
     />
   </div>
 </template>

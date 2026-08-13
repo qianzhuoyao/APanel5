@@ -9,10 +9,10 @@ import {
 } from "@arronqzy/ui";
 import {
   LIFECYCLE_NODE_TYPE,
-  PAGE_LIFECYCLE_LABELS,
   PAGE_LIFECYCLE_PHASES,
   type PageLifecyclePhase,
 } from "@arronqzy/blueprint-dsl";
+import { useI18n } from "@arronqzy/i18n/react";
 
 import { FetchNodeConfigPanel } from "./components/FetchNodeConfigPanel";
 import { ClockNodeConfigPanel } from "./components/ClockNodeConfigPanel";
@@ -20,12 +20,14 @@ import { JsonNodeConfigPanel } from "./components/JsonNodeConfigPanel";
 import { LogicNodeConfigPanel } from "./components/LogicNodeConfigPanel";
 import { ViewElementMultiSelect } from "./components/ViewElementMultiSelect";
 import {
+  getLifecyclePhaseLabel,
   patchNodeConfigSource,
   pruneViewElementIds,
   resolveBlueprintConfigSource,
   resolveViewElementIds,
   type BlueprintConfigSource,
   type BlueprintGraphNode,
+  type BlueprintNodeRole,
 } from "./graph/document";
 
 export type BlueprintViewElementOption = {
@@ -67,6 +69,16 @@ export type BlueprintNodeConfigSidebarProps = {
   ) => void;
 };
 
+const ROLE_LABEL_KEYS: Record<BlueprintNodeRole, string> = {
+  blueprint: "blueprint.config.roleBlueprint",
+  lifecycle: "blueprint.config.roleLifecycle",
+  and: "blueprint.config.roleAnd",
+  fetch: "blueprint.config.roleFetch",
+  json: "blueprint.config.roleJson",
+  logic: "blueprint.config.roleLogic",
+  clock: "blueprint.config.roleClock",
+};
+
 export function BlueprintNodeConfigSidebar({
   node,
   viewElementOptions = [],
@@ -75,6 +87,7 @@ export function BlueprintNodeConfigSidebar({
   onUpdateAllowFalseSignalPropagation,
   onUpdateNode,
 }: BlueprintNodeConfigSidebarProps) {
+  const { t } = useI18n();
   const configSource = resolveBlueprintConfigSource(node);
   const linkedViewElementIds = resolveViewElementIds(node);
   const existingViewElementIdSet = useMemo(
@@ -108,28 +121,19 @@ export function BlueprintNodeConfigSidebar({
     viewElementOptions.length,
   ]);
 
+  const roleLabel = t(ROLE_LABEL_KEYS[node.role] ?? "blueprint.config.roleLogic");
+
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-background text-foreground">
       <div className="shrink-0 border-b border-border px-3 py-2">
-        <div className="text-xs font-semibold">蓝图节点配置</div>
+        <div className="text-xs font-semibold">{t("blueprint.config.title")}</div>
         <div className="mt-0.5 text-[11px] text-muted-foreground">
-          {node.role === "blueprint"
-            ? "蓝图节点"
-            : node.role === "lifecycle"
-              ? "生命周期节点"
-              : node.role === "and"
-                ? "并运算节点"
-              : node.role === "fetch"
-                ? "数据源节点"
-                : node.role === "json"
-                  ? "JSON 节点"
-                  : "逻辑节点"}{" "}
-          · {node.id}
+          {roleLabel} · {node.id}
         </div>
       </div>
       <div className="min-h-0 flex-1 space-y-3 overflow-auto p-3 text-xs">
         <label className="block space-y-1">
-          <span className="text-muted-foreground">节点名称</span>
+          <span className="text-muted-foreground">{t("blueprint.config.nodeName")}</span>
           <Input
             value={node.label}
             onChange={(e: ChangeEvent<HTMLInputElement>) =>
@@ -140,7 +144,7 @@ export function BlueprintNodeConfigSidebar({
         </label>
 
         <label className="block space-y-1">
-          <span className="text-muted-foreground">配置类型</span>
+          <span className="text-muted-foreground">{t("blueprint.config.configType")}</span>
           <Select
             value={configSource}
             onValueChange={(value: string) => {
@@ -163,25 +167,25 @@ export function BlueprintNodeConfigSidebar({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="blueprint">蓝图配置</SelectItem>
-              <SelectItem value="logic">逻辑配置</SelectItem>
-              <SelectItem value="and">并运算</SelectItem>
-              <SelectItem value="lifecycle">生命周期配置</SelectItem>
-              <SelectItem value="fetch">数据源获取</SelectItem>
-              <SelectItem value="json">JSON 节点</SelectItem>
-              <SelectItem value="clock">时钟</SelectItem>
-              <SelectItem value="view">视图节点配置</SelectItem>
+              <SelectItem value="blueprint">{t("blueprint.config.configBlueprint")}</SelectItem>
+              <SelectItem value="logic">{t("blueprint.config.configLogic")}</SelectItem>
+              <SelectItem value="and">{t("blueprint.config.configAnd")}</SelectItem>
+              <SelectItem value="lifecycle">{t("blueprint.config.configLifecycle")}</SelectItem>
+              <SelectItem value="fetch">{t("blueprint.config.configFetch")}</SelectItem>
+              <SelectItem value="json">{t("blueprint.config.configJson")}</SelectItem>
+              <SelectItem value="clock">{t("blueprint.config.configClock")}</SelectItem>
+              <SelectItem value="view">{t("blueprint.config.configView")}</SelectItem>
             </SelectContent>
           </Select>
         </label>
 
         {configSource === "view" ? (
           <div className="block space-y-1">
-            <span className="text-muted-foreground">关联视图节点</span>
+            <span className="text-muted-foreground">{t("blueprint.config.linkedViewNodes")}</span>
             <ViewElementMultiSelect
               options={viewElementOptions}
               value={linkedViewElementIds}
-              placeholder="选择视图节点"
+              placeholder={t("blueprint.config.selectViewNode")}
               onChange={(next) =>
                 onUpdateNode(node.id, {
                   viewElementIds: next,
@@ -192,15 +196,16 @@ export function BlueprintNodeConfigSidebar({
             />
             {linkedViewElementIds.length === 0 ? (
               <p className="text-[11px] text-muted-foreground">
-                可多选视图画布节点；关联后仍在此配置蓝图节点，视图属性请在视图面板中编辑。
+                {t("blueprint.config.viewMultiHint")}
               </p>
             ) : (
               <p className="text-[11px] text-muted-foreground">
-                已关联 {linkedViewElementIds.length} 个视图节点：
-                {linkedViewElementIds
-                  .map((id) => viewElementLabelById.get(id) ?? id)
-                  .join("、")}
-                。
+                {t("blueprint.config.linkedViewCount", {
+                  count: linkedViewElementIds.length,
+                  names: linkedViewElementIds
+                    .map((id) => viewElementLabelById.get(id) ?? id)
+                    .join("、"),
+                })}
               </p>
             )}
           </div>
@@ -208,15 +213,12 @@ export function BlueprintNodeConfigSidebar({
 
         {configSource === "blueprint" ? (
           <div className="space-y-2 rounded-md border border-border/70 bg-muted/20 p-2.5">
-            <div className="font-medium text-foreground">蓝图属性</div>
+            <div className="font-medium text-foreground">{t("blueprint.config.blueprintAttrs")}</div>
             <p className="text-[11px] text-muted-foreground">
-              选中蓝图库中的蓝图后，当输入端收到<strong>真信号</strong>
-              时才会执行该蓝图；执行完成后从输出端发出
-              <strong>真信号</strong>（含嵌套蓝图输出值与当前节点信息），执行失败则发出
-              <strong>假信号</strong>。
+              {t("blueprint.config.blueprintAttrsHint")}
             </p>
             <label className="block space-y-1">
-              <span className="text-muted-foreground">引用蓝图库</span>
+              <span className="text-muted-foreground">{t("blueprint.config.refLibrary")}</span>
               <Select
                 value={node.libraryBlueprintId ?? "__none__"}
                 onValueChange={(value: string) => {
@@ -227,10 +229,10 @@ export function BlueprintNodeConfigSidebar({
                 }}
               >
                 <SelectTrigger className="h-8">
-                  <SelectValue placeholder="选择蓝图库中的蓝图" />
+                  <SelectValue placeholder={t("blueprint.config.selectLibraryBlueprint")} />
                 </SelectTrigger>
                 <SelectContent className="z-[10100]">
-                  <SelectItem value="__none__">未关联</SelectItem>
+                  <SelectItem value="__none__">{t("blueprint.config.unlinked")}</SelectItem>
                   {blueprintLibraryOptions.map((opt) => (
                     <SelectItem key={opt.id} value={opt.id}>
                       {opt.label}
@@ -241,7 +243,7 @@ export function BlueprintNodeConfigSidebar({
             </label>
             {!node.libraryBlueprintId ? (
               <p className="text-[11px] text-muted-foreground">
-                请先从蓝图库选择要引用的蓝图。
+                {t("blueprint.config.selectLibraryFirst")}
               </p>
             ) : null}
             <label className="flex items-start gap-2 pt-1">
@@ -254,7 +256,7 @@ export function BlueprintNodeConfigSidebar({
                 className="mt-0.5 h-3.5 w-3.5 shrink-0 rounded border border-input"
               />
               <span className="text-[11px] leading-relaxed text-muted-foreground">
-                允许假信号传递：开启后，节点输出假信号时不会阻塞任务链，错误信息会继续向下游传递。
+                {t("blueprint.config.allowFalsePropagateBlueprint")}
               </span>
             </label>
           </div>
@@ -262,15 +264,15 @@ export function BlueprintNodeConfigSidebar({
 
         {configSource === "lifecycle" ? (
           <div className="space-y-2 rounded-md border border-border/70 bg-muted/20 p-2.5">
-            <div className="font-medium text-foreground">生命周期钩子</div>
+            <div className="font-medium text-foreground">{t("blueprint.config.lifecycleHook")}</div>
             <p className="text-[11px] text-muted-foreground">
-              生命周期节点<strong>没有输入口</strong>，仅右侧输出口。
+              {t("blueprint.config.lifecycleNoInput")}
               {node.lifecyclePhase === "blueprintActivated"
-                ? "当本蓝图被其他蓝图的蓝图配置节点引用且收到真信号时，自动向下游发出真信号，输出值为父级传入的输入数据。"
-                : "当页面进入对应生命周期时，自动向下游发出真/假信号。"}
+                ? t("blueprint.config.lifecycleBlueprintActivatedHint")
+                : t("blueprint.config.lifecyclePageHint")}
             </p>
             <label className="block space-y-1">
-              <span className="text-muted-foreground">监听阶段</span>
+              <span className="text-muted-foreground">{t("blueprint.config.listenPhase")}</span>
               <Select
                 value={node.lifecyclePhase ?? "mounted"}
                 onValueChange={(value: string) =>
@@ -288,7 +290,7 @@ export function BlueprintNodeConfigSidebar({
                 <SelectContent>
                   {PAGE_LIFECYCLE_PHASES.map((phase) => (
                     <SelectItem key={phase} value={phase}>
-                      {PAGE_LIFECYCLE_LABELS[phase]}
+                      {getLifecyclePhaseLabel(t, phase)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -296,7 +298,7 @@ export function BlueprintNodeConfigSidebar({
             </label>
             {node.parentId ? (
               <p className="text-[11px] text-muted-foreground">
-                所属蓝图节点：{node.parentId}
+                {t("blueprint.config.parentBlueprintNode", { id: node.parentId })}
               </p>
             ) : null}
           </div>
@@ -316,12 +318,9 @@ export function BlueprintNodeConfigSidebar({
 
         {configSource === "and" ? (
           <div className="space-y-2 rounded-md border border-border/70 bg-muted/20 p-2.5">
-            <div className="font-medium text-foreground">并运算</div>
+            <div className="font-medium text-foreground">{t("blueprint.config.andTitle")}</div>
             <p className="text-[11px] text-muted-foreground">
-              左侧两个输入口 <strong>inA</strong>、<strong>inB</strong>。
-              每个输入口可连 n 条线，同端口任一为真则该端口视为真（或）。
-              仅当 <strong>inA 与 inB 均为真信号</strong> 时，从输出口发出真信号；
-              否则发出假信号。
+              {t("blueprint.config.andHint")}
             </p>
           </div>
         ) : null}
@@ -331,7 +330,7 @@ export function BlueprintNodeConfigSidebar({
             <LogicNodeConfigPanel node={node} onUpdateNode={onUpdateNode} />
             {node.parentId ? (
               <p className="text-[11px] text-muted-foreground">
-                所属蓝图节点：{node.parentId}
+                {t("blueprint.config.parentBlueprintNode", { id: node.parentId })}
               </p>
             ) : null}
           </>
@@ -339,7 +338,7 @@ export function BlueprintNodeConfigSidebar({
 
         {configSource !== "blueprint" && configSource !== "and" ? (
           <div className="space-y-2 rounded-md border border-border/70 bg-muted/20 p-2.5">
-            <div className="font-medium text-foreground">任务链执行</div>
+            <div className="font-medium text-foreground">{t("blueprint.config.taskChain")}</div>
             <label className="flex items-start gap-2">
               <input
                 type="checkbox"
@@ -350,7 +349,7 @@ export function BlueprintNodeConfigSidebar({
                 className="mt-0.5 h-3.5 w-3.5 shrink-0 rounded border border-input"
               />
               <span className="text-[11px] leading-relaxed text-muted-foreground">
-                允许假信号传递：默认假信号会阻塞任务链；开启后继续向下游传递假信号与错误信息。
+                {t("blueprint.config.allowFalsePropagateDefault")}
               </span>
             </label>
           </div>

@@ -133,35 +133,72 @@ export function resolveRunnableNodeType(
   }
 }
 
-/** 画布节点顶部（拖拽区）展示的配置类型文案 */
-export const BLUEPRINT_CONFIG_TYPE_LABELS: Record<
+import type { TranslateFn } from "@arronqzy/i18n";
+import { resolveLocale, tForLocale } from "@arronqzy/i18n";
+
+/** 画布节点顶部（拖拽区）配置类型对应的 i18n key */
+export const BLUEPRINT_CONFIG_TYPE_LABEL_KEYS: Record<
   BlueprintConfigSource,
   string
 > = {
-  blueprint: "蓝图",
-  logic: "逻辑",
-  and: "并运算",
-  lifecycle: "生命周期",
-  view: "视图",
-  fetch: "数据源获取",
-  json: "JSON 节点",
-  clock: "时钟",
+  blueprint: "blueprint.node.typeBlueprint",
+  logic: "blueprint.node.typeLogic",
+  and: "blueprint.node.typeAnd",
+  lifecycle: "blueprint.node.typeLifecycle",
+  view: "blueprint.node.typeView",
+  fetch: "blueprint.node.typeFetch",
+  json: "blueprint.node.typeJson",
+  clock: "blueprint.node.typeClock",
 };
+
+export const BLUEPRINT_LIFECYCLE_PHASE_KEYS: Record<PageLifecyclePhase, string> =
+  {
+    created: "blueprint.node.phaseCreated",
+    beforeMount: "blueprint.node.phaseBeforeMount",
+    mounted: "blueprint.node.phaseMounted",
+    updated: "blueprint.node.phaseUpdated",
+    beforeDestroy: "blueprint.node.phaseBeforeDestroy",
+    destroy: "blueprint.node.phaseDestroy",
+    activated: "blueprint.node.phaseActivated",
+    deactivated: "blueprint.node.phaseDeactivated",
+    blueprintActivated: "blueprint.node.phaseBlueprintActivated",
+  };
+
+function defaultTranslate(): TranslateFn {
+  return tForLocale(resolveLocale());
+}
+
+export function getBlueprintNodeTypeLabel(
+  t: TranslateFn,
+  type: BlueprintConfigSource
+): string {
+  return t(BLUEPRINT_CONFIG_TYPE_LABEL_KEYS[type]);
+}
+
+export function getLifecyclePhaseLabel(
+  t: TranslateFn,
+  phase: PageLifecyclePhase
+): string {
+  const key = BLUEPRINT_LIFECYCLE_PHASE_KEYS[phase];
+  return key ? t(key) : phase;
+}
 
 export function resolveBlueprintNodeTypeLabel(
   node: Pick<
     BlueprintGraphNode,
     "role" | "nodeType" | "configSource" | "viewElementId" | "viewElementIds"
-  >
+  >,
+  t: TranslateFn = defaultTranslate()
 ): string {
-  return BLUEPRINT_CONFIG_TYPE_LABELS[resolveBlueprintConfigSource(node)];
+  return getBlueprintNodeTypeLabel(t, resolveBlueprintConfigSource(node));
 }
 
 /** 新建节点时的默认显示名称（与类型文案一致） */
 export function defaultBlueprintNodeLabel(
-  configSource: BlueprintConfigSource
+  configSource: BlueprintConfigSource,
+  t: TranslateFn = defaultTranslate()
 ): string {
-  return BLUEPRINT_CONFIG_TYPE_LABELS[configSource];
+  return getBlueprintNodeTypeLabel(t, configSource);
 }
 
 export function resolveNodeFetchConfig(

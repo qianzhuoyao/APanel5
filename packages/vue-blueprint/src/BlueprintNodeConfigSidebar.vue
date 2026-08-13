@@ -1,9 +1,9 @@
 <script setup lang="ts">
+import { useI18n } from "@arronqzy/i18n/vue";
 import { computed, watch } from "vue";
 import { Checkbox, Input, Select } from "ant-design-vue";
 import {
   LIFECYCLE_NODE_TYPE,
-  PAGE_LIFECYCLE_LABELS,
   PAGE_LIFECYCLE_PHASES,
   type PageLifecyclePhase,
 } from "@arronqzy/blueprint-dsl";
@@ -14,13 +14,17 @@ import JsonNodeConfigPanel from "./components/JsonNodeConfigPanel.vue";
 import LogicNodeConfigPanel from "./components/LogicNodeConfigPanel.vue";
 import ViewElementMultiSelect from "./components/ViewElementMultiSelect.vue";
 import {
+  getLifecyclePhaseLabel,
   patchNodeConfigSource,
   pruneViewElementIds,
   resolveBlueprintConfigSource,
   resolveViewElementIds,
   type BlueprintConfigSource,
   type BlueprintGraphNode,
+  type BlueprintNodeRole,
 } from "./graph/document";
+
+const { t } = useI18n();
 
 export type BlueprintViewElementOption = {
   id: string;
@@ -76,15 +80,19 @@ const viewElementLabelById = computed(
   () => new Map(props.viewElementOptions.map((opt) => [opt.id, opt.label]))
 );
 
-const roleLabel = computed(() => {
-  const role = props.node.role;
-  if (role === "blueprint") return "蓝图节点";
-  if (role === "lifecycle") return "生命周期节点";
-  if (role === "and") return "并运算节点";
-  if (role === "fetch") return "数据源节点";
-  if (role === "json") return "JSON 节点";
-  return "逻辑节点";
-});
+const ROLE_LABEL_KEYS: Record<BlueprintNodeRole, string> = {
+  blueprint: "blueprint.config.roleBlueprint",
+  lifecycle: "blueprint.config.roleLifecycle",
+  and: "blueprint.config.roleAnd",
+  fetch: "blueprint.config.roleFetch",
+  json: "blueprint.config.roleJson",
+  logic: "blueprint.config.roleLogic",
+  clock: "blueprint.config.roleClock",
+};
+
+const roleLabel = computed(() =>
+  t(ROLE_LABEL_KEYS[props.node.role] ?? "blueprint.config.roleLogic")
+);
 
 watch(
   [
@@ -130,14 +138,14 @@ function handleConfigSourceChange(value: string) {
 <template>
   <div class="flex h-full min-h-0 flex-col overflow-hidden bg-background text-foreground">
     <div class="shrink-0 border-b border-border px-3 py-2">
-      <div class="text-xs font-semibold">蓝图节点配置</div>
+      <div class="text-xs font-semibold">{{ t("blueprint.config.title") }}</div>
       <div class="mt-0.5 text-[11px] text-muted-foreground">
         {{ roleLabel }} · {{ node.id }}
       </div>
     </div>
     <div class="min-h-0 flex-1 space-y-3 overflow-auto p-3 text-xs">
       <label class="block space-y-1">
-        <span class="text-muted-foreground">节点名称</span>
+        <span class="text-muted-foreground">{{ t("blueprint.config.nodeName") }}</span>
         <Input
           size="small"
           :value="node.label"
@@ -146,30 +154,30 @@ function handleConfigSourceChange(value: string) {
       </label>
 
       <label class="block space-y-1">
-        <span class="text-muted-foreground">配置类型</span>
+        <span class="text-muted-foreground">{{ t("blueprint.config.configType") }}</span>
         <Select
           size="small"
           class="w-full"
           :value="configSource"
           @change="(v) => handleConfigSourceChange(String(v))"
         >
-          <Select.Option value="blueprint">蓝图配置</Select.Option>
-          <Select.Option value="logic">逻辑配置</Select.Option>
-          <Select.Option value="and">并运算</Select.Option>
-          <Select.Option value="lifecycle">生命周期配置</Select.Option>
-          <Select.Option value="fetch">数据源获取</Select.Option>
-          <Select.Option value="json">JSON 节点</Select.Option>
-          <Select.Option value="clock">时钟</Select.Option>
-          <Select.Option value="view">视图节点配置</Select.Option>
+          <Select.Option value="blueprint">{{ t("blueprint.config.configBlueprint") }}</Select.Option>
+          <Select.Option value="logic">{{ t("blueprint.config.configLogic") }}</Select.Option>
+          <Select.Option value="and">{{ t("blueprint.config.configAnd") }}</Select.Option>
+          <Select.Option value="lifecycle">{{ t("blueprint.config.configLifecycle") }}</Select.Option>
+          <Select.Option value="fetch">{{ t("blueprint.config.configFetch") }}</Select.Option>
+          <Select.Option value="json">{{ t("blueprint.config.configJson") }}</Select.Option>
+          <Select.Option value="clock">{{ t("blueprint.config.configClock") }}</Select.Option>
+          <Select.Option value="view">{{ t("blueprint.config.configView") }}</Select.Option>
         </Select>
       </label>
 
       <div v-if="configSource === 'view'" class="block space-y-1">
-        <span class="text-muted-foreground">关联视图节点</span>
+        <span class="text-muted-foreground">{{ t("blueprint.config.linkedViewNodes") }}</span>
         <ViewElementMultiSelect
           :options="viewElementOptions"
           :value="linkedViewElementIds"
-          placeholder="选择视图节点"
+          :placeholder="t('blueprint.config.selectViewNode')"
           @change="
             (next) =>
               onUpdateNode(node.id, {
@@ -180,14 +188,17 @@ function handleConfigSourceChange(value: string) {
           "
         />
         <p v-if="linkedViewElementIds.length === 0" class="text-[11px] text-muted-foreground">
-          可多选视图画布节点；关联后仍在此配置蓝图节点，视图属性请在视图面板中编辑。
+          {{ t("blueprint.config.viewMultiHint") }}
         </p>
         <p v-else class="text-[11px] text-muted-foreground">
-          已关联 {{ linkedViewElementIds.length }} 个视图节点：{{
-            linkedViewElementIds
-              .map((id) => viewElementLabelById.get(id) ?? id)
-              .join("、")
-          }}。
+          {{
+            t("blueprint.config.linkedViewCount", {
+              count: linkedViewElementIds.length,
+              names: linkedViewElementIds
+                .map((id) => viewElementLabelById.get(id) ?? id)
+                .join("、"),
+            })
+          }}
         </p>
       </div>
 
@@ -195,15 +206,10 @@ function handleConfigSourceChange(value: string) {
         v-if="configSource === 'blueprint'"
         class="space-y-2 rounded-md border border-border/70 bg-muted/20 p-2.5"
       >
-        <div class="font-medium text-foreground">蓝图属性</div>
-        <p class="text-[11px] text-muted-foreground">
-          选中蓝图库中的蓝图后，当输入端收到<strong>真信号</strong>
-          时才会执行该蓝图；执行完成后从输出端发出
-          <strong>真信号</strong>（含嵌套蓝图输出值与当前节点信息），执行失败则发出
-          <strong>假信号</strong>。
-        </p>
+        <div class="font-medium text-foreground">{{ t("blueprint.config.blueprintAttrs") }}</div>
+        <p class="text-[11px] text-muted-foreground">{{ t("blueprint.config.blueprintAttrsHint") }}</p>
         <label class="block space-y-1">
-          <span class="text-muted-foreground">引用蓝图库</span>
+          <span class="text-muted-foreground">{{ t("blueprint.config.refLibrary") }}</span>
           <Select
             size="small"
             class="w-full"
@@ -217,7 +223,7 @@ function handleConfigSourceChange(value: string) {
                 })
             "
           >
-            <Select.Option value="__none__">未关联</Select.Option>
+            <Select.Option value="__none__">{{ t("blueprint.config.unlinked") }}</Select.Option>
             <Select.Option
               v-for="opt in blueprintLibraryOptions"
               :key="opt.id"
@@ -228,7 +234,7 @@ function handleConfigSourceChange(value: string) {
           </Select>
         </label>
         <p v-if="!node.libraryBlueprintId" class="text-[11px] text-muted-foreground">
-          请先从蓝图库选择要引用的蓝图。
+          {{ t("blueprint.config.selectLibraryFirst") }}
         </p>
         <label class="flex items-start gap-2 pt-1">
           <Checkbox
@@ -237,7 +243,7 @@ function handleConfigSourceChange(value: string) {
             @update:checked="(v) => onUpdateAllowFalseSignalPropagation?.(Boolean(v))"
           />
           <span class="text-[11px] leading-relaxed text-muted-foreground">
-            允许假信号传递：开启后，节点输出假信号时不会阻塞任务链，错误信息会继续向下游传递。
+            {{ t("blueprint.config.allowFalsePropagateBlueprint") }}
           </span>
         </label>
       </div>
@@ -246,17 +252,17 @@ function handleConfigSourceChange(value: string) {
         v-if="configSource === 'lifecycle'"
         class="space-y-2 rounded-md border border-border/70 bg-muted/20 p-2.5"
       >
-        <div class="font-medium text-foreground">生命周期钩子</div>
+        <div class="font-medium text-foreground">{{ t("blueprint.config.lifecycleHook") }}</div>
         <p class="text-[11px] text-muted-foreground">
-          生命周期节点<strong>没有输入口</strong>，仅右侧输出口。
+          {{ t("blueprint.config.lifecycleNoInput") }}
           {{
             node.lifecyclePhase === "blueprintActivated"
-              ? "当本蓝图被其他蓝图的蓝图配置节点引用且收到真信号时，自动向下游发出真信号，输出值为父级传入的输入数据。"
-              : "当页面进入对应生命周期时，自动向下游发出真/假信号。"
+              ? t("blueprint.config.lifecycleBlueprintActivatedHint")
+              : t("blueprint.config.lifecyclePageHint")
           }}
         </p>
         <label class="block space-y-1">
-          <span class="text-muted-foreground">监听阶段</span>
+          <span class="text-muted-foreground">{{ t("blueprint.config.listenPhase") }}</span>
           <Select
             size="small"
             class="w-full"
@@ -272,12 +278,12 @@ function handleConfigSourceChange(value: string) {
             "
           >
             <Select.Option v-for="phase in PAGE_LIFECYCLE_PHASES" :key="phase" :value="phase">
-              {{ PAGE_LIFECYCLE_LABELS[phase] }}
+              {{ getLifecyclePhaseLabel(t, phase) }}
             </Select.Option>
           </Select>
         </label>
         <p v-if="node.parentId" class="text-[11px] text-muted-foreground">
-          所属蓝图节点：{{ node.parentId }}
+          {{ t("blueprint.config.parentBlueprintNode", { id: node.parentId }) }}
         </p>
       </div>
 
@@ -301,19 +307,14 @@ function handleConfigSourceChange(value: string) {
         v-if="configSource === 'and'"
         class="space-y-2 rounded-md border border-border/70 bg-muted/20 p-2.5"
       >
-        <div class="font-medium text-foreground">并运算</div>
-        <p class="text-[11px] text-muted-foreground">
-          左侧两个输入口 <strong>inA</strong>、<strong>inB</strong>。
-          每个输入口可连 n 条线，同端口任一为真则该端口视为真（或）。
-          仅当 <strong>inA 与 inB 均为真信号</strong> 时，从输出口发出真信号；
-          否则发出假信号。
-        </p>
+        <div class="font-medium text-foreground">{{ t("blueprint.config.andTitle") }}</div>
+        <p class="text-[11px] text-muted-foreground">{{ t("blueprint.config.andHint") }}</p>
       </div>
 
       <template v-if="configSource === 'logic'">
         <LogicNodeConfigPanel :node="node" :on-update-node="onUpdateNode" />
         <p v-if="node.parentId" class="text-[11px] text-muted-foreground">
-          所属蓝图节点：{{ node.parentId }}
+          {{ t("blueprint.config.parentBlueprintNode", { id: node.parentId }) }}
         </p>
       </template>
 
@@ -321,7 +322,7 @@ function handleConfigSourceChange(value: string) {
         v-if="configSource !== 'blueprint' && configSource !== 'and'"
         class="space-y-2 rounded-md border border-border/70 bg-muted/20 p-2.5"
       >
-        <div class="font-medium text-foreground">任务链执行</div>
+        <div class="font-medium text-foreground">{{ t("blueprint.config.taskChain") }}</div>
         <label class="flex items-start gap-2">
           <Checkbox
             :checked="allowFalseSignalPropagation"
@@ -329,7 +330,7 @@ function handleConfigSourceChange(value: string) {
             @update:checked="(v) => onUpdateAllowFalseSignalPropagation?.(Boolean(v))"
           />
           <span class="text-[11px] leading-relaxed text-muted-foreground">
-            允许假信号传递：默认假信号会阻塞任务链；开启后继续向下游传递假信号与错误信息。
+            {{ t("blueprint.config.allowFalsePropagateDefault") }}
           </span>
         </label>
       </div>

@@ -1,9 +1,11 @@
 <script setup lang="ts">
+import { useI18n } from "@arronqzy/i18n/vue";
 import { computed, ref } from "vue";
 import { Card, Checkbox, Input, InputNumber, Select } from "ant-design-vue";
 import type { PanelElement, PanelLayer, ReferenceCopyMode } from "../../types";
 import { CHART_TYPES } from "../../utils/chartOptionBuilder";
 
+const { t, locale } = useI18n();
 const props = defineProps<{
   elements: PanelElement[];
   layers: PanelLayer[];
@@ -52,9 +54,9 @@ function setNodeCardExpanded(id: string, open: boolean) {
 
 <template>
   <div class="space-y-3">
-    <Card size="small" title="批量设置">
+    <Card size="small" :title="t('panel.config.batchTitle')">
       <template #title>
-        <span class="text-xs">批量设置（{{ elements.length }} 个）</span>
+        <span class="text-xs">{{ t("panel.config.batchTitleWithCount", { count: elements.length }) }}</span>
       </template>
       <div class="grid grid-cols-2 gap-2 text-xs">
         <button
@@ -62,14 +64,14 @@ function setNodeCardExpanded(id: string, open: boolean) {
           class="rounded border border-gray-200 bg-white px-2 py-1 hover:bg-gray-50"
           @click="elements.forEach((el) => updateElement(el.id, { locked: true }))"
         >
-          全部锁定
+          {{ t("panel.config.lockAll") }}
         </button>
         <button
           type="button"
           class="rounded border border-gray-200 bg-white px-2 py-1 hover:bg-gray-50"
           @click="elements.forEach((el) => updateElement(el.id, { locked: false }))"
         >
-          全部解锁
+          {{ t("panel.config.unlockAll") }}
         </button>
         <button
           v-if="onAdjustNodeZOrder"
@@ -77,7 +79,7 @@ function setNodeCardExpanded(id: string, open: boolean) {
           class="rounded border border-gray-200 bg-white px-2 py-1 hover:bg-gray-50"
           @click="elements.forEach((el) => onAdjustNodeZOrder?.(el.id, 'bringForward'))"
         >
-          全部上移一层
+          {{ t("panel.config.bringAllForward") }}
         </button>
         <button
           v-if="onAdjustNodeZOrder"
@@ -85,14 +87,14 @@ function setNodeCardExpanded(id: string, open: boolean) {
           class="rounded border border-gray-200 bg-white px-2 py-1 hover:bg-gray-50"
           @click="elements.forEach((el) => onAdjustNodeZOrder?.(el.id, 'sendBackward'))"
         >
-          全部下移一层
+          {{ t("panel.config.sendAllBackward") }}
         </button>
         <button
           type="button"
           class="rounded border border-gray-200 bg-white px-2 py-1 hover:bg-gray-50"
           @click="elements.forEach((el) => updateElement(el.id, { zIndex: 1 }))"
         >
-          全部 zIndex 设为 1
+          {{ t("panel.config.setAllZIndex1") }}
         </button>
         <button
           type="button"
@@ -105,7 +107,7 @@ function setNodeCardExpanded(id: string, open: boolean) {
             )
           "
         >
-          全部背景色设为蓝色
+          {{ t("panel.config.setAllBgBlue") }}
         </button>
       </div>
     </Card>
@@ -126,7 +128,7 @@ function setNodeCardExpanded(id: string, open: boolean) {
             {{ isNodeCardExpanded(el.id) ? "▾" : "▸" }}
           </button>
           <span class="min-w-0 flex-1 truncate text-xs">
-            {{ el.name?.trim() || el.materialType || "节点" }} · {{ el.id }}
+            {{ el.name?.trim() || el.materialType || t("common.node") }} · {{ el.id }}
           </span>
           <button
             v-if="onExcludeSelectedNode"
@@ -134,7 +136,7 @@ function setNodeCardExpanded(id: string, open: boolean) {
             class="inline-flex h-6 items-center rounded border border-gray-200 px-2 text-[11px] text-gray-500 hover:bg-gray-50"
             @click="onExcludeSelectedNode(el.id)"
           >
-            剔除
+            {{ t("panel.config.removeFromSelection") }}
           </button>
         </div>
       </template>
@@ -144,18 +146,18 @@ function setNodeCardExpanded(id: string, open: boolean) {
             :checked="el.locked === true"
             @update:checked="(v) => updateElement(el.id, { locked: v === true })"
           />
-          <span>锁定节点</span>
+          <span>{{ t("panel.config.lockedNode") }}</span>
         </label>
         <div
           v-if="el.locked"
           class="rounded border border-amber-500/40 bg-amber-500/10 px-2 py-1.5 text-[11px] text-amber-700"
         >
-          当前节点已锁定，仅可操作锁定开关。
+          {{ t("panel.config.lockedNodeHint") }}
         </div>
         <fieldset :disabled="el.locked" :class="el.locked ? 'opacity-60' : ''">
           <div class="space-y-2">
             <label class="block space-y-1">
-              <div>名称</div>
+              <div>{{ t("panel.config.name") }}</div>
               <Input
                 size="small"
                 :value="el.name ?? ''"
@@ -173,7 +175,7 @@ function setNodeCardExpanded(id: string, open: boolean) {
                 />
               </label>
               <label class="block space-y-1">
-                <div>图层</div>
+                <div>{{ t("panel.config.layer") }}</div>
                 <Select
                   size="small"
                   class="w-full"
@@ -196,21 +198,21 @@ function setNodeCardExpanded(id: string, open: boolean) {
                 <InputNumber size="small" class="w-full" :value="el.y" @update:value="(v) => updateElement(el.id, { y: Number(v) || 0 })" />
               </label>
               <label class="block space-y-1">
-                <div>旋转角度</div>
+                <div>{{ t("panel.config.rotate") }}</div>
                 <InputNumber size="small" class="w-full" :value="el.rotate ?? 0" @update:value="(v) => updateElement(el.id, { rotate: Number(v) || 0 })" />
               </label>
               <label class="block space-y-1">
-                <div>宽</div>
+                <div>{{ t("panel.config.width") }}</div>
                 <InputNumber size="small" class="w-full" :min="1" :value="el.width" @update:value="(v) => updateElement(el.id, { width: Math.max(1, Number(v) || 1) })" />
               </label>
               <label class="block space-y-1">
-                <div>高</div>
+                <div>{{ t("panel.config.height") }}</div>
                 <InputNumber size="small" class="w-full" :min="1" :value="el.height" @update:value="(v) => updateElement(el.id, { height: Math.max(1, Number(v) || 1) })" />
               </label>
             </div>
             <div class="grid grid-cols-2 gap-2">
               <label class="block space-y-1">
-                <div>背景色</div>
+                <div>{{ t("panel.scope.fieldStyleBackgroundColor") }}</div>
                 <Input
                   size="small"
                   :value="el.style?.backgroundColor ?? ''"
@@ -218,7 +220,7 @@ function setNodeCardExpanded(id: string, open: boolean) {
                 />
               </label>
               <label class="block space-y-1">
-                <div>边框色</div>
+                <div>{{ t("panel.config.borderColorShort") }}</div>
                 <Input
                   size="small"
                   :value="el.style?.borderColor ?? ''"
@@ -230,7 +232,7 @@ function setNodeCardExpanded(id: string, open: boolean) {
             <template v-if="CHART_TYPES.has(el.materialType ?? '')">
               <div class="grid grid-cols-2 gap-2">
                 <label class="col-span-2 block space-y-1">
-                  <div>图表标题</div>
+                  <div>{{ t("panel.scope.fieldChartTitle") }}</div>
                   <Input
                     size="small"
                     :value="el.chart?.title ?? ''"
@@ -238,7 +240,7 @@ function setNodeCardExpanded(id: string, open: boolean) {
                   />
                 </label>
                 <label class="block space-y-1">
-                  <div>主色</div>
+                  <div>{{ t("panel.config.primaryColor") }}</div>
                   <Input
                     size="small"
                     :value="el.chart?.color ?? ''"
@@ -251,7 +253,7 @@ function setNodeCardExpanded(id: string, open: boolean) {
             <template v-if="el.materialType === 'text'">
               <div class="grid grid-cols-2 gap-2">
                 <label class="col-span-2 block space-y-1">
-                  <div>文本内容(HTML)</div>
+                  <div>{{ t("panel.config.textHtml") }}</div>
                   <Input.TextArea
                     :value="el.textHtml ?? ''"
                     :rows="3"
@@ -259,7 +261,7 @@ function setNodeCardExpanded(id: string, open: boolean) {
                   />
                 </label>
                 <label class="block space-y-1">
-                  <div>字体大小</div>
+                  <div>{{ t("panel.config.fontSize") }}</div>
                   <InputNumber
                     size="small"
                     class="w-full"
@@ -269,7 +271,7 @@ function setNodeCardExpanded(id: string, open: boolean) {
                   />
                 </label>
                 <label class="block space-y-1">
-                  <div>文字颜色</div>
+                  <div>{{ t("panel.config.textColor") }}</div>
                   <Input
                     size="small"
                     :value="el.textColor ?? ''"
@@ -282,7 +284,7 @@ function setNodeCardExpanded(id: string, open: boolean) {
             <template v-if="el.materialType === 'audio'">
               <div class="grid grid-cols-2 gap-2">
                 <label class="col-span-2 block space-y-1">
-                  <div>音频 URL</div>
+                  <div>{{ t("panel.config.audioUrl") }}</div>
                   <Input
                     size="small"
                     :value="el.audioRemoteUrl ?? ''"
@@ -290,7 +292,7 @@ function setNodeCardExpanded(id: string, open: boolean) {
                   />
                 </label>
                 <label class="block space-y-1">
-                  <div>动效</div>
+                  <div>{{ t("panel.config.effect") }}</div>
                   <Select
                     size="small"
                     class="w-full"
@@ -307,7 +309,7 @@ function setNodeCardExpanded(id: string, open: boolean) {
 
             <template v-if="el.materialType === 'video'">
               <label class="block space-y-1">
-                <div>视频 URL</div>
+                <div>{{ t("panel.config.videoUrl") }}</div>
                 <Input
                   size="small"
                   :value="el.videoRemoteUrl ?? ''"
@@ -319,11 +321,11 @@ function setNodeCardExpanded(id: string, open: boolean) {
             <template v-if="el.materialType === 'grid'">
               <div class="grid grid-cols-2 gap-2 rounded-lg border border-gray-200/60 bg-gray-50/50 p-3">
                 <label class="block space-y-1">
-                  <div>行</div>
+                  <div>{{ t("panel.config.rowsShort") }}</div>
                   <InputNumber size="small" class="w-full" :min="1" :value="el.gridRows ?? 2" @update:value="(v) => updateElement(el.id, { gridRows: Math.max(1, Number(v) || 2) })" />
                 </label>
                 <label class="block space-y-1">
-                  <div>列</div>
+                  <div>{{ t("panel.config.colsShort") }}</div>
                   <InputNumber size="small" class="w-full" :min="1" :value="el.gridCols ?? 3" @update:value="(v) => updateElement(el.id, { gridCols: Math.max(1, Number(v) || 3) })" />
                 </label>
               </div>
@@ -332,20 +334,20 @@ function setNodeCardExpanded(id: string, open: boolean) {
             <template v-if="el.materialType === 'geometry'">
               <div class="grid grid-cols-2 gap-2 rounded-lg border border-gray-200/60 bg-gray-50/50 p-3">
                 <label class="block space-y-1">
-                  <div>形状</div>
+                  <div>{{ t("panel.config.shape") }}</div>
                   <Select
                     size="small"
                     class="w-full"
                     :value="el.geometryShape ?? 'rect'"
                     @update:value="(v) => updateElement(el.id, { geometryShape: v as PanelElement['geometryShape'] })"
                   >
-                    <Select.Option value="rect">矩形</Select.Option>
-                    <Select.Option value="circle">圆形</Select.Option>
-                    <Select.Option value="triangle">三角形</Select.Option>
+                    <Select.Option value="rect">{{ t("panel.config.shapeRect") }}</Select.Option>
+                    <Select.Option value="circle">{{ t("panel.config.shapeCircle") }}</Select.Option>
+                    <Select.Option value="triangle">{{ t("panel.config.shapeTriangle") }}</Select.Option>
                   </Select>
                 </label>
                 <label class="block space-y-1">
-                  <div>颜色</div>
+                  <div>{{ t("panel.config.color") }}</div>
                   <Input
                     size="small"
                     :value="el.geometryColor ?? '#3b82f6'"
@@ -358,14 +360,14 @@ function setNodeCardExpanded(id: string, open: boolean) {
             <template v-if="el.materialType === 'reference'">
               <div class="grid grid-cols-2 gap-2">
                 <label class="block space-y-1">
-                  <div>引用图层</div>
+                  <div>{{ t("panel.config.refLayer") }}</div>
                   <Select
                     size="small"
                     class="w-full"
                     :value="el.refLayerId ?? '__none__'"
                     @update:value="(v) => updateElement(el.id, { refLayerId: v === '__none__' ? undefined : String(v) })"
                   >
-                    <Select.Option value="__none__">无</Select.Option>
+                    <Select.Option value="__none__">{{ t("common.none") }}</Select.Option>
                     <Select.Option
                       v-for="layer in layers.filter((l) => l.id !== el.layerId)"
                       :key="layer.id"
@@ -376,7 +378,7 @@ function setNodeCardExpanded(id: string, open: boolean) {
                   </Select>
                 </label>
                 <label class="block space-y-1">
-                  <div>拷贝</div>
+                  <div>{{ t("panel.config.copy") }}</div>
                   <Select
                     size="small"
                     class="w-full"
@@ -392,7 +394,7 @@ function setNodeCardExpanded(id: string, open: boolean) {
 
             <template v-if="el.materialType === 'image'">
               <label class="block space-y-1">
-                <div>背景图 / URL</div>
+                <div>{{ t("panel.config.backgroundImageUrl") }}</div>
                 <Input
                   size="small"
                   :value="el.style?.backgroundImageRemoteUrl ?? el.style?.backgroundImage ?? ''"
@@ -406,7 +408,7 @@ function setNodeCardExpanded(id: string, open: boolean) {
                 />
               </label>
               <label class="block space-y-1">
-                <div>适应方式</div>
+                <div>{{ t("panel.config.objectFit") }}</div>
                 <Select
                   size="small"
                   class="w-full"
@@ -428,7 +430,7 @@ function setNodeCardExpanded(id: string, open: boolean) {
       v-if="noSearchMatch"
       class="rounded border border-gray-200/60 bg-white px-2 py-1.5 text-[11px] text-gray-500"
     >
-      未匹配到可编辑节点，请更换关键词。
+      {{ t("panel.config.noEditableMatch") }}
     </div>
   </div>
 </template>

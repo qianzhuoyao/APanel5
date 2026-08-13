@@ -34,6 +34,8 @@ import {
   useFetchDebugTask,
   useSwaggerLoadTask,
 } from "../fetch-config-task-store";
+import { useI18n } from "@arronqzy/i18n/react";
+
 import { FetchUrlAutocomplete } from "./FetchUrlAutocomplete";
 
 function SendIcon({ className }: { className?: string }) {
@@ -145,6 +147,7 @@ function FetchDebugResponsePanel({
 }: {
   task: ReturnType<typeof useFetchDebugTask>;
 }) {
+  const { t } = useI18n();
   const [expanded, setExpanded] = useState(false);
 
   if (task.status === "idle" || task.status === "loading") return null;
@@ -152,7 +155,7 @@ function FetchDebugResponsePanel({
   if (task.status === "error") {
     return (
       <div className="rounded-md border border-destructive/40 bg-destructive/5 p-2">
-        <p className="text-[11px] text-destructive">{task.error ?? "请求失败"}</p>
+        <p className="text-[11px] text-destructive">{task.error ?? t("blueprint.config.requestFailed")}</p>
       </div>
     );
   }
@@ -173,7 +176,7 @@ function FetchDebugResponsePanel({
         onClick={() => setExpanded((value) => !value)}
       >
         <ChevronIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" expanded={expanded} />
-        <span className="text-[11px] font-medium text-foreground">调试响应</span>
+        <span className="text-[11px] font-medium text-foreground">{t("blueprint.config.debugResponse")}</span>
         <span
           className={cn(
             "rounded px-1.5 py-0.5 font-mono text-[10px]",
@@ -250,6 +253,7 @@ export function FetchNodeConfigPanel({
   node,
   onUpdateNode,
 }: FetchNodeConfigPanelProps) {
+  const { t } = useI18n();
   const fetchConfig = resolveNodeFetchConfig(node);
   const endpoints = fetchConfig.swaggerEndpoints ?? [];
   const hasSwaggerEndpoints = endpoints.length > 0;
@@ -275,7 +279,7 @@ export function FetchNodeConfigPanel({
   const handleLoadSwagger = useCallback(() => {
     const docsUrl = fetchConfig.swaggerDocsUrl?.trim();
     if (!docsUrl) {
-      setValidationError("请先填写 Swagger 文档 URL");
+      setValidationError(t("blueprint.config.fillSwaggerUrlFirst"));
       return;
     }
 
@@ -305,7 +309,7 @@ export function FetchNodeConfigPanel({
   const handleSendFetchDebug = useCallback(() => {
     const url = fetchConfig.url?.trim();
     if (!url) {
-      setFetchValidationError("请先填写请求 URL");
+      setFetchValidationError(t("blueprint.config.fillRequestUrlFirst"));
       return;
     }
 
@@ -323,14 +327,13 @@ export function FetchNodeConfigPanel({
 
   return (
     <div className="space-y-2 rounded-md border border-border/70 bg-muted/20 p-2.5">
-      <div className="font-medium text-foreground">数据源获取 (Fetch)</div>
+      <div className="font-medium text-foreground">{t("blueprint.config.fetchTitle")}</div>
       <p className="text-[11px] text-muted-foreground">
-        收到<strong>真信号</strong>后发起 HTTP 请求；可导入 Swagger 文档后从接口列表联想选择
-        URL。
+        {t("blueprint.config.fetchHint")}
       </p>
 
       <label className="block space-y-1">
-        <span className="text-muted-foreground">Swagger 文档 URL（可选）</span>
+        <span className="text-muted-foreground">{t("blueprint.config.swaggerUrlOptional")}</span>
         <div className="flex gap-1.5">
           <Input
             value={fetchConfig.swaggerDocsUrl ?? ""}
@@ -350,8 +353,8 @@ export function FetchNodeConfigPanel({
               variant="outline"
               size="icon"
               className="h-8 w-8 shrink-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
-              title="中止解析"
-              aria-label="中止 Swagger 解析"
+              title={t("blueprint.config.abortParse")}
+              aria-label={t("blueprint.config.abortSwaggerAria")}
               onClick={handleAbortSwagger}
             >
               <StopIcon className="h-3.5 w-3.5" />
@@ -362,7 +365,7 @@ export function FetchNodeConfigPanel({
               variant="outline"
               size="icon"
               className="h-8 w-8 shrink-0"
-              title="解析 Swagger 文档"
+              title={t("blueprint.config.parseSwagger")}
               onClick={() => handleLoadSwagger()}
             >
               <SendIcon className="h-4 w-4" />
@@ -372,7 +375,7 @@ export function FetchNodeConfigPanel({
         {loadingSwagger ? (
           <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
             <LoaderIcon className="h-3.5 w-3.5 shrink-0" />
-            正在解析 Swagger 文档，点击右侧按钮可中止…
+            {t("blueprint.config.parsingSwagger")}
           </p>
         ) : null}
         {swaggerError ? (
@@ -380,14 +383,14 @@ export function FetchNodeConfigPanel({
         ) : null}
         {endpoints.length > 0 ? (
           <p className="text-[11px] text-muted-foreground">
-            已解析 {endpoints.length} 个接口
+            {t("blueprint.config.parsedEndpoints", { count: endpoints.length })}
           </p>
         ) : null}
       </label>
 
       <label className="block space-y-1">
         <div className="flex items-center justify-between gap-2">
-          <span className="text-muted-foreground">请求 URL</span>
+          <span className="text-muted-foreground">{t("blueprint.config.requestUrl")}</span>
           {hasSwaggerEndpoints ? (
             <div className="flex rounded-md border border-border p-0.5">
               <button
@@ -401,7 +404,7 @@ export function FetchNodeConfigPanel({
                 )}
                 onClick={() => setUrlInputMode("swagger")}
               >
-                接口联想
+                {t("blueprint.config.suggestApi")}
               </button>
               <button
                 type="button"
@@ -414,7 +417,7 @@ export function FetchNodeConfigPanel({
                 )}
                 onClick={() => setUrlInputMode("manual")}
               >
-                手动输入
+                {t("blueprint.config.manualInput")}
               </button>
             </div>
           ) : null}
@@ -428,7 +431,7 @@ export function FetchNodeConfigPanel({
             )}
           >
             <label className="block space-y-1">
-              <span className="text-muted-foreground">API 主机 / Base URL</span>
+              <span className="text-muted-foreground">{t("blueprint.config.apiHostBaseUrl")}</span>
               <Input
                 value={fetchConfig.apiBaseUrl ?? ""}
                 onChange={(e: ChangeEvent<HTMLInputElement>) =>
@@ -442,7 +445,7 @@ export function FetchNodeConfigPanel({
               />
             </label>
             <label className="block space-y-1">
-              <span className="text-muted-foreground">选择接口</span>
+              <span className="text-muted-foreground">{t("blueprint.config.selectEndpoint")}</span>
               <div className="flex gap-1.5">
                 <div className="min-w-0 flex-1">
                   <FetchUrlAutocomplete
@@ -450,7 +453,7 @@ export function FetchNodeConfigPanel({
                     apiBaseUrl={fetchConfig.apiBaseUrl ?? ""}
                     endpoints={endpoints}
                     selectOnly
-                    placeholder="点击选择或搜索接口"
+                    placeholder={t("blueprint.config.selectOrSearchEndpoint")}
                     onChange={(url) =>
                       onUpdateNode(node.id, patchFetchConfig(node, { url }))
                     }
@@ -470,10 +473,10 @@ export function FetchNodeConfigPanel({
                   disabled={loadingSwagger}
                   onSend={handleSendFetchDebug}
                   onAbort={handleAbortFetchDebug}
-                  sendTitle="发送调试请求"
-                  abortTitle="中止请求"
-                  sendAriaLabel="发送调试请求"
-                  abortAriaLabel="中止调试请求"
+                  sendTitle={t("blueprint.config.sendDebugRequest")}
+                  abortTitle={t("blueprint.config.abortRequest")}
+                  sendAriaLabel={t("blueprint.config.sendDebugRequest")}
+                  abortAriaLabel={t("blueprint.config.abortDebugAria")}
                 />
               </div>
             </label>
@@ -494,17 +497,17 @@ export function FetchNodeConfigPanel({
               disabled={loadingSwagger}
               onSend={handleSendFetchDebug}
               onAbort={handleAbortFetchDebug}
-              sendTitle="发送调试请求"
-              abortTitle="中止请求"
-              sendAriaLabel="发送调试请求"
-              abortAriaLabel="中止调试请求"
+              sendTitle={t("blueprint.config.sendDebugRequest")}
+              abortTitle={t("blueprint.config.abortRequest")}
+              sendAriaLabel={t("blueprint.config.sendDebugRequest")}
+              abortAriaLabel={t("blueprint.config.abortDebugAria")}
             />
           </div>
         )}
         {loadingFetchDebug ? (
           <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
             <LoaderIcon className="h-3.5 w-3.5 shrink-0" />
-            正在发送调试请求，点击右侧按钮可中止…
+            {t("blueprint.config.sendingDebug")}
           </p>
         ) : null}
         {fetchValidationError ? (
@@ -514,7 +517,7 @@ export function FetchNodeConfigPanel({
       </label>
 
       <label className="block space-y-1">
-        <span className="text-muted-foreground">请求方法</span>
+        <span className="text-muted-foreground">{t("blueprint.config.requestMethod")}</span>
         <Select
           value={fetchConfig.method ?? "GET"}
           onValueChange={(value: string) =>
@@ -538,7 +541,7 @@ export function FetchNodeConfigPanel({
       </label>
 
       <label className="block space-y-1">
-        <span className="text-muted-foreground">请求头 (JSON)</span>
+        <span className="text-muted-foreground">{t("blueprint.config.requestHeadersJson")}</span>
         <textarea
           defaultValue={JSON.stringify(fetchConfig.headers ?? {}, null, 2)}
           key={`${node.id}-headers-${JSON.stringify(fetchConfig.headers)}`}
@@ -560,7 +563,7 @@ export function FetchNodeConfigPanel({
       </label>
 
       <label className="block space-y-1">
-        <span className="text-muted-foreground">请求体</span>
+        <span className="text-muted-foreground">{t("blueprint.config.requestBody")}</span>
         <textarea
           value={fetchConfig.body ?? ""}
           onChange={(e) =>
@@ -671,7 +674,7 @@ export function FetchNodeConfigPanel({
 
       <div className="grid grid-cols-2 gap-2">
         <label className="block space-y-1">
-          <span className="text-muted-foreground">响应解析</span>
+          <span className="text-muted-foreground">{t("blueprint.config.responseParse")}</span>
           <Select
             value={fetchConfig.responseType ?? "json"}
             onValueChange={(value: string) =>
@@ -696,7 +699,7 @@ export function FetchNodeConfigPanel({
           </Select>
         </label>
         <label className="block space-y-1">
-          <span className="text-muted-foreground">超时 (ms)</span>
+          <span className="text-muted-foreground">{t("blueprint.config.timeoutMs")}</span>
           <Input
             type="number"
             min={0}

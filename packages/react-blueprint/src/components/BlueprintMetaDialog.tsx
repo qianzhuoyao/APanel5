@@ -11,6 +11,7 @@ import {
   Label,
   Textarea,
 } from "@arronqzy/ui";
+import { useI18n } from "@arronqzy/i18n/react";
 
 import type { BlueprintMetaDraft } from "../library/types";
 
@@ -29,6 +30,7 @@ export function BlueprintMetaDialog({
   onOpenChange,
   onConfirm,
 }: BlueprintMetaDialogProps) {
+  const { t } = useI18n();
   const [name, setName] = useState(initialMeta.name);
   const [remark, setRemark] = useState(initialMeta.remark);
 
@@ -38,16 +40,20 @@ export function BlueprintMetaDialog({
     setRemark(initialMeta.remark);
   }, [initialMeta.name, initialMeta.remark, open]);
 
-  const title = mode === "export" ? "导出蓝图" : "保存蓝图";
+  const title =
+    mode === "export"
+      ? t("blueprint.dialog.exportTitle")
+      : t("blueprint.dialog.saveTitle");
   const description =
     mode === "export"
-      ? "填写蓝图名称与备注，将当前蓝图导出为 JSON 文件。"
-      : "填写蓝图名称与备注，将当前蓝图保存到本地蓝图库。";
-  const confirmLabel = mode === "export" ? "导出" : "保存";
+      ? t("blueprint.dialog.exportDescription")
+      : t("blueprint.dialog.saveDescription");
+  const confirmLabel =
+    mode === "export" ? t("blueprint.dialog.export") : t("blueprint.dialog.save");
 
   const handleConfirm = () => {
     onConfirm({
-      name: name.trim() || "未命名蓝图",
+      name: name.trim() || t("blueprint.dialog.unnamedBlueprint"),
       remark: remark.trim(),
     });
     onOpenChange(false);
@@ -62,29 +68,33 @@ export function BlueprintMetaDialog({
         </DialogHeader>
         <div className="space-y-3 py-1">
           <div className="space-y-1.5">
-            <Label htmlFor="blueprint-meta-name">蓝图名称</Label>
+            <Label htmlFor="blueprint-meta-name">
+              {t("blueprint.dialog.blueprintName")}
+            </Label>
             <Input
               id="blueprint-meta-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="例如：首页初始化流程"
+              placeholder={t("blueprint.dialog.namePlaceholder")}
               autoFocus
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="blueprint-meta-remark">蓝图备注</Label>
+            <Label htmlFor="blueprint-meta-remark">
+              {t("blueprint.dialog.remark")}
+            </Label>
             <Textarea
               id="blueprint-meta-remark"
               value={remark}
               onChange={(e) => setRemark(e.target.value)}
-              placeholder="可选：描述蓝图用途、触发条件等"
+              placeholder={t("blueprint.dialog.remarkPlaceholder")}
               rows={3}
             />
           </div>
         </div>
         <DialogFooter>
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-            取消
+            {t("common.cancel")}
           </Button>
           <Button type="button" onClick={handleConfirm}>
             {confirmLabel}

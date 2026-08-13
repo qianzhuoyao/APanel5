@@ -1,9 +1,11 @@
 <script setup lang="ts">
+import { useI18n } from "@arronqzy/i18n/vue";
 import { ref, watch } from "vue";
 import { Button, Input, Modal } from "ant-design-vue";
 
 import type { BlueprintMetaDraft } from "../library/types";
 
+const { t } = useI18n();
 export type BlueprintMetaDialogProps = {
   open: boolean;
   mode: "export" | "save";
@@ -26,16 +28,20 @@ watch(
   }
 );
 
-const title = () => (props.mode === "export" ? "导出蓝图" : "保存蓝图");
+const title = () =>
+  props.mode === "export"
+    ? t("blueprint.dialog.exportTitle")
+    : t("blueprint.dialog.saveTitle");
 const description = () =>
   props.mode === "export"
-    ? "填写蓝图名称与备注，将当前蓝图导出为 JSON 文件。"
-    : "填写蓝图名称与备注，将当前蓝图保存到本地蓝图库。";
-const confirmLabel = () => (props.mode === "export" ? "导出" : "保存");
+    ? t("blueprint.dialog.exportDescription")
+    : t("blueprint.dialog.saveDescription");
+const confirmLabel = () =>
+  props.mode === "export" ? t("blueprint.dialog.export") : t("blueprint.dialog.save");
 
 function handleConfirm() {
   props.onConfirm({
-    name: name.value.trim() || "未命名蓝图",
+    name: name.value.trim() || t("blueprint.dialog.unnamedBlueprint"),
     remark: remark.value.trim(),
   });
   props.onOpenChange(false);
@@ -47,33 +53,33 @@ function handleConfirm() {
     :open="open"
     :title="title()"
     :ok-text="confirmLabel()"
-    cancel-text="取消"
+    :cancel-text="t('common.cancel')"
     @update:open="onOpenChange"
     @ok="handleConfirm"
   >
     <p class="mb-3 text-xs text-muted-foreground">{{ description() }}</p>
     <div class="space-y-3">
       <label class="block space-y-1">
-        <span class="text-sm">蓝图名称</span>
+        <span class="text-sm">{{ t("blueprint.dialog.blueprintName") }}</span>
         <Input
           id="blueprint-meta-name"
           v-model:value="name"
-          placeholder="例如：首页初始化流程"
+          :placeholder="t('blueprint.dialog.namePlaceholder')"
           autofocus
         />
       </label>
       <label class="block space-y-1">
-        <span class="text-sm">蓝图备注</span>
+        <span class="text-sm">{{ t("blueprint.dialog.remark") }}</span>
         <Input.TextArea
           id="blueprint-meta-remark"
           v-model:value="remark"
-          placeholder="可选：描述蓝图用途、触发条件等"
+          :placeholder="t('blueprint.dialog.remarkPlaceholder')"
           :rows="3"
         />
       </label>
     </div>
     <template #footer>
-      <Button @click="onOpenChange(false)">取消</Button>
+      <Button @click="onOpenChange(false)">{{ t("common.cancel") }}</Button>
       <Button type="primary" @click="handleConfirm">{{ confirmLabel() }}</Button>
     </template>
   </Modal>

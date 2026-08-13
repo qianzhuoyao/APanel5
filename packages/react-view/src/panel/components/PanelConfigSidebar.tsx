@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useI18n } from "@arronqzy/i18n/react";
 import {
   Card,
   CardContent,
@@ -28,7 +29,7 @@ import type {
 } from "../types";
 import { buildChartOption, CHART_TYPES, getChartLabelsDisplayText, getChartValuesDisplayText } from "../utils/chartOptionBuilder";
 import type { PanelLayer } from "../types";
-import { PANEL_MESSAGES } from "../constants/messages";
+import { getPanelMessages } from "../constants/messages";
 import { ViewElementScopePanel } from "./ViewElementScopePanel";
 import { ConfigHintIcon } from "./ConfigHintIcon";
 import { hasViewElementScope } from "../scope/view-scope-store";
@@ -69,6 +70,9 @@ export function PanelConfigSidebar({
   onAdjustNodeZOrder,
   viewElementScope,
 }: PanelConfigSidebarProps) {
+  const { t } = useI18n();
+  const messages = React.useMemo(() => getPanelMessages(t), [t]);
+
   const [isAdvancedOptionMode, setIsAdvancedOptionMode] = useState(false);
   const [optionJsonText, setOptionJsonText] = useState("{}");
   const [optionJsonError, setOptionJsonError] = useState<string | null>(null);
@@ -113,9 +117,9 @@ export function PanelConfigSidebar({
   const readonlyReason = !selectedElement
     ? ""
     : selectedElement.locked
-      ? PANEL_MESSAGES.nodeConfigLocked
+      ? messages.nodeConfigLocked
       : selectedLayer?.locked
-        ? PANEL_MESSAGES.nodeConfigLayerLocked
+        ? messages.nodeConfigLayerLocked
         : "";
   const selectedChartType = (selectedElement?.materialType ?? "") as
     | "bar"
@@ -135,7 +139,7 @@ export function PanelConfigSidebar({
     hasViewElementScope(selectedElement.id);
   const scopeWarnings = useMemo(() => {
     if (!selectedElement || viewElementScope === undefined) return [];
-    return collectElementScopeWarnings(selectedElement, viewElementScope);
+    return collectElementScopeWarnings(selectedElement, viewElementScope, t);
   }, [selectedElement, viewElementScope]);
   const effectiveSelectedElements = useMemo(() => {
     if (selectedElements.length > 0) return selectedElements;
@@ -168,7 +172,8 @@ export function PanelConfigSidebar({
 
   useEffect(() => {
     if (!selectedElement || selectedElement.materialType !== "text") return;
-    const nextHtml = selectedElement.textHtml ?? "<p>双击输入文本</p>";
+    const nextHtml =
+      selectedElement.textHtml ?? `<p>${t("panel.defaults.doubleClickTextHtml")}</p>`;
     if (textEditorRef.current && textEditorRef.current.innerHTML !== nextHtml) {
       textEditorRef.current.innerHTML = nextHtml;
     }
@@ -253,13 +258,13 @@ export function PanelConfigSidebar({
       const base64 = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve(String(reader.result ?? ""));
-        reader.onerror = () => reject(new Error(PANEL_MESSAGES.readImageFailed));
+        reader.onerror = () => reject(new Error(messages.readImageFailed));
         reader.readAsDataURL(file);
       });
       updateSelectedStyle({
         backgroundImage: `url("${base64}")`,
       });
-      setUploadStatus("已写入 base64");
+      setUploadStatus(t("panel.config.uploadWrittenBase64"));
       try {
         const form = new FormData();
         form.append("file", file);
@@ -268,10 +273,10 @@ export function PanelConfigSidebar({
         const data = (await resp.json()) as { url?: string };
         if (data.url) {
           updateSelectedStyle({ backgroundImageRemoteUrl: data.url });
-          setUploadStatus("已上传服务器并写入 base64");
+          setUploadStatus(t("panel.config.uploadServerAndBase64"));
         }
       } catch {
-        setUploadStatus("服务器上传失败，仅保留 base64");
+        setUploadStatus(t("panel.config.uploadServerFailedKeepBase64"));
       }
     },
     [selectedElement, updateSelectedStyle]
@@ -289,11 +294,11 @@ export function PanelConfigSidebar({
       const base64 = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve(String(reader.result ?? ""));
-        reader.onerror = () => reject(new Error(PANEL_MESSAGES.readAudioFailed));
+        reader.onerror = () => reject(new Error(messages.readAudioFailed));
         reader.readAsDataURL(file);
       });
       updateSelectedAudio({ audioSrc: base64 });
-      setAudioStatus(PANEL_MESSAGES.audioLocalSaved);
+      setAudioStatus(messages.audioLocalSaved);
       try {
         const form = new FormData();
         form.append("file", file);
@@ -302,10 +307,10 @@ export function PanelConfigSidebar({
         const data = (await resp.json()) as { url?: string };
         if (data.url) {
           updateSelectedAudio({ audioRemoteUrl: data.url });
-          setAudioStatus(PANEL_MESSAGES.audioRemoteUploaded);
+          setAudioStatus(messages.audioRemoteUploaded);
         }
       } catch {
-        setAudioStatus(PANEL_MESSAGES.audioServerUploadFailed);
+        setAudioStatus(messages.audioServerUploadFailed);
       }
     },
     [selectedElement, updateSelectedAudio]
@@ -316,11 +321,11 @@ export function PanelConfigSidebar({
       const base64 = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve(String(reader.result ?? ""));
-        reader.onerror = () => reject(new Error(PANEL_MESSAGES.readImageFailed));
+        reader.onerror = () => reject(new Error(messages.readImageFailed));
         reader.readAsDataURL(file);
       });
       updateSelectedAudio({ audioPosterImage: base64 });
-      setAudioStatus(PANEL_MESSAGES.audioPosterSet);
+      setAudioStatus(messages.audioPosterSet);
     },
     [selectedElement, updateSelectedAudio]
   );
@@ -330,7 +335,7 @@ export function PanelConfigSidebar({
   const startRecordingAudio = useCallback(async () => {
     if (!selectedElement || selectedElement.materialType !== "audio") return;
     if (!navigator.mediaDevices?.getUserMedia) {
-      setAudioStatus(PANEL_MESSAGES.audioRecordUnsupported);
+      setAudioStatus(messages.audioRecordUnsupported);
       return;
     }
     try {
@@ -347,11 +352,11 @@ export function PanelConfigSidebar({
         const dataUrl = await new Promise<string>((resolve, reject) => {
           const reader = new FileReader();
           reader.onload = () => resolve(String(reader.result ?? ""));
-          reader.onerror = () => reject(new Error(PANEL_MESSAGES.readRecordAudioFailed));
+          reader.onerror = () => reject(new Error(messages.readRecordAudioFailed));
           reader.readAsDataURL(blob);
         });
         updateSelectedAudio({ audioSrc: dataUrl });
-        setAudioStatus(PANEL_MESSAGES.audioRecordSaved);
+        setAudioStatus(messages.audioRecordSaved);
         recordStreamRef.current?.getTracks().forEach((track) => track.stop());
         recordStreamRef.current = null;
         recorderRef.current = null;
@@ -359,9 +364,9 @@ export function PanelConfigSidebar({
       };
       recorder.start();
       setIsRecordingAudio(true);
-      setAudioStatus(PANEL_MESSAGES.audioRecording);
+      setAudioStatus(messages.audioRecording);
     } catch {
-      setAudioStatus(PANEL_MESSAGES.audioRecordStartFailed);
+      setAudioStatus(messages.audioRecordStartFailed);
       setIsRecordingAudio(false);
     }
   }, [selectedElement, updateSelectedAudio]);
@@ -378,11 +383,11 @@ export function PanelConfigSidebar({
       const base64 = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve(String(reader.result ?? ""));
-        reader.onerror = () => reject(new Error(PANEL_MESSAGES.readVideoFailed));
+        reader.onerror = () => reject(new Error(messages.readVideoFailed));
         reader.readAsDataURL(file);
       });
       updateSelectedVideo({ videoSrc: base64 });
-      setVideoStatus(PANEL_MESSAGES.videoLocalSaved);
+      setVideoStatus(messages.videoLocalSaved);
       try {
         const form = new FormData();
         form.append("file", file);
@@ -391,10 +396,10 @@ export function PanelConfigSidebar({
         const data = (await resp.json()) as { url?: string };
         if (data.url) {
           updateSelectedVideo({ videoRemoteUrl: data.url });
-          setVideoStatus(PANEL_MESSAGES.videoRemoteUploaded);
+          setVideoStatus(messages.videoRemoteUploaded);
         }
       } catch {
-        setVideoStatus(PANEL_MESSAGES.videoServerUploadFailed);
+        setVideoStatus(messages.videoServerUploadFailed);
       }
     },
     [selectedElement, updateSelectedVideo]
@@ -487,7 +492,7 @@ export function PanelConfigSidebar({
           value={/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(value || "") ? value : "#000000"}
           onChange={(e) => onTextChange(e.target.value)}
           className="h-7 w-10 cursor-pointer p-1"
-          aria-label={`${label}调色盘`}
+          aria-label={t("common.colorPickerAria", { label })}
         />
       </div>
     </label>
@@ -508,17 +513,17 @@ export function PanelConfigSidebar({
       </ConfigHintIcon>
     </div>
   );
-  const renderFormatterLabel = (label = "Tooltip Formatter（可选）") => (
+  const renderFormatterLabel = (label = t("panel.config.tooltipFormatter")) => (
     <div className="flex min-w-0 items-center gap-1">
       <span className={optionLabelTextClass} title={label}>{label}</span>
       <ConfigHintIcon label="Tooltip Formatter" contentClassName="max-w-[360px]">
-        <div className="font-medium">可用占位符</div>
-        <div>{"{a}=系列名, {b}=类目名, {c}=数值, {d}=百分比(饼图)"}</div>
-        <div className="mt-1 font-medium">常用模板 + 输出示例</div>
-        <div>{"1) {b}: {c}  ->  周一: 120"}</div>
-        <div>{"2) {a}<br/>{b}: {c}  ->  销量<br/>周一: 120"}</div>
-        <div>{"3) {b}: {c} ({d}%)  ->  访问来源: 335 (42%)"}</div>
-        <div>{"4) ￥{c} / {b}  ->  ￥120 / 周一"}</div>
+        <div className="font-medium">{t("panel.config.formatterPlaceholdersTitle")}</div>
+        <div>{t("panel.config.formatterPlaceholders")}</div>
+        <div className="mt-1 font-medium">{t("panel.config.formatterExamplesTitle")}</div>
+        <div>{t("panel.config.formatterExample1")}</div>
+        <div>{t("panel.config.formatterExample2")}</div>
+        <div>{t("panel.config.formatterExample3")}</div>
+        <div>{t("panel.config.formatterExample4")}</div>
       </ConfigHintIcon>
     </div>
   );
@@ -585,7 +590,7 @@ export function PanelConfigSidebar({
     >
       <div className="sticky top-0 z-20 mb-3 rounded-lg border border-border/70 bg-card/95 px-2.5 py-2 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/80">
         <div className="flex items-center justify-between gap-2">
-          <div className="text-xs font-semibold tracking-wide">配置面板</div>
+          <div className="text-xs font-semibold tracking-wide">{t("panel.config.panelTitle")}</div>
         </div>
         {showScopePanel ? (
           <ViewElementScopePanel scope={viewElementScope} />
@@ -604,7 +609,7 @@ export function PanelConfigSidebar({
               className="rounded border border-border px-1.5 py-0.5 text-[11px] text-muted-foreground hover:bg-accent"
               onClick={() => setIsSearchCollapsed((prev) => !prev)}
             >
-              {isSearchCollapsed ? "展开搜索" : "收起搜索"}
+              {isSearchCollapsed ? t("panel.config.expandSearch") : t("panel.config.collapseSearch")}
             </button>
           </div>
           {!isSearchCollapsed ? (
@@ -612,13 +617,13 @@ export function PanelConfigSidebar({
               <Input
                 value={configSearch}
                 onChange={(e) => setConfigSearch(e.target.value)}
-                placeholder="搜索配置，如：边框、tooltip、音频、网格..."
+                placeholder={t("panel.config.searchPlaceholder")}
                 className="h-7"
                 data-scope-autocomplete="off"
               />
               {hasSearch ? (
                 <div className="mt-1 text-[11px] text-muted-foreground">
-                  搜索中：{configSearch}
+                  {t("panel.config.searching", { query: configSearch })}
                 </div>
               ) : null}
             </div>
@@ -629,7 +634,7 @@ export function PanelConfigSidebar({
         <div className="space-y-3">
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-xs">批量设置（{effectiveSelectedElements.length} 个）</CardTitle>
+              <CardTitle className="text-xs">{t("panel.config.batchTitleWithCount", { count: effectiveSelectedElements.length })}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 text-xs">
               <div className="grid grid-cols-2 gap-2">
@@ -638,14 +643,14 @@ export function PanelConfigSidebar({
                   className="rounded border border-border bg-background px-2 py-1 hover:bg-accent"
                   onClick={() => effectiveSelectedElements.forEach((el) => updateElement(el.id, { locked: true }))}
                 >
-                  全部锁定
+                  {t("panel.config.lockAll")}
                 </button>
                 <button
                   type="button"
                   className="rounded border border-border bg-background px-2 py-1 hover:bg-accent"
                   onClick={() => effectiveSelectedElements.forEach((el) => updateElement(el.id, { locked: false }))}
                 >
-                  全部解锁
+                  {t("panel.config.unlockAll")}
                 </button>
                 <button
                   type="button"
@@ -656,7 +661,7 @@ export function PanelConfigSidebar({
                     )
                   }
                 >
-                  全部上移一层
+                  {t("panel.config.bringAllForward")}
                 </button>
                 <button
                   type="button"
@@ -667,7 +672,7 @@ export function PanelConfigSidebar({
                     )
                   }
                 >
-                  全部下移一层
+                  {t("panel.config.sendAllBackward")}
                 </button>
                 <button
                   type="button"
@@ -678,7 +683,7 @@ export function PanelConfigSidebar({
                     )
                   }
                 >
-                  全部 zIndex 设为 1
+                  {t("panel.config.setAllZIndex1")}
                 </button>
                 <button
                   type="button"
@@ -694,7 +699,7 @@ export function PanelConfigSidebar({
                     )
                   }
                 >
-                  全部背景色设为蓝色
+                  {t("panel.config.setAllBgBlue")}
                 </button>
               </div>
             </CardContent>
@@ -717,20 +722,20 @@ export function PanelConfigSidebar({
                       type="button"
                       className="inline-flex h-6 w-6 items-center justify-center rounded border border-border text-[11px] hover:bg-accent"
                       onClick={() => setNodeCardExpanded(el.id, !isNodeCardExpanded(el.id))}
-                      aria-label={isNodeCardExpanded(el.id) ? "收起节点配置" : "展开节点配置"}
+                      aria-label={isNodeCardExpanded(el.id) ? t("panel.config.collapseNodeConfig") : t("panel.config.expandNodeConfig")}
                     >
                       {isNodeCardExpanded(el.id) ? "▾" : "▸"}
                     </button>
                     <CardTitle className="min-w-0 flex-1 text-xs truncate">
-                      {el.name?.trim() || el.materialType || "节点"} · {el.id}
+                      {el.name?.trim() || el.materialType || t("common.node")} · {el.id}
                     </CardTitle>
                     <button
                       type="button"
                       className="inline-flex h-6 items-center justify-center rounded border border-border px-2 text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground"
                       onClick={() => onExcludeSelectedNode?.(el.id)}
-                      title="将该节点从当前多选中剔除"
+                      title={t("panel.config.removeFromSelectionTitle")}
                     >
-                      剔除
+                      {t("panel.config.removeFromSelection")}
                     </button>
                   </div>
                 </CardHeader>
@@ -741,17 +746,17 @@ export function PanelConfigSidebar({
                       checked={el.locked === true}
                       onCheckedChange={(checked) => updateElement(el.id, { locked: checked === true })}
                     />
-                    <span>锁定节点</span>
+                    <span>{t("panel.config.lockedNode")}</span>
                   </label>
                   {el.locked ? (
                     <div className="rounded border border-amber-500/40 bg-amber-500/10 px-2 py-1.5 text-[11px] text-amber-700 dark:text-amber-300">
-                      当前节点已锁定，仅可操作锁定开关。
+                      {t("panel.config.lockedNodeHint")}
                     </div>
                   ) : null}
                   <fieldset disabled={el.locked} className={el.locked ? "opacity-60" : ""}>
                     <div className="space-y-2">
                       <label className="block space-y-1">
-                        <div>名称</div>
+                        <div>{t("panel.config.name")}</div>
                         <Input
                           className="h-7"
                           value={el.name ?? ""}
@@ -771,13 +776,13 @@ export function PanelConfigSidebar({
                           />
                         </label>
                         <label className="block space-y-1">
-                          <div>图层</div>
+                          <div>{t("panel.config.layer")}</div>
                           <Select
                             value={el.layerId}
                             onValueChange={(value) => updateElement(el.id, { layerId: value })}
                           >
                             <SelectTrigger className="h-7">
-                              <SelectValue placeholder="选择图层" />
+                              <SelectValue placeholder={t("panel.config.selectLayer")} />
                             </SelectTrigger>
                             <SelectContent>
                               {layers.map((layer) => (
@@ -809,7 +814,7 @@ export function PanelConfigSidebar({
                           />
                         </label>
                         <label className="block space-y-1">
-                          <div>旋转角度</div>
+                          <div>{t("panel.config.rotate")}</div>
                           <Input
                             className="h-7"
                             type="number"
@@ -820,7 +825,7 @@ export function PanelConfigSidebar({
                           />
                         </label>
                         <label className="block space-y-1">
-                          <div>宽</div>
+                          <div>{t("panel.config.width")}</div>
                           <Input
                             className="h-7"
                             type="number"
@@ -832,7 +837,7 @@ export function PanelConfigSidebar({
                           />
                         </label>
                         <label className="block space-y-1">
-                          <div>高</div>
+                          <div>{t("panel.config.height")}</div>
                           <Input
                             className="h-7"
                             type="number"
@@ -846,7 +851,7 @@ export function PanelConfigSidebar({
                       </div>
                       <div className="grid grid-cols-2 gap-2">
                     <label className="block space-y-1">
-                      <div>背景色</div>
+                      <div>{t("panel.config.backgroundColor")}</div>
                       <Input
                         className="h-7"
                         value={el.style?.backgroundColor ?? ""}
@@ -862,7 +867,7 @@ export function PanelConfigSidebar({
                       />
                     </label>
                     <label className="block space-y-1">
-                      <div>边框色</div>
+                      <div>{t("panel.config.borderColorShort")}</div>
                       <Input
                         className="h-7"
                         value={el.style?.borderColor ?? ""}
@@ -881,7 +886,7 @@ export function PanelConfigSidebar({
                       {CHART_TYPES.has(el.materialType ?? "") ? (
                     <div className="grid grid-cols-2 gap-2">
                       <label className="block space-y-1 col-span-2">
-                        <div>图表标题</div>
+                        <div>{t("panel.config.chartTitle")}</div>
                         <Input
                           className="h-7"
                           value={el.chart?.title ?? ""}
@@ -893,7 +898,7 @@ export function PanelConfigSidebar({
                         />
                       </label>
                       <label className="block space-y-1">
-                        <div>主色</div>
+                        <div>{t("panel.config.primaryColor")}</div>
                         <Input
                           className="h-7"
                           value={el.chart?.color ?? ""}
@@ -913,12 +918,12 @@ export function PanelConfigSidebar({
                             })
                           }
                         />
-                        <span>主色渐变</span>
+                        <span>{t("panel.config.primaryGradient")}</span>
                       </label>
                       {el.chart?.colorMode === "gradient" ? (
                         <>
                           <label className="block space-y-1">
-                            <div>渐变起始色</div>
+                            <div>{t("panel.config.gradientFrom")}</div>
                             <Input
                               className="h-7"
                               value={el.chart?.gradientFrom ?? el.chart?.color ?? "#3b82f6"}
@@ -930,7 +935,7 @@ export function PanelConfigSidebar({
                             />
                           </label>
                           <label className="block space-y-1">
-                            <div>渐变结束色</div>
+                            <div>{t("panel.config.gradientTo")}</div>
                             <Input
                               className="h-7"
                               value={el.chart?.gradientTo ?? "#22d3ee"}
@@ -942,7 +947,7 @@ export function PanelConfigSidebar({
                             />
                           </label>
                           <label className="block space-y-1 col-span-2">
-                            <div>渐变方向</div>
+                            <div>{t("panel.config.gradientDirection")}</div>
                             <Select
                               value={el.chart?.gradientDirection ?? "to-right"}
                               onValueChange={(value) =>
@@ -960,15 +965,15 @@ export function PanelConfigSidebar({
                             >
                               <SelectTrigger className="h-7"><SelectValue /></SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="to-right">左 → 右</SelectItem>
-                                <SelectItem value="to-bottom">上 → 下</SelectItem>
-                                <SelectItem value="to-bottom-right">左上 → 右下</SelectItem>
-                                <SelectItem value="to-top-right">左下 → 右上</SelectItem>
+                                <SelectItem value="to-right">{t("panel.config.dirToRight")}</SelectItem>
+                                <SelectItem value="to-bottom">{t("panel.config.dirToBottom")}</SelectItem>
+                                <SelectItem value="to-bottom-right">{t("panel.config.dirToBottomRight")}</SelectItem>
+                                <SelectItem value="to-top-right">{t("panel.config.dirToTopRight")}</SelectItem>
                               </SelectContent>
                             </Select>
                           </label>
                           <div className="col-span-2 space-y-1">
-                            <div className="text-[11px] text-muted-foreground">渐变预览</div>
+                            <div className="text-[11px] text-muted-foreground">{t("panel.config.gradientPreview")}</div>
                             <div
                               className="h-6 rounded border border-border/60"
                               style={{
@@ -987,7 +992,7 @@ export function PanelConfigSidebar({
                         </>
                       ) : null}
                       <label className="block space-y-1">
-                        <div>渲染</div>
+                        <div>{t("panel.config.render")}</div>
                         <Select
                           value={el.chart?.renderMode ?? "canvas"}
                           onValueChange={(value) =>
@@ -1006,7 +1011,7 @@ export function PanelConfigSidebar({
                         </Select>
                       </label>
                       <label className="block space-y-1">
-                        <div>Tooltip 背景</div>
+                        <div>{t("panel.config.tooltipBg")}</div>
                         <Input
                           className="h-7"
                           value={el.chart?.tooltipBackgroundColor ?? ""}
@@ -1030,10 +1035,10 @@ export function PanelConfigSidebar({
                             })
                           }
                         />
-                        <span>显示 Tooltip</span>
+                        <span>{t("panel.config.showTooltip")}</span>
                       </label>
                       <label className="block space-y-1">
-                        <div>Tooltip 触发方式</div>
+                        <div>{t("panel.config.tooltipTrigger")}</div>
                         <Select
                           value={el.chart?.tooltipTrigger ?? "axis"}
                           onValueChange={(value) =>
@@ -1050,7 +1055,7 @@ export function PanelConfigSidebar({
                         </Select>
                       </label>
                       <label className="block space-y-1">
-                        <div>Tooltip 文字色</div>
+                        <div>{t("panel.config.tooltipTextColor")}</div>
                         <Input
                           className="h-7"
                           value={el.chart?.tooltipTextColor ?? ""}
@@ -1082,7 +1087,7 @@ export function PanelConfigSidebar({
                         />
                       </label>
                       <label className="block space-y-1 col-span-2">
-                        <div>类目（逗号分隔）</div>
+                        <div>{t("panel.config.labelsCsv")}</div>
                         <Input
                           className="h-7"
                           value={getChartLabelsDisplayText(el.chart)}
@@ -1097,7 +1102,7 @@ export function PanelConfigSidebar({
                         />
                       </label>
                       <label className="block space-y-1 col-span-2">
-                        <div>数值（逗号分隔）</div>
+                        <div>{t("panel.config.valuesCsv")}</div>
                         <Input
                           className="h-7"
                           value={getChartValuesDisplayText(el.chart)}
@@ -1114,7 +1119,7 @@ export function PanelConfigSidebar({
                       {["bar", "line", "area", "scatter"].includes(el.materialType ?? "") ? (
                         <>
                           <label className="block space-y-1">
-                            <div>X 轴名称</div>
+                            <div>{t("panel.config.xAxisName")}</div>
                             <Input
                               className="h-7"
                               value={el.chart?.xAxisName ?? ""}
@@ -1126,7 +1131,7 @@ export function PanelConfigSidebar({
                             />
                           </label>
                           <label className="block space-y-1">
-                            <div>Y 轴名称</div>
+                            <div>{t("panel.config.yAxisName")}</div>
                             <Input
                               className="h-7"
                               value={el.chart?.yAxisName ?? ""}
@@ -1138,7 +1143,7 @@ export function PanelConfigSidebar({
                             />
                           </label>
                           <label className="block space-y-1">
-                            <div>X 轴标签颜色</div>
+                            <div>{t("panel.config.xAxisLabelColor")}</div>
                             <Input
                               className="h-7"
                               value={el.chart?.xAxisLabelColor ?? ""}
@@ -1151,7 +1156,7 @@ export function PanelConfigSidebar({
                             />
                           </label>
                           <label className="block space-y-1">
-                            <div>Y 轴标签颜色</div>
+                            <div>{t("panel.config.yAxisLabelColor")}</div>
                             <Input
                               className="h-7"
                               value={el.chart?.yAxisLabelColor ?? ""}
@@ -1164,7 +1169,7 @@ export function PanelConfigSidebar({
                             />
                           </label>
                           <label className="block space-y-1">
-                            <div>X 轴标签字号</div>
+                            <div>{t("panel.config.xAxisLabelFontSize")}</div>
                             <Input
                               className="h-7"
                               type="number"
@@ -1182,7 +1187,7 @@ export function PanelConfigSidebar({
                             />
                           </label>
                           <label className="block space-y-1">
-                            <div>Y 轴标签字号</div>
+                            <div>{t("panel.config.yAxisLabelFontSize")}</div>
                             <Input
                               className="h-7"
                               type="number"
@@ -1208,7 +1213,7 @@ export function PanelConfigSidebar({
                                 })
                               }
                             />
-                            <span>X 轴标签自动缩略</span>
+                            <span>{t("panel.config.xAxisLabelAutoEllipsis")}</span>
                           </label>
                           <label className="flex items-center gap-2">
                             <Checkbox
@@ -1219,7 +1224,7 @@ export function PanelConfigSidebar({
                                 })
                               }
                             />
-                            <span>Y 轴标签自动缩略</span>
+                            <span>{t("panel.config.yAxisLabelAutoEllipsis")}</span>
                           </label>
                           <label className="flex items-center gap-2">
                             <Checkbox
@@ -1230,7 +1235,7 @@ export function PanelConfigSidebar({
                                 })
                               }
                             />
-                            <span>X 轴刻度线</span>
+                            <span>{t("panel.config.xAxisTick")}</span>
                           </label>
                           <label className="flex items-center gap-2">
                             <Checkbox
@@ -1241,10 +1246,10 @@ export function PanelConfigSidebar({
                                 })
                               }
                             />
-                            <span>Y 轴刻度线</span>
+                            <span>{t("panel.config.yAxisTick")}</span>
                           </label>
                           <label className="block space-y-1">
-                            <div>X 轴刻度线颜色</div>
+                            <div>{t("panel.config.xAxisTickColor")}</div>
                             <Input
                               className="h-7"
                               value={el.chart?.xAxisTickColor ?? ""}
@@ -1257,7 +1262,7 @@ export function PanelConfigSidebar({
                             />
                           </label>
                           <label className="block space-y-1">
-                            <div>Y 轴刻度线颜色</div>
+                            <div>{t("panel.config.yAxisTickColor")}</div>
                             <Input
                               className="h-7"
                               value={el.chart?.yAxisTickColor ?? ""}
@@ -1278,7 +1283,7 @@ export function PanelConfigSidebar({
                                 })
                               }
                             />
-                            <span>X 轴分割线</span>
+                            <span>{t("panel.config.xAxisSplitLine")}</span>
                           </label>
                           <label className="flex items-center gap-2">
                             <Checkbox
@@ -1289,10 +1294,10 @@ export function PanelConfigSidebar({
                                 })
                               }
                             />
-                            <span>Y 轴分割线</span>
+                            <span>{t("panel.config.yAxisSplitLine")}</span>
                           </label>
                           <label className="block space-y-1">
-                            <div>X 轴分割线颜色</div>
+                            <div>{t("panel.config.xAxisSplitLineColor")}</div>
                             <Input
                               className="h-7"
                               value={el.chart?.xAxisSplitLineColor ?? ""}
@@ -1305,7 +1310,7 @@ export function PanelConfigSidebar({
                             />
                           </label>
                           <label className="block space-y-1">
-                            <div>Y 轴分割线颜色</div>
+                            <div>{t("panel.config.yAxisSplitLineColor")}</div>
                             <Input
                               className="h-7"
                               value={el.chart?.yAxisSplitLineColor ?? ""}
@@ -1321,7 +1326,7 @@ export function PanelConfigSidebar({
                       ) : null}
                       {el.materialType === "gauge" ? (
                         <label className="block space-y-1">
-                          <div>仪表盘值</div>
+                          <div>{t("panel.config.gaugeValue")}</div>
                           <Input
                             className="h-7"
                             type="number"
@@ -1339,7 +1344,7 @@ export function PanelConfigSidebar({
                       ) : null}
                       {el.materialType === "bar" ? (
                         <label className="block space-y-1">
-                          <div>柱宽</div>
+                          <div>{t("panel.config.barWidth")}</div>
                           <Input
                             className="h-7"
                             type="number"
@@ -1366,13 +1371,13 @@ export function PanelConfigSidebar({
                               })
                             }
                           />
-                          <span>平滑曲线</span>
+                          <span>{t("panel.config.smooth")}</span>
                         </label>
                       ) : null}
                       {el.materialType === "pie" ? (
                         <>
                           <label className="block space-y-1">
-                            <div>内半径</div>
+                            <div>{t("panel.config.pieInnerRadius")}</div>
                             <Input
                               className="h-7"
                               type="number"
@@ -1390,7 +1395,7 @@ export function PanelConfigSidebar({
                             />
                           </label>
                           <label className="block space-y-1">
-                            <div>外半径</div>
+                            <div>{t("panel.config.pieOuterRadius")}</div>
                             <Input
                               className="h-7"
                               type="number"
@@ -1410,7 +1415,7 @@ export function PanelConfigSidebar({
                         </>
                       ) : null}
                       <label className="block space-y-1">
-                        {renderOptionLabel("网格左边距", "grid.left", "控制绘图区左侧留白。")}
+                        {renderOptionLabel(t("panel.config.gridLeft"), "grid.left", t("panel.config.gridLeftHint"))}
                         <Input
                           className="h-7"
                           type="number"
@@ -1428,7 +1433,7 @@ export function PanelConfigSidebar({
                         />
                       </label>
                       <label className="block space-y-1">
-                        {renderOptionLabel("网格右边距", "grid.right", "控制绘图区右侧留白。")}
+                        {renderOptionLabel(t("panel.config.gridRight"), "grid.right", t("panel.config.gridRightHint"))}
                         <Input
                           className="h-7"
                           type="number"
@@ -1446,7 +1451,7 @@ export function PanelConfigSidebar({
                         />
                       </label>
                       <label className="block space-y-1">
-                        {renderOptionLabel("网格上边距", "grid.top", "控制绘图区顶部留白。")}
+                        {renderOptionLabel(t("panel.config.gridTop"), "grid.top", t("panel.config.gridTopHint"))}
                         <Input
                           className="h-7"
                           type="number"
@@ -1464,7 +1469,7 @@ export function PanelConfigSidebar({
                         />
                       </label>
                       <label className="block space-y-1">
-                        {renderOptionLabel("网格下边距", "grid.bottom", "控制绘图区底部留白。")}
+                        {renderOptionLabel(t("panel.config.gridBottom"), "grid.bottom", t("panel.config.gridBottomHint"))}
                         <Input
                           className="h-7"
                           type="number"
@@ -1482,7 +1487,7 @@ export function PanelConfigSidebar({
                         />
                       </label>
                       <label className="block space-y-1">
-                        {renderOptionLabel("图例位置", "legend.top", "设置图例在容器中的停靠位置。")}
+                        {renderOptionLabel(t("panel.config.legendPosition"), "legend.top", t("panel.config.legendPositionHint"))}
                         <Select
                           value={String((el.chart?.option as any)?.legend?.top ?? "top")}
                           onValueChange={(value) =>
@@ -1506,7 +1511,7 @@ export function PanelConfigSidebar({
                         </Select>
                       </label>
                       <label className="block space-y-1">
-                        {renderOptionLabel("图例排列", "legend.orient", "图例横向或纵向排列。")}
+                        {renderOptionLabel(t("panel.config.legendOrient"), "legend.orient", t("panel.config.legendOrientHint"))}
                         <Select
                           value={String((el.chart?.option as any)?.legend?.orient ?? "horizontal")}
                           onValueChange={(value) =>
@@ -1541,7 +1546,7 @@ export function PanelConfigSidebar({
                             })
                           }
                         />
-                        <span>显示图例（legend.show）</span>
+                        <span>{t("panel.config.showLegendWithKey")}</span>
                       </label>
                       <label className="flex items-center gap-2">
                         <Checkbox
@@ -1564,7 +1569,7 @@ export function PanelConfigSidebar({
                             });
                           }}
                         />
-                        <span>内置缩放（dataZoom[type=inside]）</span>
+                        <span>{t("panel.config.zoomInsideWithKey")}</span>
                       </label>
                       <label className="flex items-center gap-2">
                         <Checkbox
@@ -1587,7 +1592,7 @@ export function PanelConfigSidebar({
                             });
                           }}
                         />
-                        <span>滑块缩放（dataZoom[type=slider]）</span>
+                        <span>{t("panel.config.zoomSliderWithKey")}</span>
                       </label>
                       <label className="flex items-center gap-2">
                         <Checkbox
@@ -1603,10 +1608,10 @@ export function PanelConfigSidebar({
                             })
                           }
                         />
-                        <span>显示轴指示器（axisPointer.show）</span>
+                        <span>{t("panel.config.showAxisPointerWithKey")}</span>
                       </label>
                       <label className="block space-y-1">
-                        <div>轴指示器类型（axisPointer.type）</div>
+                        <div>{t("panel.config.axisPointerTypeWithKey")}</div>
                         <Select
                           value={String((el.chart?.option as any)?.axisPointer?.type ?? "line")}
                           onValueChange={(value) =>
@@ -1629,11 +1634,11 @@ export function PanelConfigSidebar({
                         </Select>
                       </label>
                       <label className="block space-y-1 col-span-2">
-                        <div>高级 option JSON（覆盖基础配置）</div>
+                        <div>{t("panel.config.advancedOptionJson")}</div>
                         <Textarea
                           className="h-28 font-mono text-[11px]"
                           defaultValue={JSON.stringify(el.chart?.option ?? {}, null, 2)}
-                          placeholder='例如：{"grid":{"left":24}}'
+                          placeholder={t("panel.config.advancedJsonPlaceholder")}
                           onBlur={(e) => {
                             const nextText = e.target.value.trim();
                             if (!nextText) {
@@ -1654,7 +1659,7 @@ export function PanelConfigSidebar({
                       {el.materialType === "text" ? (
                     <div className="grid grid-cols-2 gap-2">
                       <label className="block space-y-1 col-span-2">
-                        <div>文本内容(HTML)</div>
+                        <div>{t("panel.config.textHtml")}</div>
                         <Textarea
                           className="h-24"
                           value={el.textHtml ?? ""}
@@ -1662,7 +1667,7 @@ export function PanelConfigSidebar({
                         />
                       </label>
                       <label className="block space-y-1">
-                        <div>字体大小</div>
+                        <div>{t("panel.config.fontSize")}</div>
                         <Input
                           className="h-7"
                           type="number"
@@ -1672,7 +1677,7 @@ export function PanelConfigSidebar({
                         />
                       </label>
                       <label className="block space-y-1">
-                        <div>文字颜色</div>
+                        <div>{t("panel.config.textColor")}</div>
                         <Input
                           className="h-7"
                           value={el.textColor ?? ""}
@@ -1684,7 +1689,7 @@ export function PanelConfigSidebar({
                       {el.materialType === "audio" ? (
                     <div className="grid grid-cols-2 gap-2">
                       <label className="block space-y-1 col-span-2">
-                        <div>音频 URL</div>
+                        <div>{t("panel.config.audioUrl")}</div>
                         <Input
                           className="h-7"
                           value={el.audioRemoteUrl ?? ""}
@@ -1692,7 +1697,7 @@ export function PanelConfigSidebar({
                         />
                       </label>
                       <label className="block space-y-1">
-                        <div>动效</div>
+                        <div>{t("panel.config.effect")}</div>
                         <Select
                           value={el.audioVisualEffect ?? "pulse"}
                           onValueChange={(value) =>
@@ -1708,7 +1713,7 @@ export function PanelConfigSidebar({
                         </Select>
                       </label>
                       <label className="block space-y-1">
-                        <div>速度</div>
+                        <div>{t("panel.config.speed")}</div>
                         <Select
                           value={el.audioVisualSpeed ?? "normal"}
                           onValueChange={(value) =>
@@ -1727,7 +1732,7 @@ export function PanelConfigSidebar({
                       ) : null}
                       {el.materialType === "video" ? (
                     <label className="block space-y-1">
-                      <div>视频 URL</div>
+                      <div>{t("panel.config.videoUrl")}</div>
                       <Input
                         className="h-7"
                         value={el.videoRemoteUrl ?? ""}
@@ -1738,11 +1743,11 @@ export function PanelConfigSidebar({
                       {el.materialType === "grid" ? (
                     <div className="grid grid-cols-2 gap-2 rounded-lg border border-border/60 bg-muted/20 p-3">
                       <label className="block space-y-1.5">
-                        <div>行</div>
+                        <div>{t("panel.config.rows")}</div>
                         <Input className="h-7" type="number" min={1} value={el.gridRows ?? 2} onChange={(e) => updateElement(el.id, { gridRows: Math.max(1, Number(e.target.value) || 2) })} />
                       </label>
                       <label className="block space-y-1.5">
-                        <div>列</div>
+                        <div>{t("panel.config.cols")}</div>
                         <Input className="h-7" type="number" min={1} value={el.gridCols ?? 3} onChange={(e) => updateElement(el.id, { gridCols: Math.max(1, Number(e.target.value) || 3) })} />
                       </label>
                     </div>
@@ -1750,7 +1755,7 @@ export function PanelConfigSidebar({
                       {el.materialType === "geometry" ? (
                     <div className="grid grid-cols-2 gap-2 rounded-lg border border-border/60 bg-muted/20 p-3">
                       <label className="block space-y-1.5">
-                        <div>形状</div>
+                        <div>{t("panel.config.shape")}</div>
                         <Select
                           value={el.geometryShape ?? "rect"}
                           onValueChange={(value) =>
@@ -1759,18 +1764,18 @@ export function PanelConfigSidebar({
                         >
                           <SelectTrigger className="h-7"><SelectValue /></SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="rect">矩形</SelectItem>
-                            <SelectItem value="circle">圆形</SelectItem>
-                            <SelectItem value="triangle">三角形</SelectItem>
-                            <SelectItem value="diamond">菱形</SelectItem>
-                            <SelectItem value="hexagon">六边形</SelectItem>
-                            <SelectItem value="star">星形</SelectItem>
-                            <SelectItem value="heart">爱心</SelectItem>
+                            <SelectItem value="rect">{t("panel.config.shapeRect")}</SelectItem>
+                            <SelectItem value="circle">{t("panel.config.shapeCircle")}</SelectItem>
+                            <SelectItem value="triangle">{t("panel.config.shapeTriangle")}</SelectItem>
+                            <SelectItem value="diamond">{t("panel.config.shapeDiamond")}</SelectItem>
+                            <SelectItem value="hexagon">{t("panel.config.shapeHexagon")}</SelectItem>
+                            <SelectItem value="star">{t("panel.config.shapeStar")}</SelectItem>
+                            <SelectItem value="heart">{t("panel.config.shapeHeart")}</SelectItem>
                           </SelectContent>
                         </Select>
                       </label>
                       <label className="block space-y-1.5">
-                        <div>颜色</div>
+                        <div>{t("panel.config.color")}</div>
                         <Input
                           className="h-7"
                           value={el.geometryColor ?? "#3b82f6"}
@@ -1782,14 +1787,14 @@ export function PanelConfigSidebar({
                       {el.materialType === "reference" ? (
                     <div className="grid grid-cols-2 gap-2">
                       <label className="block space-y-1.5">
-                        <div>引用图层</div>
+                        <div>{t("panel.config.refLayer")}</div>
                         <Select
                           value={el.refLayerId ?? "__none__"}
                           onValueChange={(value) => updateElement(el.id, { refLayerId: value === "__none__" ? undefined : value })}
                         >
                           <SelectTrigger className="h-7"><SelectValue /></SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="__none__">无</SelectItem>
+                            <SelectItem value="__none__">{t("common.none")}</SelectItem>
                             {layers.filter((l) => l.id !== el.layerId).map((l) => (
                               <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>
                             ))}
@@ -1797,7 +1802,7 @@ export function PanelConfigSidebar({
                         </Select>
                       </label>
                       <label className="block space-y-1.5">
-                        <div>拷贝</div>
+                        <div>{t("panel.config.copy")}</div>
                         <Select
                           value={el.refCopyMode ?? "shallow"}
                           onValueChange={(value) => setReferenceCopyMode?.(el.id, value as ReferenceCopyMode)}
@@ -1824,7 +1829,7 @@ export function PanelConfigSidebar({
             return !text.includes(normalizedSearch);
           }) ? (
             <div className="rounded border border-border/60 bg-background px-2 py-1.5 text-[11px] text-muted-foreground">
-              未匹配到可编辑节点，请更换关键词。
+              {t("panel.config.noEditableMatch")}
             </div>
           ) : null}
         </div>
@@ -1844,8 +1849,8 @@ export function PanelConfigSidebar({
               <path d="M8 9h8M8 12h8M8 15h5" />
             </svg>
           </EmptyIcon>
-          <EmptyTitle>暂无可配置节点</EmptyTitle>
-          <EmptyDescription>请先在画布中选中一个节点，再到这里进行配置。</EmptyDescription>
+          <EmptyTitle>{t("panel.config.emptyNoNodeTitle")}</EmptyTitle>
+          <EmptyDescription>{t("panel.config.emptyNoNodeDesc")}</EmptyDescription>
         </Empty>
       ) : !isMultiSelectMode && selectedElement ? (
         <div className="space-y-3">
@@ -1866,17 +1871,17 @@ export function PanelConfigSidebar({
                   })
                 }
               />
-              <span>锁定节点（禁止层级/位置/大小/旋转）</span>
+              <span>{t("panel.config.lockNode")}</span>
             </label>
           </div>
           <fieldset disabled={!isNodeEditable} className={!isNodeEditable ? "opacity-60" : ""}>
             <div className="space-y-3.5 text-xs">
               {renderSection(
             "nodeInfo",
-            "节点信息",
+            t("panel.config.sectionNodeInfo"),
             <>
               <label className="block space-y-1">
-                <div>节点名称</div>
+                <div>{t("panel.config.nodeName")}</div>
                 <Input
                   value={selectedElement.name ?? ""}
                   onChange={(e) =>
@@ -1884,7 +1889,7 @@ export function PanelConfigSidebar({
                       name: e.target.value || undefined,
                     })
                   }
-                  placeholder="自定义节点名称（显示在节点树）"
+                  placeholder={t("panel.config.nodeNamePlaceholder")}
                   className="h-7"
                 />
               </label>
@@ -1918,7 +1923,7 @@ export function PanelConfigSidebar({
               </div>
               <div className="grid grid-cols-3 gap-2">
                 <label className="block space-y-1">
-                  <div>旋转角度</div>
+                  <div>{t("panel.config.rotate")}</div>
                   <Input
                     type="number"
                     value={selectedElement.rotate ?? 0}
@@ -1931,7 +1936,7 @@ export function PanelConfigSidebar({
                   />
                 </label>
                 <label className="block space-y-1">
-                  <div>宽</div>
+                  <div>{t("panel.config.width")}</div>
                   <Input
                     type="number"
                     min={1}
@@ -1946,7 +1951,7 @@ export function PanelConfigSidebar({
                   />
                 </label>
                 <label className="block space-y-1">
-                  <div>高</div>
+                  <div>{t("panel.config.height")}</div>
                   <Input
                     type="number"
                     min={1}
@@ -1961,9 +1966,9 @@ export function PanelConfigSidebar({
                 </label>
               </div>
               <div className="space-y-1.5">
-                <div className="text-[11px] text-muted-foreground">节点层级</div>
+                <div className="text-[11px] text-muted-foreground">{t("panel.config.nodeZOrder")}</div>
                 <div className="text-[11px] text-muted-foreground/90">
-                  当前 zIndex：{nodeZOrderLabel ?? "-"}
+                  {t("panel.config.currentZIndex", { value: nodeZOrderLabel ?? "-" })}
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <button
@@ -1971,52 +1976,52 @@ export function PanelConfigSidebar({
                     className="rounded border border-border bg-background px-2 py-1 text-[11px] hover:bg-accent"
                     onClick={() => onAdjustNodeZOrder?.(selectedElement.id, "bringForward")}
                   >
-                    上移一层
+                    {t("panel.menubar.bringForward")}
                   </button>
                   <button
                     type="button"
                     className="rounded border border-border bg-background px-2 py-1 text-[11px] hover:bg-accent"
                     onClick={() => onAdjustNodeZOrder?.(selectedElement.id, "sendBackward")}
                   >
-                    下移一层
+                    {t("panel.menubar.sendBackward")}
                   </button>
                   <button
                     type="button"
                     className="rounded border border-border bg-background px-2 py-1 text-[11px] hover:bg-accent"
                     onClick={() => onAdjustNodeZOrder?.(selectedElement.id, "bringToFront")}
                   >
-                    置顶
+                    {t("panel.menubar.bringToFront")}
                   </button>
                   <button
                     type="button"
                     className="rounded border border-border bg-background px-2 py-1 text-[11px] hover:bg-accent"
                     onClick={() => onAdjustNodeZOrder?.(selectedElement.id, "sendToBack")}
                   >
-                    置底
+                    {t("panel.menubar.sendToBack")}
                   </button>
                 </div>
               </div>
               <div className="truncate text-muted-foreground">ID: {selectedElement.id}</div>
-              <div className="text-muted-foreground">类型: {selectedElement.materialType ?? selectedElement.id}</div>
+              <div className="text-muted-foreground">{t("panel.config.type")}: {selectedElement.materialType ?? selectedElement.id}</div>
             </>,
             true,
-            ["名称", "id", "类型", "锁定", "locked", "name"]
+            [t("panel.config.name"), "id", t("panel.config.type"), t("panel.layers.lockShort"), "locked", "name"]
           )}
 
           {renderSection(
             "styleBackground",
-            "通用样式 / 背景",
+            t("panel.config.sectionStyleBackground"),
             <>
               {renderFieldGroup(
-                "背景填充",
+                t("panel.config.groupBgFill"),
                 <>
                   {renderColorField(
-                    "背景色",
+                    t("panel.config.backgroundColor"),
                     selectedElement.style?.backgroundColor ?? "",
                     (next) => updateSelectedStyle({ backgroundColor: next || undefined })
                   )}
                   <label className="block space-y-1">
-                    <div>背景图</div>
+                    <div>{t("panel.config.backgroundImage")}</div>
                     <Input
                       value={selectedElement.style?.backgroundImage ?? ""}
                       onChange={(e) => updateSelectedStyle({ backgroundImage: e.target.value || undefined })}
@@ -2026,7 +2031,7 @@ export function PanelConfigSidebar({
                   </label>
                   <div className="flex items-center gap-2">
                     <label className="inline-flex cursor-pointer items-center rounded border border-border px-2 py-1 text-[11px] hover:bg-accent">
-                      上传图片
+                      {t("panel.config.uploadImage")}
                       <Input
                         type="file"
                         accept="image/*"
@@ -2046,10 +2051,10 @@ export function PanelConfigSidebar({
                 </>
               )}
               {renderFieldGroup(
-                "背景布局",
+                t("panel.config.groupBgLayout"),
                 <div className="grid grid-cols-2 gap-2">
                   <label className="block space-y-1">
-                    <div>背景尺寸</div>
+                    <div>{t("panel.config.backgroundSize")}</div>
                     <Select
                       value={selectedElement.style?.backgroundSize ?? "__none__"}
                       onValueChange={(value) =>
@@ -2059,10 +2064,10 @@ export function PanelConfigSidebar({
                       }
                     >
                       <SelectTrigger className="h-7">
-                        <SelectValue placeholder="选择背景尺寸" />
+                        <SelectValue placeholder={t("panel.config.selectBackgroundSize")} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="__none__">默认</SelectItem>
+                        <SelectItem value="__none__">{t("common.default")}</SelectItem>
                         <SelectItem value="cover">cover</SelectItem>
                         <SelectItem value="contain">contain</SelectItem>
                         <SelectItem value="100% 100%">100% 100%</SelectItem>
@@ -2071,7 +2076,7 @@ export function PanelConfigSidebar({
                     </Select>
                   </label>
                   <label className="block space-y-1">
-                    <div>背景位置</div>
+                    <div>{t("panel.config.backgroundPosition")}</div>
                     <Select
                       value={selectedElement.style?.backgroundPosition ?? "__none__"}
                       onValueChange={(value) =>
@@ -2081,10 +2086,10 @@ export function PanelConfigSidebar({
                       }
                     >
                       <SelectTrigger className="h-7">
-                        <SelectValue placeholder="选择背景位置" />
+                        <SelectValue placeholder={t("panel.config.selectBackgroundPosition")} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="__none__">默认</SelectItem>
+                        <SelectItem value="__none__">{t("common.default")}</SelectItem>
                         <SelectItem value="center">center</SelectItem>
                         <SelectItem value="top">top</SelectItem>
                         <SelectItem value="bottom">bottom</SelectItem>
@@ -2101,18 +2106,18 @@ export function PanelConfigSidebar({
               )}
             </>,
             true,
-            ["背景色", "背景图", "background", "backgroundSize", "backgroundPosition", "布局"]
+            [t("panel.config.backgroundColor"), t("panel.config.backgroundImage"), "background", "backgroundSize", "backgroundPosition", t("panel.config.searchKwLayout")]
           )}
 
           {renderSection(
             "styleBorder",
-            "通用样式 / 边框",
+            t("panel.config.sectionStyleBorder"),
             <>
               {renderFieldGroup(
-                "边框几何",
+                t("panel.config.groupBorderGeometry"),
                 <div className="grid grid-cols-2 gap-2">
                   <label className="block space-y-1">
-                    <div>边框宽度（px）</div>
+                    <div>{t("panel.config.borderWidth")}</div>
                     <Input
                       type="number"
                       min={0}
@@ -2124,7 +2129,7 @@ export function PanelConfigSidebar({
                     />
                   </label>
                   <label className="block space-y-1">
-                    <div>边框圆角（px）</div>
+                    <div>{t("panel.config.borderRadius")}</div>
                     <Input
                       type="number"
                       min={0}
@@ -2138,10 +2143,10 @@ export function PanelConfigSidebar({
                 </div>
               )}
               {renderFieldGroup(
-                "边框视觉",
+                t("panel.config.groupBorderVisual"),
                 <div className="grid grid-cols-2 gap-2">
                   <label className="block space-y-1">
-                    <div>边框样式</div>
+                    <div>{t("panel.config.borderStyle")}</div>
                     <Select
                       value={selectedElement.style?.borderStyle ?? "solid"}
                       onValueChange={(value) =>
@@ -2151,7 +2156,7 @@ export function PanelConfigSidebar({
                       }
                     >
                       <SelectTrigger className="h-7">
-                        <SelectValue placeholder="请选择边框样式" />
+                        <SelectValue placeholder={t("panel.config.selectBorderStyle")} />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="none">none</SelectItem>
@@ -2163,7 +2168,7 @@ export function PanelConfigSidebar({
                     </Select>
                   </label>
                   {renderColorField(
-                    "边框颜色",
+                    t("panel.config.borderColor"),
                     selectedElement.style?.borderColor ?? "",
                     (next) => updateSelectedStyle({ borderColor: next || undefined })
                   )}
@@ -2171,20 +2176,20 @@ export function PanelConfigSidebar({
               )}
             </>,
             true,
-            ["边框", "border", "宽度", "圆角", "颜色", "样式"]
+            [t("panel.config.searchKwBorder"), "border", t("panel.config.searchKwWidth"), t("panel.config.searchKwRadius"), t("panel.config.color"), t("panel.config.searchKwStyle")]
           )}
 
           {isChartElement ? (
             <>
               {renderSection(
                 "chartBasic",
-                "图表配置 / 基础",
+                t("panel.config.sectionChartBasic"),
                 <>
                   {renderFieldGroup(
-                    "基础显示",
+                    t("panel.config.groupBasicDisplay"),
                     <>
                       <label className="block space-y-1.5">
-                        <div>标题</div>
+                        <div>{t("panel.config.title")}</div>
                         <Input
                           value={selectedElement.chart?.title ?? ""}
                           onChange={(e) => updateSelectedChart({ title: e.target.value })}
@@ -2193,7 +2198,7 @@ export function PanelConfigSidebar({
                       </label>
 
                       {renderColorField(
-                        "主色",
+                        t("panel.config.primaryColor"),
                         selectedElement.chart?.color ?? "#3b82f6",
                         (next) => updateSelectedChart({ color: next || "#3b82f6" })
                       )}
@@ -2204,22 +2209,22 @@ export function PanelConfigSidebar({
                             updateSelectedChart({ colorMode: checked ? "gradient" : "solid" })
                           }
                         />
-                        <span>主色使用渐变</span>
+                        <span>{t("panel.config.usePrimaryGradient")}</span>
                       </label>
                       {selectedElement.chart?.colorMode === "gradient" ? (
                         <div className="grid grid-cols-2 gap-2">
                           {renderColorField(
-                            "渐变起始色",
+                            t("panel.config.gradientFrom"),
                             selectedElement.chart?.gradientFrom ?? selectedElement.chart?.color ?? "#3b82f6",
                             (next) => updateSelectedChart({ gradientFrom: next || "#3b82f6" })
                           )}
                           {renderColorField(
-                            "渐变结束色",
+                            t("panel.config.gradientTo"),
                             selectedElement.chart?.gradientTo ?? "#22d3ee",
                             (next) => updateSelectedChart({ gradientTo: next || "#22d3ee" })
                           )}
                           <label className="block space-y-1 col-span-2">
-                            <div>渐变方向</div>
+                            <div>{t("panel.config.gradientDirection")}</div>
                             <Select
                               value={selectedElement.chart?.gradientDirection ?? "to-right"}
                               onValueChange={(value) =>
@@ -2233,18 +2238,18 @@ export function PanelConfigSidebar({
                               }
                             >
                               <SelectTrigger className="h-7">
-                                <SelectValue placeholder="请选择渐变方向" />
+                                <SelectValue placeholder={t("panel.config.selectGradientDirection")} />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="to-right">左 → 右</SelectItem>
-                                <SelectItem value="to-bottom">上 → 下</SelectItem>
-                                <SelectItem value="to-bottom-right">左上 → 右下</SelectItem>
-                                <SelectItem value="to-top-right">左下 → 右上</SelectItem>
+                                <SelectItem value="to-right">{t("panel.config.dirToRight")}</SelectItem>
+                                <SelectItem value="to-bottom">{t("panel.config.dirToBottom")}</SelectItem>
+                                <SelectItem value="to-bottom-right">{t("panel.config.dirToBottomRight")}</SelectItem>
+                                <SelectItem value="to-top-right">{t("panel.config.dirToTopRight")}</SelectItem>
                               </SelectContent>
                             </Select>
                           </label>
                           <div className="col-span-2 space-y-1">
-                            <div className="text-[11px] text-muted-foreground">渐变预览</div>
+                            <div className="text-[11px] text-muted-foreground">{t("panel.config.gradientPreview")}</div>
                             <div
                               className="h-6 rounded border border-border/60"
                               style={{
@@ -2263,7 +2268,7 @@ export function PanelConfigSidebar({
                         </div>
                       ) : null}
                       <label className="block space-y-1.5">
-                        <div>显示模式</div>
+                        <div>{t("panel.config.renderMode")}</div>
                         <Select
                           value={selectedElement.chart?.renderMode ?? "canvas"}
                           onValueChange={(value) =>
@@ -2271,7 +2276,7 @@ export function PanelConfigSidebar({
                           }
                         >
                           <SelectTrigger className="h-7">
-                            <SelectValue placeholder="请选择显示模式" />
+                            <SelectValue placeholder={t("panel.config.selectRenderMode")} />
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="canvas">Canvas</SelectItem>
@@ -2282,7 +2287,7 @@ export function PanelConfigSidebar({
                     </>
                   )}
                   {renderFieldGroup(
-                    "提示框 Tooltip",
+                    t("panel.config.groupTooltip"),
                     <>
                       <div className="grid grid-cols-2 gap-2">
                         <label className="flex items-center gap-2">
@@ -2293,10 +2298,10 @@ export function PanelConfigSidebar({
                               updateSelectedChart({ tooltipShow: checked === true })
                             }
                           />
-                          <span>显示 Tooltip</span>
+                          <span>{t("panel.config.showTooltip")}</span>
                         </label>
                         <label className="block space-y-1">
-                          <div>Tooltip 触发方式</div>
+                          <div>{t("panel.config.tooltipTrigger")}</div>
                           <Select
                             value={selectedElement.chart?.tooltipTrigger ?? "axis"}
                             onValueChange={(value) =>
@@ -2304,7 +2309,7 @@ export function PanelConfigSidebar({
                             }
                           >
                             <SelectTrigger className="h-7">
-                              <SelectValue placeholder="请选择触发方式" />
+                              <SelectValue placeholder={t("panel.config.selectTooltipTrigger")} />
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="axis">axis</SelectItem>
@@ -2315,34 +2320,34 @@ export function PanelConfigSidebar({
                       </div>
                       <div className="grid grid-cols-2 gap-2">
                         {renderColorField(
-                          "Tooltip 背景色",
+                          t("panel.config.tooltipBgColor"),
                           selectedElement.chart?.tooltipBackgroundColor ?? "#0f172a",
                           (next) => updateSelectedChart({ tooltipBackgroundColor: next || "#0f172a" })
                         )}
                         {renderColorField(
-                          "Tooltip 文字色",
+                          t("panel.config.tooltipTextColor"),
                           selectedElement.chart?.tooltipTextColor ?? "#f8fafc",
                           (next) => updateSelectedChart({ tooltipTextColor: next || "#f8fafc" })
                         )}
                       </div>
                       <label className="block space-y-1">
-                        {renderFormatterLabel("Tooltip Formatter（可选）")}
+                        {renderFormatterLabel(t("panel.config.tooltipFormatter"))}
                         <Input
                           value={selectedElement.chart?.tooltipFormatter ?? ""}
                           onChange={(e) =>
                             updateSelectedChart({ tooltipFormatter: e.target.value || undefined })
                           }
-                          placeholder="例如：{b}: {c}"
+                          placeholder={t("panel.config.tooltipFormatterPlaceholder")}
                           className="h-7"
                         />
                       </label>
                     </>
                   )}
                   {renderFieldGroup(
-                    "数据",
+                    t("panel.config.groupData"),
                     <>
                       <label className="block space-y-1">
-                        <div>类目（逗号分隔）</div>
+                        <div>{t("panel.config.labelsCsv")}</div>
                         <Input
                           value={getChartLabelsDisplayText(selectedElement.chart)}
                           onChange={(e) =>
@@ -2355,7 +2360,7 @@ export function PanelConfigSidebar({
                       </label>
 
                       <label className="block space-y-1">
-                        <div>数值（逗号分隔）</div>
+                        <div>{t("panel.config.valuesCsv")}</div>
                         <Input
                           value={getChartValuesDisplayText(selectedElement.chart)}
                           onChange={(e) =>
@@ -2374,24 +2379,24 @@ export function PanelConfigSidebar({
                   selectedChartType === "area" ||
                   selectedChartType === "scatter" ? (
                     renderFieldGroup(
-                      "坐标轴",
+                      t("panel.config.groupAxes"),
                       <>
                       <div className="grid grid-cols-2 gap-2">
                         <label className="block">
-                          <div className="mb-1">X 轴名称</div>
+                          <div className="mb-1">{t("panel.config.xAxisName")}</div>
                           <Input
                             value={selectedElement.chart?.xAxisName ?? ""}
                             onChange={(e) => updateSelectedChart({ xAxisName: e.target.value })}
-                            placeholder="例如：日期 / 类目"
+                            placeholder={t("panel.config.xAxisNamePlaceholder")}
                             className="h-7"
                           />
                         </label>
                         <label className="block">
-                          <div className="mb-1">Y 轴名称</div>
+                          <div className="mb-1">{t("panel.config.yAxisName")}</div>
                           <Input
                             value={selectedElement.chart?.yAxisName ?? ""}
                             onChange={(e) => updateSelectedChart({ yAxisName: e.target.value })}
-                            placeholder="例如：销量 / 数值"
+                            placeholder={t("panel.config.yAxisNamePlaceholder")}
                             className="h-7"
                           />
                         </label>
@@ -2405,7 +2410,7 @@ export function PanelConfigSidebar({
                               updateSelectedChart({ xAxisTickShow: checked === true })
                             }
                           />
-                          <span>X 轴刻度线</span>
+                          <span>{t("panel.config.xAxisTick")}</span>
                         </label>
                         <label className="flex items-center gap-2">
                           <Checkbox
@@ -2415,17 +2420,17 @@ export function PanelConfigSidebar({
                               updateSelectedChart({ yAxisTickShow: checked === true })
                             }
                           />
-                          <span>Y 轴刻度线</span>
+                          <span>{t("panel.config.yAxisTick")}</span>
                         </label>
                       </div>
                       <div className="grid grid-cols-2 gap-2">
                         {renderColorField(
-                          "X 轴刻度线颜色",
+                          t("panel.config.xAxisTickColor"),
                           selectedElement.chart?.xAxisTickColor ?? "#94a3b8",
                           (next) => updateSelectedChart({ xAxisTickColor: next || "#94a3b8" })
                         )}
                         {renderColorField(
-                          "Y 轴刻度线颜色",
+                          t("panel.config.yAxisTickColor"),
                           selectedElement.chart?.yAxisTickColor ?? "#94a3b8",
                           (next) => updateSelectedChart({ yAxisTickColor: next || "#94a3b8" })
                         )}
@@ -2439,7 +2444,7 @@ export function PanelConfigSidebar({
                               updateSelectedChart({ xAxisSplitLineShow: checked === true })
                             }
                           />
-                          <span>X 轴分割线</span>
+                          <span>{t("panel.config.xAxisSplitLine")}</span>
                         </label>
                         <label className="flex items-center gap-2">
                           <Checkbox
@@ -2449,36 +2454,36 @@ export function PanelConfigSidebar({
                               updateSelectedChart({ yAxisSplitLineShow: checked === true })
                             }
                           />
-                          <span>Y 轴分割线</span>
+                          <span>{t("panel.config.yAxisSplitLine")}</span>
                         </label>
                       </div>
                       <div className="grid grid-cols-2 gap-2">
                         {renderColorField(
-                          "X 轴分割线颜色",
+                          t("panel.config.xAxisSplitLineColor"),
                           selectedElement.chart?.xAxisSplitLineColor ?? "#e2e8f0",
                           (next) => updateSelectedChart({ xAxisSplitLineColor: next || "#e2e8f0" })
                         )}
                         {renderColorField(
-                          "Y 轴分割线颜色",
+                          t("panel.config.yAxisSplitLineColor"),
                           selectedElement.chart?.yAxisSplitLineColor ?? "#e2e8f0",
                           (next) => updateSelectedChart({ yAxisSplitLineColor: next || "#e2e8f0" })
                         )}
                       </div>
                       <div className="grid grid-cols-2 gap-2">
                         {renderColorField(
-                          "X 轴标签颜色",
+                          t("panel.config.xAxisLabelColor"),
                           selectedElement.chart?.xAxisLabelColor ?? "#64748b",
                           (next) => updateSelectedChart({ xAxisLabelColor: next || "#64748b" })
                         )}
                         {renderColorField(
-                          "Y 轴标签颜色",
+                          t("panel.config.yAxisLabelColor"),
                           selectedElement.chart?.yAxisLabelColor ?? "#64748b",
                           (next) => updateSelectedChart({ yAxisLabelColor: next || "#64748b" })
                         )}
                       </div>
                       <div className="grid grid-cols-2 gap-2">
                         <label className="block">
-                          <div className="mb-1">X 轴标签字号</div>
+                          <div className="mb-1">{t("panel.config.xAxisLabelFontSize")}</div>
                           <Input
                             type="number"
                             min={8}
@@ -2493,7 +2498,7 @@ export function PanelConfigSidebar({
                           />
                         </label>
                         <label className="block">
-                          <div className="mb-1">Y 轴标签字号</div>
+                          <div className="mb-1">{t("panel.config.yAxisLabelFontSize")}</div>
                           <Input
                             type="number"
                             min={8}
@@ -2517,7 +2522,7 @@ export function PanelConfigSidebar({
                               updateSelectedChart({ xAxisLabelAutoEllipsis: checked === true })
                             }
                           />
-                          <span>X 轴标签自动缩略</span>
+                          <span>{t("panel.config.xAxisLabelAutoEllipsis")}</span>
                         </label>
                         <label className="flex items-center gap-2">
                           <Checkbox
@@ -2527,7 +2532,7 @@ export function PanelConfigSidebar({
                               updateSelectedChart({ yAxisLabelAutoEllipsis: checked === true })
                             }
                           />
-                          <span>Y 轴标签自动缩略</span>
+                          <span>{t("panel.config.yAxisLabelAutoEllipsis")}</span>
                         </label>
                       </div>
                       </>
@@ -2539,11 +2544,11 @@ export function PanelConfigSidebar({
                   selectedChartType === "area" ||
                   selectedChartType === "pie" ? (
                     renderFieldGroup(
-                      "系列",
+                      t("panel.config.groupSeries"),
                       <>
                         {selectedChartType === "bar" ? (
                           <label className="block space-y-1">
-                            <div>柱宽（px）</div>
+                            <div>{t("panel.config.barWidthPx")}</div>
                             <Input
                               type="number"
                               min={1}
@@ -2565,14 +2570,14 @@ export function PanelConfigSidebar({
                                 updateSelectedChart({ smooth: checked === true })
                               }
                             />
-                            <span>平滑曲线</span>
+                            <span>{t("panel.config.smooth")}</span>
                           </label>
                         ) : null}
 
                         {selectedChartType === "pie" ? (
                           <div className="grid grid-cols-2 gap-2">
                             <label className="block space-y-1">
-                              <div>内半径（%）</div>
+                              <div>{t("panel.config.pieInnerRadiusPct")}</div>
                               <Input
                                 type="number"
                                 min={0}
@@ -2590,7 +2595,7 @@ export function PanelConfigSidebar({
                               />
                             </label>
                             <label className="block space-y-1">
-                              <div>外半径（%）</div>
+                              <div>{t("panel.config.pieOuterRadiusPct")}</div>
                               <Input
                                 type="number"
                                 min={1}
@@ -2615,15 +2620,15 @@ export function PanelConfigSidebar({
                 </>,
                 true,
                 [
-                  "图表",
+                  t("panel.config.searchKwChart"),
                   "title",
                   "tooltip",
-                  "x轴",
-                  "y轴",
+                  t("panel.config.searchKwXAxis"),
+                  t("panel.config.searchKwYAxis"),
                   "axis",
                   "label",
-                  "刻度线",
-                  "分割线",
+                  t("panel.config.searchKwTick"),
+                  t("panel.config.searchKwSplit"),
                   "render",
                   "svg",
                   "canvas",
@@ -2632,10 +2637,10 @@ export function PanelConfigSidebar({
 
               {renderSection(
                 "chartAdvanced",
-                "图表配置 / 高级",
+                t("panel.config.sectionChartAdvanced"),
                 <>
                   {renderFieldGroup(
-                    "常用项（表单）",
+                    t("panel.config.groupCommonForm"),
                     <div className="grid grid-cols-1 gap-2">
                       <div className="rounded-lg border border-border/60 bg-background/70 p-3">
                         <Collapsible
@@ -2647,75 +2652,75 @@ export function PanelConfigSidebar({
                               <button
                                 type="button"
                                 className="flex h-5 w-5 items-center justify-center rounded text-[11px] hover:bg-accent"
-                                aria-label={isSectionExpanded("chartAdvancedLayout", false) ? "收起布局与坐标" : "展开布局与坐标"}
+                                aria-label={isSectionExpanded("chartAdvancedLayout", false) ? t("panel.config.collapseLayoutCoord") : t("panel.config.expandLayoutCoord")}
                               >
                                 {isSectionExpanded("chartAdvancedLayout", false) ? "▾" : "▸"}
                               </button>
                             </CollapsibleTrigger>
-                            <div className="text-[11px] font-medium text-muted-foreground">布局与坐标</div>
+                            <div className="text-[11px] font-medium text-muted-foreground">{t("panel.config.groupLayoutAndCoord")}</div>
                           </div>
                           <CollapsibleContent>
                             <div className="grid grid-cols-2 gap-2">
                           <label className="block space-y-1.5">
-                            <div className={optionLabelTextClass}>网格左距（grid.left）</div>
+                            <div className={optionLabelTextClass}>{t("panel.config.gridLeftForm")}</div>
                             <Input type="number" className={optionInputClass} value={Number((selectedElement.chart?.option as any)?.grid?.left ?? 28)} onChange={(e) => updateSelectedOptionForm({ grid: { left: Number(e.target.value) || 0 } })} />
                           </label>
                           <label className="block space-y-1.5">
-                            <div className={optionLabelTextClass}>网格右距（grid.right）</div>
+                            <div className={optionLabelTextClass}>{t("panel.config.gridRightForm")}</div>
                             <Input type="number" className={optionInputClass} value={Number((selectedElement.chart?.option as any)?.grid?.right ?? 10)} onChange={(e) => updateSelectedOptionForm({ grid: { right: Number(e.target.value) || 0 } })} />
                           </label>
                           <label className="block space-y-1.5">
-                            <div className={optionLabelTextClass}>网格上距（grid.top）</div>
+                            <div className={optionLabelTextClass}>{t("panel.config.gridTopForm")}</div>
                             <Input type="number" className={optionInputClass} value={Number((selectedElement.chart?.option as any)?.grid?.top ?? 30)} onChange={(e) => updateSelectedOptionForm({ grid: { top: Number(e.target.value) || 0 } })} />
                           </label>
                           <label className="block space-y-1.5">
-                            <div className={optionLabelTextClass}>网格下距（grid.bottom）</div>
+                            <div className={optionLabelTextClass}>{t("panel.config.gridBottomForm")}</div>
                             <Input type="number" className={optionInputClass} value={Number((selectedElement.chart?.option as any)?.grid?.bottom ?? 20)} onChange={(e) => updateSelectedOptionForm({ grid: { bottom: Number(e.target.value) || 0 } })} />
                           </label>
                           <label className="block space-y-1.5">
-                            <div className={optionLabelTextClass}>图例位置（legend.top）</div>
+                            <div className={optionLabelTextClass}>{t("panel.config.legendPositionForm")}</div>
                             <Select value={String((selectedElement.chart?.option as any)?.legend?.top ?? "top")} onValueChange={(value) => updateSelectedOptionForm({ legend: { top: value } })}>
-                              <SelectTrigger className={optionSelectTriggerClass}><SelectValue placeholder="选择图例位置" /></SelectTrigger>
+                              <SelectTrigger className={optionSelectTriggerClass}><SelectValue placeholder={t("panel.config.selectLegendPosition")} /></SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="top">顶部</SelectItem>
-                                <SelectItem value="bottom">底部</SelectItem>
-                                <SelectItem value="left">左侧</SelectItem>
-                                <SelectItem value="right">右侧</SelectItem>
+                                <SelectItem value="top">{t("panel.config.legendTop")}</SelectItem>
+                                <SelectItem value="bottom">{t("panel.config.legendBottom")}</SelectItem>
+                                <SelectItem value="left">{t("panel.config.legendLeft")}</SelectItem>
+                                <SelectItem value="right">{t("panel.config.legendRight")}</SelectItem>
                               </SelectContent>
                             </Select>
                           </label>
                           <label className="block space-y-1.5">
-                            <div className={optionLabelTextClass}>图例排列（legend.orient）</div>
+                            <div className={optionLabelTextClass}>{t("panel.config.legendOrientForm")}</div>
                             <Select value={String((selectedElement.chart?.option as any)?.legend?.orient ?? "horizontal")} onValueChange={(value) => updateSelectedOptionForm({ legend: { orient: value } })}>
-                              <SelectTrigger className={optionSelectTriggerClass}><SelectValue placeholder="选择图例排列" /></SelectTrigger>
+                              <SelectTrigger className={optionSelectTriggerClass}><SelectValue placeholder={t("panel.config.selectLegendOrient")} /></SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="horizontal">横向</SelectItem>
-                                <SelectItem value="vertical">纵向</SelectItem>
+                                <SelectItem value="horizontal">{t("panel.config.legendHorizontal")}</SelectItem>
+                                <SelectItem value="vertical">{t("panel.config.legendVertical")}</SelectItem>
                               </SelectContent>
                             </Select>
                           </label>
                           <label className="block space-y-1.5">
-                            {renderOptionLabel("X 轴最小值", "xAxis.min", "设置横轴最小值，留空可在 JSON 里删除。")}
+                            {renderOptionLabel(t("panel.config.xAxisMin"), "xAxis.min", t("panel.config.xAxisMinHint"))}
                             <Input type="number" className={optionInputClass} value={Number((selectedElement.chart?.option as any)?.xAxis?.min ?? 0)} onChange={(e) => updateSelectedOptionForm({ xAxis: { min: Number(e.target.value) || 0 } })} />
                           </label>
                           <label className="block space-y-1.5">
-                            {renderOptionLabel("X 轴最大值", "xAxis.max", "设置横轴最大值，留空可在 JSON 里删除。")}
+                            {renderOptionLabel(t("panel.config.xAxisMax"), "xAxis.max", t("panel.config.xAxisMaxHint"))}
                             <Input type="number" className={optionInputClass} value={Number((selectedElement.chart?.option as any)?.xAxis?.max ?? 100)} onChange={(e) => updateSelectedOptionForm({ xAxis: { max: Number(e.target.value) || 0 } })} />
                           </label>
                           <label className="block space-y-1.5">
-                            {renderOptionLabel("Y 轴最小值", "yAxis.min", "设置纵轴最小值，留空可在 JSON 里删除。")}
+                            {renderOptionLabel(t("panel.config.yAxisMin"), "yAxis.min", t("panel.config.yAxisMinHint"))}
                             <Input type="number" className={optionInputClass} value={Number((selectedElement.chart?.option as any)?.yAxis?.min ?? 0)} onChange={(e) => updateSelectedOptionForm({ yAxis: { min: Number(e.target.value) || 0 } })} />
                           </label>
                           <label className="block space-y-1.5">
-                            {renderOptionLabel("Y 轴最大值", "yAxis.max", "设置纵轴最大值，留空可在 JSON 里删除。")}
+                            {renderOptionLabel(t("panel.config.yAxisMax"), "yAxis.max", t("panel.config.yAxisMaxHint"))}
                             <Input type="number" className={optionInputClass} value={Number((selectedElement.chart?.option as any)?.yAxis?.max ?? 100)} onChange={(e) => updateSelectedOptionForm({ yAxis: { max: Number(e.target.value) || 0 } })} />
                           </label>
                           <label className="block space-y-1.5">
-                            {renderOptionLabel("X 轴标签旋转", "xAxis.axisLabel.rotate", "单位为度。")}
+                            {renderOptionLabel(t("panel.config.xAxisLabelRotate"), "xAxis.axisLabel.rotate", t("panel.config.rotateUnitHint"))}
                             <Input type="number" className={optionInputClass} value={Number((selectedElement.chart?.option as any)?.xAxis?.axisLabel?.rotate ?? 0)} onChange={(e) => updateSelectedOptionForm({ xAxis: { axisLabel: { rotate: Number(e.target.value) || 0 } } })} />
                           </label>
                           <label className="block space-y-1.5">
-                            {renderOptionLabel("Y 轴标签旋转", "yAxis.axisLabel.rotate", "单位为度。")}
+                            {renderOptionLabel(t("panel.config.yAxisLabelRotate"), "yAxis.axisLabel.rotate", t("panel.config.rotateUnitHint"))}
                             <Input type="number" className={optionInputClass} value={Number((selectedElement.chart?.option as any)?.yAxis?.axisLabel?.rotate ?? 0)} onChange={(e) => updateSelectedOptionForm({ yAxis: { axisLabel: { rotate: Number(e.target.value) || 0 } } })} />
                           </label>
                             </div>
@@ -2733,37 +2738,37 @@ export function PanelConfigSidebar({
                                 <button
                                   type="button"
                                   className="flex h-5 w-5 items-center justify-center rounded text-[11px] hover:bg-accent"
-                                  aria-label={isSectionExpanded("chartAdvancedHighFreq", true) ? "收起高频项" : "展开高频项"}
+                                  aria-label={isSectionExpanded("chartAdvancedHighFreq", true) ? t("panel.config.collapseHighFreq") : t("panel.config.expandHighFreq")}
                                 >
                                   {isSectionExpanded("chartAdvancedHighFreq", true) ? "▾" : "▸"}
                                 </button>
                               </CollapsibleTrigger>
-                              <div className="text-[11px] font-medium text-muted-foreground">高频项</div>
+                              <div className="text-[11px] font-medium text-muted-foreground">{t("panel.config.groupHighFreq")}</div>
                             </div>
                             <CollapsibleContent>
                               <div className="grid grid-cols-1 gap-2">
                                 <label className="flex items-center gap-2 rounded-md bg-muted/30 px-2 py-1.5">
                                   <Checkbox className={optionCheckboxClass} checked={Boolean((selectedElement.chart?.option as any)?.legend?.show ?? true)} onCheckedChange={(checked) => updateSelectedOptionForm({ legend: { show: checked === true } })} />
-                                  {renderOptionLabel("显示图例", "legend.show", "控制图例显隐。")}
+                                  {renderOptionLabel(t("panel.config.showLegend"), "legend.show", t("panel.config.showLegendHint"))}
                                 </label>
                                 <label className="flex items-center gap-2 rounded-md bg-muted/30 px-2 py-1.5">
                                   <Checkbox className={optionCheckboxClass} checked={Boolean((selectedElement.chart?.option as any)?.grid?.containLabel ?? false)} onCheckedChange={(checked) => updateSelectedOptionForm({ grid: { containLabel: checked === true } })} />
-                                  {renderOptionLabel("网格包含标签", "grid.containLabel", "自动为坐标轴标签预留空间。")}
+                                  {renderOptionLabel(t("panel.config.gridContainLabel"), "grid.containLabel", t("panel.config.gridContainLabelHint"))}
                                 </label>
                                 <label className="flex items-center gap-2 rounded-md bg-muted/30 px-2 py-1.5">
                                   <Checkbox className={optionCheckboxClass} checked={Boolean(Array.isArray((selectedElement.chart?.option as any)?.dataZoom) && (selectedElement.chart?.option as any)?.dataZoom.some((z: any) => z?.type === "inside"))} onCheckedChange={(checked) => { const prev = Array.isArray((selectedElement.chart?.option as any)?.dataZoom) ? [...(selectedElement.chart?.option as any).dataZoom] : []; const next = checked ? [...prev.filter((z: any) => z?.type !== "inside"), { type: "inside" }] : prev.filter((z: any) => z?.type !== "inside"); updateSelectedOptionForm({ dataZoom: next }); }} />
-                                  {renderOptionLabel("内置缩放", "dataZoom[type=inside]", "启用鼠标滚轮/手势缩放。")}
+                                  {renderOptionLabel(t("panel.config.zoomInside"), "dataZoom[type=inside]", t("panel.config.zoomInsideHint"))}
                                 </label>
                                 <label className="flex items-center gap-2 rounded-md bg-muted/30 px-2 py-1.5">
                                   <Checkbox className={optionCheckboxClass} checked={Boolean(Array.isArray((selectedElement.chart?.option as any)?.dataZoom) && (selectedElement.chart?.option as any)?.dataZoom.some((z: any) => z?.type === "slider"))} onCheckedChange={(checked) => { const prev = Array.isArray((selectedElement.chart?.option as any)?.dataZoom) ? [...(selectedElement.chart?.option as any).dataZoom] : []; const next = checked ? [...prev.filter((z: any) => z?.type !== "slider"), { type: "slider" }] : prev.filter((z: any) => z?.type !== "slider"); updateSelectedOptionForm({ dataZoom: next }); }} />
-                                  {renderOptionLabel("滑块缩放", "dataZoom[type=slider]", "显示底部拖拽缩放条。")}
+                                  {renderOptionLabel(t("panel.config.zoomSlider"), "dataZoom[type=slider]", t("panel.config.zoomSliderHint"))}
                                 </label>
                                 <label className="flex items-center gap-2 rounded-md bg-muted/30 px-2 py-1.5">
                                   <Checkbox className={optionCheckboxClass} checked={Boolean((selectedElement.chart?.option as any)?.animation ?? false)} onCheckedChange={(checked) => updateSelectedOptionForm({ animation: checked === true })} />
-                                  {renderOptionLabel("开启动画", "animation", "开启后切换数据时有过渡动效。")}
+                                  {renderOptionLabel(t("panel.config.enableAnimation"), "animation", t("panel.config.enableAnimationHint"))}
                                 </label>
                                 <label className="block space-y-1.5">
-                                  {renderOptionLabel("动画时长", "animationDuration", "动画持续时间，单位毫秒。")}
+                                  {renderOptionLabel(t("panel.config.animationDuration"), "animationDuration", t("panel.config.animationDurationHint"))}
                                   <Input type="number" min={0} className={optionInputClass} value={Number((selectedElement.chart?.option as any)?.animationDuration ?? 300)} onChange={(e) => updateSelectedOptionForm({ animationDuration: Math.max(0, Number(e.target.value) || 0) })} />
                                 </label>
                               </div>
@@ -2778,33 +2783,33 @@ export function PanelConfigSidebar({
                                 <button
                                   type="button"
                                   className="flex h-5 w-5 items-center justify-center rounded text-[11px] hover:bg-accent"
-                                  aria-label={isSectionExpanded("chartAdvancedAxisPointer", false) ? "收起轴指示器项" : "展开轴指示器项"}
+                                  aria-label={isSectionExpanded("chartAdvancedAxisPointer", false) ? t("panel.config.collapseAxisPointer") : t("panel.config.expandAxisPointer")}
                                 >
                                   {isSectionExpanded("chartAdvancedAxisPointer", false) ? "▾" : "▸"}
                                 </button>
                               </CollapsibleTrigger>
-                              <div className="text-[11px] font-medium text-muted-foreground">轴指示器与对齐</div>
+                              <div className="text-[11px] font-medium text-muted-foreground">{t("panel.config.groupAxisPointer")}</div>
                             </div>
                             <CollapsibleContent>
                               <div className="grid grid-cols-1 gap-2">
                                 <label className="flex items-center gap-2 rounded-md bg-muted/30 px-2 py-1.5">
                                   <Checkbox className={optionCheckboxClass} checked={Boolean((selectedElement.chart?.option as any)?.axisPointer?.show ?? false)} onCheckedChange={(checked) => updateSelectedOptionForm({ axisPointer: { show: checked === true } })} />
-                                  {renderOptionLabel("显示轴指示器", "axisPointer.show", "悬停时显示轴对齐提示。")}
+                                  {renderOptionLabel(t("panel.config.showAxisPointer"), "axisPointer.show", t("panel.config.showAxisPointerHint"))}
                                 </label>
                                 <label className="block space-y-1.5 rounded-md bg-muted/30 px-2 py-1.5">
-                                  {renderOptionLabel("轴指示器类型", "axisPointer.type", "设置指示器样式：线/阴影/十字。")}
+                                  {renderOptionLabel(t("panel.config.axisPointerType"), "axisPointer.type", t("panel.config.axisPointerTypeHint"))}
                                   <Select value={String((selectedElement.chart?.option as any)?.axisPointer?.type ?? "line")} onValueChange={(value) => updateSelectedOptionForm({ axisPointer: { type: value } })}>
-                                    <SelectTrigger className={optionSelectTriggerClass}><SelectValue placeholder="选择轴指示器类型" /></SelectTrigger>
+                                    <SelectTrigger className={optionSelectTriggerClass}><SelectValue placeholder={t("panel.config.selectAxisPointerType")} /></SelectTrigger>
                                     <SelectContent>
-                                      <SelectItem value="line">线</SelectItem>
-                                      <SelectItem value="shadow">阴影</SelectItem>
-                                      <SelectItem value="cross">十字</SelectItem>
+                                      <SelectItem value="line">{t("panel.config.axisPointerLine")}</SelectItem>
+                                      <SelectItem value="shadow">{t("panel.config.axisPointerShadow")}</SelectItem>
+                                      <SelectItem value="cross">{t("panel.config.axisPointerCross")}</SelectItem>
                                     </SelectContent>
                                   </Select>
                                 </label>
                                 <label className="flex items-center gap-2 rounded-md bg-muted/30 px-2 py-1.5">
                                   <Checkbox className={optionCheckboxClass} checked={Boolean((selectedElement.chart?.option as any)?.axisPointer?.snap ?? false)} onCheckedChange={(checked) => updateSelectedOptionForm({ axisPointer: { snap: checked === true } })} />
-                                  {renderOptionLabel("轴指示器吸附", "axisPointer.snap", "指示器吸附到最近数据点。")}
+                                  {renderOptionLabel(t("panel.config.axisPointerSnap"), "axisPointer.snap", t("panel.config.axisPointerSnapHint"))}
                                 </label>
                               </div>
                             </CollapsibleContent>
@@ -2814,7 +2819,7 @@ export function PanelConfigSidebar({
                     </div>
                   )}
                   {renderFieldGroup(
-                    "JSON 高级模式",
+                    t("panel.config.groupJsonAdvanced"),
                     <>
                       <label className="flex items-center gap-2 rounded-md bg-background/70 px-2 py-1.5">
                         <Checkbox
@@ -2822,9 +2827,9 @@ export function PanelConfigSidebar({
                           className="h-4 w-4 border-2 border-foreground/80 bg-background ring-1 ring-foreground/40 data-[state=checked]:border-primary data-[state=checked]:ring-primary/40"
                           onCheckedChange={(checked) => setIsAdvancedOptionMode(checked === true)}
                         />
-                        <span>开启高级模式（直接编辑图表 JSON 配置）</span>
-                        <ConfigHintIcon label="图表 JSON 高级模式">
-                          基础配置会先生成图表配置，高级模式会在此基础上覆盖（深度合并）。
+                        <span>{t("panel.config.enableAdvancedJson")}</span>
+                        <ConfigHintIcon label={t("panel.config.advancedJsonHintLabel")}>
+                          {t("panel.config.advancedJsonHint")}
                         </ConfigHintIcon>
                       </label>
                       {isAdvancedOptionMode ? (
@@ -2839,7 +2844,7 @@ export function PanelConfigSidebar({
                                 updateSelectedChart({ option: parsed });
                                 setOptionJsonError(null);
                               } catch {
-                                setOptionJsonError("JSON 格式错误，修正后会自动应用");
+                                setOptionJsonError(t("panel.config.jsonInvalid"));
                               }
                             }}
                             spellCheck={false}
@@ -2851,7 +2856,7 @@ export function PanelConfigSidebar({
                             </div>
                           ) : (
                             <div className="rounded border border-emerald-500/30 bg-emerald-500/10 px-2 py-1.5 text-[11px] text-emerald-700 dark:text-emerald-300">
-                              JSON 有效，已实时应用到当前图表。
+                              {t("panel.config.jsonValidApplied")}
                             </div>
                           )}
                         </>
@@ -2860,16 +2865,16 @@ export function PanelConfigSidebar({
                   )}
                 </>,
                 false,
-                ["json", "option", "高级", "echarts"]
+                ["json", "option", t("panel.config.searchKwAdvanced"), "echarts"]
               )}
             </>
           ) : selectedElement.materialType === "text" ? (
             renderSection(
               "textConfig",
-              "文本配置",
+              t("panel.config.sectionText"),
               <>
                 {renderFieldGroup(
-                  "文本内容",
+                  t("panel.config.groupTextContent"),
                   <>
                     <div className="flex items-center gap-1">
                       <button
@@ -2921,10 +2926,10 @@ export function PanelConfigSidebar({
                   </>
                 )}
                 {renderFieldGroup(
-                  "文字样式",
+                  t("panel.config.groupTextStyle"),
                   <>
                     <label className="block space-y-1">
-                      <div>字体</div>
+                      <div>{t("panel.config.fontFamily")}</div>
                       <Input
                         value={selectedElement.textFontFamily ?? ""}
                         onChange={(e) =>
@@ -2932,13 +2937,13 @@ export function PanelConfigSidebar({
                             textFontFamily: e.target.value || undefined,
                           })
                         }
-                        placeholder="如：Inter, PingFang SC, Microsoft YaHei"
+                        placeholder={t("panel.config.fontFamilyPlaceholder")}
                         className="h-7"
                       />
                     </label>
                     <div className="grid grid-cols-2 gap-2">
                       <label className="block space-y-1">
-                        <div>字号（px）</div>
+                        <div>{t("panel.config.fontSizePx")}</div>
                         <Input
                           type="number"
                           min={8}
@@ -2954,7 +2959,7 @@ export function PanelConfigSidebar({
                         />
                       </label>
                       <label className="block space-y-1">
-                        <div>字重</div>
+                        <div>{t("panel.config.fontWeight")}</div>
                         <Select
                           value={selectedElement.textFontWeight ?? "400"}
                           onValueChange={(value) =>
@@ -2964,7 +2969,7 @@ export function PanelConfigSidebar({
                           }
                         >
                           <SelectTrigger className="h-7">
-                            <SelectValue placeholder="选择字重" />
+                            <SelectValue placeholder={t("panel.config.selectFontWeight")} />
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="300">300</SelectItem>
@@ -2978,7 +2983,7 @@ export function PanelConfigSidebar({
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       <label className="block space-y-1">
-                        <div>对齐</div>
+                        <div>{t("panel.config.textAlign")}</div>
                         <Select
                           value={selectedElement.textAlign ?? "left"}
                           onValueChange={(value) =>
@@ -2988,18 +2993,18 @@ export function PanelConfigSidebar({
                           }
                         >
                           <SelectTrigger className="h-7">
-                            <SelectValue placeholder="选择对齐方式" />
+                            <SelectValue placeholder={t("panel.config.selectTextAlign")} />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="left">左对齐</SelectItem>
-                            <SelectItem value="center">居中</SelectItem>
-                            <SelectItem value="right">右对齐</SelectItem>
-                            <SelectItem value="justify">两端对齐</SelectItem>
+                            <SelectItem value="left">{t("panel.config.alignLeft")}</SelectItem>
+                            <SelectItem value="center">{t("panel.config.alignCenter")}</SelectItem>
+                            <SelectItem value="right">{t("panel.config.alignRight")}</SelectItem>
+                            <SelectItem value="justify">{t("panel.config.alignJustify")}</SelectItem>
                           </SelectContent>
                         </Select>
                       </label>
                       <label className="block space-y-1">
-                        <div>行高</div>
+                        <div>{t("panel.config.lineHeight")}</div>
                         <Input
                           type="number"
                           min={1}
@@ -3019,7 +3024,7 @@ export function PanelConfigSidebar({
                       </label>
                     </div>
                     {renderColorField(
-                      "文字颜色",
+                      t("panel.config.textColor"),
                       selectedElement.textColor ?? "",
                       (next) =>
                         updateSelectedText({
@@ -3029,7 +3034,7 @@ export function PanelConfigSidebar({
                   </>
                 )}
                 {renderFieldGroup(
-                  "输入能力",
+                  t("panel.config.groupInputAbility"),
                   <label className="flex items-center gap-2">
                     <Checkbox
                       checked={selectedElement.textAllowInput ?? true}
@@ -3040,23 +3045,23 @@ export function PanelConfigSidebar({
                         })
                       }
                     />
-                    <span>允许在画布内直接输入（默认开启）</span>
+                    <span>{t("panel.config.allowCanvasInput")}</span>
                   </label>
                 )}
               </>,
               true,
-              ["文本", "富文本", "字体", "颜色", "对齐", "行高", "输入"]
+              [t("panel.material.text"), t("panel.config.searchKwRichText"), t("panel.config.fontFamily"), t("panel.config.color"), t("panel.config.textAlign"), t("panel.config.lineHeight"), t("panel.config.searchKwInput")]
             )
           ) : selectedElement.materialType === "audio" ? (
             renderSection(
               "audioConfig",
-              "音频配置",
+              t("panel.config.sectionAudio"),
               <>
                 {renderFieldGroup(
-                  "音频来源",
+                  t("panel.config.groupAudioSource"),
                   <>
                     <label className="block space-y-1">
-                      <div>音频 URL</div>
+                      <div>{t("panel.config.audioUrl")}</div>
                       <Input
                         value={selectedElement.audioRemoteUrl ?? ""}
                         onChange={(e) =>
@@ -3071,7 +3076,7 @@ export function PanelConfigSidebar({
                     </label>
                     <div className="flex items-center gap-2">
                       <label className="inline-flex cursor-pointer items-center rounded border border-border px-2 py-1 text-[11px] hover:bg-accent">
-                        上传音频
+                        {t("panel.config.uploadAudio")}
                         <Input
                           type="file"
                           accept="audio/*"
@@ -3089,7 +3094,7 @@ export function PanelConfigSidebar({
                         className="rounded border border-border px-2 py-1 text-[11px] hover:bg-accent disabled:opacity-50"
                         onClick={isRecordingAudio ? stopRecordingAudio : startRecordingAudio}
                       >
-                        {isRecordingAudio ? "停止录音" : "开始录音"}
+                        {isRecordingAudio ? t("panel.config.stopRecord") : t("panel.config.startRecord")}
                       </button>
                     </div>
                     {audioStatus ? (
@@ -3105,7 +3110,7 @@ export function PanelConfigSidebar({
                   </>
                 )}
                 {renderFieldGroup(
-                  "展示样式",
+                  t("panel.config.groupDisplayStyle"),
                   <>
                     <label className="flex items-center gap-2">
                       <Checkbox
@@ -3117,10 +3122,10 @@ export function PanelConfigSidebar({
                           })
                         }
                       />
-                      <span>编辑时自动暂停媒体</span>
+                      <span>{t("panel.config.autoPauseMedia")}</span>
                     </label>
                     <label className="block space-y-1">
-                      <div>预设喇叭图标</div>
+                      <div>{t("panel.config.audioIconPreset")}</div>
                       <Select
                         value={selectedElement.audioIconPreset ?? "__none__"}
                         onValueChange={(value) =>
@@ -3133,19 +3138,19 @@ export function PanelConfigSidebar({
                         }
                       >
                         <SelectTrigger className="h-7">
-                          <SelectValue placeholder="选择图标" />
+                          <SelectValue placeholder={t("panel.config.selectIcon")} />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="__none__">默认（显示进度条）</SelectItem>
-                          <SelectItem value="speaker">喇叭</SelectItem>
-                          <SelectItem value="music">音符</SelectItem>
-                          <SelectItem value="headphone">耳机</SelectItem>
-                          <SelectItem value="wave">声波</SelectItem>
+                          <SelectItem value="__none__">{t("panel.config.iconDefaultProgress")}</SelectItem>
+                          <SelectItem value="speaker">{t("panel.config.iconSpeaker")}</SelectItem>
+                          <SelectItem value="music">{t("panel.config.iconMusic")}</SelectItem>
+                          <SelectItem value="headphone">{t("panel.config.iconHeadphone")}</SelectItem>
+                          <SelectItem value="wave">{t("panel.config.iconWave")}</SelectItem>
                         </SelectContent>
                       </Select>
                     </label>
                     <label className="block space-y-1">
-                      <div>播放动效</div>
+                      <div>{t("panel.config.visualEffect")}</div>
                       <Select
                         value={selectedElement.audioVisualEffect ?? "pulse"}
                         onValueChange={(value) =>
@@ -3155,17 +3160,17 @@ export function PanelConfigSidebar({
                         }
                       >
                         <SelectTrigger className="h-7">
-                          <SelectValue placeholder="选择动效" />
+                          <SelectValue placeholder={t("panel.config.selectEffect")} />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="none">无动效</SelectItem>
-                          <SelectItem value="pulse">呼吸高亮</SelectItem>
-                          <SelectItem value="ripple">波纹扩散</SelectItem>
+                          <SelectItem value="none">{t("panel.config.effectNone")}</SelectItem>
+                          <SelectItem value="pulse">{t("panel.config.effectPulse")}</SelectItem>
+                          <SelectItem value="ripple">{t("panel.config.effectRipple")}</SelectItem>
                         </SelectContent>
                       </Select>
                     </label>
                     <label className="block space-y-1">
-                      <div>动效速度</div>
+                      <div>{t("panel.config.effectSpeed")}</div>
                       <Select
                         value={selectedElement.audioVisualSpeed ?? "normal"}
                         onValueChange={(value) =>
@@ -3175,18 +3180,18 @@ export function PanelConfigSidebar({
                         }
                       >
                         <SelectTrigger className="h-7">
-                          <SelectValue placeholder="选择速度" />
+                          <SelectValue placeholder={t("panel.config.selectSpeed")} />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="slow">慢</SelectItem>
-                          <SelectItem value="normal">中</SelectItem>
-                          <SelectItem value="fast">快</SelectItem>
+                          <SelectItem value="slow">{t("panel.config.speedSlow")}</SelectItem>
+                          <SelectItem value="normal">{t("panel.config.speedNormal")}</SelectItem>
+                          <SelectItem value="fast">{t("panel.config.speedFast")}</SelectItem>
                         </SelectContent>
                       </Select>
                     </label>
                     <div className="flex items-center gap-2">
                       <label className="inline-flex cursor-pointer items-center rounded border border-border px-2 py-1 text-[11px] hover:bg-accent">
-                        上传占位图
+                        {t("panel.config.uploadPoster")}
                         <Input
                           type="file"
                           accept="image/*"
@@ -3208,38 +3213,38 @@ export function PanelConfigSidebar({
                           })
                         }
                       >
-                        清空占位图
+                        {t("panel.config.clearPoster")}
                       </button>
                     </div>
                     {selectedElement.audioPosterImage ? (
                       <img
                         src={selectedElement.audioPosterImage}
-                        alt="音频占位图预览"
+                        alt={t("panel.config.audioPosterAlt")}
                         className="h-20 w-full rounded border border-border/60 object-cover"
                       />
                     ) : null}
                     <div className="flex items-center gap-1">
-                      <div className="text-[11px] text-muted-foreground">音频占位图</div>
-                      <ConfigHintIcon label="音频占位图">
-                        设置占位图或图标后，节点上将隐藏进度条，改为点击图标播放/暂停。
+                      <div className="text-[11px] text-muted-foreground">{t("panel.config.audioPoster")}</div>
+                      <ConfigHintIcon label={t("panel.config.audioPoster")}>
+                        {t("panel.config.audioPosterHint")}
                       </ConfigHintIcon>
                     </div>
                   </>
                 )}
               </>,
               true,
-              ["音频", "url", "上传", "录音", "icon", "占位", "动效", "自动暂停", "media"]
+              [t("panel.material.audio"), "url", t("panel.config.searchKwUpload"), t("panel.config.searchKwRecord"), "icon", t("panel.config.searchKwPoster"), t("panel.config.effect"), t("panel.config.searchKwAutoPause"), "media"]
             )
           ) : selectedElement.materialType === "video" ? (
             renderSection(
               "videoConfig",
-              "视频配置",
+              t("panel.config.sectionVideo"),
               <>
                 {renderFieldGroup(
-                  "视频来源",
+                  t("panel.config.groupVideoSource"),
                   <>
                     <label className="block space-y-1">
-                      <div>视频 URL</div>
+                      <div>{t("panel.config.videoUrl")}</div>
                       <Input
                         value={selectedElement.videoRemoteUrl ?? ""}
                         onChange={(e) =>
@@ -3254,7 +3259,7 @@ export function PanelConfigSidebar({
                     </label>
                     <div className="flex items-center gap-2">
                       <label className="inline-flex cursor-pointer items-center rounded border border-border px-2 py-1 text-[11px] hover:bg-accent">
-                        上传视频
+                        {t("panel.config.uploadVideo")}
                         <Input
                           type="file"
                           accept="video/*"
@@ -3288,26 +3293,26 @@ export function PanelConfigSidebar({
                           })
                         }
                       />
-                      <span>编辑时自动暂停媒体</span>
+                      <span>{t("panel.config.autoPauseMedia")}</span>
                     </label>
                   </>
                 )}
               </>,
               true,
-              ["视频", "url", "上传", "预览", "自动暂停", "media"]
+              [t("panel.material.video"), "url", t("panel.config.searchKwUpload"), t("panel.config.searchKwPreview"), t("panel.config.searchKwAutoPause"), "media"]
             )
           ) : null}
           {selectedElement
             ? selectedElement.parentGridId
               ? renderSection(
                 "gridChildSpan",
-                "网格子节点占位",
+                t("panel.config.sectionGridChildSpan"),
                 <>
                   {renderFieldGroup(
-                    "跨槽位",
+                    t("panel.config.groupCrossSlots"),
                     <div className="grid grid-cols-2 gap-2">
                       <label className="block space-y-1">
-                        <div>跨列（colSpan）</div>
+                        <div>{t("panel.config.colSpan")}</div>
                         <Input
                           type="number"
                           min={1}
@@ -3322,7 +3327,7 @@ export function PanelConfigSidebar({
                         />
                       </label>
                       <label className="block space-y-1">
-                        <div>跨行（rowSpan）</div>
+                        <div>{t("panel.config.rowSpan")}</div>
                         <Input
                           type="number"
                           min={1}
@@ -3340,21 +3345,21 @@ export function PanelConfigSidebar({
                   )}
                 </>,
                 true,
-                ["网格", "跨列", "跨行", "span", "slot"],
-                <>网格子节点可跨越多格，占据更大区域，便于复杂布局。</>
+                [t("panel.config.searchKwGrid"), t("panel.config.searchKwCrossCol"), t("panel.config.searchKwCrossRow"), "span", "slot"],
+                <>{t("panel.config.gridChildHint")}</>
               )
               : null
             : null}
           {selectedElement.materialType === "geometry" ? (
             renderSection(
               "geometryConfig",
-              "几何配置",
+              t("panel.config.sectionGeometry"),
               <>
                 {renderFieldGroup(
-                  "基础形状",
+                  t("panel.config.groupBasicShape"),
                   <>
                     <label className="block space-y-1">
-                      <div>形状</div>
+                      <div>{t("panel.config.shape")}</div>
                       <Select
                         value={selectedElement.geometryShape ?? "rect"}
                         onValueChange={(value) =>
@@ -3364,47 +3369,47 @@ export function PanelConfigSidebar({
                         }
                       >
                         <SelectTrigger className="h-7">
-                          <SelectValue placeholder="选择形状" />
+                          <SelectValue placeholder={t("panel.config.selectShape")} />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="rect">矩形</SelectItem>
-                          <SelectItem value="circle">圆形</SelectItem>
-                          <SelectItem value="triangle">三角形</SelectItem>
-                          <SelectItem value="diamond">菱形</SelectItem>
-                          <SelectItem value="hexagon">六边形</SelectItem>
-                          <SelectItem value="star">星形</SelectItem>
-                          <SelectItem value="heart">爱心</SelectItem>
+                          <SelectItem value="rect">{t("panel.config.shapeRect")}</SelectItem>
+                          <SelectItem value="circle">{t("panel.config.shapeCircle")}</SelectItem>
+                          <SelectItem value="triangle">{t("panel.config.shapeTriangle")}</SelectItem>
+                          <SelectItem value="diamond">{t("panel.config.shapeDiamond")}</SelectItem>
+                          <SelectItem value="hexagon">{t("panel.config.shapeHexagon")}</SelectItem>
+                          <SelectItem value="star">{t("panel.config.shapeStar")}</SelectItem>
+                          <SelectItem value="heart">{t("panel.config.shapeHeart")}</SelectItem>
                         </SelectContent>
                       </Select>
                     </label>
                     {renderColorField(
-                      "几何颜色",
+                      t("panel.config.geometryColor"),
                       selectedElement.geometryColor ?? "#3b82f6",
                       (next) => updateSelectedGeometry({ geometryColor: next || "#3b82f6" })
                     )}
                   </>
                 )}
                 {renderFieldGroup(
-                  "高级（Canvas 脚本）",
+                  t("panel.config.groupCanvasScript"),
                   <>
                     <Textarea
                       value={selectedElement.geometryScript ?? ""}
                       onChange={(e) => updateSelectedGeometry({ geometryScript: e.target.value || undefined })}
                       spellCheck={false}
                       className="h-36 font-mono text-[11px]"
-                      placeholder="// 例: ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fillRect(8,8,width-16,height-16);"
+                      placeholder={t("panel.config.geometryScriptPlaceholder")}
                     />
                   </>,
                   <>
-                    可输入 Canvas 绘制逻辑，变量：ctx、width、height、element。脚本异常会被安全忽略。
+                    {t("panel.config.canvasScriptHint")}
                   </>
                 )}
                 {renderFieldGroup(
-                  "手绘叠加",
+                  t("panel.config.groupSketchOverlay"),
                   <>
                     <div className="flex items-center gap-2">
                       <label className="block space-y-1">
-                        <div className="text-[11px]">画笔颜色</div>
+                        <div className="text-[11px]">{t("panel.config.penColor")}</div>
                         <Input
                           type="color"
                           value={geometryDrawPenColor}
@@ -3413,7 +3418,7 @@ export function PanelConfigSidebar({
                         />
                       </label>
                       <label className="block space-y-1">
-                        <div className="text-[11px]">画笔粗细</div>
+                        <div className="text-[11px]">{t("panel.config.penWidth")}</div>
                         <Input
                           type="number"
                           min={1}
@@ -3481,7 +3486,7 @@ export function PanelConfigSidebar({
                           updateSelectedGeometry({ geometrySketchDataUrl: canvas.toDataURL("image/png") });
                         }}
                       >
-                        应用手绘到节点
+                        {t("panel.config.applySketch")}
                       </button>
                       <button
                         type="button"
@@ -3491,25 +3496,25 @@ export function PanelConfigSidebar({
                           redrawGeometryPadFromElement();
                         }}
                       >
-                        清空手绘
+                        {t("panel.config.clearSketch")}
                       </button>
                     </div>
                   </>
                 )}
               </>,
               true,
-              ["几何", "geometry", "形状", "canvas", "脚本", "手绘"]
+              [t("panel.material.geometry"), "geometry", t("panel.config.shape"), "canvas", t("panel.config.searchKwScript"), t("panel.config.searchKwSketch")]
             )
           ) : selectedElement.materialType === "grid" ? (
             renderSection(
               "gridConfig",
-              "网格布局配置",
+              t("panel.config.sectionGrid"),
               <>
                 {renderFieldGroup(
-                  "网格参数",
+                  t("panel.config.groupGridParams"),
                   <div className="grid grid-cols-2 gap-2">
                     <label className="block space-y-1">
-                      <div>行数</div>
+                      <div>{t("panel.config.rowCount")}</div>
                       <Input
                         type="number"
                         min={1}
@@ -3524,7 +3529,7 @@ export function PanelConfigSidebar({
                       />
                     </label>
                     <label className="block space-y-1">
-                      <div>列数</div>
+                      <div>{t("panel.config.colCount")}</div>
                       <Input
                         type="number"
                         min={1}
@@ -3539,7 +3544,7 @@ export function PanelConfigSidebar({
                       />
                     </label>
                     <label className="block space-y-1">
-                      <div>间距（px）</div>
+                      <div>{t("panel.config.gapPx")}</div>
                       <Input
                         type="number"
                         min={0}
@@ -3554,7 +3559,7 @@ export function PanelConfigSidebar({
                       />
                     </label>
                     <label className="block space-y-1">
-                      <div>内边距（px）</div>
+                      <div>{t("panel.config.paddingPx")}</div>
                       <Input
                         type="number"
                         min={0}
@@ -3569,7 +3574,7 @@ export function PanelConfigSidebar({
                       />
                     </label>
                     <label className="block space-y-1">
-                      <div>吸附阈值（px）</div>
+                      <div>{t("panel.config.snapThresholdPx")}</div>
                       <Input
                         type="number"
                         min={8}
@@ -3590,20 +3595,20 @@ export function PanelConfigSidebar({
                 )}
               </>,
               true,
-              ["网格", "grid", "行", "列", "间距", "内边距", "吸附", "阈值"],
+              [t("panel.config.searchKwGrid"), "grid", t("panel.config.rows"), t("panel.config.cols"), t("panel.config.searchKwGap"), t("panel.config.searchKwPadding"), t("panel.config.searchKwSnap"), t("panel.config.searchKwThreshold")],
               <>
-                其他节点拖拽靠近该网格槽位中心时会自动吸附，并在节点树显示为该网格子节点。
+                {t("panel.config.gridHint")}
               </>
             )
           ) : selectedElement.materialType === "reference" ? (
             renderSection(
               "reference",
-              "引用组件配置",
+              t("panel.config.sectionReference"),
               <>
                 {renderFieldGroup(
-                  "引用源",
+                  t("panel.config.groupRefSource"),
                   <label className="block space-y-1">
-                    <div>引用图层</div>
+                    <div>{t("panel.config.refLayer")}</div>
                     <Select
                       value={selectedElement.refLayerId ?? "__none__"}
                       onValueChange={(value) =>
@@ -3613,10 +3618,10 @@ export function PanelConfigSidebar({
                       }
                     >
                       <SelectTrigger className="h-7">
-                        <SelectValue placeholder="请选择图层" />
+                        <SelectValue placeholder={t("panel.config.pleaseSelectLayer")} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="__none__">无（不引用）</SelectItem>
+                        <SelectItem value="__none__">{t("panel.config.noneNoRef")}</SelectItem>
                         {layers
                           .filter((l) => l.id !== selectedElement.layerId)
                           .map((l) => (
@@ -3629,10 +3634,10 @@ export function PanelConfigSidebar({
                   </label>
                 )}
                 {renderFieldGroup(
-                  "拷贝策略",
+                  t("panel.config.groupCopyStrategy"),
                   <>
                     <label className="block space-y-1">
-                      <div>拷贝模式</div>
+                      <div>{t("panel.config.copyMode")}</div>
                       <Select
                         value={selectedElement.refCopyMode ?? "shallow"}
                         onValueChange={(value) =>
@@ -3643,31 +3648,31 @@ export function PanelConfigSidebar({
                         }
                       >
                         <SelectTrigger className="h-7">
-                          <SelectValue placeholder="请选择拷贝模式" />
+                          <SelectValue placeholder={t("panel.config.selectCopyMode")} />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="shallow">浅拷贝（跟随源图层变化）</SelectItem>
-                          <SelectItem value="deep">深拷贝（冻结当前引用快照）</SelectItem>
+                          <SelectItem value="shallow">{t("panel.config.shallowFollow")}</SelectItem>
+                          <SelectItem value="deep">{t("panel.config.deepFreeze")}</SelectItem>
                         </SelectContent>
                       </Select>
                     </label>
                   </>,
                   <>
-                    浅拷贝会实时同步被引用图层；深拷贝会固定当前快照，不再随源变化。
+                    {t("panel.config.copyStrategyHint")}
                   </>
                 )}
               </>,
               true,
-              ["引用", "ref", "图层", "浅拷贝", "深拷贝", "snapshot"]
+              [t("panel.config.searchKwRef"), "ref", t("panel.config.layer"), t("panel.material.shallowCopy"), t("panel.material.deepCopy"), "snapshot"]
             )
           ) : (
             <div className="text-xs leading-6 text-muted-foreground">
-              当前节点不是图表类型，暂无图表配置项。
+              {t("panel.config.notChartType")}
             </div>
           )}
           {hasSearch && renderedSectionCount === 0 ? (
             <div className="rounded border border-border/60 bg-background px-2 py-1.5 text-[11px] text-muted-foreground">
-              未找到匹配项，请尝试更换关键词。
+              {t("panel.config.noMatch")}
             </div>
           ) : null}
             </div>

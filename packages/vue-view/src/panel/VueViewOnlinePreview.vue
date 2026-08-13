@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from "@arronqzy/i18n/vue";
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import {
   BlueprintGraph,
@@ -30,6 +31,8 @@ import {
   parsePanelLayers,
   resolvePreviewLayerElements,
 } from "./utils/panelStateIO";
+
+const { t, locale } = useI18n();
 
 const PREVIEW_BOOT_PHASES: PageLifecyclePhase[] = ["mounted"];
 
@@ -76,13 +79,13 @@ function applyTitleIcon(titleIconDataUrl?: string) {
 async function loadProject() {
   const record = await loadWorkspaceRecord(props.projectId);
   if (!record) {
-    loadError.value = "工作区不存在或已被删除";
+    loadError.value = t("panel.messages.workspaceNotFound");
     panelState.value = null;
     return;
   }
   const normalized = normalizeImportedPanelState(record.panelState);
   if (!normalized) {
-    loadError.value = "工作区数据格式无效";
+    loadError.value = t("panel.messages.workspaceDataInvalid");
     panelState.value = null;
     return;
   }
@@ -90,7 +93,7 @@ async function loadProject() {
   clearViewElementScopes();
   panelState.value = normalized;
   blueprintGraph.value = BlueprintGraph.fromDocument(record.blueprintDocument);
-  document.title = record.productName.trim() || record.name || "预览";
+  document.title = record.productName.trim() || record.name || t("panel.workspace.previewDocTitle");
   applyTitleIcon(record.titleIconDataUrl);
   projectRevision.value += 1;
 }
@@ -230,15 +233,15 @@ function noopSelect() {}
     v-else-if="!panelState"
     class="flex min-h-screen w-full items-center justify-center bg-white text-sm text-gray-600"
   >
-    加载预览中…
+    {{ t("panel.workspace.previewLoading") }}
   </div>
 
   <div
     v-else-if="layerElements.length === 0"
     class="flex min-h-screen w-full flex-col items-center justify-center gap-2 bg-white px-6 text-center text-sm text-gray-600"
   >
-    <div>当前工作区没有可预览的视图节点</div>
-    <div class="text-xs text-gray-400">请先在编辑器中点击「同步」或「创建工作区」后再预览</div>
+    <div>{{ t("panel.workspace.previewNoNodes") }}</div>
+    <div class="text-xs text-gray-400">{{ t("panel.workspace.previewHint") }}</div>
   </div>
 
   <div

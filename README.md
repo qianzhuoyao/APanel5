@@ -13,6 +13,7 @@
 - **Scope 驱动**：蓝图执行结果通过 Scope 表达式驱动视图节点属性
 - **工作区**：IndexedDB 多项目、导入导出、跨标签页同步
 - **在线预览**：独立预览页，支持 URL 打开指定工作区
+- **国际化**：内置中文 / English，支持运行时切换与 `locale` prop
 
 ## 快速开始
 
@@ -52,7 +53,9 @@ import { createRoot } from "react-dom/client";
 import { App } from "@arronqzy/abuilder";
 import "@arronqzy/abuilder/styles.css";
 
-createRoot(document.getElementById("root")!).render(<App />);
+createRoot(document.getElementById("root")!).render(
+  <App locale="zh-CN" />
+);
 ```
 
 更多配置见 [packages/abuilder/README.md](./packages/abuilder/README.md)。
@@ -70,9 +73,28 @@ import "ant-design-vue/dist/reset.css";
 import { App } from "@arronqzy/abuilder-vue";
 
 createApp(App).use(Antd).mount("#app");
+// 或 <App locale="en-US" />
 ```
 
-Vue 栈功能与 React 版对齐：无限画布、Moveable/Selecto、完整配置侧栏、工作区、Scope 模版、蓝图调试与在线预览。详见 [packages/abuilder-vue/README.md](./packages/abuilder-vue/README.md)。
+Vue 栈功能与 React 版对齐：无限画布、Moveable/Selecto、完整配置侧栏、工作区、Scope 模版、蓝图调试、在线预览与中英国际化。详见 [packages/abuilder-vue/README.md](./packages/abuilder-vue/README.md)。
+
+### 国际化
+
+双栈共用 [`@arronqzy/i18n`](./packages/i18n/README.md)（`zh-CN` / `en-US`）。
+
+- **默认**：`zh-CN`；也可读 `localStorage`（`abuilder.locale`）或浏览器语言
+- **prop**：`<App locale="en-US" />`
+- **运行时**：编辑器顶栏「语言 / Language」可切换，并写入 localStorage
+
+```tsx
+import { useI18n } from "@arronqzy/i18n/react";
+const { t, locale, setLocale } = useI18n();
+```
+
+```ts
+import { useI18n } from "@arronqzy/i18n/vue";
+const { t, locale, setLocale } = useI18n();
+```
 
 ## 仓库结构
 
@@ -89,6 +111,7 @@ Abuilder26/
 │   ├── react-blueprint/     # React 蓝图编辑器
 │   ├── vue-blueprint/       # Vue 3 蓝图编辑器（Vue Flow）
 │   ├── blueprint-dsl/       # 蓝图 DSL 与运行时（框架无关）
+│   ├── i18n/                # 共享中英文本（React + Vue）
 │   ├── rx-store/            # 画布状态（Immer + RxJS，框架无关）
 │   ├── react-rx-store/      # rx-store 的 React Hooks
 │   ├── vue-rx-store/        # rx-store 的 Vue Composables
@@ -108,6 +131,7 @@ Abuilder26/
 | `@arronqzy/react-view` | 视图面板、画布、预览、工作区 | [README](./packages/react-view/readme.md) |
 | `@arronqzy/react-blueprint` | 蓝图画布、调试、蓝图库 | [README](./packages/react-blueprint/README.md) |
 | `@arronqzy/blueprint-dsl` | 节点定义、行为注册、图执行 | [README](./packages/blueprint-dsl/readme.md) |
+| `@arronqzy/i18n` | 共享中英文本（React + Vue） | [README](./packages/i18n/README.md) |
 | `@arronqzy/rx-store` | 编辑器状态、Undo/Redo、路径订阅 | [README](./packages/rx-store/readme.md) |
 | `@arronqzy/react-rx-store` | `useStore` / `useNode` 等 Hooks | [README](./packages/react-rx-store/README.md) |
 | `@arronqzy/ui` | Button、Dialog、Toast 等 UI 组件 | [README](./packages/ui/README.md) |
@@ -129,6 +153,7 @@ Abuilder26/
 
 ```
 @arronqzy/abuilder                          @arronqzy/abuilder-vue
+  ├── @arronqzy/i18n                           ├── @arronqzy/i18n
   ├── @arronqzy/react-view                     ├── @arronqzy/vue-view
   │     ├── @arronqzy/ui                       │     ├── ant-design-vue
   │     ├── @arronqzy/rx-store                 │     ├── @arronqzy/rx-store
@@ -139,6 +164,7 @@ Abuilder26/
 
 @arronqzy/react-blueprint                   @arronqzy/vue-blueprint
   ├── @arronqzy/blueprint-dsl                 ├── @arronqzy/blueprint-dsl
+  ├── @arronqzy/i18n                          ├── @arronqzy/i18n
   ├── @arronqzy/react-rx-store → rx-store     ├── @arronqzy/vue-rx-store → rx-store
   └── @arronqzy/ui                             └── ant-design-vue + @vue-flow/core
 ```
@@ -164,6 +190,7 @@ Abuilder26/
 - **RxJS** + **Immer**（画布状态）
 - **ECharts**（图表物料）
 - **Moveable** / **Selecto** / **Infinite Viewer**（画布交互）
+- **@arronqzy/i18n**（zh-CN / en-US）
 
 **React 栈**
 
@@ -181,6 +208,7 @@ Abuilder26/
 
 | 顺序 | React 栈 | Vue 栈 |
 |------|----------|--------|
+| 0 | `i18n`（共享） | （同上） |
 | 1 | `blueprint-dsl` | （同上，共享） |
 | 2 | `rx-store` | （同上，共享） |
 | 3 | `react-rx-store` | `vue-rx-store` |

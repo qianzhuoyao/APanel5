@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from "@arronqzy/i18n/vue";
 import type { NodeProps } from "@vue-flow/core";
 import { computed } from "vue";
 import { resolveBlueprintNodeTypeLabel } from "../graph/document";
@@ -12,6 +13,8 @@ import { resolveBlueprintNodeExecutionTone } from "../runtime/execution-overlay"
 import type { BlueprintFlowNodeData } from "../types";
 import BlueprintNodeShell from "./BlueprintNodeShell.vue";
 import { cn } from "../utils/cn";
+
+const { t } = useI18n();
 
 const props = defineProps<NodeProps<BlueprintFlowNodeData>>();
 const onSelect = useBlueprintNodeSelect();
@@ -30,8 +33,8 @@ const progressLabel = computed(() => {
     <BlueprintNodeShell
       :node-id="props.id"
       :label="nodeData.label"
-      :meta="resolveBlueprintNodeTypeLabel(nodeData)"
-      :subtitle="resolveBlueprintNodeSummary(nodeData)"
+      :meta="resolveBlueprintNodeTypeLabel(nodeData, t)"
+      :subtitle="resolveBlueprintNodeSummary(nodeData, t)"
       :progress-label="progressLabel"
       variant="clock"
       :selected="Boolean(nodeData.isSelected)"
@@ -48,7 +51,7 @@ const progressLabel = computed(() => {
           'hover:bg-rose-500/25 dark:text-rose-300'
         )
       "
-      title="中止时钟：停止剩余次数与正在执行的下游任务"
+      :title="t('blueprint.node.abortClock')"
       @pointerdown.stop
       @click.stop="onAbortClock(props.id)"
     >

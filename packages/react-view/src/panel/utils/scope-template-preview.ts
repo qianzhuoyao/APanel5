@@ -1,3 +1,5 @@
+import type { TranslateFn } from "@arronqzy/i18n";
+import { tForLocale } from "@arronqzy/i18n";
 import type { PanelElement } from "../types";
 import {
   materializeChartLabelsText,
@@ -22,7 +24,8 @@ function shouldSkipField(fieldId: string): boolean {
 function walkElementTemplateFields(
   value: unknown,
   fieldId: string,
-  results: ScopeTemplateField[]
+  results: ScopeTemplateField[],
+  t: TranslateFn
 ) {
   if (shouldSkipField(fieldId)) return;
 
@@ -30,7 +33,7 @@ function walkElementTemplateFields(
     if (!hasScopeTemplate(value)) return;
     results.push({
       fieldId,
-      fieldLabel: resolveScopeFieldLabel(fieldId),
+      fieldLabel: resolveScopeFieldLabel(fieldId, t),
       template: value,
     });
     return;
@@ -38,7 +41,7 @@ function walkElementTemplateFields(
 
   if (Array.isArray(value)) {
     value.forEach((item, index) => {
-      walkElementTemplateFields(item, `${fieldId}.${index}`, results);
+      walkElementTemplateFields(item, `${fieldId}.${index}`, results, t);
     });
     return;
   }
@@ -46,16 +49,17 @@ function walkElementTemplateFields(
   if (value && typeof value === "object") {
     for (const [key, nested] of Object.entries(value)) {
       const nextId = fieldId ? `${fieldId}.${key}` : key;
-      walkElementTemplateFields(nested, nextId, results);
+      walkElementTemplateFields(nested, nextId, results, t);
     }
   }
 }
 
 export function collectElementScopeTemplateFields(
-  element: PanelElement
+  element: PanelElement,
+  t: TranslateFn = tForLocale("zh-CN")
 ): ScopeTemplateField[] {
   const results: ScopeTemplateField[] = [];
-  walkElementTemplateFields(element, "", results);
+  walkElementTemplateFields(element, "", results, t);
   return results;
 }
 

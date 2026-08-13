@@ -1,14 +1,17 @@
 <script setup lang="ts">
+import { useI18n } from "@arronqzy/i18n/vue";
 import { computed, nextTick, ref, watch } from "vue";
 import { Button, Checkbox, Input, Tooltip } from "ant-design-vue";
 import {
-  PAGE_LIFECYCLE_LABELS,
   type ExecutionTraceEntry,
   type PageLifecyclePhase,
 } from "@arronqzy/blueprint-dsl";
+import { getLifecyclePhaseLabel } from "../graph/document";
 
 import type { ExecutionLogSettings } from "../library/execution-log-settings";
 import { cn } from "../utils/cn";
+
+const { t } = useI18n();
 
 export type BlueprintExecutionLogPanelProps = {
   entries: ExecutionTraceEntry[];
@@ -53,8 +56,7 @@ function formatJson(value: unknown) {
 const phaseLabel = computed(() => {
   if (!props.lifecyclePhase) return null;
   return (
-    PAGE_LIFECYCLE_LABELS[props.lifecyclePhase as PageLifecyclePhase] ??
-    props.lifecyclePhase
+    getLifecyclePhaseLabel(t, props.lifecyclePhase as PageLifecyclePhase)
   );
 });
 
@@ -111,31 +113,31 @@ watch(
     <div class="shrink-0 border-b border-border px-3 py-2">
       <div class="flex items-start justify-between gap-2">
         <div class="min-w-0">
-          <div class="text-xs font-semibold">蓝图任务输出日志</div>
+          <div class="text-xs font-semibold">{{ t("blueprint.log.title") }}</div>
           <div class="mt-0.5 text-[11px] text-muted-foreground">
-            {{ phaseLabel ? `模拟场景：${phaseLabel}` : "选择生命周期节点并开始调试" }}
+            {{ phaseLabel ? t("blueprint.log.simulateSceneWithPhase", { phaseLabel }) : t("blueprint.log.selectLifecycleToDebug") }}
           </div>
         </div>
         <div class="flex shrink-0 items-center gap-1">
           <Tooltip
             v-if="onClearAllSaved"
-            title="立即清空 IndexedDB 中所有已保存的蓝图执行日志"
+            :title="t('blueprint.log.clearIdbTooltip')"
           >
             <Button
               size="small"
               class="h-7 w-7 shrink-0"
-              aria-label="清空 IndexedDB 日志"
+              :aria-label="t('blueprint.log.clearIdbAria')"
               :disabled="!hasSavedRuns"
               @click="() => void onClearAllSaved?.()"
             >
               🗄✕
             </Button>
           </Tooltip>
-          <Tooltip title="清空当前日志，并重置画布执行高亮">
+          <Tooltip :title="t('blueprint.log.clearCurrentTooltip')">
             <Button
               size="small"
               class="h-7 w-7 shrink-0"
-              aria-label="清空日志"
+              :aria-label="t('blueprint.log.clearCurrentAria')"
               :disabled="entries.length === 0"
               @click="onClear"
             >
@@ -149,7 +151,7 @@ watch(
     <div class="relative min-h-0 flex-1">
       <div ref="scrollRef" class="h-full overflow-auto p-3" @scroll="handleScroll">
         <p v-if="entries.length === 0" class="text-[11px] text-muted-foreground">
-          暂无执行记录。使用工具栏「走完全流程」或「下一步」开始模拟。
+          {{ t("blueprint.log.emptyHint") }}
         </p>
         <div v-else class="space-y-0">
           <div v-for="(entry, index) in entries" :key="entry.id">
@@ -170,13 +172,13 @@ watch(
 
               <div class="mt-2 grid gap-2">
                 <div>
-                  <div class="mb-1 text-[10px] font-medium text-muted-foreground">输入</div>
+                  <div class="mb-1 text-[10px] font-medium text-muted-foreground">{{ t("blueprint.log.input") }}</div>
                   <pre
                     class="max-h-32 overflow-auto rounded border border-border/60 bg-background p-2 font-mono text-[10px] leading-relaxed text-foreground"
                   >{{ formatJson(entry.inputs) }}</pre>
                 </div>
                 <div>
-                  <div class="mb-1 text-[10px] font-medium text-muted-foreground">输出</div>
+                  <div class="mb-1 text-[10px] font-medium text-muted-foreground">{{ t("blueprint.log.output") }}</div>
                   <pre
                     class="max-h-32 overflow-auto rounded border p-2 font-mono text-[10px] leading-relaxed"
                     :class="
@@ -211,7 +213,7 @@ watch(
           @click="() => void scrollToBottom('smooth')"
         >
           <span class="shrink-0">↓</span>
-          <span class="truncate">有新日志</span>
+          <span class="truncate">{{ t("blueprint.log.hasNewLogs") }}</span>
           <span v-if="latestEntryPreview" class="truncate opacity-90">
             · {{ latestEntryPreview }}
           </span>
@@ -221,41 +223,41 @@ watch(
 
     <div class="shrink-0 space-y-2 border-t border-border p-3 text-xs">
       <div class="grid grid-cols-2 gap-2">
-        <Tooltip title="将当前调试日志保存到 IndexedDB">
+        <Tooltip :title="t('blueprint.log.saveLogTooltip')">
           <Button size="small" block :disabled="entries.length === 0" @click="onSave">
-            保存日志
+            {{ t("blueprint.log.saveLog") }}
           </Button>
         </Tooltip>
-        <Tooltip title="将当前调试日志导出为 JSON 文件">
+        <Tooltip :title="t('blueprint.log.exportJsonTooltip')">
           <Button size="small" block :disabled="entries.length === 0" @click="onExport">
-            导出 JSON
+            {{ t("blueprint.log.exportJson") }}
           </Button>
         </Tooltip>
       </div>
 
-      <Tooltip title="调试运行完成后，自动将日志写入 IndexedDB">
+      <Tooltip :title="t('blueprint.log.autoSaveTooltip')">
         <label class="flex cursor-default items-center gap-2">
           <Checkbox
             :checked="settings.autoSave"
             @update:checked="(v) => onUpdateSettings({ autoSave: Boolean(v) })"
           />
           <span class="text-[11px] text-muted-foreground">
-            运行完成后自动保存到 IndexedDB
+            {{ t("blueprint.log.autoSaveAfterRun") }}
           </span>
         </label>
       </Tooltip>
 
       <div class="grid grid-cols-2 gap-2">
-        <Tooltip title="IndexedDB 中最多保留的日志条数，超出后自动删除最旧记录">
+        <Tooltip :title="t('blueprint.log.maxSavedCountTooltip')">
           <div class="space-y-1">
-            <span class="text-[11px] text-muted-foreground">最多保存条数</span>
+            <span class="text-[11px] text-muted-foreground">{{ t("blueprint.log.maxSavedCount") }}</span>
             <Input
               type="number"
               size="small"
               :min="1"
               :step="1"
               :value="settings.maxSavedRuns"
-              aria-label="IndexedDB 最多保存日志条数"
+              :aria-label="t('blueprint.log.maxSavedCountAria')"
               @update:value="
                 (v) =>
                   onUpdateSettings({
@@ -265,16 +267,16 @@ watch(
             />
           </div>
         </Tooltip>
-        <Tooltip title="超过保留天数的已保存日志将在清理时被删除">
+        <Tooltip :title="t('blueprint.log.retentionDaysTooltip')">
           <div class="space-y-1">
-            <span class="text-[11px] text-muted-foreground">保留天数</span>
+            <span class="text-[11px] text-muted-foreground">{{ t("blueprint.log.retentionDays") }}</span>
             <Input
               type="number"
               size="small"
               :min="1"
               :step="1"
               :value="settings.retentionDays"
-              aria-label="日志保留天数"
+              :aria-label="t('blueprint.log.retentionDaysAria')"
               @update:value="
                 (v) =>
                   onUpdateSettings({
@@ -286,8 +288,8 @@ watch(
         </Tooltip>
       </div>
 
-      <Tooltip title="按保留天数与条数上限，清理 IndexedDB 中的日志记录">
-        <Button size="small" block @click="onApplyRetention">清理过期与超额</Button>
+      <Tooltip :title="t('blueprint.log.cleanupTooltip')">
+        <Button size="small" block @click="onApplyRetention">{{ t("blueprint.log.cleanupExpired") }}</Button>
       </Tooltip>
     </div>
   </div>

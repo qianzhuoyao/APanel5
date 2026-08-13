@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from "@arronqzy/i18n/vue";
 import {
   computed,
   onMounted,
@@ -12,6 +13,8 @@ import {
   type BlueprintGraph,
   type BlueprintExecutionOverlay,
 } from "@arronqzy/vue-blueprint";
+
+const { t, locale } = useI18n();
 
 export type BlueprintLibraryListItem = {
   id: string;
@@ -200,7 +203,7 @@ watch(blueprintWrapRef, (el) => {
             class="min-w-[140px]"
             :value="activeBlueprintLibraryId ?? undefined"
             :options="libraryOptions"
-            placeholder="蓝图库"
+            :placeholder="t('panel.workspace.blueprintLibrary')"
             @change="(id) => id && onSelectBlueprintLibraryItem?.(String(id))"
           />
           <span
@@ -209,17 +212,17 @@ watch(blueprintWrapRef, (el) => {
           >
             {{ currentBlueprintLabel }}
           </span>
-          <Tooltip title="保存蓝图到库">
-            <Button size="small" @click="onSaveBlueprint?.()">保存</Button>
+          <Tooltip :title="t('panel.workspace.saveBlueprintToLibrary')">
+            <Button size="small" @click="onSaveBlueprint?.()">{{ t("common.save") }}</Button>
           </Tooltip>
-          <Tooltip :title="canSyncBlueprint ? '同步蓝图' : '无可同步变更'">
+          <Tooltip :title="canSyncBlueprint ? t('panel.workspace.syncBlueprint') : t('panel.workspace.noSyncChanges')">
             <Button
               size="small"
               type="primary"
               :disabled="!canSyncBlueprint"
               @click="onSyncBlueprint?.()"
             >
-              同步
+              {{ t("common.sync") }}
             </Button>
           </Tooltip>
           <Select
@@ -228,7 +231,7 @@ watch(blueprintWrapRef, (el) => {
             class="min-w-[120px]"
             :value="blueprintDebug.lifecyclePhase"
             :options="blueprintDebug.lifecycleOptions"
-            placeholder="生命周期"
+            :placeholder="t('panel.workspace.lifecycle')"
             @change="(v) => v && blueprintDebug?.onLifecyclePhaseChange?.(String(v))"
           />
         </Space>
@@ -250,7 +253,7 @@ watch(blueprintWrapRef, (el) => {
           v-else
           class="flex h-full items-center justify-center text-[11px] text-muted-foreground"
         >
-          {{ blueprintOpen ? "画布加载中…" : "" }}
+          {{ blueprintOpen ? t("panel.workspace.canvasLoading") : "" }}
         </div>
       </div>
     </div>

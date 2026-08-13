@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useI18n } from "@arronqzy/i18n/react";
 import type { State } from "@arronqzy/rx-store";
 import type { PanelElement } from "./types";
 
@@ -55,7 +56,7 @@ import {
   useViewScopeStoreVersion,
 } from "./scope/view-scope-store";
 import { resolvePanelElementScope } from "./utils/scope-template";
-import { PANEL_MESSAGES } from "./constants/messages";
+import { getPanelMessages } from "./constants/messages";
 import { PANEL_Z_INDEX } from "./constants/zIndex";
 import { useRafThrottledScroll } from "./hooks/useRafThrottledScroll";
 import {
@@ -274,16 +275,20 @@ function IconImage() {
   );
 }
 
-function formatRelativeTime(timestamp: number, now: number): string {
+function formatRelativeTime(
+  timestamp: number,
+  now: number,
+  t: (key: string, params?: Record<string, string | number>) => string
+): string {
   const diff = Math.max(0, now - timestamp);
   const sec = Math.floor(diff / 1000);
-  if (sec < 60) return `${sec}秒前`;
+  if (sec < 60) return t("common.secondsAgo", { sec });
   const min = Math.floor(sec / 60);
-  if (min < 60) return `${min}分钟前`;
+  if (min < 60) return t("common.minutesAgo", { min });
   const hour = Math.floor(min / 60);
-  if (hour < 24) return `${hour}小时前`;
+  if (hour < 24) return t("common.hoursAgo", { hour });
   const day = Math.floor(hour / 24);
-  return `${day}天前`;
+  return t("common.daysAgo", { day });
 }
 
 function getSelectedTargetsFromIds(
@@ -333,7 +338,12 @@ export type ReactViewPanelProps = {
   className?: string;
 };
 
-export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelProps) {
+export function ReactViewPanel({
+  initialZoom = 1,
+  className,
+}: ReactViewPanelProps) {
+  const { t, locale, setLocale } = useI18n();
+  const messages = useMemo(() => getPanelMessages(t), [t]);
   const THEME_STORAGE_KEY = "panel:theme";
   const TITLE_ICON_STORAGE_KEY = "panel:titleIconDataUrl";
   const { setTheme } = useTheme();
@@ -435,7 +445,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
   const [isHistoryPanelExpanded, setIsHistoryPanelExpanded] = useState(false);
   const [historyNow, setHistoryNow] = useState(Date.now());
   const [historyKeyword, setHistoryKeyword] = useState("");
-  const [productName, setProductName] = useState("未命名产物");
+  const [productName, setProductName] = useState(t("panel.defaults.unnamedProduct"));
   const [titleIconDataUrl, setTitleIconDataUrl] = useState<string>("");
   const [titleIconPreviewOpen, setTitleIconPreviewOpen] = useState(false);
   const [titleIconZoom, setTitleIconZoom] = useState(1.6);
@@ -444,7 +454,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
   const [blueprintOpen, setBlueprintOpen] = useState(false);
   const [blueprintGraph, setBlueprintGraph] = useState(() => BlueprintGraph.empty());
   const [blueprintMeta, setBlueprintMeta] = useState<BlueprintMetaDraft>({
-    name: "未命名蓝图",
+    name: t("panel.defaults.unnamedBlueprint"),
     remark: "",
   });
   const [blueprintLibraryItems, setBlueprintLibraryItems] = useState<
@@ -836,7 +846,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
   const blueprintDebugSession = useBlueprintDebugSession({
     graph: blueprintGraph,
     blueprintId: activeBlueprintLibraryId,
-    blueprintName: blueprintMeta.name || "未命名蓝图",
+    blueprintName: blueprintMeta.name || t("panel.defaults.unnamedBlueprint"),
     resolveLibraryBlueprint,
     libraryNameById: blueprintLibraryNameById,
     onExecutionBlocked: handleBlueprintExecutionBlocked,
@@ -902,8 +912,8 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
         toast({
           title:
             removed > 0
-              ? `已清空 IndexedDB 中 ${removed} 条蓝图日志`
-              : "IndexedDB 中暂无已保存日志",
+              ? messages.clearedBlueprintLogs(removed)
+              : messages.noSavedBlueprintLogs,
         });
       },
       hasSavedRuns: blueprintDebugSession.totalSavedRunCount > 0,
@@ -954,7 +964,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
     async (id: string) => {
       const record = await getBlueprintLibraryRecord(id);
       if (!record) {
-        toast({ title: "蓝图不存在或已被删除" });
+        toast({ title: t("panel.messages.blueprintNotFound") });
         void refreshBlueprintLibrary();
         return;
       }
@@ -1026,7 +1036,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
 
     const existing = await getBlueprintLibraryRecord(activeBlueprintLibraryId);
     if (!existing) {
-      toast({ title: "蓝图不存在或已被删除" });
+      toast({ title: t("panel.messages.blueprintNotFound") });
       void refreshBlueprintLibrary();
       setActiveBlueprintLibraryId(null);
       setBlueprintSyncedDocument(null);
@@ -1043,7 +1053,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
     await putBlueprintLibraryRecord(record);
     setBlueprintSyncedDocument(blueprintGraph.document);
     await refreshBlueprintLibrary();
-    toast({ title: `已同步「${record.name}」` });
+    toast({ title: messages.blueprintSynced(record.name) });
   }, [
     activeBlueprintLibraryId,
     blueprintGraph.document,
@@ -1080,7 +1090,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
       setActiveBlueprintLibraryId(record.id);
       setBlueprintSyncedDocument(blueprintGraph.document);
       await refreshBlueprintLibrary();
-      toast({ title: "蓝图已保存到本地" });
+      toast({ title: t("panel.messages.blueprintSavedLocal") });
     },
     [activeBlueprintLibraryId, blueprintGraph.document, refreshBlueprintLibrary]
   );
@@ -1097,7 +1107,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
         downloadBlueprintExport(
           buildBlueprintExportPayload(blueprintGraph.document, meta)
         );
-        toast({ title: "蓝图已导出" });
+        toast({ title: t("panel.messages.blueprintExported") });
         return;
       }
       await saveBlueprintToLibrary(meta);
@@ -1109,7 +1119,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
     async (id: string, name: string) => {
       const updated = await updateBlueprintLibraryMeta(id, { name });
       if (!updated) {
-        toast({ title: "重命名失败" });
+        toast({ title: t("panel.messages.renameFailed") });
         void refreshBlueprintLibrary();
         return;
       }
@@ -1117,7 +1127,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
       if (activeBlueprintLibraryId === id) {
         setBlueprintMeta((prev) => ({ ...prev, name }));
       }
-      toast({ title: "蓝图已重命名" });
+      toast({ title: t("panel.messages.blueprintRenamed") });
     },
     [activeBlueprintLibraryId, refreshBlueprintLibrary]
   );
@@ -1130,7 +1140,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
         setActiveBlueprintLibraryId(null);
         setBlueprintSyncedDocument(null);
       }
-      toast({ title: "蓝图已从库中删除" });
+      toast({ title: t("panel.messages.blueprintDeletedFromLibrary") });
     },
     [activeBlueprintLibraryId, refreshBlueprintLibrary]
   );
@@ -1150,7 +1160,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
         snapshotWorkspaceBlueprint();
       }
       await loadBlueprintFromLibrary(record.id);
-      toast({ title: "蓝图已导入并加载" });
+      toast({ title: t("panel.messages.blueprintImported") });
     },
     [
       activeBlueprintLibraryId,
@@ -1170,7 +1180,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
       workspaceBlueprintRef.current = {
         document: record.blueprintDocument,
         meta: {
-          name: record.blueprintMeta?.name ?? "未命名蓝图",
+          name: record.blueprintMeta?.name ?? t("panel.defaults.unnamedBlueprint"),
           remark: record.blueprintMeta?.remark ?? "",
         },
       };
@@ -1213,7 +1223,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
   const handleWorkspaceCreateProject = useCallback(async () => {
     const result = await workspaceProjects.handleCreateProject();
     if (result?.name) {
-      toast({ title: `已创建工作区「${result.name}」` });
+      toast({ title: messages.workspaceCreated(result.name) });
     }
     return result;
   }, [workspaceProjects]);
@@ -1225,12 +1235,12 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
         await workspaceProjects.handleOpenProject(id);
         setSelectedIds([]);
         toast({
-          title: "工作区已加载",
-          description: "视图与蓝图已恢复",
+          title: t("panel.messages.workspaceLoaded"),
+          description: t("panel.messages.workspaceLoadedDesc"),
         });
       } catch (error) {
         toast({
-          title: error instanceof Error ? error.message : "打开工作区失败",
+          title: error instanceof Error ? error.message : t("panel.messages.openWorkspaceFailed"),
         });
       }
     },
@@ -1241,11 +1251,11 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
     try {
       const name = await workspaceProjects.handleSyncProject();
       if (name) {
-        toast({ title: `已同步「${name}」` });
+        toast({ title: messages.blueprintSynced(name) });
       }
     } catch (error) {
       toast({
-        title: error instanceof Error ? error.message : "同步失败",
+        title: error instanceof Error ? error.message : t("panel.messages.syncFailed"),
       });
     }
   }, [workspaceProjects]);
@@ -1253,7 +1263,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
   const handleWorkspaceDeleteProject = useCallback(
     async (id: string) => {
       await workspaceProjects.handleDeleteProject(id);
-      toast({ title: "工作区已删除" });
+      toast({ title: t("panel.messages.workspaceDeleted") });
     },
     [workspaceProjects]
   );
@@ -1264,7 +1274,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
         await workspaceProjects.handlePreviewProject(projectId, options);
       } catch (error) {
         toast({
-          title: error instanceof Error ? error.message : "打开预览失败",
+          title: error instanceof Error ? error.message : t("panel.messages.openPreviewFailed"),
         });
       }
     },
@@ -1305,40 +1315,40 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
   });
   const showActionHint = useCallback((message: string) => {
     toast({
-      title: "操作受限",
+      title: t("panel.messages.operationRestricted"),
       description: message,
     });
   }, []);
   const hintUnlockNodeForDelete = useCallback(() => {
-    showActionHint(PANEL_MESSAGES.nodeDeleteLocked);
+    showActionHint(messages.nodeDeleteLocked);
   }, [showActionHint]);
   const hintUnlockLayerForDelete = useCallback(() => {
-    showActionHint(PANEL_MESSAGES.nodeDeleteLayerLocked);
+    showActionHint(messages.nodeDeleteLayerLocked);
   }, [showActionHint]);
   const hintLockedNodesInBatchDelete = useCallback(() => {
-    showActionHint(PANEL_MESSAGES.nodeBatchDeleteContainsLocked);
+    showActionHint(messages.nodeBatchDeleteContainsLocked);
   }, [showActionHint]);
   const hintNodeNotFound = useCallback(() => {
-    showActionHint(PANEL_MESSAGES.nodeNotFound);
+    showActionHint(messages.nodeNotFound);
   }, [showActionHint]);
   const hintUnlockNodeForMove = useCallback(() => {
-    showActionHint(PANEL_MESSAGES.nodeMoveLocked);
+    showActionHint(messages.nodeMoveLocked);
   }, [showActionHint]);
   const hintUnlockSourceLayerForMove = useCallback(() => {
-    showActionHint(PANEL_MESSAGES.nodeMoveSourceLayerLocked);
+    showActionHint(messages.nodeMoveSourceLayerLocked);
   }, [showActionHint]);
   const hintTargetLayerNotFound = useCallback(() => {
-    showActionHint(PANEL_MESSAGES.targetLayerNotFound);
+    showActionHint(messages.targetLayerNotFound);
   }, [showActionHint]);
   const hintUnlockTargetLayerForMove = useCallback(() => {
-    showActionHint(PANEL_MESSAGES.nodeMoveTargetLayerLocked);
+    showActionHint(messages.nodeMoveTargetLayerLocked);
   }, [showActionHint]);
   const getLayerDeleteBlockReason = useCallback(
     (layerId: string) => {
       const targetLayer = layerById.get(layerId);
-      if (!targetLayer) return "图层不存在";
-      if (!targetLayer.editable) return "默认图层不可删除";
-      if (targetLayer.locked) return "锁定图层不可删除";
+      if (!targetLayer) return t("panel.messages.layerNotFound");
+      if (!targetLayer.editable) return t("panel.layers.cannotDeleteDefault");
+      if (targetLayer.locked) return t("panel.layers.cannotDeleteLocked");
       if (targetLayer.isMapping) return null;
       const hasBlockingRef = allElements.some((el) => {
         if (el.layerId === layerId) return false;
@@ -1346,7 +1356,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
         if (el.refLayerId !== layerId) return false;
         return (el.refCopyMode ?? "shallow") !== "deep";
       });
-      if (hasBlockingRef) return "该图层仍被浅拷贝引用，请先删除引用节点或改为深拷贝";
+      if (hasBlockingRef) return t("panel.messages.shallowRefBlockingDelete");
       return null;
     },
     [allElements, layerById]
@@ -1397,7 +1407,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
       const parsed = JSON.parse(text) as State;
       const ok = importPanelData(parsed);
       if (!ok) {
-        window.alert("导入失败：文件格式不正确");
+        window.alert(messages.importInvalidFormat);
       } else {
         setSelectedIds([]);
       }
@@ -1556,7 +1566,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
     const previewFaviconLink = faviconHrefWithVersion
       ? `<link rel="icon" type="image/png" href="${faviconHrefWithVersion}" /><link rel="shortcut icon" type="image/png" href="${faviconHrefWithVersion}" />`
       : "";
-    const previewTitle = productName.trim() || "未命名产物";
+    const previewTitle = productName.trim() || t("panel.defaults.unnamedProduct");
     const escapedPreviewTitle = previewTitle
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
@@ -1678,7 +1688,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
         }
       } catch (error) {
         toast({
-          title: error instanceof Error ? error.message : "打开预览失败",
+          title: error instanceof Error ? error.message : t("panel.messages.openPreviewFailed"),
         });
       }
     })();
@@ -1768,59 +1778,70 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
       <nav className="panel-font-root relative z-30 flex items-center gap-2 border-b border-border bg-background/95 px-2 text-foreground">
         <Menubar className="h-8 border-0 bg-transparent p-0 shadow-none">
           <MenubarMenu>
-            <MenubarTrigger className="px-2 py-1 text-xs font-normal">文件</MenubarTrigger>
+            <MenubarTrigger className="px-2 py-1 text-xs font-normal">{t("panel.menubar.file")}</MenubarTrigger>
             <MenubarContent className="z-[10100]">
-              {/* <MenubarItem onClick={handlePreviewLayer}>预览</MenubarItem> */}
-              <MenubarItem onClick={handleExport}>导出</MenubarItem>
-              <MenubarItem onClick={() => importInputRef.current?.click()}>导入</MenubarItem>
+              {/* <MenubarItem onClick={handlePreviewLayer}>{t("panel.workspace.previewDocTitle")}</MenubarItem> */}
+              <MenubarItem onClick={handleExport}>{t("panel.menubar.export")}</MenubarItem>
+              <MenubarItem onClick={() => importInputRef.current?.click()}>{t("panel.menubar.import")}</MenubarItem>
             </MenubarContent>
           </MenubarMenu>
           <MenubarMenu>
-            <MenubarTrigger className="px-2 py-1 text-xs font-normal">编辑</MenubarTrigger>
+            <MenubarTrigger className="px-2 py-1 text-xs font-normal">{t("panel.menubar.edit")}</MenubarTrigger>
             <MenubarContent className="z-[10100]">
-              <MenubarItem disabled={!canUndo} onClick={undo}>撤销</MenubarItem>
-              <MenubarItem disabled={!canRedo} onClick={redo}>重做</MenubarItem>
+              <MenubarItem disabled={!canUndo} onClick={undo}>{t("panel.menubar.undo")}</MenubarItem>
+              <MenubarItem disabled={!canRedo} onClick={redo}>{t("panel.menubar.redo")}</MenubarItem>
               <MenubarSeparator />
-              <MenubarItem disabled={!hasUnlockedSelection} onClick={() => bringElementsForward(selectedIds)}>上移一层</MenubarItem>
-              <MenubarItem disabled={!hasUnlockedSelection} onClick={() => sendElementsBackward(selectedIds)}>下移一层</MenubarItem>
-              <MenubarItem disabled={!hasUnlockedSelection} onClick={() => bringElementsToFront(selectedIds)}>置顶</MenubarItem>
-              <MenubarItem disabled={!hasUnlockedSelection} onClick={() => sendElementsToBack(selectedIds)}>置底</MenubarItem>
+              <MenubarItem disabled={!hasUnlockedSelection} onClick={() => bringElementsForward(selectedIds)}>{t("panel.menubar.bringForward")}</MenubarItem>
+              <MenubarItem disabled={!hasUnlockedSelection} onClick={() => sendElementsBackward(selectedIds)}>{t("panel.menubar.sendBackward")}</MenubarItem>
+              <MenubarItem disabled={!hasUnlockedSelection} onClick={() => bringElementsToFront(selectedIds)}>{t("panel.menubar.bringToFront")}</MenubarItem>
+              <MenubarItem disabled={!hasUnlockedSelection} onClick={() => sendElementsToBack(selectedIds)}>{t("panel.menubar.sendToBack")}</MenubarItem>
             </MenubarContent>
           </MenubarMenu>
           <MenubarMenu>
-            <MenubarTrigger className="px-2 py-1 text-xs font-normal">视图</MenubarTrigger>
+            <MenubarTrigger className="px-2 py-1 text-xs font-normal">{t("panel.menubar.view")}</MenubarTrigger>
             <MenubarContent className="z-[10100]">
-              <MenubarItem onClick={() => adjustUniformZoom((z) => z - 0.1)}>缩小</MenubarItem>
-              <MenubarItem onClick={() => adjustUniformZoom((z) => z + 0.1)}>放大</MenubarItem>
+              <MenubarItem onClick={() => adjustUniformZoom((z) => z - 0.1)}>{t("panel.menubar.zoomOut")}</MenubarItem>
+              <MenubarItem onClick={() => adjustUniformZoom((z) => z + 0.1)}>{t("panel.menubar.zoomIn")}</MenubarItem>
               <MenubarSeparator />
               <MenubarItem
                 onClick={() => {
                   applyTheme(!isDark);
                 }}
               >
-                {isDark ? "切换到浅色" : "切换到深色"}
+                {isDark ? t("panel.menubar.switchToLight") : t("panel.menubar.switchToDark")}
               </MenubarItem>
             </MenubarContent>
           </MenubarMenu>
           <MenubarMenu>
-            <MenubarTrigger className="px-2 py-1 text-xs font-normal">蓝图</MenubarTrigger>
+            <MenubarTrigger className="px-2 py-1 text-xs font-normal">{t("panel.menubar.blueprint")}</MenubarTrigger>
             <MenubarContent className="z-[10100]">
-              <MenubarItem onClick={openBlueprintExportDialog}>导出</MenubarItem>
+              <MenubarItem onClick={openBlueprintExportDialog}>{t("panel.menubar.export")}</MenubarItem>
               <MenubarItem onClick={() => blueprintImportInputRef.current?.click()}>
-                导入
+                {t("panel.menubar.import")}
               </MenubarItem>
             </MenubarContent>
           </MenubarMenu>
           <MenubarMenu>
-            <MenubarTrigger className="px-2 py-1 text-xs font-normal">设置</MenubarTrigger>
+            <MenubarTrigger className="px-2 py-1 text-xs font-normal">{t("panel.menubar.settings")}</MenubarTrigger>
             <MenubarContent className="z-[10100]">
               <MenubarRadioGroup
                 value={panelFontSize}
                 onValueChange={(value) => setPanelFontSize(value as "sm" | "md" | "lg")}
               >
-                <MenubarRadioItem value="sm">字体：小</MenubarRadioItem>
-                <MenubarRadioItem value="md">字体：中</MenubarRadioItem>
-                <MenubarRadioItem value="lg">字体：大</MenubarRadioItem>
+                <MenubarRadioItem value="sm">{t("panel.menubar.fontSmall")}</MenubarRadioItem>
+                <MenubarRadioItem value="md">{t("panel.menubar.fontMedium")}</MenubarRadioItem>
+                <MenubarRadioItem value="lg">{t("panel.menubar.fontLarge")}</MenubarRadioItem>
+              </MenubarRadioGroup>
+              <MenubarSeparator />
+              <div className="px-2 py-1.5 text-[11px] text-muted-foreground">
+                {t("panel.theme.language")}
+              </div>
+              <MenubarRadioGroup
+                value={locale}
+                onValueChange={(value) => setLocale(value as "zh-CN" | "en-US")}
+              >
+                <MenubarRadioItem value="zh-CN">{t("panel.theme.zhCN")}</MenubarRadioItem>
+                <MenubarRadioItem value="en-US">{t("panel.theme.enUS")}</MenubarRadioItem>
               </MenubarRadioGroup>
             </MenubarContent>
           </MenubarMenu>
@@ -1938,10 +1959,10 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                 <Input
                   value={productName}
                   onChange={(e) => setProductName(e.target.value)}
-                  placeholder="请输入当前构建产物名称"
+                  placeholder={t("panel.menubar.productNamePlaceholder")}
                   className="h-7 w-[220px] text-xs focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none"
                 />
-                <span className="text-[11px] text-muted-foreground">产物名称</span>
+                <span className="text-[11px] text-muted-foreground">{t("panel.menubar.productName")}</span>
                 <TooltipProvider delayDuration={150}>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -1949,12 +1970,12 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                         type="button"
                         onClick={() => titleIconInputRef.current?.click()}
                         className="rounded border border-border p-1 hover:bg-accent"
-                        aria-label="上传 title 图标"
+                        aria-label={t("panel.menubar.uploadTitleIcon")}
                       >
                         <IconImage />
                       </button>
                     </TooltipTrigger>
-                    <TooltipContent className="z-[10000]">上传 title 图标</TooltipContent>
+                    <TooltipContent className="z-[10000]">{t("panel.menubar.uploadTitleIcon")}</TooltipContent>
                   </Tooltip>
                   {titleIconDataUrl ? (
                     <Tooltip>
@@ -1963,12 +1984,12 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                           type="button"
                           onClick={() => setTitleIconDataUrl("")}
                           className="rounded border border-border p-1 hover:bg-accent"
-                          aria-label="清除 title 图标"
+                          aria-label={t("panel.menubar.clearTitleIcon")}
                         >
                           <IconClose />
                         </button>
                       </TooltipTrigger>
-                      <TooltipContent className="z-[10000]">清除 title 图标</TooltipContent>
+                      <TooltipContent className="z-[10000]">{t("panel.menubar.clearTitleIcon")}</TooltipContent>
                     </Tooltip>
                   ) : null}
                   {titleIconDataUrl ? (
@@ -1978,17 +1999,17 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                           type="button"
                           onClick={() => setTitleIconPreviewOpen(true)}
                           className="h-7 shrink-0 flex min-w-[92px] items-center gap-1.5 rounded border border-border bg-muted/30 px-2 py-1 hover:bg-accent/40"
-                          aria-label="查看 title 图标大图"
+                          aria-label={t("panel.menubar.viewTitleIcon")}
                         >
                           <img
                             src={titleIconDataUrl}
-                            alt="title 图标缩略图"
+                            alt={t("panel.menubar.titleIconThumbAlt")}
                             className="h-5 w-5 shrink-0 rounded border border-border/60 object-cover"
                           />
                           <span className="text-[10px] text-muted-foreground">Title Icon</span>
                         </button>
                       </TooltipTrigger>
-                      <TooltipContent className="z-[10000]">点击查看 title 图标大图</TooltipContent>
+                      <TooltipContent className="z-[10000]">{t("panel.menubar.viewTitleIconHint")}</TooltipContent>
                     </Tooltip>
                   ) : null}
                   <Tooltip>
@@ -1998,12 +2019,12 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                         onClick={undo}
                         disabled={!canUndo}
                         className="rounded border border-border p-1 hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40"
-                        aria-label="撤销"
+                        aria-label={t("panel.menubar.undo")}
                       >
                         <IconUndo />
                       </button>
                     </TooltipTrigger>
-                    <TooltipContent className="z-[10000]">撤销（Cmd/Ctrl + Z）</TooltipContent>
+                    <TooltipContent className="z-[10000]">{t("panel.menubar.undoShortcut")}</TooltipContent>
                   </Tooltip>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -2012,12 +2033,12 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                         onClick={redo}
                         disabled={!canRedo}
                         className="rounded border border-border p-1 hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40"
-                        aria-label="重做"
+                        aria-label={t("panel.menubar.redo")}
                       >
                         <IconRedo />
                       </button>
                     </TooltipTrigger>
-                    <TooltipContent className="z-[10000]">重做（Cmd/Ctrl + Shift + Z）</TooltipContent>
+                    <TooltipContent className="z-[10000]">{t("panel.menubar.redoShortcut")}</TooltipContent>
                   </Tooltip>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -2029,7 +2050,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                             "rounded border border-border p-1 hover:bg-accent",
                             isHistoryPanelExpanded ? "bg-accent/60" : "",
                           ].join(" ")}
-                          aria-label={isHistoryPanelExpanded ? "收起操作历史" : "展开操作历史"}
+                          aria-label={isHistoryPanelExpanded ? t("panel.history.collapse") : t("panel.history.expand")}
                         >
                           <IconHistory />
                         </button>
@@ -2039,7 +2060,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                             style={{ zIndex: PANEL_Z_INDEX.historyPopover }}
                           >
                             <div className="mb-1 flex items-center justify-between">
-                              <span className="text-[11px] font-semibold text-muted-foreground">操作历史</span>
+                              <span className="text-[11px] font-semibold text-muted-foreground">{t("panel.history.title")}</span>
                               <span className="text-[11px] text-muted-foreground">
                                 {history.length > 0 ? `${historyCursor + 1}/${history.length}` : "0/0"}
                               </span>
@@ -2047,7 +2068,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                             <Input
                               value={historyKeyword}
                               onChange={(e) => setHistoryKeyword(e.target.value)}
-                              placeholder="搜索历史，如：删除、图层、缩放..."
+                              placeholder={t("panel.history.searchPlaceholder")}
                               className="mb-2 h-7 text-xs"
                             />
                             <div
@@ -2058,9 +2079,9 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                                   <EmptyIcon className="h-8 w-8">
                                     <IconHistory />
                                   </EmptyIcon>
-                                  <EmptyTitle className="text-xs">暂无操作历史</EmptyTitle>
+                                  <EmptyTitle className="text-xs">{t("panel.history.emptyTitle")}</EmptyTitle>
                                   <EmptyDescription className="text-[11px]">
-                                    进行一次操作后，这里会展示历史记录。
+                                    {t("panel.history.emptyDesc")}
                                   </EmptyDescription>
                                 </Empty>
                               ) : (
@@ -2091,7 +2112,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                                       <div className="flex items-center justify-between gap-2">
                                         <span className="truncate">{item.label}</span>
                                         <span className="shrink-0 text-[10px] text-muted-foreground">
-                                          {formatRelativeTime(item.timestamp, historyNow)}
+                                          {formatRelativeTime(item.timestamp, historyNow, t)}
                                         </span>
                                       </div>
                                     </button>
@@ -2120,9 +2141,9 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                                       <path d="m20 20-3.5-3.5" />
                                     </svg>
                                   </EmptyIcon>
-                                  <EmptyTitle className="text-xs">未匹配到历史项</EmptyTitle>
+                                  <EmptyTitle className="text-xs">{t("panel.history.noMatchTitle")}</EmptyTitle>
                                   <EmptyDescription className="text-[11px]">
-                                    尝试更换关键词，例如删除、图层、缩放。
+                                    {t("panel.history.noMatchDesc")}
                                   </EmptyDescription>
                                 </Empty>
                               ) : null}
@@ -2132,7 +2153,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                       </div>
                     </TooltipTrigger>
                     <TooltipContent className="z-[10000]">
-                      {isHistoryPanelExpanded ? "收起操作历史" : "展开操作历史"}
+                      {isHistoryPanelExpanded ? t("panel.history.collapse") : t("panel.history.expand")}
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -2142,7 +2163,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                       type="button"
                       disabled={!hasUnlockedSelection}
                       className="rounded border border-border p-1 hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40"
-                      aria-label="节点层级操作"
+                      aria-label={t("panel.menubar.nodeZOrderAria")}
                     >
                       <IconLayers />
                     </button>
@@ -2153,28 +2174,28 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                       onClick={() => bringElementsForward(selectedIds)}
                     >
                       <span className="mr-2 inline-flex"><IconForward /></span>
-                      上移一层
+                      {t("panel.menubar.bringForward")}
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       disabled={!hasUnlockedSelection}
                       onClick={() => sendElementsBackward(selectedIds)}
                     >
                       <span className="mr-2 inline-flex"><IconBackward /></span>
-                      下移一层
+                      {t("panel.menubar.sendBackward")}
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       disabled={!hasUnlockedSelection}
                       onClick={() => bringElementsToFront(selectedIds)}
                     >
                       <span className="mr-2 inline-flex"><IconBringFront /></span>
-                      置顶
+                      {t("panel.menubar.bringToFront")}
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       disabled={!hasUnlockedSelection}
                       onClick={() => sendElementsToBack(selectedIds)}
                     >
                       <span className="mr-2 inline-flex"><IconSendBack /></span>
-                      置底
+                      {t("panel.menubar.sendToBack")}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -2183,11 +2204,11 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                   data-blueprint-toggle
                   className="flex shrink-0 items-center gap-2 rounded-md border border-border bg-muted/30 px-2 py-1"
                 >
-                  <span className="text-[11px] text-muted-foreground">蓝图</span>
+                  <span className="text-[11px] text-muted-foreground">{t("panel.menubar.blueprint")}</span>
                   <Switch
                     checked={blueprintOpen}
                     onCheckedChange={setBlueprintOpen}
-                    aria-label="显示蓝图面板"
+                    aria-label={t("panel.menubar.showBlueprintPanel")}
                   />
                 </div>
                 <TooltipProvider delayDuration={150}>
@@ -2197,7 +2218,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                         <Switch
                           checked={isDark}
                           onCheckedChange={applyTheme}
-                          aria-label="切换主题"
+                          aria-label={t("panel.menubar.toggleTheme")}
                           className="data-[state=checked]:bg-primary/80 data-[state=unchecked]:bg-secondary"
                         />
                         <div
@@ -2231,7 +2252,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                         </div>
                       </div>
                     </TooltipTrigger>
-                    <TooltipContent className="z-[10000]">切换深色/浅色主题</TooltipContent>
+                    <TooltipContent className="z-[10000]">{t("panel.menubar.toggleThemeHint")}</TooltipContent>
                   </Tooltip>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -2243,7 +2264,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                         -
                       </button>
                     </TooltipTrigger>
-                    <TooltipContent className="z-[10000]">缩小画布</TooltipContent>
+                    <TooltipContent className="z-[10000]">{t("panel.menubar.zoomOutCanvas")}</TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
                 <span className="w-20 text-center text-xs">
@@ -2262,7 +2283,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                         +
                       </button>
                     </TooltipTrigger>
-                    <TooltipContent className="z-[10000]">放大画布</TooltipContent>
+                    <TooltipContent className="z-[10000]">{t("panel.menubar.zoomInCanvas")}</TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
               </div>
@@ -2278,7 +2299,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                   try {
                     await handleImportFile(file);
                   } catch {
-                    window.alert("导入失败：JSON 解析错误");
+                    window.alert(messages.importJsonParseError);
                   }
                 }}
               />
@@ -2294,7 +2315,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                   try {
                     await handleBlueprintImportFile(file);
                   } catch {
-                    window.alert("蓝图导入失败：文件格式不正确");
+                    window.alert(messages.blueprintImportInvalid);
                   }
                 }}
               />
@@ -2311,7 +2332,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                     const normalizedDataUrl = await normalizeTitleIconFile(file);
                     setTitleIconDataUrl(normalizedDataUrl);
                   } catch {
-                    window.alert("图标读取失败，请重试");
+                    window.alert(messages.iconReadFailed);
                   }
                 }}
               />
@@ -2427,7 +2448,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                     }}
                     onDropMaterial={({ materialId, x, y }) => {
                       if (activeLayer?.locked) {
-                        showActionHint(PANEL_MESSAGES.activeLayerLockedCannotAdd);
+                        showActionHint(messages.activeLayerLockedCannotAdd);
                         return;
                       }
                       addElementFromMaterial(materialId, x, y);
@@ -2477,13 +2498,13 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                             if (!node) return;
                             const layer = layerById.get(node.layerId);
                             if (layer?.locked) {
-                              showActionHint(PANEL_MESSAGES.nodeLayerLockedCannotCopy);
+                              showActionHint(messages.nodeLayerLockedCannotCopy);
                               return;
                             }
                             setCopiedNodeId(contextMenuNodeId);
                           }}
                         >
-                          复制节点
+                          {t("panel.menubar.duplicateNode")}
                         </DropdownMenuItem>
                         {contextMenuNodeId &&
                         byId.get(contextMenuNodeId)?.mappingSourceNodeId ? (
@@ -2495,7 +2516,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                               if (!sourceNodeId) return;
                               const sourceNode = byId.get(sourceNodeId);
                               if (!sourceNode) {
-                                showActionHint(PANEL_MESSAGES.sourceNodeNotFound);
+                                showActionHint(messages.sourceNodeNotFound);
                                 return;
                               }
                               if (activeLayerId !== sourceNode.layerId) {
@@ -2505,7 +2526,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                               setContextMenuNodeId(null);
                             }}
                           >
-                            定位到源节点
+                            {t("panel.menubar.locateSourceNode")}
                           </DropdownMenuItem>
                         ) : null}
                         <DropdownMenuItem
@@ -2522,7 +2543,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                             setContextMenuNodeId(null);
                           }}
                         >
-                          在映射图层打开
+                          {t("panel.menubar.openInMappingLayer")}
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() => {
@@ -2553,7 +2574,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                                 return !!layerById.get(el.layerId)?.locked;
                               });
                               if (hasLockedLayerNode) {
-                                showActionHint(PANEL_MESSAGES.selectionContainsLockedLayerNode);
+                                showActionHint(messages.selectionContainsLockedLayerNode);
                                 return;
                               }
                               deleteElements(selectedIds);
@@ -2577,8 +2598,8 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                           }}
                         >
                           {contextMenuNodeId && selectedIds.includes(contextMenuNodeId) && selectedIds.length > 1
-                            ? `删除选中节点（${selectedIds.length}）`
-                            : "删除节点"}
+                            ? t("panel.menubar.deleteSelectedNodes", { count: selectedIds.length })
+                            : t("panel.menubar.deleteNode")}
                         </DropdownMenuItem>
                       </>
                     ) : (
@@ -2589,7 +2610,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                             if (!copiedNodeId) return;
                             const sourceNode = byId.get(copiedNodeId);
                             if (sourceNode && layerById.get(sourceNode.layerId)?.locked) {
-                              showActionHint(PANEL_MESSAGES.sourceLayerLockedCannotPaste);
+                              showActionHint(messages.sourceLayerLockedCannotPaste);
                               return;
                             }
                             const canvasEl = canvasRef.current;
@@ -2623,7 +2644,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                             );
                           }}
                         >
-                          粘贴节点
+                          {t("panel.menubar.pasteNode")}
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           disabled={elements.length === 0}
@@ -2631,7 +2652,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                             selectViewElements(elements.map((el) => el.id));
                           }}
                         >
-                          全选当前图层
+                          {t("panel.menubar.selectAllInLayer")}
                         </DropdownMenuItem>
                       </>
                     )}
@@ -2645,20 +2666,20 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                 <TooltipProvider delayDuration={120}>
                   <Tabs value={activeLayerId} onValueChange={setActiveLayer}>
                     <div className="mb-1 flex items-center gap-2">
-                      <div className="text-[11px] font-semibold text-muted-foreground">图层</div>
+                      <div className="text-[11px] font-semibold text-muted-foreground">{t("panel.layers.title")}</div>
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <button
                             type="button"
                             onClick={() => setIsLayerPanelExpanded((v) => !v)}
-                            aria-label={isLayerPanelExpanded ? "收起图层输入区" : "展开图层输入区"}
+                            aria-label={isLayerPanelExpanded ? t("panel.layers.collapseInputAria") : t("panel.layers.expandInputAria")}
                             className="rounded border border-border p-1 hover:bg-accent"
                           >
                             <IconChevron expanded={isLayerPanelExpanded} />
                           </button>
                         </TooltipTrigger>
                         <TooltipContent className="z-[10000]">
-                          {isLayerPanelExpanded ? "收起输入区" : "展开输入区"}
+                          {isLayerPanelExpanded ? t("panel.layers.collapseInput") : t("panel.layers.expandInput")}
                         </TooltipContent>
                       </Tooltip>
                       <Tooltip>
@@ -2666,13 +2687,13 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                           <button
                             type="button"
                             onClick={addLayer}
-                            aria-label="新增图层"
+                            aria-label={t("panel.layers.add")}
                             className="rounded border border-border p-1 hover:bg-accent"
                           >
                             <IconPlus />
                           </button>
                         </TooltipTrigger>
-                        <TooltipContent className="z-[10000]">新增图层</TooltipContent>
+                        <TooltipContent className="z-[10000]">{t("panel.layers.add")}</TooltipContent>
                       </Tooltip>
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -2682,7 +2703,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                             if (!canMergeLayers) return;
                               setIsMergingLayers(true);
                             }}
-                            aria-label="合并图层"
+                            aria-label={t("panel.layers.merge")}
                           disabled={!canMergeLayers}
                           className="rounded border border-border p-1 hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40"
                           >
@@ -2690,7 +2711,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                           </button>
                         </TooltipTrigger>
                       <TooltipContent className="z-[10000]">
-                        {canMergeLayers ? "合并图层" : "至少勾选 2 个图层后可合并"}
+                        {canMergeLayers ? t("panel.layers.merge") : t("panel.layers.mergeNeedTwo")}
                       </TooltipContent>
                       </Tooltip>
                     </div>
@@ -2707,12 +2728,12 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                           <span className="truncate">{layer.name}</span>
                           {layer.isMapping ? (
                             <span className="rounded border border-primary/40 bg-primary/10 px-1 text-[10px] text-primary">
-                              映射
+                              {t("panel.layers.mapping")}
                             </span>
                           ) : null}
                           {layer.isPrimary ? (
                             <span className="rounded border border-emerald-500/40 bg-emerald-500/10 px-1 text-[10px] text-emerald-600">
-                              主
+                              {t("panel.layers.primary")}
                             </span>
                           ) : null}
                           {layer.locked ? <IconLock locked /> : null}
@@ -2742,7 +2763,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                                 }
                               }}
                               className="h-7 min-w-0 flex-1"
-                              placeholder="请输入图层名称"
+                              placeholder={t("panel.layers.namePlaceholder")}
                               autoFocus
                             />
                           ) : (
@@ -2750,12 +2771,12 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                           )}
                           {activeLayer.isMapping ? (
                             <span className="rounded border border-primary/40 bg-primary/10 px-1 text-[10px] text-primary">
-                              映射图层
+                              {t("panel.layers.mappingLayer")}
                             </span>
                           ) : null}
                           {activeLayer.isPrimary ? (
                             <span className="rounded border border-emerald-500/40 bg-emerald-500/10 px-1 text-[10px] text-emerald-600">
-                              主图层
+                              {t("panel.layers.primaryLayer")}
                             </span>
                           ) : null}
                           <div className="flex-1" />
@@ -2765,7 +2786,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                                 type="button"
                                 onClick={() => setPrimaryLayer(activeLayer.id)}
                                 disabled={activeLayer.isPrimary}
-                                aria-label={activeLayer.isPrimary ? "当前主图层" : "设为主图层"}
+                                aria-label={activeLayer.isPrimary ? t("panel.layers.isPrimary") : t("panel.layers.setPrimary")}
                                 className={[
                                   "rounded border px-2 py-1 text-[11px] disabled:cursor-not-allowed disabled:opacity-60",
                                   activeLayer.isPrimary
@@ -2773,11 +2794,11 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                                     : "border-border hover:bg-accent",
                                 ].join(" ")}
                               >
-                                {activeLayer.isPrimary ? "当前主图层" : "设为主图层"}
+                                {activeLayer.isPrimary ? t("panel.layers.isPrimary") : t("panel.layers.setPrimary")}
                               </button>
                             </TooltipTrigger>
                             <TooltipContent className="z-[10000]">
-                              {activeLayer.isPrimary ? "当前主图层（预览使用）" : "设为主图层（预览使用）"}
+                              {activeLayer.isPrimary ? t("panel.layers.isPrimaryHint") : t("panel.layers.setPrimaryHint")}
                             </TooltipContent>
                           </Tooltip>
                           <Tooltip>
@@ -2786,14 +2807,14 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                                 type="button"
                                 onClick={() => toggleLayerLock(activeLayer.id)}
                                 disabled={!activeLayer.editable}
-                                aria-label={activeLayer.locked ? "解锁图层" : "锁定图层"}
+                                aria-label={activeLayer.locked ? t("panel.layers.unlock") : t("panel.layers.lock")}
                                 className="rounded border border-border p-1 disabled:opacity-40"
                               >
                                 <IconLock locked={activeLayer.locked} />
                               </button>
                             </TooltipTrigger>
                             <TooltipContent className="z-[10000]">
-                              {activeLayer.locked ? "解锁图层" : "锁定图层"}
+                              {activeLayer.locked ? t("panel.layers.unlock") : t("panel.layers.lock")}
                             </TooltipContent>
                           </Tooltip>
                           <Tooltip>
@@ -2806,7 +2827,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                                     setEditingLayerId(null);
                                     setEditingLayerName("");
                                   }}
-                                  aria-label="保存图层名称"
+                                  aria-label={t("panel.layers.saveName")}
                                   className="rounded border border-border p-1 hover:bg-accent"
                                 >
                                   <IconCheck />
@@ -2819,7 +2840,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                                     setEditingLayerName(activeLayer.name);
                                   }}
                                   disabled={!activeLayer.editable}
-                                  aria-label="重命名图层"
+                                  aria-label={t("panel.layers.rename")}
                                   className="rounded border border-border p-1 disabled:opacity-40"
                                 >
                                   <IconEdit />
@@ -2827,7 +2848,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                               )}
                             </TooltipTrigger>
                             <TooltipContent className="z-[10000]">
-                              {editingLayerId === activeLayer.id ? "保存图层名称" : "重命名图层"}
+                              {editingLayerId === activeLayer.id ? t("panel.layers.saveName") : t("panel.layers.rename")}
                             </TooltipContent>
                           </Tooltip>
                           {editingLayerId === activeLayer.id ? (
@@ -2839,13 +2860,13 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                                     setEditingLayerId(null);
                                     setEditingLayerName("");
                                   }}
-                                  aria-label="取消编辑图层名称"
+                                  aria-label={t("panel.layers.cancelEditName")}
                                   className="rounded border border-border p-1 hover:bg-accent"
                                 >
                                   <IconClose />
                                 </button>
                               </TooltipTrigger>
-                              <TooltipContent className="z-[10000]">取消编辑</TooltipContent>
+                              <TooltipContent className="z-[10000]">{t("panel.layers.cancelEdit")}</TooltipContent>
                             </Tooltip>
                           ) : null}
                           <Tooltip>
@@ -2866,10 +2887,10 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                                 disabled={!activeLayer.editable || activeLayer.locked}
                                 aria-label={
                                   !activeLayer.editable
-                                    ? "默认图层不可删除"
+                                    ? t("panel.layers.cannotDeleteDefault")
                                     : activeLayer.locked
-                                      ? "锁定图层不可删除"
-                                      : "删除图层"
+                                      ? t("panel.layers.cannotDeleteLocked")
+                                      : t("panel.layers.delete")
                                 }
                                 className="rounded border border-border p-1 disabled:opacity-40"
                               >
@@ -2878,10 +2899,10 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                             </TooltipTrigger>
                             <TooltipContent className="z-[10000]">
                               {!activeLayer.editable
-                                ? "默认图层不可删除"
+                                ? t("panel.layers.cannotDeleteDefault")
                                 : activeLayer.locked
-                                  ? "锁定图层不可删除"
-                                  : "删除图层"}
+                                  ? t("panel.layers.cannotDeleteLocked")
+                                  : t("panel.layers.delete")}
                             </TooltipContent>
                           </Tooltip>
                         </div>
@@ -2889,7 +2910,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
 
                       {isLayerPanelExpanded ? (
                         <div className="rounded border border-border bg-card px-2 py-1.5 text-xs">
-                          <div className="mb-1 text-muted-foreground">选择合并图层</div>
+                          <div className="mb-1 text-muted-foreground">{t("panel.layers.selectMergeLayers")}</div>
                           <div className="flex flex-wrap gap-2">
                             {layers.map((layer) => (
                               <label key={layer.id} className="flex items-center gap-1.5">
@@ -2901,10 +2922,10 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                                 />
                                 <span
                                   className="max-w-[140px] truncate"
-                                  title={layer.isMapping ? "映射图层不允许合并" : layer.name}
+                                  title={layer.isMapping ? t("panel.layers.mappingCannotMerge") : layer.name}
                                 >
                                   {layer.name}
-                                  {layer.isMapping ? "（不可合并）" : ""}
+                                  {layer.isMapping ? t("panel.layers.cannotMergeSuffix") : ""}
                                 </span>
                               </label>
                             ))}
@@ -2916,12 +2937,12 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
 
                 {isLayerPanelExpanded && isMergingLayers ? (
                   <div className="mt-2 flex items-center gap-2 rounded border border-border bg-card px-2 py-1.5 text-xs">
-                    <span className="text-muted-foreground">合并后图层名</span>
+                    <span className="text-muted-foreground">{t("panel.layers.mergedName")}</span>
                     <Input
                       value={mergeLayerName}
                       onChange={(e) => setMergeLayerName(e.target.value)}
                       className="h-7 min-w-0 flex-1"
-                      placeholder="可空，留空将随机命名"
+                      placeholder={t("panel.layers.mergedNamePlaceholder")}
                       autoFocus
                     />
                     <Tooltip>
@@ -2934,14 +2955,14 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                             setIsMergingLayers(false);
                             setMergeLayerName("");
                           }}
-                          aria-label="确认合并图层"
+                          aria-label={t("panel.layers.confirmMergeAria")}
                           disabled={!canMergeLayers}
                           className="rounded border border-border p-1 hover:bg-accent"
                         >
                           <IconCheck />
                         </button>
                       </TooltipTrigger>
-                      <TooltipContent className="z-[10000]">确认合并</TooltipContent>
+                      <TooltipContent className="z-[10000]">{t("panel.layers.confirmMerge")}</TooltipContent>
                     </Tooltip>
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -2951,13 +2972,13 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                             setIsMergingLayers(false);
                             setMergeLayerName("");
                           }}
-                          aria-label="取消合并图层"
+                          aria-label={t("panel.layers.cancelMergeAria")}
                           className="rounded border border-border p-1 hover:bg-accent"
                         >
                           <IconClose />
                         </button>
                       </TooltipTrigger>
-                      <TooltipContent className="z-[10000]">取消合并</TooltipContent>
+                      <TooltipContent className="z-[10000]">{t("panel.layers.cancelMerge")}</TooltipContent>
                     </Tooltip>
                   </div>
                 ) : null}
@@ -3024,13 +3045,15 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
       >
         <AlertDialogContent overlayClassName="bg-transparent pointer-events-none">
           <AlertDialogHeader>
-            <AlertDialogTitle>确认删除</AlertDialogTitle>
+            <AlertDialogTitle>{t("panel.layers.confirmDeleteTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              将删除 {mappingDeleteImpactCount} 个关联映射图层，是否继续？
+              {t("panel.layers.confirmDeleteMappingBody", {
+                count: mappingDeleteImpactCount,
+              })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
                 const fn = mappingDeleteProceedRef.current;
@@ -3039,7 +3062,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                 fn?.();
               }}
             >
-              继续删除
+              {t("panel.layers.continueDelete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -3058,9 +3081,11 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
           overlayClassName="bg-transparent pointer-events-none"
         >
           <DialogHeader>
-            <DialogTitle>确认删除图层</DialogTitle>
+            <DialogTitle>{t("panel.layers.confirmDeleteLayerTitle")}</DialogTitle>
             <DialogDescription>
-              即将删除图层：{deletingLayer?.name ?? "-"}
+              {t("panel.layers.aboutToDeleteLayer", {
+                name: deletingLayer?.name ?? "-",
+              })}
             </DialogDescription>
           </DialogHeader>
           {deletingLayer ? (
@@ -3073,7 +3098,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                 <div className="flex items-center gap-3">
                   <label className="flex items-center gap-1.5">
                     <RadioGroupItem value="move" />
-                    节点迁移到
+                    {t("panel.layers.migrateNodesTo")}
                   </label>
                   <Select
                     value={deleteTargetLayerId || "__none__"}
@@ -3083,10 +3108,10 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
                     disabled={deletingLayerMode !== "move" || deleteTargetCandidates.length === 0}
                   >
                     <SelectTrigger className="h-8 w-[220px]">
-                      <SelectValue placeholder="选择目标图层" />
+                      <SelectValue placeholder={t("panel.layers.selectTargetLayer")} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="__none__">请选择图层</SelectItem>
+                      <SelectItem value="__none__">{t("panel.layers.pleaseSelectLayer")}</SelectItem>
                       {deleteTargetCandidates.map((l) => (
                         <SelectItem key={l.id} value={l.id}>
                           {l.name}
@@ -3098,7 +3123,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
               ) : null}
               <label className="flex items-center gap-1.5">
                 <RadioGroupItem value="remove" />
-                {deletingLayer.isMapping ? "删除映射图层及其节点" : "同时删除该图层下所有节点"}
+                {deletingLayer.isMapping ? t("panel.layers.deleteMappingWithNodes") : t("panel.layers.deleteAllNodesToo")}
               </label>
             </RadioGroup>
           ) : null}
@@ -3112,7 +3137,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
               }}
               className="rounded border border-border px-3 py-1.5 text-sm hover:bg-accent"
             >
-              取消
+              {t("common.cancel")}
             </button>
             <button
               type="button"
@@ -3132,7 +3157,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
               }}
               className="rounded bg-primary px-3 py-1.5 text-sm text-primary-foreground hover:bg-primary/90"
             >
-              确认删除
+              {t("panel.layers.confirmDeleteTitle")}
             </button>
           </DialogFooter>
         </DialogContent>
@@ -3146,8 +3171,8 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
           overlayClassName="bg-transparent pointer-events-none"
         >
           <DialogHeader>
-            <DialogTitle>Title 图标预览</DialogTitle>
-            <DialogDescription>用于预览页标签页 icon 的当前图片</DialogDescription>
+            <DialogTitle>{t("panel.menubar.titleIconPreviewTitle")}</DialogTitle>
+            <DialogDescription>{t("panel.menubar.titleIconPreviewDesc")}</DialogDescription>
           </DialogHeader>
           <div className="flex items-center justify-end gap-2">
             <button
@@ -3172,7 +3197,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
               onClick={() => setTitleIconZoom(1.6)}
               className="rounded border border-border px-2 py-1 text-xs text-muted-foreground hover:bg-accent"
             >
-              重置
+              {t("common.reset")}
             </button>
           </div>
           {titleIconDataUrl ? (
@@ -3189,7 +3214,7 @@ export function ReactViewPanel({ initialZoom = 1, className }: ReactViewPanelPro
             >
               <img
                 src={titleIconDataUrl}
-                alt="title 图标大图预览"
+                alt={t("panel.menubar.titleIconPreviewAlt")}
                 className="mx-auto rounded border border-border/70 object-contain"
                 style={{
                   width: 200,

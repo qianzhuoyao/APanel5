@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState, type ChangeEvent } from "react";
 import { validateLogicSourceCode } from "@arronqzy/blueprint-dsl";
 import type { LogicNodeConfig } from "@arronqzy/blueprint-dsl";
+import { useI18n } from "@arronqzy/i18n/react";
 
 import type { BlueprintGraphNode } from "../graph/document";
 import { resolveNodeLogicConfig } from "../graph/document";
@@ -27,6 +28,7 @@ export function LogicNodeConfigPanel({
   node,
   onUpdateNode,
 }: LogicNodeConfigPanelProps) {
+  const { t } = useI18n();
   const logicConfig = resolveNodeLogicConfig(node);
   const [draftError, setDraftError] = useState<string | null>(null);
 
@@ -50,15 +52,17 @@ export function LogicNodeConfigPanel({
 
   return (
     <div className="space-y-2 rounded-md border border-border/70 bg-muted/20 p-2.5">
-      <div className="font-medium text-foreground">逻辑节点</div>
+      <div className="font-medium text-foreground">
+        {t("blueprint.config.logicTitle")}
+      </div>
       <p className="text-[11px] text-muted-foreground">
-        收到<strong>真信号</strong>后，将输入数据传入下方 <code>update</code>{" "}
-        函数并执行；返回值作为<strong>真信号</strong>输出。代码语法错误或运行时报错则发出
-        <strong>假信号</strong>（错误信息为输出值）。
+        {t("blueprint.config.logicHint")}
       </p>
 
       <label className="block space-y-1">
-        <span className="text-muted-foreground">JavaScript 代码</span>
+        <span className="text-muted-foreground">
+          {t("blueprint.config.jsCode")}
+        </span>
         <textarea
           value={logicConfig.sourceCode}
           onChange={handleChange}
@@ -69,10 +73,12 @@ export function LogicNodeConfigPanel({
         />
         {parseError ? (
           <p className="text-[11px] text-destructive">
-            JavaScript 错误：{parseError}
+            {t("blueprint.config.jsError", { error: parseError })}
           </p>
         ) : (
-          <p className="text-[11px] text-muted-foreground">JavaScript 语法正确</p>
+          <p className="text-[11px] text-muted-foreground">
+            {t("blueprint.config.jsSyntaxOk")}
+          </p>
         )}
       </label>
     </div>

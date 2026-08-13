@@ -1,7 +1,10 @@
 <script setup lang="ts">
+import { useI18n } from "@arronqzy/i18n/vue";
 import { Button, Dropdown, Menu, Modal, Tooltip } from "ant-design-vue";
 import { computed, h, ref } from "vue";
 import type { WorkspaceProjectListItem } from "../library/workspace-project-db";
+
+const { t, locale } = useI18n();
 
 function formatUpdatedAt(ts: number): string {
   try {
@@ -25,6 +28,14 @@ const emit = defineEmits<{
   deleteProject: [id: string];
   previewProject: [id: string, options?: { syncFirst?: boolean }];
 }>();
+
+const syncTooltip = computed(() => {
+  void locale.value;
+  if (!props.dirty) return t("panel.workspace.syncUpToDate");
+  return t("panel.workspace.syncUpdate", {
+    name: props.activeProjectName ?? t("panel.workspace.currentWorkspaceFallback"),
+  });
+});
 
 const pendingDeleteId = ref<string | null>(null);
 const busy = ref(false);
@@ -64,7 +75,7 @@ const projectMenu = computed(() =>
     {
       default: () =>
         props.projects.length === 0
-          ? [h(Menu.Item, { key: "empty", disabled: true }, () => "暂无已保存工作区")]
+          ? [h(Menu.Item, { key: "empty", disabled: true }, () => t("panel.workspace.noSavedWorkspaces"))]
           : props.projects.map((project) =>
               h(
                 "div",
@@ -105,7 +116,7 @@ const projectMenu = computed(() =>
                           })
                         ),
                     },
-                    () => "预览"
+                    () => t("panel.workspace.previewDocTitle")
                   ),
                   h(
                     Button,
@@ -118,7 +129,7 @@ const projectMenu = computed(() =>
                         pendingDeleteId.value = project.id;
                       },
                     },
-                    () => "删除"
+                    () => t("common.delete")
                   ),
                 ])
               )
@@ -131,7 +142,7 @@ const projectMenu = computed(() =>
 <template>
   <div class="flex items-center gap-1.5 border-l border-border pl-2">
     <Tooltip
-      title="以当前产物名称新建一条 IndexedDB 工作区记录，不会覆盖已有工作区"
+      :title="t('panel.workspace.createHint')"
       :overlay-style="{ zIndex: 10100 }"
       :mouse-enter-delay="0.15"
     >
@@ -141,17 +152,13 @@ const projectMenu = computed(() =>
         :disabled="busy"
         @click="runAction(() => emit('createProject'))"
       >
-        创建工作区
+        {{ t("panel.workspace.create") }}
       </Button>
     </Tooltip>
 
     <Tooltip
       v-if="activeProjectId"
-      :title="
-        dirty
-          ? `同步更新「${activeProjectName ?? '当前工作区'}」到 IndexedDB`
-          : '当前工作区已与 IndexedDB 同步'
-      "
+      :title="syncTooltip"
       :overlay-style="{ zIndex: 10100 }"
       :mouse-enter-delay="0.15"
     >
@@ -162,13 +169,13 @@ const projectMenu = computed(() =>
         :disabled="busy || !dirty"
         @click="runAction(() => emit('syncProject'))"
       >
-        同步{{ dirty ? " *" : "" }}
+        {{ dirty ? t("panel.workspace.syncDirty") : t("common.sync") }}
       </Button>
     </Tooltip>
 
     <Dropdown :trigger="['click']" :disabled="busy" :overlay-style="{ zIndex: 10100 }">
       <Button size="small" class="h-7 max-w-[200px] truncate px-2 text-xs">
-        {{ activeProjectName ? `工作区：${activeProjectName}` : "已保存工作区" }}
+        {{ activeProjectName ? t("panel.workspace.workspaceNamed", { name: activeProjectName }) : t("panel.workspace.savedWorkspaces") }}
       </Button>
       <template #overlay>
         <component :is="projectMenu" />
@@ -178,15 +185,15 @@ const projectMenu = computed(() =>
 
   <Modal
     v-model:open="deleteModalOpen"
-    title="删除工作区？"
-    ok-text="删除"
-    cancel-text="取消"
+    :title="t('panel.workspace.deleteConfirmTitle')"
+    :ok-text="t('common.delete')"
+    :cancel-text="t('common.cancel')"
     ok-type="danger"
     :z-index="10150"
     @ok="confirmDelete"
   >
     <p class="text-sm text-muted-foreground">
-      将永久删除 IndexedDB 中的「{{ pendingDeleteProject?.name ?? "" }}」，此操作不可恢复。
+      {{ t("panel.workspace.deleteConfirmBody", { name: pendingDeleteProject?.name ?? "" }) }}
     </p>
   </Modal>
 </template>

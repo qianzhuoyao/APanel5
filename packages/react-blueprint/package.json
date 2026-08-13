@@ -18,6 +18,7 @@
     "dayjs": "^1.11.13",
     "react-dom": "^19",
     "@arronqzy/blueprint-dsl": "workspace:*",
+    "@arronqzy/i18n": "workspace:*",
     "@arronqzy/react-rx-store": "workspace:*",
     "@arronqzy/ui": "workspace:*",
     "@xyflow/react": "^12.9.3"

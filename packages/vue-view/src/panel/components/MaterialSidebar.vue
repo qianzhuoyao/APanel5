@@ -1,8 +1,9 @@
 <script setup lang="ts">
+import { useI18n } from "@arronqzy/i18n/vue";
 import { computed, ref } from "vue";
 import { Card, Empty, Input, Switch, Tabs } from "ant-design-vue";
 import type { PanelElement, PanelLayer, ReferenceCopyMode } from "../types";
-import { PANEL_MESSAGES } from "../constants/messages";
+import { getPanelMessages } from "../constants/messages";
 import {
   concreteGridParentIdForLayer,
   logicalGridParentIdFromConcrete,
@@ -10,12 +11,15 @@ import {
 import MaterialPreview from "./MaterialPreview.vue";
 import MaterialSidebarTreeNode from "./MaterialSidebarTreeNode.vue";
 import {
-  defaultCategories,
+  getDefaultCategories,
   getNodeDisplayName,
   themedScrollbarClass,
   type MaterialCategoryId,
   type MaterialItem,
 } from "./materialSidebarData";
+
+const { t, locale } = useI18n();
+const msgs = () => getPanelMessages(t);
 
 export type MaterialSidebarProps = {
   class?: string;
@@ -50,20 +54,20 @@ const draggingTreeNodeId = ref<string | null>(null);
 const dragOverLayerId = ref<string | null>(null);
 const expandedKeys = ref<Record<string, boolean>>({ root: true });
 
-const categories = defaultCategories;
+const categories = computed(() => { void locale.value; return getDefaultCategories(t); });
 const normalizedKeyword = computed(() => keyword.value.trim().toLowerCase());
 const isSearching = computed(() => normalizedKeyword.value.length > 0);
 const normalizedTreeKeyword = computed(() => treeKeyword.value.trim().toLowerCase());
 const isTreeSearching = computed(() => normalizedTreeKeyword.value.length > 0);
 
 const activeCategory = computed(
-  () => categories.find((c) => c.id === activeCategoryId.value) ?? categories[0]
+  () => categories.value.find((c) => c.id === activeCategoryId.value) ?? categories.value[0]
 );
 
 const matchedItems = computed(() => {
   if (!isSearching.value) return [];
   const result: Array<MaterialItem & { categoryTitle: string }> = [];
-  categories.forEach((category) => {
+  categories.value.forEach((category) => {
     category.items.forEach((item) => {
       const haystack = `${item.title} ${item.id} ${category.title}`.toLowerCase();
       if (haystack.includes(normalizedKeyword.value)) {
@@ -168,7 +172,7 @@ function hasRefInSubtree(node: PanelElement, visited: Set<string>): boolean {
 
 function nodeMatchesTreeSearch(node: PanelElement, visited: Set<string>): boolean {
   if (!isTreeSearching.value) return true;
-  const selfText = `${getNodeDisplayName(node)} ${node.materialType ?? ""} ${node.id}`.toLowerCase();
+  const selfText = `${getNodeDisplayName(node, t)} ${node.materialType ?? ""} ${node.id}`.toLowerCase();
   if (selfText.includes(normalizedTreeKeyword.value)) return true;
   if (visited.has(node.id)) return false;
   const nextVisited = new Set(visited);
@@ -206,13 +210,13 @@ function getLayerDropState(layer: PanelLayer) {
   const dropBlockReason = !draggingNode
     ? ""
     : draggingNode.locked
-      ? PANEL_MESSAGES.nodeMoveLocked
+      ? msgs().nodeMoveLocked
       : draggingSourceLayer?.locked
-        ? PANEL_MESSAGES.nodeMoveSourceLayerLocked
+        ? msgs().nodeMoveSourceLayerLocked
         : layer.locked
-          ? PANEL_MESSAGES.nodeMoveTargetLayerLocked
+          ? msgs().nodeMoveTargetLayerLocked
           : draggingNode.layerId === layer.id
-            ? PANEL_MESSAGES.nodeMoveSameLayer
+            ? msgs().nodeMoveSameLayer
             : "";
   const canDropIntoLayer = Boolean(draggingNode) && !dropBlockReason;
   return { draggingNode, dropBlockReason, canDropIntoLayer };
@@ -278,13 +282,13 @@ const treeSearchEmpty = computed(
       <Input
         v-model:value="keyword"
         size="small"
-        placeholder="搜索物料（名称 / 分类）"
+        :placeholder="t('panel.material.searchPlaceholder')"
         class="text-xs"
       />
     </div>
 
     <Tabs v-model:active-key="leftTab" class="flex min-h-0 h-full flex-col">
-      <Tabs.TabPane key="materials" tab="物料" class="min-h-0 flex-1">
+      <Tabs.TabPane key="materials" :tab="t('panel.material.tabMaterials')" class="min-h-0 flex-1">
         <div class="grid h-full min-h-0 grid-cols-[110px_1fr]">
           <div :class="`overflow-auto border-r border-border ${themedScrollbarClass}`">
             <button
@@ -305,7 +309,7 @@ const treeSearchEmpty = computed(
 
           <div :class="`overflow-auto ${themedScrollbarClass}`">
             <div class="px-2.5 py-2.5 text-xs font-semibold">
-              {{ isSearching ? `搜索结果（${matchedItems.length}）` : activeCategory.title }}
+              {{ isSearching ? t("panel.material.searchResults", { count: matchedItems.length }) : activeCategory.title }}
             </div>
             <div class="grid gap-2 px-2.5 pb-3">
               <button
@@ -332,12 +336,12 @@ const treeSearchEmpty = computed(
               <Empty
                 v-if="isSearching && matchedItems.length === 0"
                 class="py-5"
-                description="未匹配到物料"
+                :description="t('panel.material.emptyMaterialsTitle')"
               >
                 <template #description>
-                  <span class="text-xs">未匹配到物料</span>
+                  <span class="text-xs">{{ t("panel.material.emptyMaterialsTitle") }}</span>
                   <div class="text-[11px] text-muted-foreground">
-                    尝试更换关键词，或切换分类后再搜索。
+                    {{ t("panel.material.emptyMaterialsDesc") }}
                   </div>
                 </template>
               </Empty>
@@ -346,19 +350,19 @@ const treeSearchEmpty = computed(
         </div>
       </Tabs.TabPane>
 
-      <Tabs.TabPane key="tree" tab="节点树" class="min-h-0 flex-1">
+      <Tabs.TabPane key="tree" :tab="t('panel.material.tabTree')" class="min-h-0 flex-1">
         <div :class="`h-full overflow-auto px-2 py-2 text-xs ${themedScrollbarClass}`">
           <div class="mb-2">
             <Input
               v-model:value="treeKeyword"
               size="small"
-              placeholder="搜索节点（名称 / 类型 / ID）"
+              :placeholder="t('panel.material.treeSearchPlaceholder')"
               class="text-xs"
             />
           </div>
           <div class="mb-2 flex items-center justify-between rounded border border-border bg-card px-2 py-1.5">
-            <span class="text-[11px] text-muted-foreground">仅看引用子树</span>
-            <Switch v-model:checked="referenceOnlyTree" size="small" aria-label="仅看引用子树" />
+            <span class="text-[11px] text-muted-foreground">{{ t("panel.material.referenceOnlyTree") }}</span>
+            <Switch v-model:checked="referenceOnlyTree" size="small" :aria-label="t('panel.material.referenceOnlyTree')" />
           </div>
 
           <div class="rounded border border-border bg-card">
@@ -402,7 +406,7 @@ const treeSearchEmpty = computed(
                         ]"
                         :title="
                           getLayerDropState(layer).canDropIntoLayer
-                            ? '目标图层'
+                            ? t('panel.material.targetLayer')
                             : getLayerDropState(layer).dropBlockReason
                         "
                       >
@@ -429,7 +433,7 @@ const treeSearchEmpty = computed(
                         v-if="layer.isMapping"
                         class="shrink-0 rounded-md border-2 border-violet-600 bg-violet-500/22 px-1.5 py-0.5 text-[10px] font-semibold text-violet-950 dark:border-violet-400 dark:bg-violet-500/35 dark:text-violet-50"
                       >
-                        映射图层
+                        {{ t("panel.material.mappingLayer") }}
                       </span>
                       <span
                         v-if="dragOverLayerId === layer.id"
@@ -442,7 +446,7 @@ const treeSearchEmpty = computed(
                       >
                         {{
                           getLayerDropState(layer).canDropIntoLayer
-                            ? "将移动到该图层"
+                            ? t("panel.material.willMoveToLayer")
                             : getLayerDropState(layer).dropBlockReason
                         }}
                       </span>
@@ -457,7 +461,7 @@ const treeSearchEmpty = computed(
                             : 'border-destructive/50 bg-destructive/10 text-destructive'
                           : 'border-border/50 bg-muted/20 text-muted-foreground hover:border-border hover:bg-muted/35',
                       ]"
-                      title="拖拽节点到此图层"
+                      :title="t('panel.material.dragToThisLayer')"
                       @dragover="onLayerDragOver($event, layer)"
                       @dragleave="dragOverLayerId === layer.id && (dragOverLayerId = null)"
                       @drop="onLayerDrop($event, layer)"
@@ -465,9 +469,9 @@ const treeSearchEmpty = computed(
                       {{
                         draggingTreeNodeId
                           ? getLayerDropState(layer).canDropIntoLayer
-                            ? "释放以移动到该图层"
-                            : getLayerDropState(layer).dropBlockReason || "不可移动到该图层"
-                          : "拖拽节点到该图层"
+                            ? t("panel.material.releaseToMove")
+                            : getLayerDropState(layer).dropBlockReason || t("panel.material.cannotMoveToLayer")
+                          : t("panel.material.dragToLayer")
                       }}
                     </div>
 
@@ -476,7 +480,7 @@ const treeSearchEmpty = computed(
                         v-if="getRootNodes(layer.id).length === 0"
                         class="rounded border border-border/40 bg-muted/15 py-2 pl-3 text-[11px] text-muted-foreground"
                       >
-                        空图层
+                        {{ t("panel.material.emptyLayer") }}
                       </div>
                       <MaterialSidebarTreeNode
                         v-for="node in getRootNodes(layer.id)"
@@ -509,11 +513,11 @@ const treeSearchEmpty = computed(
                 </div>
               </template>
 
-              <Empty v-if="treeSearchEmpty" class="mx-2 my-2 py-5" description="未匹配到节点">
+              <Empty v-if="treeSearchEmpty" class="mx-2 my-2 py-5" :description="t('panel.material.emptyNodesTitle')">
                 <template #description>
-                  <span class="text-xs">未匹配到节点</span>
+                  <span class="text-xs">{{ t("panel.material.emptyNodesTitle") }}</span>
                   <div class="text-[11px] text-muted-foreground">
-                    试试节点名称、类型或 ID 关键词。
+                    {{ t("panel.material.emptyNodesDesc") }}
                   </div>
                 </template>
               </Empty>

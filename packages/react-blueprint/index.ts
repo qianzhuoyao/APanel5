@@ -7,7 +7,7 @@ export type {
   BlueprintLibraryOption,
 } from "./src/BlueprintNodeConfigSidebar";
 export * from "./src/graph";
-export { resolveBlueprintConfigSource, resolveBlueprintNodeTypeLabel } from "./src/graph/document";
+export { resolveBlueprintConfigSource, resolveBlueprintNodeTypeLabel, getBlueprintNodeTypeLabel, getLifecyclePhaseLabel, BLUEPRINT_CONFIG_TYPE_LABEL_KEYS, BLUEPRINT_LIFECYCLE_PHASE_KEYS } from "./src/graph/document";
 export type { BlueprintConfigSource } from "./src/graph/document";
 export { documentToRunnableGraph } from "./src/runtime/document-to-runnable-graph";
 export { BlueprintExecutionLogPanel } from "./src/components/BlueprintExecutionLogPanel";

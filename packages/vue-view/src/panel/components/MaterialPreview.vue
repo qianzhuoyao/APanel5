@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { useI18n } from "@arronqzy/i18n/vue";
+const { t, locale } = useI18n();
 defineProps<{ id: string }>();
 
 const common =
@@ -91,7 +93,7 @@ const common =
   <div v-else-if="id === 'reference'" :class="common">
     <div class="absolute inset-2 rounded-md border border-dashed border-primary/70 bg-primary/10" />
     <div class="absolute inset-0 flex items-center justify-center text-[10px] text-primary/80">
-      引用组件
+      {{ t("panel.material.reference") }}
     </div>
   </div>
   <div v-else-if="id === 'image'" :class="common">

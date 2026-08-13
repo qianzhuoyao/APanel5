@@ -17,7 +17,9 @@ import {
 
 import type { BlueprintLibraryListItem } from "../library/types";
 import type { LifecycleNodeOption } from "../hooks/useBlueprintDebugSession";
-import { PAGE_LIFECYCLE_LABELS, type PageLifecyclePhase } from "@arronqzy/blueprint-dsl";
+import { type PageLifecyclePhase } from "@arronqzy/blueprint-dsl";
+import { useI18n } from "@arronqzy/i18n/react";
+import { getLifecyclePhaseLabel } from "../graph/document";
 
 export type BlueprintRenameDialogProps = {
   open: boolean;
@@ -32,6 +34,7 @@ export function BlueprintRenameDialog({
   onOpenChange,
   onConfirm,
 }: BlueprintRenameDialogProps) {
+  const { t } = useI18n();
   const [name, setName] = useState(initialName);
 
   useEffect(() => {
@@ -50,11 +53,11 @@ export function BlueprintRenameDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
-          <DialogTitle>重命名蓝图</DialogTitle>
-          <DialogDescription>修改蓝图库中该项的显示名称。</DialogDescription>
+          <DialogTitle>{t("blueprint.dialog.renameTitle")}</DialogTitle>
+          <DialogDescription>{t("blueprint.dialog.renameDescription")}</DialogDescription>
         </DialogHeader>
         <div className="space-y-1.5 py-1">
-          <Label htmlFor="blueprint-rename-input">蓝图名称</Label>
+          <Label htmlFor="blueprint-rename-input">{t("blueprint.dialog.blueprintName")}</Label>
           <Input
             id="blueprint-rename-input"
             value={name}
@@ -67,10 +70,10 @@ export function BlueprintRenameDialog({
         </div>
         <DialogFooter>
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-            取消
+            {t("common.cancel")}
           </Button>
           <Button type="button" onClick={handleConfirm} disabled={!name.trim()}>
-            确定
+            {t("common.confirm")}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -174,18 +177,19 @@ export function BlueprintDeleteDialog({
   onOpenChange,
   onConfirm,
 }: BlueprintDeleteDialogProps) {
+  const { t } = useI18n();
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
-          <DialogTitle>删除蓝图</DialogTitle>
+          <DialogTitle>{t("blueprint.dialog.deleteTitle")}</DialogTitle>
           <DialogDescription>
-            确定从蓝图库中删除「{blueprintName}」吗？此操作不可恢复。
+            {t("blueprint.dialog.deleteDescription", { name: blueprintName })}
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-            取消
+            {t("common.cancel")}
           </Button>
           <Button
             type="button"
@@ -195,7 +199,7 @@ export function BlueprintDeleteDialog({
               onOpenChange(false);
             }}
           >
-            删除
+            {t("common.delete")}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -335,6 +339,7 @@ function LibraryRow({
   onRename: () => void;
   onDelete: () => void;
 }) {
+  const { t } = useI18n();
   const nameButton = (
     <button
       type="button"
@@ -352,17 +357,17 @@ function LibraryRow({
       }`}
     >
       {active ? (
-        <ToolbarTooltip content="再次点击返回当前工作区蓝图">
+        <ToolbarTooltip content={t("blueprint.toolbar.clickAgainReturnWorkspace")}>
           {nameButton}
         </ToolbarTooltip>
       ) : (
         nameButton
       )}
-      <ToolbarTooltip content={`重命名「${item.name}」`}>
+      <ToolbarTooltip content={t("blueprint.toolbar.renameTooltip", { name: item.name })}>
         <button
           type="button"
           className="shrink-0 rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
-          aria-label={`重命名 ${item.name}`}
+          aria-label={t("blueprint.toolbar.renameAriaLabel", { name: item.name })}
           onClick={(e) => {
             e.stopPropagation();
             onRename();
@@ -371,11 +376,11 @@ function LibraryRow({
           <IconPencil />
         </button>
       </ToolbarTooltip>
-      <ToolbarTooltip content={`从蓝图库删除「${item.name}」`}>
+      <ToolbarTooltip content={t("blueprint.toolbar.deleteTooltip", { name: item.name })}>
         <button
           type="button"
           className="shrink-0 rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-          aria-label={`删除 ${item.name}`}
+          aria-label={t("blueprint.toolbar.deleteAriaLabel", { name: item.name })}
           onClick={(e) => {
             e.stopPropagation();
             onDelete();
@@ -400,6 +405,7 @@ export function BlueprintPanelToolbar({
   canSync = false,
   debug,
 }: BlueprintPanelToolbarProps) {
+  const { t } = useI18n();
   const [menuOpen, setMenuOpen] = useState(false);
   const [renameTarget, setRenameTarget] = useState<BlueprintLibraryListItem | null>(
     null
@@ -413,7 +419,9 @@ export function BlueprintPanelToolbar({
   const triggerLabel =
     activeItem?.name ??
     (currentBlueprintLabel?.trim() ||
-      (items.length > 0 ? "蓝图库" : "蓝图库为空"));
+      (items.length > 0
+        ? t("blueprint.toolbar.library")
+        : t("blueprint.toolbar.libraryEmpty")));
 
   const handleRenameConfirm = (name: string) => {
     if (!renameTarget) return;
@@ -426,7 +434,7 @@ export function BlueprintPanelToolbar({
       <TooltipProvider delayDuration={200}>
         <div className="flex min-w-0 flex-1 items-center gap-1.5">
           <div className="relative shrink-0">
-            <ToolbarTooltip content="打开蓝图库：点击项加载；已选中项再次点击可返回当前工作区蓝图">
+            <ToolbarTooltip content={t("blueprint.toolbar.openLibraryTooltip")}>
               <span className={items.length === 0 ? "inline-flex" : undefined}>
                 <Button
                   type="button"
@@ -452,7 +460,7 @@ export function BlueprintPanelToolbar({
                   {saved.length > 0 ? (
                     <div className="mb-1">
                       <div className="px-2 py-1 text-[10px] font-semibold text-muted-foreground">
-                        已保存
+                        {t("blueprint.toolbar.saved")}
                       </div>
                       {saved.map((item) => (
                         <LibraryRow
@@ -472,7 +480,7 @@ export function BlueprintPanelToolbar({
                   {imported.length > 0 ? (
                     <div>
                       <div className="px-2 py-1 text-[10px] font-semibold text-muted-foreground">
-                        已导入
+                        {t("blueprint.toolbar.imported")}
                       </div>
                       {imported.map((item) => (
                         <LibraryRow
@@ -499,8 +507,8 @@ export function BlueprintPanelToolbar({
             variant="outline"
             size="icon"
             className="h-7 w-7 shrink-0"
-            content="保存蓝图到本地蓝图库"
-            aria-label="保存蓝图到本地"
+            content={t("blueprint.toolbar.saveToLocalLibrary")}
+            aria-label={t("blueprint.toolbar.saveToLocalAriaLabel")}
             onClick={onSave}
           >
             <IconSave />
@@ -515,13 +523,13 @@ export function BlueprintPanelToolbar({
               content={
                 canSync
                   ? activeItem
-                    ? `同步更新蓝图库中的「${activeItem.name}」`
-                    : "将当前编辑同步到蓝图库"
+                    ? t("blueprint.toolbar.syncUpdateNamed", { name: activeItem.name })
+                    : t("blueprint.toolbar.syncToLibrary")
                   : activeItem
-                    ? `「${activeItem.name}」已与库中版本一致`
-                    : "请先从蓝图库选择要编辑的蓝图"
+                    ? t("blueprint.toolbar.alreadyInSyncNamed", { name: activeItem.name })
+                    : t("blueprint.toolbar.selectBlueprintFirst")
               }
-              aria-label="同步蓝图到库"
+              aria-label={t("blueprint.toolbar.syncAriaLabel")}
               disabled={!canSync}
               onClick={onSync}
             >
@@ -531,19 +539,19 @@ export function BlueprintPanelToolbar({
 
           {debug && debug.lifecycleNodes.length > 0 ? (
             <>
-              <ToolbarTooltip content="模拟场景：选择生命周期节点，表示当前处于该生命周期阶段">
+              <ToolbarTooltip content={t("blueprint.toolbar.simulateSceneTooltip")}>
                 <select
                   value={debug.selectedLifecycleNodeId ?? ""}
                   onChange={(e) => debug.onSelectLifecycleNode(e.target.value || null)}
                   className="h-7 max-w-[180px] shrink-0 rounded-md border border-input bg-background px-2 text-[11px] text-foreground outline-none focus-visible:ring-1 focus-visible:ring-primary"
-                  aria-label="模拟场景"
+                  aria-label={t("blueprint.toolbar.simulateSceneAriaLabel")}
                 >
-                  <option value="">模拟场景</option>
+                  <option value="">{t("blueprint.toolbar.simulateScene")}</option>
                   {debug.lifecycleNodes.map((node) => (
                     <option key={node.id} value={node.id}>
                       {node.label}
                       {node.phase
-                        ? ` · ${PAGE_LIFECYCLE_LABELS[node.phase as PageLifecyclePhase] ?? node.phase}`
+                        ? ` · ${getLifecyclePhaseLabel(t, node.phase as PageLifecyclePhase)}`
                         : ""}
                     </option>
                   ))}
@@ -555,8 +563,8 @@ export function BlueprintPanelToolbar({
                 variant="outline"
                 size="icon"
                 className="h-7 w-7 shrink-0"
-                content="走完全流程：从所选生命周期节点一次性执行完整任务链"
-                aria-label="走完全流程"
+                content={t("blueprint.toolbar.runAllTooltip")}
+                aria-label={t("blueprint.toolbar.runAllAriaLabel")}
                 disabled={!debug.selectedLifecycleNodeId || debug.running}
                 onClick={() => void debug.onRunAll()}
               >
@@ -568,8 +576,8 @@ export function BlueprintPanelToolbar({
                 variant="outline"
                 size="icon"
                 className="h-7 w-7 shrink-0"
-                content="回到开始：清空已执行记录，从所选生命周期节点重新调试"
-                aria-label="回到开始"
+                content={t("blueprint.toolbar.resetToStartTooltip")}
+                aria-label={t("blueprint.toolbar.resetToStartAriaLabel")}
                 disabled={
                   !debug.selectedLifecycleNodeId ||
                   debug.running ||
@@ -585,8 +593,8 @@ export function BlueprintPanelToolbar({
                 variant="outline"
                 size="icon"
                 className="h-7 w-7 shrink-0"
-                content="上一步：撤销最近一次节点执行，恢复日志与画布状态"
-                aria-label="上一步"
+                content={t("blueprint.toolbar.stepBackTooltip")}
+                aria-label={t("blueprint.toolbar.stepBackAriaLabel")}
                 disabled={
                   !debug.selectedLifecycleNodeId ||
                   debug.running ||
@@ -604,12 +612,12 @@ export function BlueprintPanelToolbar({
                 className="h-7 w-7 shrink-0"
                 content={
                   debug.falseSignalHalt
-                    ? "当前节点输出假信号，无法继续下一步"
+                    ? t("blueprint.toolbar.stepNextFalseHalt")
                     : debug.chainComplete
-                      ? "已经是最后一个节点，任务链已走完"
-                      : "下一步：向下一节点发送真信号，每次执行一个节点"
+                      ? t("blueprint.toolbar.stepNextChainComplete")
+                      : t("blueprint.toolbar.stepNextTooltip")
                 }
-                aria-label="下一步"
+                aria-label={t("blueprint.toolbar.stepNextAriaLabel")}
                 disabled={
                   !debug.selectedLifecycleNodeId ||
                   debug.running ||
@@ -620,13 +628,13 @@ export function BlueprintPanelToolbar({
                 <IconStepNext className="h-3.5 w-3.5" />
               </ToolbarTooltipButton>
 
-              <ToolbarTooltip content="任务输出日志：在右侧查看节点执行时间、输入与输出">
+              <ToolbarTooltip content={t("blueprint.toolbar.logPanelTooltip")}>
                 <Button
                   type="button"
                   variant={debug.logPanelOpen ? "default" : "outline"}
                   size="icon"
                   className="h-7 w-7 shrink-0"
-                  aria-label="任务输出日志"
+                  aria-label={t("blueprint.toolbar.logPanelAriaLabel")}
                   aria-pressed={debug.logPanelOpen}
                   onClick={debug.onToggleLogPanel}
                 >

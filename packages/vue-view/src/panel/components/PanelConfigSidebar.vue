@@ -1,9 +1,10 @@
 <script setup lang="ts">
+import { useI18n } from "@arronqzy/i18n/vue";
 import { computed, onMounted, ref, watch } from "vue";
 import { Empty, Input } from "ant-design-vue";
 import type { PanelElement, PanelLayer, ReferenceCopyMode } from "../types";
 import { CHART_TYPES } from "../utils/chartOptionBuilder";
-import { PANEL_MESSAGES } from "../constants/messages";
+import { getPanelMessages } from "../constants/messages";
 import { hasViewElementScope } from "../scope/view-scope-store";
 import { collectElementScopeWarnings } from "../utils/scope-template-warnings";
 import { sectionMatchesSearch } from "./config/shared";
@@ -23,6 +24,8 @@ import PanelConfigGridSection from "./config/PanelConfigGridSection.vue";
 import PanelConfigGridChildSpan from "./config/PanelConfigGridChildSpan.vue";
 import PanelConfigReferenceSection from "./config/PanelConfigReferenceSection.vue";
 
+const { t, locale } = useI18n();
+const msgs = () => getPanelMessages(t);
 const SEARCH_COLLAPSE_STORAGE_KEY = "panel:config-search-collapsed";
 
 const props = withDefaults(
@@ -110,7 +113,7 @@ const showScopePanel = computed(
 
 const scopeWarnings = computed(() => {
   if (!props.selectedElement || props.viewElementScope === undefined) return [];
-  return collectElementScopeWarnings(props.selectedElement, props.viewElementScope);
+  return collectElementScopeWarnings(props.selectedElement, props.viewElementScope, t);
 });
 
 const materialType = computed(() => props.selectedElement?.materialType ?? "");
@@ -133,24 +136,24 @@ const visibleSectionCount = computed(() => {
   if (!props.selectedElement || isMultiSelectMode.value) return 0;
   let count = 0;
   const checks: Array<[string, string, string[]]> = [
-    ["nodeInfo", "节点信息", ["名称", "id", "类型"]],
-    ["styleBackground", "通用样式 / 背景", ["背景"]],
-    ["styleBorder", "通用样式 / 边框", ["边框"]],
+    ["nodeInfo", t("panel.config.sectionNodeInfo"), [t("panel.config.name"), "id", t("panel.config.type")]],
+    ["styleBackground", t("panel.config.sectionStyleBackground"), [t("panel.config.backgroundColor"), "background"]],
+    ["styleBorder", t("panel.config.sectionStyleBorder"), [t("panel.config.searchKwBorder")]],
   ];
   if (isChartElement.value) {
-    checks.push(["chartBasic", "图表配置 / 基础", ["图表"]]);
-    checks.push(["chartAdvanced", "图表配置 / 高级", ["json", "高级"]]);
+    checks.push(["chartBasic", t("panel.config.sectionChartBasic"), [t("panel.material.charts")]]);
+    checks.push(["chartAdvanced", t("panel.config.sectionChartAdvanced"), ["json", t("panel.config.searchKwAdvanced")]]);
   }
-  if (materialType.value === "text") checks.push(["textConfig", "文本配置", ["文本"]]);
-  if (materialType.value === "audio") checks.push(["audioConfig", "音频配置", ["音频"]]);
-  if (materialType.value === "video") checks.push(["videoConfig", "视频配置", ["视频"]]);
-  if (materialType.value === "image") checks.push(["imageConfig", "图片配置", ["图片"]]);
-  if (materialType.value === "geometry") checks.push(["geometryConfig", "几何配置", ["几何"]]);
-  if (materialType.value === "grid") checks.push(["gridConfig", "网格布局配置", ["网格"]]);
+  if (materialType.value === "text") checks.push(["textConfig", t("panel.config.sectionText"), [t("panel.defaults.text")]]);
+  if (materialType.value === "audio") checks.push(["audioConfig", t("panel.config.sectionAudio"), [t("panel.defaults.audio")]]);
+  if (materialType.value === "video") checks.push(["videoConfig", t("panel.config.sectionVideo"), [t("panel.defaults.video")]]);
+  if (materialType.value === "image") checks.push(["imageConfig", t("panel.config.sectionImage"), [t("panel.defaults.image")]]);
+  if (materialType.value === "geometry") checks.push(["geometryConfig", t("panel.config.sectionGeometry"), [t("panel.defaults.geometry")]]);
+  if (materialType.value === "grid") checks.push(["gridConfig", t("panel.config.sectionGrid"), [t("panel.config.searchKwGrid")]]);
   if (props.selectedElement?.parentGridId) {
-    checks.push(["gridChildSpan", "网格子节点占位", ["跨列"]]);
+    checks.push(["gridChildSpan", t("panel.config.sectionGridChildSpan"), [t("panel.config.searchKwCrossCol")]]);
   }
-  if (materialType.value === "reference") checks.push(["reference", "引用组件配置", ["引用"]]);
+  if (materialType.value === "reference") checks.push(["reference", t("panel.config.sectionReference"), [t("panel.material.reference")]]);
   for (const [, title, terms] of checks) {
     if (shouldShowSection("", title, terms)) count += 1;
   }
@@ -188,7 +191,7 @@ watch(
       class="scope-config-sidebar h-full overflow-auto border-l border-gray-200 bg-gray-50/30 px-3 py-3 text-gray-900 [&_.scope-field--highlight]:rounded-md [&_.scope-field--highlight]:ring-2 [&_.scope-field--highlight]:ring-amber-400/80"
     >
       <div class="sticky top-0 z-20 mb-3 rounded-lg border border-gray-200/80 bg-white px-2.5 py-2 shadow-sm">
-        <div class="text-xs font-semibold tracking-wide">配置面板</div>
+        <div class="text-xs font-semibold tracking-wide">{{ t("panel.config.panelTitle") }}</div>
         <ViewElementScopePanel v-if="showScopePanel" :scope="viewElementScope!" />
         <ScopeTemplateWarningsPanel />
         <div
@@ -200,18 +203,18 @@ watch(
               class="rounded border border-gray-200 px-1.5 py-0.5 text-[11px] text-gray-500 hover:bg-gray-50"
               @click="isSearchCollapsed = !isSearchCollapsed"
             >
-              {{ isSearchCollapsed ? "展开搜索" : "收起搜索" }}
+              {{ isSearchCollapsed ? t("panel.config.expandSearch") : t("panel.config.collapseSearch") }}
             </button>
           </div>
           <div v-if="!isSearchCollapsed" class="mt-2">
             <Input
               v-model:value="configSearch"
               size="small"
-              placeholder="搜索配置，如：边框、tooltip、音频、网格..."
+              :placeholder="t('panel.config.searchPlaceholder')"
               data-scope-autocomplete="off"
             />
             <div v-if="hasSearch" class="mt-1 text-[11px] text-gray-500">
-              搜索中：{{ configSearch }}
+              {{ t("panel.config.searching", { query: configSearch }) }}
             </div>
           </div>
         </div>
@@ -232,14 +235,14 @@ watch(
       <Empty
         v-else-if="!selectedElement"
         class="py-7"
-        description="请先在画布中选中一个节点，再到这里进行配置。"
+        :description="t('panel.config.emptyNoNodeDesc')"
       />
 
       <div v-else class="space-y-3">
         <fieldset :disabled="!isNodeEditable" :class="!isNodeEditable ? 'opacity-60' : ''">
           <div class="space-y-3.5 text-xs">
             <PanelConfigNodeInfo
-              v-if="shouldShowSection('nodeInfo', '节点信息', ['名称', 'id', '类型', '锁定'])"
+              v-if="shouldShowSection('nodeInfo', t('panel.config.sectionNodeInfo'), [t('panel.config.name'), 'id', t('panel.config.type'), t('panel.layers.lockShort')])"
               :element="selectedElement"
               :layers="layers"
               :is-editable="isNodeEditable"
@@ -254,13 +257,13 @@ watch(
 
             <PanelConfigStyleSections
               v-if="
-                shouldShowSection('styleBackground', '通用样式 / 背景', ['背景', 'background']) ||
-                shouldShowSection('styleBorder', '通用样式 / 边框', ['边框', 'border'])
+                shouldShowSection('styleBackground', t('panel.config.sectionStyleBackground'), [t('panel.config.backgroundColor'), 'background']) ||
+                shouldShowSection('styleBorder', t('panel.config.sectionStyleBorder'), [t('panel.config.searchKwBorder'), 'border'])
               "
               :element="selectedElement"
               :is-editable="isNodeEditable"
-              :show-background="shouldShowSection('styleBackground', '通用样式 / 背景', ['背景', 'background'])"
-              :show-border="shouldShowSection('styleBorder', '通用样式 / 边框', ['边框', 'border'])"
+              :show-background="shouldShowSection('styleBackground', t('panel.config.sectionStyleBackground'), [t('panel.config.backgroundColor'), 'background'])"
+              :show-border="shouldShowSection('styleBorder', t('panel.config.sectionStyleBorder'), [t('panel.config.searchKwBorder'), 'border'])"
               :background-open="isSectionExpanded('styleBackground')"
               :border-open="isSectionExpanded('styleBorder')"
               :force-open="forceOpenSections"
@@ -270,7 +273,7 @@ watch(
             />
 
             <PanelConfigChartSection
-              v-if="isChartElement && shouldShowSection('chartBasic', '图表配置 / 基础', ['图表', 'tooltip'])"
+              v-if="isChartElement && shouldShowSection('chartBasic', t('panel.config.sectionChartBasic'), [t('panel.material.charts'), 'tooltip'])"
               :element="selectedElement"
               :is-editable="isNodeEditable"
               :basic-open="isSectionExpanded('chartBasic')"
@@ -282,7 +285,7 @@ watch(
             />
 
             <PanelConfigTextSection
-              v-if="materialType === 'text' && shouldShowSection('textConfig', '文本配置', ['文本', '字体', '颜色'])"
+              v-if="materialType === 'text' && shouldShowSection('textConfig', t('panel.config.sectionText'), [t('panel.defaults.text'), t('panel.config.fontFamily'), t('panel.config.color')])"
               :element="selectedElement"
               :is-editable="isNodeEditable"
               :open="isSectionExpanded('textConfig')"
@@ -292,7 +295,7 @@ watch(
             />
 
             <PanelConfigAudioSection
-              v-if="materialType === 'audio' && shouldShowSection('audioConfig', '音频配置', ['音频', 'url', '录音'])"
+              v-if="materialType === 'audio' && shouldShowSection('audioConfig', t('panel.config.sectionAudio'), [t('panel.defaults.audio'), 'url', t('panel.config.searchKwRecord')])"
               :element="selectedElement"
               :is-editable="isNodeEditable"
               :open="isSectionExpanded('audioConfig')"
@@ -302,7 +305,7 @@ watch(
             />
 
             <PanelConfigVideoSection
-              v-if="materialType === 'video' && shouldShowSection('videoConfig', '视频配置', ['视频', 'url'])"
+              v-if="materialType === 'video' && shouldShowSection('videoConfig', t('panel.config.sectionVideo'), [t('panel.defaults.video'), 'url'])"
               :element="selectedElement"
               :is-editable="isNodeEditable"
               :open="isSectionExpanded('videoConfig')"
@@ -312,7 +315,7 @@ watch(
             />
 
             <PanelConfigImageSection
-              v-if="materialType === 'image' && shouldShowSection('imageConfig', '图片配置', ['图片', 'src', 'fit'])"
+              v-if="materialType === 'image' && shouldShowSection('imageConfig', t('panel.config.sectionImage'), [t('panel.defaults.image'), 'src', 'fit'])"
               :element="selectedElement"
               :is-editable="isNodeEditable"
               :open="isSectionExpanded('imageConfig')"
@@ -322,7 +325,7 @@ watch(
             />
 
             <PanelConfigGeometrySection
-              v-if="materialType === 'geometry' && shouldShowSection('geometryConfig', '几何配置', ['几何', '形状'])"
+              v-if="materialType === 'geometry' && shouldShowSection('geometryConfig', t('panel.config.sectionGeometry'), [t('panel.defaults.geometry'), t('panel.config.shape')])"
               :element="selectedElement"
               :is-editable="isNodeEditable"
               :open="isSectionExpanded('geometryConfig')"
@@ -332,7 +335,7 @@ watch(
             />
 
             <PanelConfigGridSection
-              v-if="materialType === 'grid' && shouldShowSection('gridConfig', '网格布局配置', ['网格', '行', '列', '间距'])"
+              v-if="materialType === 'grid' && shouldShowSection('gridConfig', t('panel.config.sectionGrid'), [t('panel.config.searchKwGrid'), t('panel.config.rowsShort'), t('panel.config.colsShort'), t('panel.config.searchKwGap')])"
               :element="selectedElement"
               :is-editable="isNodeEditable"
               :open="isSectionExpanded('gridConfig')"
@@ -342,7 +345,7 @@ watch(
             />
 
             <PanelConfigGridChildSpan
-              v-if="selectedElement.parentGridId && shouldShowSection('gridChildSpan', '网格子节点占位', ['跨列', '跨行'])"
+              v-if="selectedElement.parentGridId && shouldShowSection('gridChildSpan', t('panel.config.sectionGridChildSpan'), [t('panel.config.searchKwCrossCol'), t('panel.config.searchKwCrossRow')])"
               :element="selectedElement"
               :is-editable="isNodeEditable"
               :open="isSectionExpanded('gridChildSpan')"
@@ -352,7 +355,7 @@ watch(
             />
 
             <PanelConfigReferenceSection
-              v-if="materialType === 'reference' && shouldShowSection('reference', '引用组件配置', ['引用', '浅拷贝', '深拷贝'])"
+              v-if="materialType === 'reference' && shouldShowSection('reference', t('panel.config.sectionReference'), [t('panel.material.reference'), t('panel.material.shallowCopy'), t('panel.material.deepCopy')])"
               :element="selectedElement"
               :layers="layers"
               :is-editable="isNodeEditable"
@@ -367,14 +370,14 @@ watch(
               v-if="!isChartElement && materialType && !['text', 'audio', 'video', 'image', 'geometry', 'grid', 'reference'].includes(materialType)"
               class="text-xs leading-6 text-gray-500"
             >
-              当前节点不是图表类型，暂无图表配置项。
+              {{ t("panel.config.notChartType") }}
             </div>
 
             <div
               v-if="hasSearch && visibleSectionCount === 0"
               class="rounded border border-gray-200/60 bg-white px-2 py-1.5 text-[11px] text-gray-500"
             >
-              未找到匹配项，请尝试更换关键词。
+              {{ t("panel.config.noMatch") }}
             </div>
           </div>
         </fieldset>
@@ -383,13 +386,13 @@ watch(
           v-if="selectedElement.locked"
           class="rounded border border-amber-500/40 bg-amber-500/10 px-2 py-1.5 text-[11px] text-amber-700"
         >
-          {{ PANEL_MESSAGES.nodeConfigLocked }}
+          {{ msgs().nodeConfigLocked }}
         </div>
         <div
           v-else-if="selectedLayer?.locked"
           class="rounded border border-amber-500/40 bg-amber-500/10 px-2 py-1.5 text-[11px] text-amber-700"
         >
-          {{ PANEL_MESSAGES.nodeConfigLayerLocked }}
+          {{ msgs().nodeConfigLayerLocked }}
         </div>
       </div>
     </aside>

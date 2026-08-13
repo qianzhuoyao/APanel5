@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from "@arronqzy/i18n/vue";
 import { onMounted, ref, watch } from "vue";
 import { Checkbox, Input, InputNumber, Select } from "ant-design-vue";
 import type { PanelElement } from "../../types";
@@ -6,6 +7,7 @@ import ConfigColorField from "./ConfigColorField.vue";
 import ConfigFieldGroup from "./ConfigFieldGroup.vue";
 import ConfigSection from "./ConfigSection.vue";
 
+const { t, locale } = useI18n();
 const props = defineProps<{
   element: PanelElement;
   isEditable: boolean;
@@ -38,7 +40,8 @@ function execTextCommand(cmd: "bold" | "italic" | "underline") {
 
 function syncEditorHtml() {
   if (props.element.materialType !== "text") return;
-  const nextHtml = props.element.textHtml ?? "<p>双击输入文本</p>";
+  const nextHtml =
+    props.element.textHtml ?? `<p>${t("panel.defaults.doubleClickTextHtml")}</p>`;
   if (textEditorRef.value && textEditorRef.value.innerHTML !== nextHtml) {
     textEditorRef.value.innerHTML = nextHtml;
   }
@@ -50,12 +53,12 @@ watch(() => [props.element.id, props.element.textHtml], syncEditorHtml);
 
 <template>
   <ConfigSection
-    title="文本配置"
+    :title="t('panel.config.sectionText')"
     :open="open"
     :force-open="forceOpen"
     @update:open="emit('update:open', $event)"
   >
-    <ConfigFieldGroup title="文本内容">
+    <ConfigFieldGroup :title="t('panel.config.groupTextContent')">
       <div class="flex items-center gap-1">
         <button
           type="button"
@@ -100,20 +103,20 @@ watch(() => [props.element.id, props.element.textHtml], syncEditorHtml);
         }"
       />
     </ConfigFieldGroup>
-    <ConfigFieldGroup title="文字样式">
+    <ConfigFieldGroup :title="t('panel.config.groupTextStyle')">
       <label class="block space-y-1">
-        <div>字体</div>
+        <div>{{ t("panel.config.fontFamily") }}</div>
         <Input
           size="small"
           :value="element.textFontFamily ?? ''"
           :disabled="!isEditable"
-          placeholder="如：Inter, PingFang SC, Microsoft YaHei"
+          :placeholder="t('panel.config.fontFamilyPlaceholder')"
           @update:value="(v: string) => patch({ textFontFamily: v || undefined })"
         />
       </label>
       <div class="grid grid-cols-2 gap-2">
         <label class="block space-y-1">
-          <div>字号（px）</div>
+          <div>{{ t("panel.config.fontSizePx") }}</div>
           <InputNumber
             size="small"
             class="w-full"
@@ -125,7 +128,7 @@ watch(() => [props.element.id, props.element.textHtml], syncEditorHtml);
           />
         </label>
         <label class="block space-y-1">
-          <div>字重</div>
+          <div>{{ t("panel.config.fontWeight") }}</div>
           <Select
             size="small"
             class="w-full"
@@ -143,7 +146,7 @@ watch(() => [props.element.id, props.element.textHtml], syncEditorHtml);
       </div>
       <div class="grid grid-cols-2 gap-2">
         <label class="block space-y-1">
-          <div>对齐</div>
+          <div>{{ t("panel.config.textAlign") }}</div>
           <Select
             size="small"
             class="w-full"
@@ -151,14 +154,14 @@ watch(() => [props.element.id, props.element.textHtml], syncEditorHtml);
             :disabled="!isEditable"
             @update:value="(v) => patch({ textAlign: v as PanelElement['textAlign'] })"
           >
-            <Select.Option value="left">左对齐</Select.Option>
-            <Select.Option value="center">居中</Select.Option>
-            <Select.Option value="right">右对齐</Select.Option>
-            <Select.Option value="justify">两端对齐</Select.Option>
+            <Select.Option value="left">{{ t("panel.config.alignLeft") }}</Select.Option>
+            <Select.Option value="center">{{ t("panel.config.alignCenter") }}</Select.Option>
+            <Select.Option value="right">{{ t("panel.config.alignRight") }}</Select.Option>
+            <Select.Option value="justify">{{ t("panel.config.alignJustify") }}</Select.Option>
           </Select>
         </label>
         <label class="block space-y-1">
-          <div>行高</div>
+          <div>{{ t("panel.config.lineHeight") }}</div>
           <InputNumber
             size="small"
             class="w-full"
@@ -175,20 +178,20 @@ watch(() => [props.element.id, props.element.textHtml], syncEditorHtml);
         </label>
       </div>
       <ConfigColorField
-        label="文字颜色"
+        :label="t('panel.config.textColor')"
         :value="element.textColor ?? ''"
         :disabled="!isEditable"
         @update:value="(v) => patch({ textColor: v || undefined })"
       />
     </ConfigFieldGroup>
-    <ConfigFieldGroup title="输入能力">
+    <ConfigFieldGroup :title="t('panel.config.groupInputAbility')">
       <label class="flex items-center gap-2">
         <Checkbox
           :checked="element.textAllowInput ?? true"
           :disabled="!isEditable"
           @update:checked="(v) => patch({ textAllowInput: v !== false })"
         />
-        <span>允许在画布内直接输入（默认开启）</span>
+        <span>{{ t("panel.config.allowCanvasInput") }}</span>
       </label>
     </ConfigFieldGroup>
   </ConfigSection>

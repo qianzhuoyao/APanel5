@@ -11,9 +11,9 @@ import {
 /** DevApp 初始图：两个节点 + 一条连线，便于直接验证边是否渲染 */
 export function createDevBlueprintGraph(): BlueprintGraph {
   let graph = BlueprintGraph.empty();
-  graph = graph.addBlueprintNode({ x: 40, y: 80 }, "节点 A");
+  graph = graph.addBlueprintNode({ x: 40, y: 80 }, "Node A");
   const nodeA = graph.document.nodes[0]!;
-  graph = graph.addBlueprintNode({ x: 300, y: 80 }, "节点 B");
+  graph = graph.addBlueprintNode({ x: 300, y: 80 }, "Node B");
   const nodeB = graph.document.nodes[1]!;
 
   const withEdge = addEdge(

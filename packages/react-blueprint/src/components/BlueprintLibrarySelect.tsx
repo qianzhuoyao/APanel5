@@ -7,6 +7,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@arronqzy/ui";
+import { useI18n } from "@arronqzy/i18n/react";
 
 import type { BlueprintLibraryListItem } from "../library/types";
 
@@ -26,11 +27,13 @@ function groupItems(items: BlueprintLibraryListItem[]) {
 export function BlueprintLibrarySelect({
   items,
   value,
-  placeholder = "蓝图库",
+  placeholder,
   onSelect,
 }: BlueprintLibrarySelectProps) {
+  const { t } = useI18n();
   const { saved, imported } = groupItems(items);
   const hasItems = items.length > 0;
+  const resolvedPlaceholder = placeholder ?? t("blueprint.toolbar.library");
 
   return (
     <Select
@@ -39,12 +42,16 @@ export function BlueprintLibrarySelect({
       disabled={!hasItems}
     >
       <SelectTrigger className="h-7 w-[168px] text-xs">
-        <SelectValue placeholder={hasItems ? placeholder : "蓝图库为空"} />
+        <SelectValue
+          placeholder={
+            hasItems ? resolvedPlaceholder : t("blueprint.toolbar.libraryEmpty")
+          }
+        />
       </SelectTrigger>
       <SelectContent className="z-[10100]">
         {saved.length > 0 ? (
           <SelectGroup>
-            <SelectLabel>已保存</SelectLabel>
+            <SelectLabel>{t("blueprint.toolbar.saved")}</SelectLabel>
             {saved.map((item) => (
               <SelectItem key={item.id} value={item.id} className="text-xs">
                 {item.name}
@@ -54,7 +61,7 @@ export function BlueprintLibrarySelect({
         ) : null}
         {imported.length > 0 ? (
           <SelectGroup>
-            <SelectLabel>已导入</SelectLabel>
+            <SelectLabel>{t("blueprint.toolbar.imported")}</SelectLabel>
             {imported.map((item) => (
               <SelectItem key={item.id} value={item.id} className="text-xs">
                 {item.name}

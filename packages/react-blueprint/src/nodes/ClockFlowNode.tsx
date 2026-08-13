@@ -1,3 +1,4 @@
+import { useI18n } from "@arronqzy/i18n/react";
 import type { NodeProps } from "@xyflow/react";
 import { cn } from "@arronqzy/ui";
 
@@ -22,6 +23,7 @@ function ClockAbortIcon({ className }: { className?: string }) {
 
 /** 时钟节点：收到真信号后按配置间隔输出含当前时间的真信号 */
 export function ClockFlowNode({ id, data }: NodeProps) {
+  const { t } = useI18n();
   const nodeData = data as BlueprintFlowNodeData;
   const onSelect = useBlueprintNodeSelect();
   const onAbortClock = useBlueprintClockAbort();
@@ -36,8 +38,8 @@ export function ClockFlowNode({ id, data }: NodeProps) {
       <BlueprintNodeShell
         nodeId={id}
         label={nodeData.label}
-        meta={resolveBlueprintNodeTypeLabel(nodeData)}
-        subtitle={resolveBlueprintNodeSummary(nodeData)}
+        meta={resolveBlueprintNodeTypeLabel(nodeData, t)}
+        subtitle={resolveBlueprintNodeSummary(nodeData, t)}
         progressLabel={progressLabel}
         variant="clock"
         selected={Boolean(nodeData.isSelected)}
@@ -52,7 +54,7 @@ export function ClockFlowNode({ id, data }: NodeProps) {
             "rounded border border-rose-500/50 bg-rose-500/15 text-rose-600 shadow-sm",
             "hover:bg-rose-500/25 dark:text-rose-300"
           )}
-          title="中止时钟：停止剩余次数与正在执行的下游任务"
+          title={t("blueprint.node.abortClock")}
           onPointerDown={(e) => e.stopPropagation()}
           onClick={(e) => {
             e.stopPropagation();

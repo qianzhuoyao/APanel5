@@ -1,44 +1,57 @@
-const LABELS: Record<string, string> = {
-  name: "节点名称",
-  textHtml: "文本内容",
-  textFontFamily: "文本字体",
-  textFontWeight: "文本字重",
-  textColor: "文本颜色",
-  "chart.title": "图表标题",
-  "chart.color": "图表颜色",
-  "chart.gradientFrom": "渐变起始色",
-  "chart.gradientTo": "渐变结束色",
-  "chart.xAxisName": "X 轴名称",
-  "chart.yAxisName": "Y 轴名称",
-  "chart.xAxisTickColor": "X 轴刻度颜色",
-  "chart.yAxisTickColor": "Y 轴刻度颜色",
-  "chart.xAxisSplitLineColor": "X 轴分割线颜色",
-  "chart.yAxisSplitLineColor": "Y 轴分割线颜色",
-  "chart.xAxisLabelColor": "X 轴标签颜色",
-  "chart.yAxisLabelColor": "Y 轴标签颜色",
-  "chart.tooltipBackgroundColor": "Tooltip 背景色",
-  "chart.tooltipTextColor": "Tooltip 文字色",
-  "chart.tooltipFormatter": "Tooltip 格式化",
-  "chart.labelsText": "图表类目",
-  "chart.valuesText": "图表数值",
-  "style.backgroundColor": "背景色",
-  "style.backgroundImage": "背景图",
-  "style.backgroundImageRemoteUrl": "背景图远程地址",
-  "style.backgroundSize": "背景尺寸",
-  "style.backgroundPosition": "背景位置",
-  "style.borderColor": "边框颜色",
-  audioSrc: "音频地址",
-  audioRemoteUrl: "音频远程地址",
-  videoSrc: "视频地址",
-  videoRemoteUrl: "视频远程地址",
-  geometryColor: "几何颜色",
-  geometryScript: "几何脚本",
+import type { TranslateFn } from "@arronqzy/i18n";
+
+const FIELD_KEY_MAP: Record<string, string> = {
+  name: "panel.scope.fieldName",
+  textHtml: "panel.scope.fieldTextHtml",
+  textFontFamily: "panel.scope.fieldTextFontFamily",
+  textFontWeight: "panel.scope.fieldTextFontWeight",
+  textColor: "panel.scope.fieldTextColor",
+  "chart.title": "panel.scope.fieldChartTitle",
+  "chart.color": "panel.scope.fieldChartColor",
+  "chart.gradientFrom": "panel.scope.fieldChartGradientFrom",
+  "chart.gradientTo": "panel.scope.fieldChartGradientTo",
+  "chart.xAxisName": "panel.scope.fieldChartXAxisName",
+  "chart.yAxisName": "panel.scope.fieldChartYAxisName",
+  "chart.xAxisTickColor": "panel.scope.fieldChartXAxisTickColor",
+  "chart.yAxisTickColor": "panel.scope.fieldChartYAxisTickColor",
+  "chart.xAxisSplitLineColor": "panel.scope.fieldChartXAxisSplitLineColor",
+  "chart.yAxisSplitLineColor": "panel.scope.fieldChartYAxisSplitLineColor",
+  "chart.xAxisLabelColor": "panel.scope.fieldChartXAxisLabelColor",
+  "chart.yAxisLabelColor": "panel.scope.fieldChartYAxisLabelColor",
+  "chart.tooltipBackgroundColor": "panel.scope.fieldChartTooltipBackgroundColor",
+  "chart.tooltipTextColor": "panel.scope.fieldChartTooltipTextColor",
+  "chart.tooltipFormatter": "panel.scope.fieldChartTooltipFormatter",
+  "chart.labelsText": "panel.scope.fieldChartLabelsText",
+  "chart.valuesText": "panel.scope.fieldChartValuesText",
+  "style.backgroundColor": "panel.scope.fieldStyleBackgroundColor",
+  "style.backgroundImage": "panel.scope.fieldStyleBackgroundImage",
+  "style.backgroundImageRemoteUrl": "panel.scope.fieldStyleBackgroundImageRemoteUrl",
+  "style.backgroundSize": "panel.scope.fieldStyleBackgroundSize",
+  "style.backgroundPosition": "panel.scope.fieldStyleBackgroundPosition",
+  "style.borderColor": "panel.scope.fieldStyleBorderColor",
+  audioSrc: "panel.scope.fieldAudioSrc",
+  audioRemoteUrl: "panel.scope.fieldAudioRemoteUrl",
+  videoSrc: "panel.scope.fieldVideoSrc",
+  videoRemoteUrl: "panel.scope.fieldVideoRemoteUrl",
+  geometryColor: "panel.scope.fieldGeometryColor",
+  geometryScript: "panel.scope.fieldGeometryScript",
 };
 
-export function resolveScopeFieldLabel(fieldId: string): string {
-  if (LABELS[fieldId]) return LABELS[fieldId];
+export function getScopeFieldLabels(t: TranslateFn): Record<string, string> {
+  const labels: Record<string, string> = {};
+  for (const [fieldId, key] of Object.entries(FIELD_KEY_MAP)) {
+    labels[fieldId] = t(key);
+  }
+  return labels;
+}
+
+export function resolveScopeFieldLabel(fieldId: string, t?: TranslateFn): string {
+  if (t) {
+    const key = FIELD_KEY_MAP[fieldId];
+    if (key) return t(key);
+  }
   const leaf = fieldId.split(".").pop() ?? fieldId;
-  return LABELS[fieldId] ?? leaf;
+  return leaf;
 }
 
 export function scopeFieldDomId(fieldId: string): string {

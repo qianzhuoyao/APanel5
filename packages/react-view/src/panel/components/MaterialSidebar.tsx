@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import { useI18n } from "@arronqzy/i18n/react";
 import {
   Card,
   CardContent,
@@ -23,7 +24,7 @@ import {
 } from "@arronqzy/ui";
 import type { PanelElement, ReferenceCopyMode } from "../types";
 import type { PanelLayer } from "../types";
-import { PANEL_MESSAGES } from "../constants/messages";
+import { getPanelMessages } from "../constants/messages";
 import {
   concreteGridParentIdForLayer,
   logicalGridParentIdFromConcrete,
@@ -50,24 +51,32 @@ function compareGridTreeChildOrder(a: PanelElement, b: PanelElement): number {
   return a.id.localeCompare(b.id);
 }
 
-const MATERIAL_LABEL_MAP: Record<string, string> = {
-  bar: "柱状图",
-  line: "折线图",
-  pie: "饼图",
-  area: "面积图",
-  scatter: "散点图",
-  radar: "雷达图",
-  gauge: "仪表盘",
-  funnel: "漏斗图",
-  text: "文本",
-  rect: "矩形",
-  grid: "网格布局",
-  image: "图片",
-  video: "视频",
-  audio: "音频",
-  reference: "引用组件",
-  geometry: "几何",
+const MATERIAL_LABEL_KEYS: Record<string, string> = {
+  bar: "panel.material.bar",
+  line: "panel.material.line",
+  pie: "panel.material.pie",
+  area: "panel.material.area",
+  scatter: "panel.material.scatter",
+  radar: "panel.material.radar",
+  gauge: "panel.material.gauge",
+  funnel: "panel.material.funnel",
+  text: "panel.material.text",
+  rect: "panel.material.rect",
+  grid: "panel.material.grid",
+  image: "panel.material.image",
+  video: "panel.material.video",
+  audio: "panel.material.audio",
+  reference: "panel.material.reference",
+  geometry: "panel.material.geometry",
 };
+
+function getMaterialLabelMap(t: (key: string) => string): Record<string, string> {
+  const map: Record<string, string> = {};
+  for (const [id, key] of Object.entries(MATERIAL_LABEL_KEYS)) {
+    map[id] = t(key);
+  }
+  return map;
+}
 
 function LockGlyph({ className = "h-3.5 w-3.5" }: { className?: string }) {
   return (
@@ -129,6 +138,7 @@ function IconDeepCopy({ className = "h-3.5 w-3.5" }: { className?: string }) {
 }
 
 function MaterialPreview({ id }: { id: string }) {
+  const { t } = useI18n();
   const common =
     "relative aspect-[4/3] w-full shrink-0 overflow-hidden rounded-md border border-border bg-gradient-to-br from-card to-muted/40";
 
@@ -270,7 +280,7 @@ function MaterialPreview({ id }: { id: string }) {
       <div className={common}>
         <div className="absolute inset-2 rounded-md border border-dashed border-primary/70 bg-primary/10" />
         <div className="absolute inset-0 flex items-center justify-center text-[10px] text-primary/80">
-          引用组件
+          {t("panel.material.reference")}
         </div>
       </div>
     );
@@ -331,41 +341,43 @@ function MaterialPreview({ id }: { id: string }) {
   return <div className={common} />;
 }
 
-const defaultCategories: MaterialCategory[] = [
-  {
-    id: "charts",
-    title: "图表",
-    items: [
-      { id: "bar", title: "柱状图" },
-      { id: "line", title: "折线图" },
-      { id: "pie", title: "饼图" },
-      { id: "area", title: "面积图" },
-      { id: "scatter", title: "散点图" },
-      { id: "radar", title: "雷达图" },
-      { id: "gauge", title: "仪表盘" },
-      { id: "funnel", title: "漏斗图" },
-    ],
-  },
-  {
-    id: "basic",
-    title: "基础",
-    items: [
-      { id: "text", title: "文本" },
-      { id: "geometry", title: "几何" },
-      { id: "grid", title: "网格布局" },
-      { id: "image", title: "图片" },
-      { id: "reference", title: "引用组件" },
-    ],
-  },
-  {
-    id: "media",
-    title: "媒体",
-    items: [
-      { id: "video", title: "视频" },
-      { id: "audio", title: "音频" },
-    ],
-  },
-];
+function getDefaultCategories(t: (key: string) => string): MaterialCategory[] {
+  return [
+    {
+      id: "charts",
+      title: t("panel.material.charts"),
+      items: [
+        { id: "bar", title: t("panel.material.bar") },
+        { id: "line", title: t("panel.material.line") },
+        { id: "pie", title: t("panel.material.pie") },
+        { id: "area", title: t("panel.material.area") },
+        { id: "scatter", title: t("panel.material.scatter") },
+        { id: "radar", title: t("panel.material.radar") },
+        { id: "gauge", title: t("panel.material.gauge") },
+        { id: "funnel", title: t("panel.material.funnel") },
+      ],
+    },
+    {
+      id: "basic",
+      title: t("panel.material.basic"),
+      items: [
+        { id: "text", title: t("panel.material.text") },
+        { id: "geometry", title: t("panel.material.geometry") },
+        { id: "grid", title: t("panel.material.grid") },
+        { id: "image", title: t("panel.material.image") },
+        { id: "reference", title: t("panel.material.reference") },
+      ],
+    },
+    {
+      id: "media",
+      title: t("panel.material.media"),
+      items: [
+        { id: "video", title: t("panel.material.video") },
+        { id: "audio", title: t("panel.material.audio") },
+      ],
+    },
+  ];
+}
 
 export type MaterialSidebarProps = {
   className?: string;
@@ -392,7 +404,11 @@ export function MaterialSidebar({
   onCopyNode,
   onMoveNodeToLayer,
 }: MaterialSidebarProps) {
-  const categories = useMemo(() => defaultCategories, []);
+  const { t } = useI18n();
+  const messages = useMemo(() => getPanelMessages(t), [t]);
+  const materialLabels = useMemo(() => getMaterialLabelMap(t), [t]);
+
+  const categories = useMemo(() => getDefaultCategories(t), [t]);
   const [leftTab, setLeftTab] = useState<"materials" | "tree">("materials");
   const [activeCategoryId, setActiveCategoryId] =
     useState<MaterialCategoryId>("charts");
@@ -502,7 +518,7 @@ export function MaterialSidebar({
 
   const getNodeDisplayName = (node: PanelElement) => {
     const customName = node.name?.trim();
-    return customName || node.chart?.title || MATERIAL_LABEL_MAP[node.materialType ?? ""] || node.id;
+    return customName || node.chart?.title || materialLabels[node.materialType ?? ""] || node.id;
   };
 
   const isExpanded = (key: string, defaultValue = false) =>
@@ -631,32 +647,36 @@ export function MaterialSidebar({
               className="inline-flex shrink-0 items-center rounded-md border-2 border-violet-600 bg-violet-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-violet-950 shadow-sm dark:border-violet-400 dark:bg-violet-500/35 dark:text-violet-50 dark:shadow-[0_0_14px_-3px_rgba(167,139,250,0.65)]"
               title={
                 nodeHomeLayer.mappingBaseLayerId
-                  ? `映射图层「${nodeHomeLayer.name}」· 基准图层：${
-                      layerById.get(nodeHomeLayer.mappingBaseLayerId)?.name ??
-                      nodeHomeLayer.mappingBaseLayerId
-                    }`
-                  : `映射图层「${nodeHomeLayer.name}」`
+                  ? t("panel.material.mappingLayerWithBase", {
+                      name: nodeHomeLayer.name,
+                      base:
+                        layerById.get(nodeHomeLayer.mappingBaseLayerId)?.name ??
+                        nodeHomeLayer.mappingBaseLayerId,
+                    })
+                  : t("panel.material.mappingLayerTitle", { name: nodeHomeLayer.name })
               }
             >
-              映射图层节点
+              {t("panel.material.mappingLayerNode")}
             </span>
           ) : null}
           {node.mappingSourceNodeId ? (
             <span
               className="inline-flex shrink-0 items-center rounded border border-primary/40 bg-primary/10 px-1 text-[10px] text-primary"
-              title={`同源节点 ${node.mappingSourceNodeId}${
-                node.mappingSourceLayerId
-                  ? ` · ${layerById.get(node.mappingSourceLayerId)?.name ?? node.mappingSourceLayerId}`
-                  : ""
-              }`}
+              title={t("panel.material.sameSourceTitle", {
+                id: `${node.mappingSourceNodeId}${
+                  node.mappingSourceLayerId
+                    ? ` · ${layerById.get(node.mappingSourceLayerId)?.name ?? node.mappingSourceLayerId}`
+                    : ""
+                }`,
+              })}
             >
-              同源
+              {t("panel.material.sameSource")}
             </span>
           ) : null}
           {node.locked ? (
             <span
               className="inline-flex h-5 w-5 items-center justify-center rounded border border-border/80 bg-background/80 text-muted-foreground"
-              title="节点已锁定"
+              title={t("panel.material.nodeLocked")}
             >
               <LockGlyph />
             </span>
@@ -670,9 +690,9 @@ export function MaterialSidebar({
                     ? "border-violet-500/50 bg-violet-500/15 text-violet-300"
                     : "border-sky-500/40 bg-sky-500/10 text-sky-300",
                 ].join(" ")}
-                title={isDeepRef ? "深拷贝引用（冻结快照）" : "浅拷贝引用（跟随源变化）"}
+                title={isDeepRef ? t("panel.material.deepCopyTitle") : t("panel.material.shallowCopyTitle")}
               >
-                {isDeepRef ? "深拷贝" : "浅拷贝"}
+                {isDeepRef ? t("panel.material.deepCopy") : t("panel.material.shallowCopy")}
               </span>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -683,12 +703,12 @@ export function MaterialSidebar({
                       e.stopPropagation();
                       onCopyNode?.(node.id, "shallow");
                     }}
-                    aria-label="浅拷贝"
+                    aria-label={t("panel.material.shallowCopy")}
                   >
                     <IconShallowCopy />
                   </button>
                 </TooltipTrigger>
-                <TooltipContent>浅拷贝</TooltipContent>
+                <TooltipContent>{t("panel.material.shallowCopy")}</TooltipContent>
               </Tooltip>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -699,12 +719,12 @@ export function MaterialSidebar({
                       e.stopPropagation();
                       onCopyNode?.(node.id, "deep");
                     }}
-                    aria-label="深拷贝"
+                    aria-label={t("panel.material.deepCopy")}
                   >
                     <IconDeepCopy />
                   </button>
                 </TooltipTrigger>
-                <TooltipContent>深拷贝</TooltipContent>
+                <TooltipContent>{t("panel.material.deepCopy")}</TooltipContent>
               </Tooltip>
             </>
           ) : (
@@ -717,12 +737,12 @@ export function MaterialSidebar({
                     e.stopPropagation();
                     onCopyNode?.(node.id);
                   }}
-                  aria-label="复制节点"
+                  aria-label={t("panel.material.duplicateNode")}
                 >
                   <IconCopy />
                 </button>
               </TooltipTrigger>
-              <TooltipContent>复制节点</TooltipContent>
+              <TooltipContent>{t("panel.material.duplicateNode")}</TooltipContent>
             </Tooltip>
           )}
           <Tooltip>
@@ -736,12 +756,12 @@ export function MaterialSidebar({
                   if (node.locked) return;
                   onDeleteNode?.(node.id);
                 }}
-                aria-label={node.locked ? "锁定节点不可删除" : "删除节点"}
+                aria-label={node.locked ? t("panel.material.lockedNodeCannotDelete") : t("panel.material.deleteNode")}
               >
                 <IconDelete />
               </button>
             </TooltipTrigger>
-            <TooltipContent>{node.locked ? "锁定节点不可删除" : "删除节点"}</TooltipContent>
+            <TooltipContent>{node.locked ? t("panel.material.lockedNodeCannotDelete") : t("panel.material.deleteNode")}</TooltipContent>
           </Tooltip>
         </div>
         {hasChildren ? (
@@ -754,9 +774,10 @@ export function MaterialSidebar({
                     key={`cycle:${childPath}`}
                     className="py-1 text-[10px] text-muted-foreground/80"
                     style={{ paddingLeft: 6 + (level + 1) * 14 }}
-                    title="检测到循环引用，已停止向下展开"
+                    title={t("panel.material.circularRefStopped")}
                   >
-                    {getNodeDisplayName(child)}（循环引用）
+                    {getNodeDisplayName(child)}
+                    {t("panel.material.circularRefSuffix")}
                   </div>
                 );
               }
@@ -796,7 +817,7 @@ export function MaterialSidebar({
         <Input
           value={keyword}
           onChange={(e) => setKeyword(e.target.value)}
-          placeholder="搜索物料（名称 / 分类）"
+          placeholder={t("panel.material.searchPlaceholder")}
           className="h-8 text-xs"
         />
       </div>
@@ -808,8 +829,8 @@ export function MaterialSidebar({
       >
         <div className="border-b border-border px-2 pb-2 pt-2">
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="materials">物料</TabsTrigger>
-            <TabsTrigger value="tree">节点树</TabsTrigger>
+            <TabsTrigger value="materials">{t("panel.material.tabMaterials")}</TabsTrigger>
+            <TabsTrigger value="tree">{t("panel.material.tabTree")}</TabsTrigger>
           </TabsList>
         </div>
         <TabsContent value="materials" className="mt-0 min-h-0 flex-1 overflow-hidden">
@@ -837,7 +858,9 @@ export function MaterialSidebar({
 
             <div className={`overflow-auto ${themedScrollbarClass}`}>
               <div className="px-2.5 py-2.5 text-xs font-semibold">
-                {isSearching ? `搜索结果（${matchedItems.length}）` : activeCategory.title}
+                {isSearching
+                  ? t("panel.material.searchResults", { count: matchedItems.length })
+                  : activeCategory.title}
               </div>
               <div className="grid gap-2 px-2.5 pb-3">
                 {(isSearching ? matchedItems : activeCategory.items).map((it) => (
@@ -883,9 +906,9 @@ export function MaterialSidebar({
                         <path d="m20 20-3.5-3.5" />
                       </svg>
                     </EmptyIcon>
-                    <EmptyTitle className="text-xs">未匹配到物料</EmptyTitle>
+                    <EmptyTitle className="text-xs">{t("panel.material.emptyMaterialsTitle")}</EmptyTitle>
                     <EmptyDescription className="text-[11px]">
-                      尝试更换关键词，或切换分类后再搜索。
+                      {t("panel.material.emptyMaterialsDesc")}
                     </EmptyDescription>
                   </Empty>
                 ) : null}
@@ -899,16 +922,16 @@ export function MaterialSidebar({
               <Input
                 value={treeKeyword}
                 onChange={(e) => setTreeKeyword(e.target.value)}
-                placeholder="搜索节点（名称 / 类型 / ID）"
+                placeholder={t("panel.material.treeSearchPlaceholder")}
                 className="h-8 text-xs"
               />
             </div>
             <div className="mb-2 flex items-center justify-between rounded border border-border bg-card px-2 py-1.5">
-              <span className="text-[11px] text-muted-foreground">仅看引用子树</span>
+              <span className="text-[11px] text-muted-foreground">{t("panel.material.referenceOnlyTree")}</span>
               <Switch
                 checked={referenceOnlyTree}
                 onCheckedChange={setReferenceOnlyTree}
-                aria-label="仅看引用子树"
+                aria-label={t("panel.material.referenceOnlyTree")}
               />
             </div>
             <Collapsible
@@ -937,13 +960,13 @@ export function MaterialSidebar({
                   const dropBlockReason = !draggingNode
                     ? ""
                     : draggingNode.locked
-                      ? PANEL_MESSAGES.nodeMoveLocked
+                      ? messages.nodeMoveLocked
                       : draggingSourceLayer?.locked
-                        ? PANEL_MESSAGES.nodeMoveSourceLayerLocked
+                        ? messages.nodeMoveSourceLayerLocked
                         : layer.locked
-                          ? PANEL_MESSAGES.nodeMoveTargetLayerLocked
+                          ? messages.nodeMoveTargetLayerLocked
                           : draggingNode.layerId === layer.id
-                            ? PANEL_MESSAGES.nodeMoveSameLayer
+                            ? messages.nodeMoveSameLayer
                             : "";
                   const canDropIntoLayer = Boolean(draggingNode) && !dropBlockReason;
                   const isCurrentDropLayer = dragOverLayerId === layer.id;
@@ -983,7 +1006,7 @@ export function MaterialSidebar({
                                   ? "bg-primary/15 text-primary"
                                   : "bg-destructive/15 text-destructive",
                               ].join(" ")}
-                              title={canDropIntoLayer ? "目标图层" : dropBlockReason}
+                              title={canDropIntoLayer ? t("panel.material.targetLayer") : dropBlockReason}
                             >
                               ➜
                             </span>
@@ -1007,14 +1030,15 @@ export function MaterialSidebar({
                               className="shrink-0 rounded-md border-2 border-violet-600 bg-violet-500/22 px-1.5 py-0.5 text-[10px] font-semibold text-violet-950 shadow-sm dark:border-violet-400 dark:bg-violet-500/35 dark:text-violet-50 dark:shadow-[0_0_12px_-2px_rgba(167,139,250,0.55)]"
                               title={
                                 layer.mappingBaseLayerId
-                                  ? `映射图层 · 基准图层：${
-                                      layerById.get(layer.mappingBaseLayerId)?.name ??
-                                      layer.mappingBaseLayerId
-                                    }`
-                                  : "映射图层"
+                                  ? t("panel.material.mappingLayerWithBaseShort", {
+                                      base:
+                                        layerById.get(layer.mappingBaseLayerId)?.name ??
+                                        layer.mappingBaseLayerId,
+                                    })
+                                  : t("panel.material.mappingLayer")
                               }
                             >
-                              映射图层
+                              {t("panel.material.mappingLayer")}
                             </span>
                           ) : null}
                           {isCurrentDropLayer ? (
@@ -1026,7 +1050,7 @@ export function MaterialSidebar({
                                   : "bg-destructive/15 text-destructive",
                               ].join(" ")}
                             >
-                              {canDropIntoLayer ? "将移动到该图层" : dropBlockReason}
+                              {canDropIntoLayer ? t("panel.material.willMoveToLayer") : dropBlockReason}
                             </span>
                           ) : null}
                         </CardHeader>
@@ -1075,18 +1099,18 @@ export function MaterialSidebar({
                                 setDragOverLayerId(null);
                               }
                             }}
-                            title="拖拽节点到此图层"
+                            title={t("panel.material.dragToThisLayer")}
                           >
                             {draggingTreeNodeId
                               ? canDropIntoLayer
-                                ? "释放以移动到该图层"
-                                : dropBlockReason || "不可移动到该图层"
-                              : "拖拽节点到该图层"}
+                                ? t("panel.material.releaseToMove")
+                                : dropBlockReason || t("panel.material.cannotMoveToLayer")
+                              : t("panel.material.dragToLayer")}
                           </div>
                           <CollapsibleContent>
                             {rootNodes.length === 0 ? (
                               <div className="rounded border border-border/40 bg-muted/15 py-2 pl-3 text-[11px] text-muted-foreground">
-                                空图层
+                                {t("panel.material.emptyLayer")}
                               </div>
                             ) : (
                               rootNodes.map((node) =>
@@ -1123,9 +1147,9 @@ export function MaterialSidebar({
                           <path d="M8 10h8M8 14h5" />
                         </svg>
                       </EmptyIcon>
-                      <EmptyTitle className="text-xs">未匹配到节点</EmptyTitle>
+                      <EmptyTitle className="text-xs">{t("panel.material.emptyNodesTitle")}</EmptyTitle>
                       <EmptyDescription className="text-[11px]">
-                        试试节点名称、类型或 ID 关键词。
+                        {t("panel.material.emptyNodesDesc")}
                       </EmptyDescription>
                     </Empty>
                   </div>

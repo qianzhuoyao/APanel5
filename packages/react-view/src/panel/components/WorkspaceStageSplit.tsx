@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ComponentRef, type ReactNode } from "react";
+import { useI18n } from "@arronqzy/i18n/react";
 
 import {
   BluePrintReactRoot,
@@ -58,6 +59,7 @@ function BlueprintPanel({
   canSyncBlueprint?: boolean;
   blueprintDebug?: BlueprintDebugToolbarProps;
 }) {
+  const { t } = useI18n();
   const wrapRef = useRef<HTMLDivElement>(null);
   const [layoutReady, setLayoutReady] = useState(false);
 
@@ -104,7 +106,7 @@ function BlueprintPanel({
           <BluePrintReactRoot style={{ width: "100%", height: "100%" }} {...blueprintProps} />
         ) : (
           <div className="flex h-full items-center justify-center text-[11px] text-muted-foreground">
-            {blueprintOpen ? "画布加载中…" : ""}
+            {blueprintOpen ? t("panel.workspace.canvasLoading") : ""}
           </div>
         )}
       </div>

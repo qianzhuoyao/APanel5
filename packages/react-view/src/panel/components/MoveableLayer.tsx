@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useI18n } from "@arronqzy/i18n/react";
 import { createPortal } from "react-dom";
 import Moveable from "react-moveable";
 
@@ -177,6 +178,8 @@ export function MoveableLayer({
   refreshToken,
   viewportSyncRef,
 }: MoveableLayerProps) {
+  const { t } = useI18n();
+
   const moveableRef = useRef<any>(null);
   const targets = useMemo(() => {
     const validTargets = selectedTargets.filter(
@@ -453,10 +456,9 @@ export function MoveableLayer({
       <div
         className="pointer-events-none absolute z-[80] inline-flex select-none items-center gap-1 rounded border border-border bg-background/95 px-1.5 py-0.5 text-[11px] text-foreground shadow-sm"
         style={{ left: lockBadgeScreen.x + 6, top: lockBadgeScreen.y - 22 }}
-        title="节点已锁定"
-      >
+        title={t("panel.config.nodeLockedTitle")}>
         <LockGlyph />
-        <span>已锁定</span>
+        <span>{t("panel.config.nodeLockedBadge")}</span>
       </div>
     ) : null;
 
@@ -802,10 +804,9 @@ export function MoveableLayer({
         <div
           className="pointer-events-none absolute z-[80] inline-flex select-none items-center gap-1 rounded border border-border bg-background/95 px-1.5 py-0.5 text-[11px] text-foreground shadow-sm"
           style={{ left: lockBadgeScreen.x + 6, top: lockBadgeScreen.y - 22 }}
-          title="部分节点已锁定，已自动排除"
-        >
+          title={t("panel.config.lockedExcludedTitle")}>
           <LockGlyph />
-          <span>锁定节点已排除</span>
+          <span>{t("panel.config.lockedExcludedBadge")}</span>
         </div>
       ) : null}
     </>

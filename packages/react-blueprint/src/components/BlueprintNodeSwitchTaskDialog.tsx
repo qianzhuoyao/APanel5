@@ -7,6 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@arronqzy/ui";
+import { useI18n } from "@arronqzy/i18n/react";
 
 export type BlueprintNodeSwitchTaskDialogProps = {
   open: boolean;
@@ -25,31 +26,36 @@ export function BlueprintNodeSwitchTaskDialog({
   onKeepTaskAndSwitch,
   onCancelTaskAndSwitch,
 }: BlueprintNodeSwitchTaskDialogProps) {
+  const { t } = useI18n();
   const targetLabel =
-    toNodeId === null ? "取消选中" : `节点 ${toNodeId}`;
+    toNodeId === null
+      ? t("blueprint.dialog.cancelSelection")
+      : t("blueprint.dialog.nodeTarget", { id: toNodeId });
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>节点正在执行任务</DialogTitle>
+          <DialogTitle>{t("blueprint.dialog.taskRunningTitle")}</DialogTitle>
           <DialogDescription>
-            节点 <span className="font-mono text-foreground">{fromNodeId}</span>{" "}
-            正在执行任务（Swagger 解析或请求调试）。是否切换到 {targetLabel}？
+            {t("blueprint.dialog.taskRunningDescription", {
+              fromNodeId,
+              target: targetLabel,
+            })}
           </DialogDescription>
         </DialogHeader>
         <p className="text-xs text-muted-foreground">
-          选择「保留并切换」将在后台继续执行，回到该节点时仍能看到进度；选择「取消并切换」会中止当前任务。
+          {t("blueprint.dialog.taskSwitchHint")}
         </p>
         <DialogFooter className="gap-2 sm:gap-0">
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-            留在此节点
+            {t("blueprint.dialog.stayOnNode")}
           </Button>
           <Button type="button" variant="secondary" onClick={onCancelTaskAndSwitch}>
-            取消并切换
+            {t("blueprint.dialog.cancelAndSwitch")}
           </Button>
           <Button type="button" onClick={onKeepTaskAndSwitch}>
-            保留并切换
+            {t("blueprint.dialog.keepAndSwitch")}
           </Button>
         </DialogFooter>
       </DialogContent>

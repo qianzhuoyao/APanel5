@@ -1,3 +1,4 @@
+import { useI18n } from "@arronqzy/i18n/react";
 import type { NodeProps } from "@xyflow/react";
 
 import { resolveBlueprintNodeTypeLabel } from "../graph/document";
@@ -8,6 +9,7 @@ import type { BlueprintFlowNodeData } from "../types";
 import { BlueprintNodeShell } from "./BlueprintNodeShell";
 
 export function JsonFlowNode({ id, data }: NodeProps) {
+  const { t } = useI18n();
   const nodeData = data as BlueprintFlowNodeData;
   const onSelect = useBlueprintNodeSelect();
 
@@ -15,8 +17,8 @@ export function JsonFlowNode({ id, data }: NodeProps) {
     <BlueprintNodeShell
       nodeId={id}
       label={nodeData.label}
-      meta={resolveBlueprintNodeTypeLabel(nodeData)}
-      subtitle={resolveBlueprintNodeSummary(nodeData)}
+      meta={resolveBlueprintNodeTypeLabel(nodeData, t)}
+      subtitle={resolveBlueprintNodeSummary(nodeData, t)}
       variant="json"
       selected={Boolean(nodeData.isSelected)}
       executionTone={resolveBlueprintNodeExecutionTone(nodeData)}

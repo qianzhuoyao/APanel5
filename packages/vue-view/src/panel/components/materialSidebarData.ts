@@ -1,3 +1,4 @@
+import type { TranslateFn } from "@arronqzy/i18n";
 import type { PanelElement } from "../types";
 
 export type MaterialCategoryId = "charts" | "basic" | "media";
@@ -13,60 +14,70 @@ export type MaterialCategory = {
   items: MaterialItem[];
 };
 
-export const MATERIAL_LABEL_MAP: Record<string, string> = {
-  bar: "柱状图",
-  line: "折线图",
-  pie: "饼图",
-  area: "面积图",
-  scatter: "散点图",
-  radar: "雷达图",
-  gauge: "仪表盘",
-  funnel: "漏斗图",
-  text: "文本",
-  rect: "矩形",
-  grid: "网格布局",
-  image: "图片",
-  video: "视频",
-  audio: "音频",
-  reference: "引用组件",
-  geometry: "几何",
+const MATERIAL_LABEL_KEYS: Record<string, string> = {
+  bar: "panel.material.bar",
+  line: "panel.material.line",
+  pie: "panel.material.pie",
+  area: "panel.material.area",
+  scatter: "panel.material.scatter",
+  radar: "panel.material.radar",
+  gauge: "panel.material.gauge",
+  funnel: "panel.material.funnel",
+  text: "panel.material.text",
+  rect: "panel.material.rect",
+  grid: "panel.material.grid",
+  image: "panel.material.image",
+  video: "panel.material.video",
+  audio: "panel.material.audio",
+  reference: "panel.material.reference",
+  geometry: "panel.material.geometry",
 };
 
-export const defaultCategories: MaterialCategory[] = [
-  {
-    id: "charts",
-    title: "图表",
-    items: [
-      { id: "bar", title: "柱状图" },
-      { id: "line", title: "折线图" },
-      { id: "pie", title: "饼图" },
-      { id: "area", title: "面积图" },
-      { id: "scatter", title: "散点图" },
-      { id: "radar", title: "雷达图" },
-      { id: "gauge", title: "仪表盘" },
-      { id: "funnel", title: "漏斗图" },
-    ],
-  },
-  {
-    id: "basic",
-    title: "基础",
-    items: [
-      { id: "text", title: "文本" },
-      { id: "geometry", title: "几何" },
-      { id: "grid", title: "网格布局" },
-      { id: "image", title: "图片" },
-      { id: "reference", title: "引用组件" },
-    ],
-  },
-  {
-    id: "media",
-    title: "媒体",
-    items: [
-      { id: "video", title: "视频" },
-      { id: "audio", title: "音频" },
-    ],
-  },
-];
+export function getMaterialLabelMap(t: TranslateFn): Record<string, string> {
+  const map: Record<string, string> = {};
+  for (const [id, key] of Object.entries(MATERIAL_LABEL_KEYS)) {
+    map[id] = t(key);
+  }
+  return map;
+}
+
+export function getDefaultCategories(t: TranslateFn): MaterialCategory[] {
+  return [
+    {
+      id: "charts",
+      title: t("panel.material.charts"),
+      items: [
+        { id: "bar", title: t("panel.material.bar") },
+        { id: "line", title: t("panel.material.line") },
+        { id: "pie", title: t("panel.material.pie") },
+        { id: "area", title: t("panel.material.area") },
+        { id: "scatter", title: t("panel.material.scatter") },
+        { id: "radar", title: t("panel.material.radar") },
+        { id: "gauge", title: t("panel.material.gauge") },
+        { id: "funnel", title: t("panel.material.funnel") },
+      ],
+    },
+    {
+      id: "basic",
+      title: t("panel.material.basic"),
+      items: [
+        { id: "text", title: t("panel.material.text") },
+        { id: "geometry", title: t("panel.material.geometry") },
+        { id: "grid", title: t("panel.material.grid") },
+        { id: "image", title: t("panel.material.image") },
+        { id: "reference", title: t("panel.material.reference") },
+      ],
+    },
+    {
+      id: "media",
+      title: t("panel.material.media"),
+      items: [
+        { id: "video", title: t("panel.material.video") },
+        { id: "audio", title: t("panel.material.audio") },
+      ],
+    },
+  ];
+}
 
 export const themedScrollbarClass =
   "scrollbar-thin [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-muted/40 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border/80 [&::-webkit-scrollbar-thumb]:hover:bg-border";
@@ -79,7 +90,13 @@ export function compareGridTreeChildOrder(a: PanelElement, b: PanelElement): num
   return a.id.localeCompare(b.id);
 }
 
-export function getNodeDisplayName(node: PanelElement) {
+export function getNodeDisplayName(node: PanelElement, t?: TranslateFn) {
   const customName = node.name?.trim();
-  return customName || node.chart?.title || MATERIAL_LABEL_MAP[node.materialType ?? ""] || node.id;
+  if (customName) return customName;
+  if (node.chart?.title) return node.chart.title;
+  if (t) {
+    const key = MATERIAL_LABEL_KEYS[node.materialType ?? ""];
+    if (key) return t(key);
+  }
+  return node.materialType || node.id;
 }

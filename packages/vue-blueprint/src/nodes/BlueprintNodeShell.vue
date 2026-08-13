@@ -1,8 +1,11 @@
 <script setup lang="ts">
+import { useI18n } from "@arronqzy/i18n/vue";
 import { Handle, Position } from "@vue-flow/core";
 import BlueprintNodeCard, { type BlueprintNodeCardProps } from "./BlueprintNodeCard.vue";
 import type { BlueprintNodeExecutionTone } from "../runtime/execution-overlay";
 import { cn } from "../utils/cn";
+
+const { t } = useI18n();
 
 export type BlueprintNodeShellProps = BlueprintNodeCardProps & {
   selected?: boolean;
@@ -46,7 +49,7 @@ const emit = defineEmits<{
       :position="Position.Left"
       id="in"
       class="bp-flow-handle bp-flow-handle--target"
-      title="真/假信号输入"
+      :title="t('blueprint.node.signalIn')"
     />
     <BlueprintNodeCard
       :node-id="nodeId"
@@ -64,7 +67,7 @@ const emit = defineEmits<{
       :position="Position.Right"
       id="out"
       class="bp-flow-handle bp-flow-handle--source"
-      title="真/假信号输出"
+      :title="t('blueprint.node.signalOut')"
     />
   </div>
 </template>

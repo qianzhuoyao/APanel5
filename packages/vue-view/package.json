@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@arronqzy/blueprint-dsl": "workspace:*",
+    "@arronqzy/i18n": "workspace:*",
     "@arronqzy/rx-store": "workspace:*",
     "@arronqzy/vue-blueprint": "workspace:*",
     "@arronqzy/vue-rx-store": "workspace:*",

@@ -1,9 +1,11 @@
 <script setup lang="ts">
+import { useI18n } from "@arronqzy/i18n/vue";
 import { InputNumber } from "ant-design-vue";
 import type { PanelElement } from "../../types";
 import ConfigFieldGroup from "./ConfigFieldGroup.vue";
 import ConfigSection from "./ConfigSection.vue";
 
+const { t, locale } = useI18n();
 const props = defineProps<{
   element: PanelElement;
   isEditable: boolean;
@@ -27,18 +29,18 @@ function patch(patch: Partial<PanelElement>) {
 
 <template>
   <ConfigSection
-    title="网格布局配置"
+    :title="t('panel.config.sectionGrid')"
     :open="open"
     :force-open="forceOpen"
     @update:open="emit('update:open', $event)"
   >
     <template #hint>
-      其他节点拖拽靠近该网格槽位中心时会自动吸附，并在节点树显示为该网格子节点。
+      {{ t("panel.config.gridHint") }}
     </template>
-    <ConfigFieldGroup title="网格参数">
+    <ConfigFieldGroup :title="t('panel.config.groupGridParams')">
       <div class="grid grid-cols-2 gap-2">
         <label class="block space-y-1">
-          <div>行数</div>
+          <div>{{ t("panel.config.rowCount") }}</div>
           <InputNumber
             size="small"
             class="w-full"
@@ -50,7 +52,7 @@ function patch(patch: Partial<PanelElement>) {
           />
         </label>
         <label class="block space-y-1">
-          <div>列数</div>
+          <div>{{ t("panel.config.colCount") }}</div>
           <InputNumber
             size="small"
             class="w-full"
@@ -62,7 +64,7 @@ function patch(patch: Partial<PanelElement>) {
           />
         </label>
         <label class="block space-y-1">
-          <div>间距（px）</div>
+          <div>{{ t("panel.config.gapPx") }}</div>
           <InputNumber
             size="small"
             class="w-full"
@@ -74,7 +76,7 @@ function patch(patch: Partial<PanelElement>) {
           />
         </label>
         <label class="block space-y-1">
-          <div>内边距（px）</div>
+          <div>{{ t("panel.config.paddingPx") }}</div>
           <InputNumber
             size="small"
             class="w-full"
@@ -86,7 +88,7 @@ function patch(patch: Partial<PanelElement>) {
           />
         </label>
         <label class="block space-y-1">
-          <div>吸附阈值（px）</div>
+          <div>{{ t("panel.config.snapThresholdPx") }}</div>
           <InputNumber
             size="small"
             class="w-full"

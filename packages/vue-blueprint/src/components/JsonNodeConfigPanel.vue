@@ -1,10 +1,13 @@
 <script setup lang="ts">
+import { useI18n } from "@arronqzy/i18n/vue";
 import { computed, ref } from "vue";
 import { validateJsonString } from "@arronqzy/blueprint-dsl";
 import type { JsonNodeConfig } from "@arronqzy/blueprint-dsl";
 
 import type { BlueprintGraphNode } from "../graph/document";
 import { resolveNodeJsonConfig } from "../graph/document";
+
+const { t } = useI18n();
 
 export type JsonNodeConfigPanelProps = {
   node: BlueprintGraphNode;
@@ -45,15 +48,11 @@ function handleChange(event: Event) {
 
 <template>
   <div class="space-y-2 rounded-md border border-border/70 bg-muted/20 p-2.5">
-    <div class="font-medium text-foreground">JSON 节点</div>
-    <p class="text-[11px] text-muted-foreground">
-      收到<strong>真信号</strong>后，将下方 JSON 解析为 JavaScript object（或
-      array）并从输出口发出<strong>真信号</strong>；解析失败则发出
-      <strong>假信号</strong>。
-    </p>
+    <div class="font-medium text-foreground">{{ t("blueprint.config.jsonTitle") }}</div>
+    <p class="text-[11px] text-muted-foreground">{{ t("blueprint.config.jsonHint") }}</p>
 
     <label class="block space-y-1">
-      <span class="text-muted-foreground">JSON 内容</span>
+      <span class="text-muted-foreground">{{ t("blueprint.config.jsonContent") }}</span>
       <textarea
         :value="jsonConfig.jsonString"
         rows="12"
@@ -65,9 +64,9 @@ function handleChange(event: Event) {
         @input="handleChange"
       />
       <p v-if="parseError" class="text-[11px] text-destructive">
-        JSON 格式错误：{{ parseError }}
+        {{ t("blueprint.config.jsonFormatError", { error: parseError }) }}
       </p>
-      <p v-else class="text-[11px] text-muted-foreground">JSON 格式正确</p>
+      <p v-else class="text-[11px] text-muted-foreground">{{ t("blueprint.config.jsonFormatOk") }}</p>
     </label>
   </div>
 </template>

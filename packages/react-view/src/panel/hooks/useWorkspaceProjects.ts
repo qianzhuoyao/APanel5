@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useI18nOptional } from "@arronqzy/i18n/react";
 import { BlueprintGraph } from "@arronqzy/react-blueprint";
 import type { BlueprintDocument, BlueprintMetaDraft } from "@arronqzy/react-blueprint";
 import type { State } from "@arronqzy/rx-store";
@@ -63,14 +64,15 @@ export function useWorkspaceProjects({
   panelRevision,
   onProjectApplied,
 }: UseWorkspaceProjectsOptions) {
+  const { t } = useI18nOptional();
   const [projects, setProjects] = useState<WorkspaceProjectListItem[]>([]);
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
   const [activeProjectName, setActiveProjectName] = useState<string | null>(null);
   const syncedSnapshotRef = useRef<WorkspaceSnapshot | null>(null);
 
   const resolveProjectName = useCallback(() => {
-    return productName.trim() || "未命名产物";
-  }, [productName]);
+    return productName.trim() || t("panel.defaults.unnamedProduct");
+  }, [productName, t]);
 
   const buildCurrentSnapshot = useCallback((): WorkspaceSnapshot => {
     return {
@@ -115,7 +117,7 @@ export function useWorkspaceProjects({
       const blueprintDocument =
         record.blueprintDocument ?? BlueprintGraph.empty().document;
       const blueprintMeta: BlueprintMetaDraft = {
-        name: record.blueprintMeta?.name ?? "未命名蓝图",
+        name: record.blueprintMeta?.name ?? t("panel.defaults.unnamedBlueprint"),
         remark: record.blueprintMeta?.remark ?? "",
       };
 
@@ -146,6 +148,7 @@ export function useWorkspaceProjects({
       setBlueprintMeta,
       setProductName,
       setTitleIconDataUrl,
+      t,
     ]
   );
 
@@ -206,16 +209,16 @@ export function useWorkspaceProjects({
       const record = await getWorkspaceProject(id);
       if (!record) {
         await refreshProjects();
-        throw new Error("工作区不存在或已被删除");
+        throw new Error(t("panel.messages.workspaceNotFound"));
       }
       applyProjectRecord(record);
     },
-    [applyProjectRecord, refreshProjects]
+    [applyProjectRecord, refreshProjects, t]
   );
 
   const handleSyncProject = useCallback(async () => {
     if (!activeProjectId) {
-      throw new Error("请先保存工作区");
+      throw new Error(t("panel.messages.saveWorkspaceFirst"));
     }
     const existing = await getWorkspaceProject(activeProjectId);
     if (!existing) {
@@ -223,7 +226,7 @@ export function useWorkspaceProjects({
       setActiveProjectName(null);
       syncedSnapshotRef.current = null;
       await refreshProjects();
-      throw new Error("工作区不存在或已被删除");
+      throw new Error(t("panel.messages.workspaceNotFound"));
     }
     const name = resolveProjectName() || existing.name;
     await persistProject({
@@ -232,7 +235,7 @@ export function useWorkspaceProjects({
       createdAt: existing.createdAt,
     });
     return name;
-  }, [activeProjectId, persistProject, refreshProjects, resolveProjectName]);
+  }, [activeProjectId, persistProject, refreshProjects, resolveProjectName, t]);
 
   const handleDeleteProject = useCallback(
     async (id: string) => {

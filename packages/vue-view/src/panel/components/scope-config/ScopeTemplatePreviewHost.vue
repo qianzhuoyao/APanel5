@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from "@arronqzy/i18n/vue";
 import { computed, onWatcherCleanup, shallowRef, toValue, watch, type MaybeRef } from "vue";
 import type { PanelElement } from "../../types";
 import { hasScopeTemplate } from "../../utils/scope-template";
@@ -7,6 +8,8 @@ import {
   matchScopeTemplateFieldId,
 } from "../../utils/scope-template-preview";
 import ScopeTemplatePreviewPanel from "./ScopeTemplatePreviewPanel.vue";
+
+const { t, locale } = useI18n();
 
 const PREVIEW_SLOT_ATTR = "data-scope-preview-slot";
 const PREVIEW_KEY_ATTR = "data-scope-preview-key";
@@ -95,8 +98,10 @@ function inferFieldIdFromDom(
 ): string | undefined {
   const label = input.closest("label");
   const labelText = label?.textContent ?? "";
-  if (labelText.includes("类目")) return "chart.labelsText";
-  if (labelText.includes("数值")) return "chart.valuesText";
+  if (labelText.includes(t("panel.scope.fieldChartLabelsText")) || labelText.includes("类目") || /labels?/i.test(labelText))
+    return "chart.labelsText";
+  if (labelText.includes(t("panel.scope.fieldChartValuesText")) || labelText.includes("数值") || /values?/i.test(labelText))
+    return "chart.valuesText";
   return undefined;
 }
 

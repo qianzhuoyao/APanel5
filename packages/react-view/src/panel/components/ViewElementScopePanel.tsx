@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useI18n } from "@arronqzy/i18n/react";
 
 import { formatViewElementScope } from "../utils/scope-template";
 import { ConfigHintIcon } from "./ConfigHintIcon";
@@ -10,7 +11,10 @@ export type ViewElementScopePanelProps = {
   scope: unknown;
 };
 
-export function ViewElementScopePanel({ scope }: ViewElementScopePanelProps) {
+export function ViewElementScopePanel({
+  scope,
+}: ViewElementScopePanelProps) {
+  const { t } = useI18n();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [scopeUpdated, setScopeUpdated] = useState(false);
   const prevScopeSerializedRef = useRef<string | null>(null);
@@ -44,13 +48,13 @@ export function ViewElementScopePanel({ scope }: ViewElementScopePanelProps) {
     <div className="mt-2 border-t border-border/50 pt-2">
       <div className="flex items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-1.5">
-          <div className="text-[11px] font-medium text-foreground">Scope 数据</div>
-          <ConfigHintIcon label="Scope 模版" contentClassName="max-w-[380px]">
+          <div className="text-[11px] font-medium text-foreground">{t("panel.scope.dataTitle")}</div>
+          <ConfigHintIcon label={t("panel.scope.templateHintLabel")} contentClassName="max-w-[380px]">
             <ScopeTemplateUsageHint />
           </ConfigHintIcon>
           {scopeUpdated ? (
             <span className="shrink-0 rounded bg-sky-500/15 px-1.5 py-0.5 text-[10px] font-medium text-sky-700 dark:text-sky-300">
-              已更新
+              {t("panel.scope.updated")}
             </span>
           ) : null}
         </div>
@@ -59,7 +63,7 @@ export function ViewElementScopePanel({ scope }: ViewElementScopePanelProps) {
           className="rounded border border-border px-1.5 py-0.5 text-[11px] text-muted-foreground hover:bg-accent"
           onClick={() => setIsCollapsed((prev) => !prev)}
         >
-          {isCollapsed ? "展开 Scope" : "收起 Scope"}
+          {isCollapsed ? t("panel.scope.expand") : t("panel.scope.collapse")}
         </button>
       </div>
       {!isCollapsed ? (

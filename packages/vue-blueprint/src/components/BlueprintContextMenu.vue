@@ -1,6 +1,8 @@
 <script setup lang="ts">
+import { useI18n } from "@arronqzy/i18n/vue";
 import { onUnmounted, ref, watch } from "vue";
 
+const { t } = useI18n();
 export type BlueprintContextMenuState =
   | {
       kind: "pane";
@@ -84,7 +86,7 @@ onUnmounted(() => {
         emit('close');
       "
     >
-      新增节点
+      {{ t("blueprint.toolbar.addNode") }}
     </button>
 
     <button
@@ -96,7 +98,7 @@ onUnmounted(() => {
         emit('close');
       "
     >
-      删除节点
+      {{ t("blueprint.toolbar.deleteNode") }}
     </button>
 
     <button
@@ -108,7 +110,7 @@ onUnmounted(() => {
         emit('close');
       "
     >
-      删除连线
+      {{ t("blueprint.toolbar.deleteEdge") }}
     </button>
   </div>
 </template>

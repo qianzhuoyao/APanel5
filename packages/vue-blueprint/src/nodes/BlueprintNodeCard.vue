@@ -1,5 +1,8 @@
 <script setup lang="ts">
+import { useI18n } from "@arronqzy/i18n/vue";
 import { cn } from "../utils/cn";
+
+const { t } = useI18n();
 
 export type BlueprintNodeCardProps = {
   nodeId: string;
@@ -80,7 +83,7 @@ const v = variantStyle[props.variant];
   >
     <div
       class="bp-flow-drag-handle flex cursor-grab items-center gap-2 border-b border-border/50 px-2 py-1.5 bg-muted/25 text-muted-foreground active:cursor-grabbing"
-      title="拖拽移动"
+      :title="t('blueprint.node.dragToMove')"
     >
       <div class="flex shrink-0 flex-col gap-[3px] opacity-35" aria-hidden="true">
         <span class="flex gap-[3px]">
@@ -137,7 +140,7 @@ const v = variantStyle[props.variant];
                 v.badge
               )
             "
-            title="已发送信号次数"
+            :title="t('blueprint.node.signalSentCount')"
           >
             {{ progressLabel }}
           </span>

@@ -1,15 +1,16 @@
 <script setup lang="ts">
+import { useI18n } from "@arronqzy/i18n/vue";
 import { onUnmounted, ref } from "vue";
 import { Checkbox, Input, Select } from "ant-design-vue";
 import type { PanelElement } from "../../types";
-import {
-  PANEL_MESSAGES,
-  readFileAsDataUrl,
-  uploadFileToRemote,
-} from "./shared";
+import { readFileAsDataUrl, uploadFileToRemote } from "./shared";
+import { getPanelMessages } from "../../constants/messages";
 import ConfigFieldGroup from "./ConfigFieldGroup.vue";
 import ConfigSection from "./ConfigSection.vue";
 import ConfigHintIcon from "../ConfigHintIcon.vue";
+
+const { t, locale } = useI18n();
+const msgs = () => getPanelMessages(t);
 
 const props = defineProps<{
   element: PanelElement;
@@ -43,22 +44,22 @@ function patch(patch: Partial<PanelElement>) {
 }
 
 async function handleUploadAudioFile(file: File) {
-  const base64 = await readFileAsDataUrl(file, PANEL_MESSAGES.readAudioFailed);
+  const base64 = await readFileAsDataUrl(file, msgs().readAudioFailed);
   patch({ audioSrc: base64 });
-  audioStatus.value = PANEL_MESSAGES.audioLocalSaved;
+  audioStatus.value = msgs().audioLocalSaved;
   const url = await uploadFileToRemote(file);
   if (url) {
     patch({ audioRemoteUrl: url });
-    audioStatus.value = PANEL_MESSAGES.audioRemoteUploaded;
+    audioStatus.value = msgs().audioRemoteUploaded;
   } else {
-    audioStatus.value = PANEL_MESSAGES.audioServerUploadFailed;
+    audioStatus.value = msgs().audioServerUploadFailed;
   }
 }
 
 async function handleUploadAudioPoster(file: File) {
-  const base64 = await readFileAsDataUrl(file, PANEL_MESSAGES.readImageFailed);
+  const base64 = await readFileAsDataUrl(file, msgs().readImageFailed);
   patch({ audioPosterImage: base64 });
-  audioStatus.value = PANEL_MESSAGES.audioPosterSet;
+  audioStatus.value = msgs().audioPosterSet;
 }
 
 function stopRecordingAudio() {
@@ -68,7 +69,7 @@ function stopRecordingAudio() {
 async function startRecordingAudio() {
   if (props.element.materialType !== "audio") return;
   if (!navigator.mediaDevices?.getUserMedia) {
-    audioStatus.value = PANEL_MESSAGES.audioRecordUnsupported;
+    audioStatus.value = msgs().audioRecordUnsupported;
     return;
   }
   try {
@@ -86,10 +87,10 @@ async function startRecordingAudio() {
       });
       const dataUrl = await readFileAsDataUrl(
         new File([blob], "recording.webm", { type: blob.type }),
-        PANEL_MESSAGES.readRecordAudioFailed
+        msgs().readRecordAudioFailed
       );
       patch({ audioSrc: dataUrl });
-      audioStatus.value = PANEL_MESSAGES.audioRecordSaved;
+      audioStatus.value = msgs().audioRecordSaved;
       recordStreamRef.value?.getTracks().forEach((track) => track.stop());
       recordStreamRef.value = null;
       recorderRef.value = null;
@@ -97,9 +98,9 @@ async function startRecordingAudio() {
     };
     recorder.start();
     isRecordingAudio.value = true;
-    audioStatus.value = PANEL_MESSAGES.audioRecording;
+    audioStatus.value = msgs().audioRecording;
   } catch {
-    audioStatus.value = PANEL_MESSAGES.audioRecordStartFailed;
+    audioStatus.value = msgs().audioRecordStartFailed;
     isRecordingAudio.value = false;
   }
 }
@@ -119,14 +120,14 @@ function onPosterFileChange(e: Event) {
 
 <template>
   <ConfigSection
-    title="音频配置"
+    :title="t('panel.config.sectionAudio')"
     :open="open"
     :force-open="forceOpen"
     @update:open="emit('update:open', $event)"
   >
-    <ConfigFieldGroup title="音频来源">
+    <ConfigFieldGroup :title="t('panel.config.groupAudioSource')">
       <label class="block space-y-1">
-        <div>音频 URL</div>
+        <div>{{ t("panel.config.audioUrl") }}</div>
         <Input
           size="small"
           :value="element.audioRemoteUrl ?? ''"
@@ -143,7 +144,7 @@ function onPosterFileChange(e: Event) {
           class="inline-flex cursor-pointer items-center rounded border border-gray-200 px-2 py-1 text-[11px] hover:bg-gray-50"
           :class="{ 'pointer-events-none opacity-50': !isEditable }"
         >
-          上传音频
+          {{ t("panel.config.uploadAudio") }}
           <input type="file" accept="audio/*" class="hidden" :disabled="!isEditable" @change="onAudioFileChange" />
         </label>
         <button
@@ -152,7 +153,7 @@ function onPosterFileChange(e: Event) {
           :disabled="!isEditable"
           @click="isRecordingAudio ? stopRecordingAudio() : startRecordingAudio()"
         >
-          {{ isRecordingAudio ? "停止录音" : "开始录音" }}
+          {{ isRecordingAudio ? t("panel.config.stopRecord") : t("panel.config.startRecord") }}
         </button>
       </div>
       <div
@@ -167,17 +168,17 @@ function onPosterFileChange(e: Event) {
         :src="element.audioSrc || element.audioRemoteUrl || ''"
       />
     </ConfigFieldGroup>
-    <ConfigFieldGroup title="展示样式">
+    <ConfigFieldGroup :title="t('panel.config.groupDisplayStyle')">
       <label class="flex items-center gap-2">
         <Checkbox
           :checked="element.mediaAutoPauseOnEdit !== false"
           :disabled="!isEditable"
           @update:checked="(v) => patch({ mediaAutoPauseOnEdit: v !== false })"
         />
-        <span>编辑时自动暂停媒体</span>
+        <span>{{ t("panel.config.autoPauseMedia") }}</span>
       </label>
       <label class="block space-y-1">
-        <div>预设喇叭图标</div>
+        <div>{{ t("panel.config.audioIconPreset") }}</div>
         <Select
           size="small"
           class="w-full"
@@ -187,15 +188,15 @@ function onPosterFileChange(e: Event) {
             audioIconPreset: v === '__none__' ? undefined : v as PanelElement['audioIconPreset'],
           })"
         >
-          <Select.Option value="__none__">默认（显示进度条）</Select.Option>
-          <Select.Option value="speaker">喇叭</Select.Option>
-          <Select.Option value="music">音符</Select.Option>
-          <Select.Option value="headphone">耳机</Select.Option>
-          <Select.Option value="wave">声波</Select.Option>
+          <Select.Option value="__none__">{{ t("panel.config.iconDefaultProgress") }}</Select.Option>
+          <Select.Option value="speaker">{{ t("panel.config.iconSpeaker") }}</Select.Option>
+          <Select.Option value="music">{{ t("panel.config.iconMusic") }}</Select.Option>
+          <Select.Option value="headphone">{{ t("panel.config.iconHeadphone") }}</Select.Option>
+          <Select.Option value="wave">{{ t("panel.config.iconWave") }}</Select.Option>
         </Select>
       </label>
       <label class="block space-y-1">
-        <div>播放动效</div>
+        <div>{{ t("panel.config.visualEffect") }}</div>
         <Select
           size="small"
           class="w-full"
@@ -203,13 +204,13 @@ function onPosterFileChange(e: Event) {
           :disabled="!isEditable"
           @update:value="(v) => patch({ audioVisualEffect: v as PanelElement['audioVisualEffect'] })"
         >
-          <Select.Option value="none">无动效</Select.Option>
-          <Select.Option value="pulse">呼吸高亮</Select.Option>
-          <Select.Option value="ripple">波纹扩散</Select.Option>
+          <Select.Option value="none">{{ t("panel.config.effectNone") }}</Select.Option>
+          <Select.Option value="pulse">{{ t("panel.config.effectPulse") }}</Select.Option>
+          <Select.Option value="ripple">{{ t("panel.config.effectRipple") }}</Select.Option>
         </Select>
       </label>
       <label class="block space-y-1">
-        <div>动效速度</div>
+        <div>{{ t("panel.config.effectSpeed") }}</div>
         <Select
           size="small"
           class="w-full"
@@ -217,9 +218,9 @@ function onPosterFileChange(e: Event) {
           :disabled="!isEditable"
           @update:value="(v) => patch({ audioVisualSpeed: v as PanelElement['audioVisualSpeed'] })"
         >
-          <Select.Option value="slow">慢</Select.Option>
-          <Select.Option value="normal">中</Select.Option>
-          <Select.Option value="fast">快</Select.Option>
+          <Select.Option value="slow">{{ t("panel.config.speedSlow") }}</Select.Option>
+          <Select.Option value="normal">{{ t("panel.config.speedNormal") }}</Select.Option>
+          <Select.Option value="fast">{{ t("panel.config.speedFast") }}</Select.Option>
         </Select>
       </label>
       <div class="flex items-center gap-2">
@@ -227,7 +228,7 @@ function onPosterFileChange(e: Event) {
           class="inline-flex cursor-pointer items-center rounded border border-gray-200 px-2 py-1 text-[11px] hover:bg-gray-50"
           :class="{ 'pointer-events-none opacity-50': !isEditable }"
         >
-          上传占位图
+          {{ t("panel.config.uploadPoster") }}
           <input type="file" accept="image/*" class="hidden" :disabled="!isEditable" @change="onPosterFileChange" />
         </label>
         <button
@@ -236,19 +237,19 @@ function onPosterFileChange(e: Event) {
           :disabled="!isEditable"
           @click="patch({ audioPosterImage: undefined })"
         >
-          清空占位图
+          {{ t("panel.config.clearPoster") }}
         </button>
       </div>
       <img
         v-if="element.audioPosterImage"
         :src="element.audioPosterImage"
-        alt="音频占位图预览"
+        :alt="t('panel.config.audioPosterAlt')"
         class="h-20 w-full rounded border border-gray-200/60 object-cover"
       />
       <div class="flex items-center gap-1">
-        <div class="text-[11px] text-gray-500">音频占位图</div>
-        <ConfigHintIcon label="音频占位图">
-          设置占位图或图标后，节点上将隐藏进度条，改为点击图标播放/暂停。
+        <div class="text-[11px] text-gray-500">{{ t("panel.config.audioPoster") }}</div>
+        <ConfigHintIcon :label="t('panel.config.audioPoster')">
+          {{ t("panel.config.audioPosterHint") }}
         </ConfigHintIcon>
       </div>
     </ConfigFieldGroup>

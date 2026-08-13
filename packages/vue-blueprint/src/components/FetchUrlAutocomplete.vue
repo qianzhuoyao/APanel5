@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from "@arronqzy/i18n/vue";
 import { computed, onUnmounted, ref, watch } from "vue";
 import {
   buildEndpointSuggestions,
@@ -7,6 +8,8 @@ import {
 } from "@arronqzy/blueprint-dsl";
 
 import { cn } from "../utils/cn";
+
+const { t } = useI18n();
 
 const props = withDefaults(
   defineProps<{
@@ -155,7 +158,7 @@ function handleKeyDown(event: KeyboardEvent) {
         v-if="filtered.length === 0"
         class="px-2 py-1.5 text-[11px] text-muted-foreground"
       >
-        无匹配接口
+        {{ t("blueprint.config.noMatchingEndpoint") }}
       </div>
       <button
         v-for="(item, index) in filtered"

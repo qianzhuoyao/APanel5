@@ -8,6 +8,15 @@ import {
   type BlueprintLibrarySource,
   type BlueprintMetaDraft,
 } from "./types";
+import { resolveLocale, tForLocale } from "@arronqzy/i18n";
+
+function unnamedBlueprintName() {
+  return tForLocale(resolveLocale())("blueprint.dialog.unnamedBlueprint");
+}
+
+function importedBlueprintName() {
+  return tForLocale(resolveLocale())("blueprint.dialog.importedBlueprint");
+}
 
 export function createLibraryBlueprintId() {
   return createNodeId("lib_bp");
@@ -27,7 +36,7 @@ export function buildBlueprintExportPayload(
   return {
     kind: BLUEPRINT_EXPORT_KIND,
     version: BLUEPRINT_EXPORT_VERSION,
-    name: meta.name.trim() || "未命名蓝图",
+    name: meta.name.trim() || unnamedBlueprintName(),
     remark: meta.remark.trim() || undefined,
     exportedAt: Date.now(),
     document: {
@@ -51,7 +60,7 @@ export function parseBlueprintImportFile(raw: unknown): BlueprintExportPayload {
   return {
     kind: BLUEPRINT_EXPORT_KIND,
     version: BLUEPRINT_EXPORT_VERSION,
-    name: typeof data.name === "string" ? data.name : "导入的蓝图",
+    name: typeof data.name === "string" ? data.name : importedBlueprintName(),
     remark: typeof data.remark === "string" ? data.remark : undefined,
     exportedAt: typeof data.exportedAt === "number" ? data.exportedAt : Date.now(),
     document: data.document,
@@ -81,7 +90,7 @@ export function buildLibraryRecord(args: {
   createdAt?: number;
 }): BlueprintLibraryRecord {
   const now = Date.now();
-  const name = args.meta.name.trim() || "未命名蓝图";
+  const name = args.meta.name.trim() || unnamedBlueprintName();
   return {
     id: args.id ?? createLibraryBlueprintId(),
     name,

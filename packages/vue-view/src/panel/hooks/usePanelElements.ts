@@ -1,6 +1,7 @@
 import { computed, onMounted } from "vue";
 import { store, type Node, type State } from "@arronqzy/rx-store";
 import { useStoreRef } from "@arronqzy/vue-rx-store";
+import { useI18nOptional } from "@arronqzy/i18n/vue";
 import type {
   PanelActionResult,
   PanelElement,
@@ -8,6 +9,7 @@ import type {
   PanelLayer,
   ReferenceCopyMode,
 } from "../types";
+import { getPanelMessages } from "../constants/messages";
 import {
   DEFAULT_LAYER,
   DEFAULT_LAYER_ID,
@@ -44,34 +46,39 @@ import {
 
 export type { PanelActionResult, PanelHistoryItem, PanelLayer } from "../types";
 
-const HISTORY_LABEL_BY_TYPE: Record<string, string> = {
-  initial: "初始化",
-  "node.update": "更新节点",
-  "node.group-drag": "批量移动节点",
-  "node.group-resize": "批量缩放节点",
-  "node.group-rotate": "批量旋转节点",
-  "node.delete": "删除节点",
-  "node.batch-delete": "批量删除节点",
-  "node.z.front": "节点置顶",
-  "node.z.back": "节点置底",
-  "node.z.up": "节点上移一层",
-  "node.z.down": "节点下移一层",
-  "node.duplicate": "复制节点",
-  "node.ref-copy-mode": "设置引用拷贝模式",
-  "node.add": "添加节点",
-  "layer.activate": "切换图层",
-  "layer.add": "新增图层",
-  "layer.rename": "重命名图层",
-  "layer.toggle-lock": "切换图层锁定",
-  "layer.open-selected-mapping": "映射图层打开选中节点",
-  "layer.delete": "删除图层",
-  "layer.toggle-merge": "勾选合并图层",
-  "layer.merge": "合并图层",
-  "layer.set-primary": "设置主图层",
-  "panel.import": "导入面板",
+const HISTORY_LABEL_KEYS: Record<string, string> = {
+  initial: "panel.history.initial",
+  "node.update": "panel.history.nodeUpdate",
+  "node.group-drag": "panel.history.nodeGroupDrag",
+  "node.group-resize": "panel.history.nodeGroupResize",
+  "node.group-rotate": "panel.history.nodeGroupRotate",
+  "node.delete": "panel.history.nodeDelete",
+  "node.batch-delete": "panel.history.nodeBatchDelete",
+  "node.z.front": "panel.history.nodeZFront",
+  "node.z.back": "panel.history.nodeZBack",
+  "node.z.up": "panel.history.nodeZUp",
+  "node.z.down": "panel.history.nodeZDown",
+  "node.duplicate": "panel.history.nodeDuplicate",
+  "node.ref-copy-mode": "panel.history.nodeRefCopyMode",
+  "node.add": "panel.history.nodeAdd",
+  "layer.activate": "panel.history.layerActivate",
+  "layer.add": "panel.history.layerAdd",
+  "layer.rename": "panel.history.layerRename",
+  "layer.toggle-lock": "panel.history.layerToggleLock",
+  "layer.open-selected-mapping": "panel.history.layerOpenSelectedMapping",
+  "layer.delete": "panel.history.layerDelete",
+  "layer.toggle-merge": "panel.history.layerToggleMerge",
+  "layer.merge": "panel.history.layerMerge",
+  "layer.set-primary": "panel.history.layerSetPrimary",
+  "panel.import": "panel.history.panelImport",
 };
 
 export function usePanelElements() {
+  const { t, locale } = useI18nOptional();
+  const messages = computed(() => {
+    void locale.value;
+    return getPanelMessages(t);
+  });
   const stateRef = useStoreRef();
 
   onMounted(() => {
@@ -165,7 +172,7 @@ export function usePanelElements() {
       return {
         index,
         timestamp: entry.timestamp,
-        label: (type && HISTORY_LABEL_BY_TYPE[type]) || "编辑",
+        label: (type && HISTORY_LABEL_KEYS[type] ? t(HISTORY_LABEL_KEYS[type]) : t("panel.history.fallback")),
         active: index === cursor,
       };
     });
@@ -596,11 +603,11 @@ export function usePanelElements() {
       layerId: currentLayerId,
       zIndex: 1,
       materialType,
-      name: getDefaultNodeName(materialType),
-      ...getDefaultTextContent(materialType),
+      name: getDefaultNodeName(materialType, t),
+      ...getDefaultTextContent(materialType, t),
       ...getDefaultGridConfig(materialType),
       refCopyMode: materialType === "reference" ? "shallow" : undefined,
-      chart: getDefaultChartConfig(materialType),
+      chart: getDefaultChartConfig(materialType, t),
       geometryShape: materialType === "geometry" ? "rect" : undefined,
       geometryColor: materialType === "geometry" ? "#3b82f6" : undefined,
       geometryScript: undefined,
@@ -738,7 +745,7 @@ export function usePanelElements() {
         const nextId = randomId("layer");
         const next: PanelLayer = {
           id: nextId,
-          name: `图层${list.length + 1}`,
+          name: t("panel.defaults.layerN", { n: list.length + 1 }),
           locked: false,
           editable: true,
           isPrimary: false,
@@ -755,7 +762,7 @@ export function usePanelElements() {
 
   function openElementsInNewLayer(ids: string[]): PanelActionResult {
     const filtered = ids.filter(Boolean);
-    if (filtered.length === 0) return { ok: false, reason: "未选择节点" };
+    if (filtered.length === 0) return { ok: false, reason: messages.value.noNodesSelected };
     const current = store.getState();
     const currentLayers =
       (current.variables?.layers as PanelLayer[] | undefined) ?? [DEFAULT_LAYER];
@@ -768,14 +775,14 @@ export function usePanelElements() {
     const selected = expandedIds
       .map((id) => nodeById.get(id))
       .filter((el): el is PanelElement => !!el);
-    if (selected.length === 0) return { ok: false, reason: "未找到可迁移节点" };
+    if (selected.length === 0) return { ok: false, reason: messages.value.noMigratableNodes };
     const anchorEl = nodeById.get(filtered[0]!) ?? selected[0];
     const hasLocked = selected.some((el) => {
       if (el.locked) return true;
       const layer = currentLayers.find((l) => l.id === el.layerId);
       return !!layer?.locked;
     });
-    if (hasLocked) return { ok: false, reason: "选中节点包含锁定内容，无法在新图层打开" };
+    if (hasLocked) return { ok: false, reason: messages.value.lockedCannotOpenMapping };
 
     const selectedSet = new Set(selected.map((el) => el.id));
     const idMap = new Map<string, string>();
@@ -783,7 +790,7 @@ export function usePanelElements() {
     const nextLayerId = randomId("layer");
     const nextLayer: PanelLayer = {
       id: nextLayerId,
-      name: `映射图层${currentLayers.length + 1}`,
+      name: t("panel.defaults.mappingLayerN", { n: currentLayers.length + 1 }),
       locked: false,
       editable: true,
       isPrimary: false,
@@ -872,16 +879,16 @@ export function usePanelElements() {
     const current = store.getState();
     const list = (current.variables?.layers as PanelLayer[] | undefined) ?? [];
     const target = list.find((l) => l.id === layerId);
-    if (!target) return { ok: false, reason: "图层不存在" };
-    if (!target.editable) return { ok: false, reason: "默认图层不可删除" };
-    if (target.locked) return { ok: false, reason: "锁定图层不可删除" };
+    if (!target) return { ok: false, reason: messages.value.layerNotFound };
+    if (!target.editable) return { ok: false, reason: messages.value.defaultLayerCannotDelete };
+    if (target.locked) return { ok: false, reason: messages.value.lockedLayerCannotDelete };
     if (mode === "move" && !targetLayerId) {
-      return { ok: false, reason: "请选择目标图层" };
+      return { ok: false, reason: messages.value.selectTargetLayer };
     }
     const remainingLayers = list.filter((l) => l.id !== layerId);
     const moveTarget = remainingLayers.find((l) => l.id === targetLayerId);
     if (mode === "move" && !moveTarget) {
-      return { ok: false, reason: "目标图层不存在" };
+      return { ok: false, reason: messages.value.targetLayerNotFound };
     }
     const allPanelElements = (current.root.children ?? [])
       .filter((n) => isPanelElementNode(n) && n.props)
@@ -895,7 +902,7 @@ export function usePanelElements() {
       return (el.refCopyMode ?? "shallow") !== "deep";
     });
     if (hasBlockingRef) {
-      return { ok: false, reason: "该图层仍被浅拷贝引用，请先删除引用节点或改为深拷贝" };
+      return { ok: false, reason: messages.value.shallowRefBlockingDelete };
     }
 
     store.update(
@@ -959,7 +966,11 @@ export function usePanelElements() {
         const nextId = randomId("layer");
         const nextLayer: PanelLayer = {
           id: nextId,
-          name: name?.trim() || `图层-${Math.random().toString(36).slice(2, 6)}`,
+          name:
+            name?.trim() ||
+            t("panel.defaults.layerRandom", {
+              id: Math.random().toString(36).slice(2, 6),
+            }),
           locked: false,
           editable: true,
           isPrimary: false,

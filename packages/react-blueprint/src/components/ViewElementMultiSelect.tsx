@@ -12,6 +12,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@arronqzy/ui";
+import { useI18n } from "@arronqzy/i18n/react";
 
 export type ViewElementMultiSelectOption = {
   id: string;
@@ -45,34 +46,37 @@ function ChevronDownIcon({ className }: { className?: string }) {
   );
 }
 
-function resolveTriggerText(
-  value: string[],
-  labelById: Map<string, string>,
-  placeholder: string
-): string {
-  if (value.length === 0) return placeholder;
-  const labels = value.map((id) => labelById.get(id) ?? id);
-  if (labels.length === 1) return labels[0]!;
-  const joined = labels.join("、");
-  if (joined.length <= 26) return joined;
-  return `已选 ${value.length} 项`;
-}
-
 export function ViewElementMultiSelect({
   options,
   value,
   onChange,
-  placeholder = "选择视图节点",
+  placeholder,
   disabled = false,
 }: ViewElementMultiSelectProps) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
+  const resolvedPlaceholder =
+    placeholder ?? t("blueprint.config.selectViewNode");
   const labelById = useMemo(
     () => new Map(options.map((opt) => [opt.id, opt.label])),
     [options]
   );
   const selectedSet = useMemo(() => new Set(value), [value]);
-  const triggerText = resolveTriggerText(value, labelById, placeholder);
   const emptyOptions = options.length === 0;
+
+  let triggerText = resolvedPlaceholder;
+  if (value.length > 0) {
+    const labels = value.map((id) => labelById.get(id) ?? id);
+    if (labels.length === 1) {
+      triggerText = labels[0]!;
+    } else {
+      const joined = labels.join("、");
+      triggerText =
+        joined.length <= 26
+          ? joined
+          : t("blueprint.config.selectedCount", { count: value.length });
+    }
+  }
 
   const toggle = (id: string) => {
     onChange(
@@ -97,7 +101,7 @@ export function ViewElementMultiSelect({
           )}
         >
           <span className="min-w-0 flex-1 truncate text-left">
-            {emptyOptions ? "视图画布暂无节点" : triggerText}
+            {emptyOptions ? t("blueprint.config.noViewOnCanvas") : triggerText}
           </span>
           <ChevronDownIcon className="h-4 w-4 shrink-0 opacity-50" />
         </Button>
@@ -107,9 +111,12 @@ export function ViewElementMultiSelect({
         align="start"
       >
         <Command>
-          <CommandInput placeholder="搜索视图节点…" className="h-9 text-xs" />
+          <CommandInput
+            placeholder={t("blueprint.config.searchViewNodes")}
+            className="h-9 text-xs"
+          />
           <CommandList>
-            <CommandEmpty>无匹配节点</CommandEmpty>
+            <CommandEmpty>{t("blueprint.config.noMatchingNodes")}</CommandEmpty>
             <CommandGroup>
               {options.map((opt) => {
                 const selected = selectedSet.has(opt.id);

@@ -2,14 +2,20 @@ import {
   parseSwaggerDocument,
   type ParsedSwaggerDocument,
 } from "@arronqzy/blueprint-dsl";
+import { resolveLocale, tForLocale } from "@arronqzy/i18n";
+
+function t() {
+  return tForLocale(resolveLocale());
+}
 
 export async function loadSwaggerDocument(
   docsUrl: string,
   signal?: AbortSignal
 ): Promise<ParsedSwaggerDocument> {
+  const translate = t();
   const trimmed = docsUrl.trim();
   if (!trimmed) {
-    throw new Error("请输入 Swagger 文档 URL");
+    throw new Error(translate("blueprint.config.enterSwaggerUrl"));
   }
 
   if (signal?.aborted) {
@@ -28,7 +34,9 @@ export async function loadSwaggerDocument(
       throw new DOMException("Aborted", "AbortError");
     }
     throw new Error(
-      error instanceof Error ? error.message : "无法请求 Swagger 文档"
+      error instanceof Error
+        ? error.message
+        : translate("blueprint.config.cannotFetchSwagger")
     );
   }
 
@@ -37,19 +45,21 @@ export async function loadSwaggerDocument(
   }
 
   if (!response.ok) {
-    throw new Error(`Swagger 文档请求失败: HTTP ${response.status}`);
+    throw new Error(
+      translate("blueprint.config.swaggerHttpFailed", { status: response.status })
+    );
   }
 
   const contentType = response.headers.get("content-type") ?? "";
   if (contentType.includes("text/html")) {
-    throw new Error("返回内容为 HTML，请填写 OpenAPI/Swagger 的 JSON 地址");
+    throw new Error(translate("blueprint.config.swaggerHtmlReturned"));
   }
 
   let spec: unknown;
   try {
     spec = await response.json();
   } catch {
-    throw new Error("Swagger 文档不是有效的 JSON");
+    throw new Error(translate("blueprint.config.swaggerInvalidJson"));
   }
 
   return parseSwaggerDocument(spec, trimmed);

@@ -6,6 +6,7 @@ import type {
   ParsedSwaggerDocument,
 } from "@arronqzy/blueprint-dsl";
 import { executeFetch } from "@arronqzy/blueprint-dsl";
+import { resolveLocale, tForLocale } from "@arronqzy/i18n";
 
 import { loadSwaggerDocument } from "./library/swagger-docs";
 
@@ -143,7 +144,9 @@ export function startSwaggerLoadTask(params: {
       }
 
       const message =
-        error instanceof Error ? error.message : "Swagger 文档解析失败";
+        error instanceof Error
+          ? error.message
+          : tForLocale(resolveLocale())("blueprint.config.swaggerParseFailed");
       swaggerTasks.set(params.nodeId, {
         record: { status: "error", error: message },
         abortController,
@@ -186,7 +189,10 @@ export function startFetchDebugTask(params: {
         return;
       }
 
-      const message = error instanceof Error ? error.message : "请求失败";
+      const message =
+        error instanceof Error
+          ? error.message
+          : tForLocale(resolveLocale())("blueprint.config.requestFailed");
       fetchDebugTasks.set(params.nodeId, {
         record: { status: "error", error: message },
         abortController,

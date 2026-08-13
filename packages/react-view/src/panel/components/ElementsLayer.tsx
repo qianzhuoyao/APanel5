@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useI18n } from "@arronqzy/i18n/react";
 import * as echarts from "echarts";
 import type { PanelElement } from "../types";
 import { buildChartOption, CHART_TYPES } from "../utils/chartOptionBuilder";
@@ -31,7 +32,8 @@ function TextNodeContent({
   onChange: (nextHtml: string) => void;
 }) {
   const ref = useRef<HTMLDivElement | null>(null);
-  const html = element.textHtml ?? "<p>双击输入文本</p>";
+  const { t } = useI18n();
+  const html = element.textHtml ?? `<p>${t("panel.defaults.doubleClickTextHtml")}</p>`;
   const textStyle: React.CSSProperties = {
     fontFamily: element.textFontFamily || undefined,
     fontSize: element.textFontSize ? `${element.textFontSize}px` : undefined,
@@ -71,6 +73,7 @@ function GridNodeContent({
   allElements: PanelElement[];
   previewMode?: boolean;
 }) {
+  const { t } = useI18n();
   const rows = Math.max(1, Math.floor(element.gridRows ?? 2));
   const cols = Math.max(1, Math.floor(element.gridCols ?? 3));
   const gap = Math.max(0, element.gridGap ?? 8);
@@ -142,7 +145,7 @@ function GridNodeContent({
                 ? "border-primary/70 bg-primary/10"
                 : "border-border/60 bg-muted/20",
             ].join(" ")}
-            title={`槽位 ${idx + 1}${occupied.has(idx) ? "（已占用）" : "（空）"}`}
+            title={occupied.has(idx) ? t("panel.config.slotOccupied", { n: idx + 1 }) : t("panel.config.slotEmpty", { n: idx + 1 })}
           />
         ))}
       </div>
@@ -179,6 +182,7 @@ function AudioNodeContent({
   element: PanelElement;
   selected?: boolean;
 }) {
+  const { t } = useI18n();
   const src = element.audioSrc || element.audioRemoteUrl || "";
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [playing, setPlaying] = useState(false);
@@ -269,11 +273,11 @@ function AudioNodeContent({
                 el.pause();
               }
             }}
-            title={!src ? "请先配置音频源" : playing ? "点击暂停" : "点击播放"}
+            title={!src ? t("panel.config.configureAudioFirst") : playing ? t("panel.config.clickPause") : t("panel.config.clickPlay")}
           >
             <img
               src={poster}
-              alt="音频占位图"
+              alt={t("panel.config.audioPoster")}
               className="h-full w-full object-cover"
               draggable={false}
               onDragStart={(e) => e.preventDefault()}
@@ -295,7 +299,7 @@ function AudioNodeContent({
                 el.pause();
               }
             }}
-            title={!src ? "请先配置音频源" : playing ? "点击暂停" : "点击播放"}
+            title={!src ? t("panel.config.configureAudioFirst") : playing ? t("panel.config.clickPause") : t("panel.config.clickPlay")}
           >
             {renderIcon()}
           </button>
@@ -313,7 +317,7 @@ function AudioNodeContent({
           </>
         ) : null}
         <span className="pointer-events-none absolute right-2 top-2 rounded bg-black/55 px-1.5 py-0.5 text-[10px] text-white">
-          {!src ? "未配置音频" : playing ? "暂停" : "播放"}
+          {!src ? t("panel.config.audioNotConfigured") : playing ? t("panel.config.pause") : t("panel.config.play")}
         </span>
         <audio ref={audioRef} src={src} preload="metadata" className="hidden" />
       </div>
@@ -322,14 +326,14 @@ function AudioNodeContent({
   if (!src) {
     return (
       <div className="flex h-full w-full items-center justify-center rounded border border-dashed border-border/70 bg-muted/15 px-2 text-[11px] text-muted-foreground">
-        音频占位
+        {t("panel.config.audioPlaceholder")}
       </div>
     );
   }
   return (
     <div className="relative flex h-full w-full items-center justify-center rounded border border-border/60 bg-muted/10 px-2">
       <div className="pointer-events-none text-[11px] text-muted-foreground">
-        {playing ? "音频播放中" : "音频已就绪"}
+        {playing ? t("panel.config.audioPlaying") : t("panel.config.audioReady")}
       </div>
       <button
         type="button"
@@ -345,9 +349,9 @@ function AudioNodeContent({
             el.pause();
           }
         }}
-        title={playing ? "点击暂停" : "点击播放"}
+        title={playing ? t("panel.config.clickPause") : t("panel.config.clickPlay")}
       >
-        {playing ? "暂停" : "播放"}
+        {playing ? t("panel.config.pause") : t("panel.config.play")}
       </button>
       <audio ref={audioRef} src={src} preload="metadata" className="hidden" />
     </div>
@@ -361,6 +365,7 @@ function VideoNodeContent({
   element: PanelElement;
   selected?: boolean;
 }) {
+  const { t } = useI18n();
   const src = element.videoSrc || element.videoRemoteUrl || "";
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [playing, setPlaying] = useState(false);
@@ -388,7 +393,7 @@ function VideoNodeContent({
   if (!src) {
     return (
       <div className="flex h-full w-full items-center justify-center rounded border border-dashed border-border/70 bg-muted/15 px-2 text-[11px] text-muted-foreground">
-        视频占位
+        {t("panel.config.videoPlaceholder")}
       </div>
     );
   }
@@ -409,9 +414,9 @@ function VideoNodeContent({
             el.pause();
           }
         }}
-        title={playing ? "点击暂停" : "点击播放"}
+        title={playing ? t("panel.config.clickPause") : t("panel.config.clickPlay")}
       >
-        {playing ? "暂停" : "播放"}
+        {playing ? t("panel.config.pause") : t("panel.config.play")}
       </button>
     </div>
   );
@@ -423,20 +428,22 @@ function hasBackgroundImage(element: PanelElement) {
 }
 
 function ImageNodeContent({ element }: { element: PanelElement }) {
+  const { t } = useI18n();
   if (hasBackgroundImage(element)) return null;
   return (
     <div className="flex h-full w-full items-center justify-center rounded border border-dashed border-border/70 bg-muted/15 px-2 text-[11px] text-muted-foreground">
-      图片占位
+      {t("panel.config.imagePlaceholder")}
     </div>
   );
 }
 
 function EmptyNodePlaceholder({ element }: { element: PanelElement }) {
+  const { t } = useI18n();
   const labelMap: Record<string, string> = {
-    video: "视频占位",
-    audio: "音频占位",
+    video: t("panel.config.videoPlaceholder"),
+    audio: t("panel.config.audioPlaceholder"),
   };
-  const label = labelMap[element.materialType ?? ""] ?? `${element.materialType ?? "节点"} 占位`;
+  const label = labelMap[element.materialType ?? ""] ?? t("panel.config.materialPlaceholder", { type: element.materialType ?? t("common.node") });
   return (
     <div className="flex h-full w-full items-center justify-center rounded border border-dashed border-border/70 bg-muted/15 px-2 text-[11px] text-muted-foreground">
       {label}
@@ -681,6 +688,7 @@ function ReferenceNodeContent({
   snapshotSource?: PanelElement[];
   visitedIds?: string[];
 }) {
+  const { t } = useI18n();
   const sourceNodes = useMemo(
     () => {
       const fromDeep =
@@ -725,7 +733,7 @@ function ReferenceNodeContent({
   }, [element.height, element.width, sourceNodes]);
 
   if (!layout || sourceNodes.length === 0) {
-    const hintText = element.refLayerId ? "引用图层暂无节点" : "请在右侧选择引用图层";
+    const hintText = element.refLayerId ? t("panel.config.refLayerEmpty") : t("panel.config.selectRefLayer");
     return (
       <div className="flex h-full w-full items-center justify-center">
         <div className="rounded border border-dashed border-border/70 px-2 py-1 text-[10px] text-muted-foreground">

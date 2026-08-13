@@ -1,3 +1,4 @@
+import { useI18n } from "@arronqzy/i18n/react";
 import { Handle, Position } from "@xyflow/react";
 import { cn } from "@arronqzy/ui";
 
@@ -17,6 +18,7 @@ export function BlueprintNodeShell({
   executionTone = null,
   ...cardProps
 }: BlueprintNodeShellProps) {
+  const { t } = useI18n();
   return (
     <div
       className={cn(
@@ -30,7 +32,7 @@ export function BlueprintNodeShell({
         position={Position.Left}
         id="in"
         className="bp-flow-handle bp-flow-handle--target"
-        title="真/假信号输入"
+        title={t("blueprint.node.signalIn")}
       />
       <BlueprintNodeCard {...cardProps} selected={selected} />
       <Handle
@@ -38,7 +40,7 @@ export function BlueprintNodeShell({
         position={Position.Right}
         id="out"
         className="bp-flow-handle bp-flow-handle--source"
-        title="真/假信号输出"
+        title={t("blueprint.node.signalOut")}
       />
     </div>
   );

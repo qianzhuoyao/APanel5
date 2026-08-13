@@ -1,3 +1,4 @@
+import { useI18n } from "@arronqzy/i18n/react";
 import { cn } from "@arronqzy/ui";
 
 export type BlueprintNodeCardProps = {
@@ -81,6 +82,7 @@ export function BlueprintNodeCard({
   hideLeadingDot = false,
   onSelect,
 }: BlueprintNodeCardProps) {
+  const { t } = useI18n();
   const v = variantStyle[variant];
 
   return (
@@ -101,7 +103,7 @@ export function BlueprintNodeCard({
           "bp-flow-drag-handle flex cursor-grab items-center gap-2 border-b border-border/50 px-2 py-1.5",
           "bg-muted/25 text-muted-foreground active:cursor-grabbing"
         )}
-        title="拖拽移动"
+        title={t("blueprint.node.dragToMove")}
       >
         <NodeGrip />
         {meta ? (
@@ -148,7 +150,7 @@ export function BlueprintNodeCard({
                   "shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold leading-none",
                   v.badge
                 )}
-                title="已发送信号次数"
+                title={t("blueprint.node.signalSentCount")}
               >
                 {progressLabel}
               </span>

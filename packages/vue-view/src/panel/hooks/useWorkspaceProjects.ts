@@ -5,6 +5,7 @@ import {
   type BlueprintMetaDraft,
 } from "@arronqzy/vue-blueprint";
 import type { State } from "@arronqzy/rx-store";
+import { useI18nOptional } from "@arronqzy/i18n/vue";
 import {
   createWorkspaceProjectId,
   deleteWorkspaceProject,
@@ -53,13 +54,15 @@ export function buildOnlinePreviewUrl(projectId: string): string {
 }
 
 export function useWorkspaceProjects(options: UseWorkspaceProjectsOptions) {
+  const { t, locale } = useI18nOptional();
   const projects = ref<WorkspaceProjectListItem[]>([]);
   const activeProjectId = ref<string | null>(null);
   const activeProjectName = ref<string | null>(null);
   const syncedSnapshotRef = shallowRef<WorkspaceSnapshot | null>(null);
 
   function resolveProjectName() {
-    return toValue(options.productName).trim() || "未命名产物";
+    void locale.value;
+    return toValue(options.productName).trim() || t("panel.defaults.unnamedProduct");
   }
 
   function buildCurrentSnapshot(): WorkspaceSnapshot {
@@ -94,7 +97,7 @@ export function useWorkspaceProjects(options: UseWorkspaceProjectsOptions) {
     const blueprintDocument =
       record.blueprintDocument ?? BlueprintGraph.empty().document;
     const blueprintMeta: BlueprintMetaDraft = {
-      name: record.blueprintMeta?.name ?? "未命名蓝图",
+      name: record.blueprintMeta?.name ?? t("panel.defaults.unnamedBlueprint"),
       remark: record.blueprintMeta?.remark ?? "",
     };
 
@@ -176,14 +179,14 @@ export function useWorkspaceProjects(options: UseWorkspaceProjectsOptions) {
     const record = await getWorkspaceProject(id);
     if (!record) {
       await refreshProjects();
-      throw new Error("工作区不存在或已被删除");
+      throw new Error(t("panel.messages.workspaceNotFound"));
     }
     applyProjectRecord(record);
   }
 
   async function handleSyncProject() {
     if (!activeProjectId.value) {
-      throw new Error("请先保存工作区");
+      throw new Error(t("panel.messages.saveWorkspaceFirst"));
     }
     const existing = await getWorkspaceProject(activeProjectId.value);
     if (!existing) {
@@ -191,7 +194,7 @@ export function useWorkspaceProjects(options: UseWorkspaceProjectsOptions) {
       activeProjectName.value = null;
       syncedSnapshotRef.value = null;
       await refreshProjects();
-      throw new Error("工作区不存在或已被删除");
+      throw new Error(t("panel.messages.workspaceNotFound"));
     }
     const name = resolveProjectName() || existing.name;
     await persistProject({

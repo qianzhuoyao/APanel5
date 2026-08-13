@@ -1,10 +1,13 @@
 <script setup lang="ts">
+import { useI18n } from "@arronqzy/i18n/vue";
 import { computed, ref } from "vue";
 import { validateLogicSourceCode } from "@arronqzy/blueprint-dsl";
 import type { LogicNodeConfig } from "@arronqzy/blueprint-dsl";
 
 import type { BlueprintGraphNode } from "../graph/document";
 import { resolveNodeLogicConfig } from "../graph/document";
+
+const { t } = useI18n();
 
 export type LogicNodeConfigPanelProps = {
   node: BlueprintGraphNode;
@@ -45,15 +48,11 @@ function handleChange(event: Event) {
 
 <template>
   <div class="space-y-2 rounded-md border border-border/70 bg-muted/20 p-2.5">
-    <div class="font-medium text-foreground">逻辑节点</div>
-    <p class="text-[11px] text-muted-foreground">
-      收到<strong>真信号</strong>后，将输入数据传入下方 <code>update</code>
-      函数并执行；返回值作为<strong>真信号</strong>输出。代码语法错误或运行时报错则发出
-      <strong>假信号</strong>（错误信息为输出值）。
-    </p>
+    <div class="font-medium text-foreground">{{ t("blueprint.config.logicTitle") }}</div>
+    <p class="text-[11px] text-muted-foreground">{{ t("blueprint.config.logicHint") }}</p>
 
     <label class="block space-y-1">
-      <span class="text-muted-foreground">JavaScript 代码</span>
+      <span class="text-muted-foreground">{{ t("blueprint.config.jsCode") }}</span>
       <textarea
         :value="logicConfig.sourceCode"
         rows="14"
@@ -65,9 +64,9 @@ function handleChange(event: Event) {
         @input="handleChange"
       />
       <p v-if="parseError" class="text-[11px] text-destructive">
-        JavaScript 错误：{{ parseError }}
+        {{ t("blueprint.config.jsError", { error: parseError }) }}
       </p>
-      <p v-else class="text-[11px] text-muted-foreground">JavaScript 语法正确</p>
+      <p v-else class="text-[11px] text-muted-foreground">{{ t("blueprint.config.jsSyntaxOk") }}</p>
     </label>
   </div>
 </template>

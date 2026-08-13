@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from "@arronqzy/i18n/vue";
 import { computed, ref } from "vue";
 import { Button, Input, Select } from "ant-design-vue";
 import type {
@@ -27,6 +28,8 @@ import {
   useSwaggerLoadTask,
 } from "../fetch-config-task-store";
 import FetchUrlAutocomplete from "./FetchUrlAutocomplete.vue";
+
+const { t } = useI18n();
 
 export type FetchNodeConfigPanelProps = {
   node: BlueprintGraphNode;
@@ -74,7 +77,7 @@ function setUrlInputMode(mode: "swagger" | "manual") {
 function handleLoadSwagger() {
   const docsUrl = fetchConfig.value.swaggerDocsUrl?.trim();
   if (!docsUrl) {
-    validationError.value = "请先填写 Swagger 文档 URL";
+    validationError.value = t("blueprint.config.fillSwaggerUrlFirst");
     return;
   }
 
@@ -104,7 +107,7 @@ function handleAbortSwagger() {
 function handleSendFetchDebug() {
   const url = fetchConfig.value.url?.trim();
   if (!url) {
-    fetchValidationError.value = "请先填写请求 URL";
+    fetchValidationError.value = t("blueprint.config.fillRequestUrlFirst");
     return;
   }
 
@@ -160,14 +163,13 @@ function handleHeadersBlur(event: Event) {
 
 <template>
   <div class="space-y-2 rounded-md border border-border/70 bg-muted/20 p-2.5">
-    <div class="font-medium text-foreground">数据源获取 (Fetch)</div>
+    <div class="font-medium text-foreground">{{ t("blueprint.config.fetchTitle") }}</div>
     <p class="text-[11px] text-muted-foreground">
-      收到<strong>真信号</strong>后发起 HTTP 请求；可导入 Swagger 文档后从接口列表联想选择
-      URL。
+      {{ t("blueprint.config.fetchHint") }}
     </p>
 
     <label class="block space-y-1">
-      <span class="text-muted-foreground">Swagger 文档 URL（可选）</span>
+      <span class="text-muted-foreground">{{ t("blueprint.config.swaggerUrlOptional") }}</span>
       <div class="flex gap-1.5">
         <Input
           size="small"
@@ -184,8 +186,8 @@ function handleHeadersBlur(event: Event) {
           v-if="loadingSwagger"
           size="small"
           class="h-8 w-8 shrink-0 text-destructive"
-          title="中止解析"
-          aria-label="中止 Swagger 解析"
+          :title="t('blueprint.config.abortParse')"
+          :aria-label="t('blueprint.config.abortSwaggerAria')"
           @click="handleAbortSwagger"
         >
           ■
@@ -194,24 +196,24 @@ function handleHeadersBlur(event: Event) {
           v-else
           size="small"
           class="h-8 w-8 shrink-0"
-          title="解析 Swagger 文档"
+          :title="t('blueprint.config.parseSwagger')"
           @click="handleLoadSwagger"
         >
           ➤
         </Button>
       </div>
       <p v-if="loadingSwagger" class="text-[11px] text-muted-foreground">
-        正在解析 Swagger 文档，点击右侧按钮可中止…
+        {{ t("blueprint.config.parsingSwagger") }}
       </p>
       <p v-if="swaggerError" class="text-[11px] text-destructive">{{ swaggerError }}</p>
       <p v-if="endpoints.length > 0" class="text-[11px] text-muted-foreground">
-        已解析 {{ endpoints.length }} 个接口
+        {{ t("blueprint.config.parsedEndpoints", { count: endpoints.length }) }}
       </p>
     </label>
 
     <label class="block space-y-1">
       <div class="flex items-center justify-between gap-2">
-        <span class="text-muted-foreground">请求 URL</span>
+        <span class="text-muted-foreground">{{ t("blueprint.config.requestUrl") }}</span>
         <div v-if="hasSwaggerEndpoints" class="flex rounded-md border border-border p-0.5">
           <button
             type="button"
@@ -224,7 +226,7 @@ function handleHeadersBlur(event: Event) {
             "
             @click="setUrlInputMode('swagger')"
           >
-            接口联想
+            {{ t("blueprint.config.suggestApi") }}
           </button>
           <button
             type="button"
@@ -237,7 +239,7 @@ function handleHeadersBlur(event: Event) {
             "
             @click="setUrlInputMode('manual')"
           >
-            手动输入
+            {{ t("blueprint.config.manualInput") }}
           </button>
         </div>
       </div>
@@ -248,7 +250,7 @@ function handleHeadersBlur(event: Event) {
         :class="loadingSwagger && 'pointer-events-none opacity-60'"
       >
         <label class="block space-y-1">
-          <span class="text-muted-foreground">API 主机 / Base URL</span>
+          <span class="text-muted-foreground">{{ t("blueprint.config.apiHostBaseUrl") }}</span>
           <Input
             size="small"
             :value="fetchConfig.apiBaseUrl ?? ''"
@@ -260,7 +262,7 @@ function handleHeadersBlur(event: Event) {
           />
         </label>
         <label class="block space-y-1">
-          <span class="text-muted-foreground">选择接口</span>
+          <span class="text-muted-foreground">{{ t("blueprint.config.selectEndpoint") }}</span>
           <div class="flex gap-1.5">
             <div class="min-w-0 flex-1">
               <FetchUrlAutocomplete
@@ -268,7 +270,7 @@ function handleHeadersBlur(event: Event) {
                 :api-base-url="fetchConfig.apiBaseUrl ?? ''"
                 :endpoints="endpoints"
                 select-only
-                placeholder="点击选择或搜索接口"
+                :placeholder="t('blueprint.config.selectOrSearchEndpoint')"
                 @change="
                   (url) => onUpdateNode(node.id, patchFetchConfig(node, { url }))
                 "
@@ -288,7 +290,7 @@ function handleHeadersBlur(event: Event) {
               v-if="loadingFetchDebug"
               size="small"
               class="h-8 w-8 shrink-0"
-              title="中止请求"
+              :title="t('blueprint.config.abortRequest')"
               @click="handleAbortFetchDebug"
             >
               ■
@@ -298,7 +300,7 @@ function handleHeadersBlur(event: Event) {
               size="small"
               class="h-8 w-8 shrink-0"
               :disabled="loadingSwagger"
-              title="发送调试请求"
+              :title="t('blueprint.config.sendDebugRequest')"
               @click="handleSendFetchDebug"
             >
               ➤
@@ -319,7 +321,7 @@ function handleHeadersBlur(event: Event) {
           v-if="loadingFetchDebug"
           size="small"
           class="h-8 w-8 shrink-0"
-          title="中止请求"
+          :title="t('blueprint.config.abortRequest')"
           @click="handleAbortFetchDebug"
         >
           ■
@@ -329,7 +331,7 @@ function handleHeadersBlur(event: Event) {
           size="small"
           class="h-8 w-8 shrink-0"
           :disabled="loadingSwagger"
-          title="发送调试请求"
+          :title="t('blueprint.config.sendDebugRequest')"
           @click="handleSendFetchDebug"
         >
           ➤
@@ -337,7 +339,7 @@ function handleHeadersBlur(event: Event) {
       </div>
 
       <p v-if="loadingFetchDebug" class="text-[11px] text-muted-foreground">
-        正在发送调试请求，点击右侧按钮可中止…
+        {{ t("blueprint.config.sendingDebug") }}
       </p>
       <p v-if="fetchValidationError" class="text-[11px] text-destructive">
         {{ fetchValidationError }}
@@ -348,7 +350,7 @@ function handleHeadersBlur(event: Event) {
         class="rounded-md border border-destructive/40 bg-destructive/5 p-2"
       >
         <p class="text-[11px] text-destructive">
-          {{ fetchDebugTask.error ?? "请求失败" }}
+          {{ fetchDebugTask.error ?? t("blueprint.config.requestFailed") }}
         </p>
       </div>
       <div
@@ -366,7 +368,7 @@ function handleHeadersBlur(event: Event) {
           >
             ▼
           </span>
-          <span class="text-[11px] font-medium text-foreground">调试响应</span>
+          <span class="text-[11px] font-medium text-foreground">{{ t("blueprint.config.debugResponse") }}</span>
           <span
             class="rounded px-1.5 py-0.5 font-mono text-[10px]"
             :class="
@@ -396,7 +398,7 @@ function handleHeadersBlur(event: Event) {
     </label>
 
     <label class="block space-y-1">
-      <span class="text-muted-foreground">请求方法</span>
+      <span class="text-muted-foreground">{{ t("blueprint.config.requestMethod") }}</span>
       <Select
         size="small"
         class="w-full"
@@ -416,7 +418,7 @@ function handleHeadersBlur(event: Event) {
     </label>
 
     <label class="block space-y-1">
-      <span class="text-muted-foreground">请求头 (JSON)</span>
+      <span class="text-muted-foreground">{{ t("blueprint.config.requestHeadersJson") }}</span>
       <textarea
         :key="`${node.id}-headers-${JSON.stringify(fetchConfig.headers)}`"
         :value="JSON.stringify(fetchConfig.headers ?? {}, null, 2)"
@@ -428,7 +430,7 @@ function handleHeadersBlur(event: Event) {
     </label>
 
     <label class="block space-y-1">
-      <span class="text-muted-foreground">请求体</span>
+      <span class="text-muted-foreground">{{ t("blueprint.config.requestBody") }}</span>
       <textarea
         :value="fetchConfig.body ?? ''"
         rows="4"
@@ -519,7 +521,7 @@ function handleHeadersBlur(event: Event) {
 
     <div class="grid grid-cols-2 gap-2">
       <label class="block space-y-1">
-        <span class="text-muted-foreground">响应解析</span>
+        <span class="text-muted-foreground">{{ t("blueprint.config.responseParse") }}</span>
         <Select
           size="small"
           class="w-full"
@@ -538,7 +540,7 @@ function handleHeadersBlur(event: Event) {
         </Select>
       </label>
       <label class="block space-y-1">
-        <span class="text-muted-foreground">超时 (ms)</span>
+        <span class="text-muted-foreground">{{ t("blueprint.config.timeoutMs") }}</span>
         <Input
           type="number"
           size="small"

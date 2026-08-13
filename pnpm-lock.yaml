@@ -106,6 +106,9 @@ importers:
       '@arronqzy/blueprint-dsl':
         specifier: workspace:*
         version: link:../blueprint-dsl
+      '@arronqzy/i18n':
+        specifier: workspace:*
+        version: link:../i18n
       '@arronqzy/react-blueprint':
         specifier: workspace:*
         version: link:../react-blueprint
@@ -158,6 +161,9 @@ importers:
 
   packages/abuilder-vue:
     dependencies:
+      '@arronqzy/i18n':
+        specifier: workspace:*
+        version: link:../i18n
       '@arronqzy/vue-view':
         specifier: workspace:*
         version: link:../vue-view
@@ -218,11 +224,38 @@ importers:
         specifier: ^9.1.0
         version: 9.1.0(eslint@8.57.1)
 
+  packages/i18n:
+    devDependencies:
+      '@arronqzy/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
+      '@arronqzy/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+      '@types/react':
+        specifier: ^19.0.1
+        version: 19.1.0
+      eslint:
+        specifier: ^8.57.0
+        version: 8.57.1
+      react:
+        specifier: ^19
+        version: 19.2.0
+      typescript:
+        specifier: ^5.5.4
+        version: 5.5.4
+      vue:
+        specifier: ^3.5.13
+        version: 3.5.39(typescript@5.5.4)
+
   packages/react-blueprint:
     dependencies:
       '@arronqzy/blueprint-dsl':
         specifier: workspace:*
         version: link:../blueprint-dsl
+      '@arronqzy/i18n':
+        specifier: workspace:*
+        version: link:../i18n
       '@arronqzy/react-rx-store':
         specifier: workspace:*
         version: link:../react-rx-store
@@ -321,6 +354,9 @@ importers:
       '@arronqzy/blueprint-dsl':
         specifier: workspace:*
         version: link:../blueprint-dsl
+      '@arronqzy/i18n':
+        specifier: workspace:*
+        version: link:../i18n
       '@arronqzy/react-blueprint':
         specifier: workspace:*
         version: link:../react-blueprint
@@ -625,6 +661,9 @@ importers:
       '@arronqzy/blueprint-dsl':
         specifier: workspace:*
         version: link:../blueprint-dsl
+      '@arronqzy/i18n':
+        specifier: workspace:*
+        version: link:../i18n
       '@arronqzy/vue-rx-store':
         specifier: workspace:*
         version: link:../vue-rx-store
@@ -696,6 +735,9 @@ importers:
       '@arronqzy/blueprint-dsl':
         specifier: workspace:*
         version: link:../blueprint-dsl
+      '@arronqzy/i18n':
+        specifier: workspace:*
+        version: link:../i18n
       '@arronqzy/rx-store':
         specifier: workspace:*
         version: link:../rx-store

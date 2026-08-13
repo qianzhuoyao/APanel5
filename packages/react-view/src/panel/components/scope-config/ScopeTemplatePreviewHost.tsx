@@ -6,6 +6,7 @@ import {
   useState,
   type RefObject,
 } from "react";
+import { useI18n } from "@arronqzy/i18n/react";
 import { createPortal } from "react-dom";
 
 import type { PanelElement } from "../../types";
@@ -92,8 +93,9 @@ function inferFieldIdFromDom(
 ): string | undefined {
   const label = input.closest("label");
   const labelText = label?.textContent ?? "";
-  if (labelText.includes("类目")) return "chart.labelsText";
-  if (labelText.includes("数值")) return "chart.valuesText";
+  // Match both zh-CN and en-US config labels
+  if (/类目|categor|labels/i.test(labelText)) return "chart.labelsText";
+  if (/数值|values/i.test(labelText)) return "chart.valuesText";
   return undefined;
 }
 
@@ -106,11 +108,12 @@ function ScopeTemplatePreviewPanel({
   scope: unknown;
   fieldId?: string;
 }) {
+  const { t } = useI18n();
   const [isExpanded, setIsExpanded] = useState(false);
   const previewValue = resolveScopeTemplatePreview(template, scope, fieldId);
   const previewText = formatScopeTemplatePreview(previewValue);
   const previewType = Array.isArray(previewValue)
-    ? `数组 · ${previewValue.length} 项`
+    ? t("panel.scope.previewArray", { count: previewValue.length })
     : typeof previewValue;
 
   return (
@@ -120,9 +123,9 @@ function ScopeTemplatePreviewPanel({
         className="flex w-full items-center justify-between gap-2 px-2 py-1 text-left text-[10px] text-muted-foreground hover:bg-accent/40"
         onClick={() => setIsExpanded((prev) => !prev)}
       >
-        <span className="font-medium text-foreground/80">解析预览</span>
+        <span className="font-medium text-foreground/80">{t("panel.scope.previewTitle")}</span>
         <span className="shrink-0 text-[10px]">
-          {previewType} · {isExpanded ? "收起" : "展开"}
+          {previewType} · {isExpanded ? t("panel.scope.collapsePreview") : t("panel.scope.expandPreview")}
         </span>
       </button>
       {isExpanded ? (
@@ -143,12 +146,13 @@ export function ScopeTemplatePreviewHost({
   element: PanelElement | null;
   containerRef?: RefObject<HTMLElement | null>;
 }) {
+  const { t } = useI18n();
   const keySeed = useId();
   const [anchors, setAnchors] = useState<PreviewAnchor[]>([]);
 
   const templateFields = useMemo(
-    () => (element ? collectElementScopeTemplateFields(element) : []),
-    [element]
+    () => (element ? collectElementScopeTemplateFields(element, t) : []),
+    [element, t]
   );
 
   const scanAnchors = useCallback(() => {

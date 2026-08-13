@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from "@arronqzy/i18n/vue";
 import { computed } from "vue";
 import { Empty } from "ant-design-vue";
 import {
@@ -10,6 +11,8 @@ import {
 } from "@arronqzy/vue-blueprint";
 import type { PanelElement, PanelLayer, ReferenceCopyMode } from "../types";
 import PanelConfigSidebar from "./PanelConfigSidebar.vue";
+
+const { t, locale } = useI18n();
 
 export type WorkspaceConfigFocus = "view" | "blueprint" | "blueprint-log";
 
@@ -131,7 +134,7 @@ const viewElementOptions = computed(() =>
       v-else-if="!selectedBlueprintNode"
       class="flex h-full flex-col overflow-hidden bg-background text-foreground"
     >
-      <Empty class="py-10" description="在蓝图面板中选中一个节点后，这里会显示对应的配置。" />
+      <Empty class="py-10" :description="t('panel.workspace.configEmptyDesc')" />
     </div>
 
     <BlueprintNodeConfigSidebar
