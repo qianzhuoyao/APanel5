@@ -23,13 +23,21 @@ export function createTranslator(messages: NestedMessages) {
   return function t(key: string, params?: MessageParams): string {
     const raw = getByPath(messages, key);
     if (raw == null) {
-      if (typeof process !== "undefined" && process.env?.NODE_ENV !== "production") {
+      if (shouldWarnMissingKey()) {
         console.warn(`[i18n] missing key: ${key}`);
       }
       return key;
     }
     return interpolate(raw, params);
   };
+}
+
+/** Avoid `@types/node`; bundlers may still inject `process.env`. */
+function shouldWarnMissingKey(): boolean {
+  const g = globalThis as typeof globalThis & {
+    process?: { env?: Record<string, string | undefined> };
+  };
+  return g.process?.env?.NODE_ENV !== "production";
 }
 
 export function isLocale(value: unknown): value is Locale {
