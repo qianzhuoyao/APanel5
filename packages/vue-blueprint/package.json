@@ -1,10 +1,13 @@
 {
   "name": "@arronqzy/vue-blueprint",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Vue 3 blueprint editor for Abuilder (Vue Flow + Ant Design Vue)",
   "license": "MIT",
   "type": "module",
-  "files": ["src", "dist"],
+  "files": [
+    "src",
+    "dist"
+  ],
   "exports": {
     ".": "./src/index.ts",
     "./blueprint.css": "./src/blueprint.css"

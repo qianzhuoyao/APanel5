@@ -246,15 +246,17 @@ export function useBlueprintPageLifecycle(options: UseBlueprintPageLifecycleOpti
     const id = nodeId.trim();
     if (!id) return;
     const opts = runnerOptionsRef.value;
+    const libraryNameById = toValue(opts.libraryNameById);
+    const rootLibraryBlueprintId = toValue(opts.rootLibraryBlueprintId ?? null);
     if (opts.resolveLibraryBlueprint) {
       const result = await detectBlueprintReferenceCycle({
         rootGraph: documentToRunnableGraph(graphRef.value.document, {
-          libraryNameById: opts.libraryNameById,
+          libraryNameById,
         }),
-        rootLibraryBlueprintId: opts.rootLibraryBlueprintId,
+        rootLibraryBlueprintId,
         resolveLibraryBlueprint: opts.resolveLibraryBlueprint,
         resolveBlueprintName: (libId) =>
-          resolveBlueprintName(opts.libraryNameById, libId),
+          resolveBlueprintName(libraryNameById, libId),
       });
       if (!result.ok) {
         opts.onExecutionBlocked?.(result.message);
