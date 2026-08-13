@@ -8,7 +8,7 @@ import {
   now,
   removeEvent,
   splitComma
-} from "./chunk-KT4PABRH.js";
+} from "./chunk-6MFGLQOW.js";
 
 // ../../node_modules/.pnpm/@scena+event-emitter@1.0.5/node_modules/@scena/event-emitter/dist/event-emitter.esm.js
 var __assign = function() {
@@ -933,4 +933,4 @@ gesto/dist/gesto.esm.js:
   PERFORMANCE OF THIS SOFTWARE.
   ***************************************************************************** *)
 */
-//# sourceMappingURL=chunk-CMCVMRV7.js.map
+//# sourceMappingURL=chunk-MHQUH4WY.js.map

@@ -986,6 +986,7 @@ function piecewise(interpolate, values) {
 }
 
 export {
+  require_with_selector,
   color,
   rgb_default,
   number_default,
@@ -995,8 +996,7 @@ export {
   interpolateTransformCss,
   interpolateTransformSvg,
   zoom_default,
-  piecewise,
-  require_with_selector
+  piecewise
 };
 /*! Bundled license information:
 
@@ -1011,4 +1011,4 @@ use-sync-external-store/cjs/use-sync-external-store-shim/with-selector.developme
    * LICENSE file in the root directory of this source tree.
    *)
 */
-//# sourceMappingURL=chunk-YXYJHUNM.js.map
+//# sourceMappingURL=chunk-IAQOEXRZ.js.map

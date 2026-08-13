@@ -2,11 +2,11 @@ import {
   createSlot
 } from "./chunk-2CIVEQJE.js";
 import {
-  require_react_dom
-} from "./chunk-TU732EOO.js";
-import {
   require_jsx_runtime
 } from "./chunk-MKG6J3U4.js";
+import {
+  require_react_dom
+} from "./chunk-TU732EOO.js";
 import {
   require_react
 } from "./chunk-FYB3GGWZ.js";
@@ -54,4 +54,4 @@ var Primitive = NODES.reduce((primitive, node) => {
 export {
   Primitive
 };
-//# sourceMappingURL=chunk-NBH5GPHG.js.map
+//# sourceMappingURL=chunk-NA4ZMNXW.js.map
