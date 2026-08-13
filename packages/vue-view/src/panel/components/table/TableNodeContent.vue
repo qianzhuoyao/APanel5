@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, defineComponent, h, ref, type PropType, type VNode } from "vue";
 import { useVirtualizer } from "@tanstack/vue-virtual";
+import { Tooltip } from "ant-design-vue";
 import { useI18n } from "@arronqzy/i18n/vue";
 import {
   transformToTableCached,
@@ -19,6 +20,18 @@ import type { PanelElement } from "../../types";
 
 export type TableCellActionHandler = (payload: TableCellActionPayload) => void;
 
+function wrapCellTooltip(cell: CellDisplay, node: VNode): VNode {
+  if (!cell.tooltip?.enabled || !cell.tooltip.text) return node;
+  return h(
+    Tooltip,
+    {
+      title: cell.tooltip.text,
+      placement: cell.tooltip.placement ?? "top",
+    },
+    { default: () => node }
+  );
+}
+
 const props = withDefaults(
   defineProps<{
     element: PanelElement;
@@ -36,8 +49,12 @@ const config = computed(
 );
 
 const model = computed(() => {
-  const raw = resolveRawTableInput(config.value);
-  return transformToTableCached(raw, config.value);
+  try {
+    const raw = resolveRawTableInput(config.value);
+    return transformToTableCached(raw, config.value);
+  } catch {
+    return { columns: [], rows: [] };
+  }
 });
 
 const columns = computed(() => model.value.columns);
@@ -172,10 +189,11 @@ const TableCellView = defineComponent({
     return (): VNode => {
       const cell = p.cell;
       const common = cellCommonStyle(cell);
+      let node: VNode;
 
       if (cell.widget === "tag" || cell.widget === "badge") {
         const bg = cell.color ?? "#3b82f6";
-        return h("div", { style: common }, [
+        node = h("div", { style: common }, [
           h(
             "span",
             {
@@ -208,10 +226,8 @@ const TableCellView = defineComponent({
             ]
           ),
         ]);
-      }
-
-      if (cell.widget === "link") {
-        return h("div", { style: common }, [
+      } else if (cell.widget === "link") {
+        node = h("div", { style: common }, [
           h(
             "a",
             {
@@ -232,29 +248,25 @@ const TableCellView = defineComponent({
             cell.text || cell.href
           ),
         ]);
-      }
-
-      if (cell.widget === "progress") {
+      } else if (cell.widget === "progress") {
         const pct = cell.progress ?? 0;
         const display = resolveProgressDisplay(cell.widgetProps);
         const trackColor = cell.color ?? "#3b82f6";
         const label = h(
           "span",
           { style: { fontSize: 11, color: "rgba(0,0,0,0.55)", flex: "0 0 auto" } },
-          `${Math.round(pct)}%`
+          cell.text
         );
 
         if (display === "label") {
-          return h("div", { style: common }, [label]);
-        }
-
-        if (display === "circle") {
+          node = h("div", { style: common }, [label]);
+        } else if (display === "circle") {
           const size = Math.max(16, cell.widgetProps?.progressSize ?? 28);
           const stroke = Math.max(2, cell.widgetProps?.progressStrokeWidth ?? 3);
           const r = (size - stroke) / 2;
           const c = 2 * Math.PI * r;
           const offset = c * (1 - Math.max(0, Math.min(100, pct)) / 100);
-          return h("div", { style: { ...common, gap: 6, justifyContent: "center" } }, [
+          node = h("div", { style: { ...common, gap: 6, justifyContent: "center" } }, [
             h("svg", { width: size, height: size, style: { flex: "0 0 auto" } }, [
               h("circle", {
                 cx: size / 2,
@@ -290,37 +302,35 @@ const TableCellView = defineComponent({
               ),
             ]),
           ]);
-        }
-
-        const bar = h(
-          "div",
-          {
-            style: {
-              flex: 1,
-              height: 8,
-              borderRadius: 99,
-              background: "rgba(0,0,0,0.08)",
-              overflow: "hidden",
-              minWidth: 24,
+        } else {
+          const bar = h(
+            "div",
+            {
+              style: {
+                flex: 1,
+                height: 8,
+                borderRadius: 99,
+                background: "rgba(0,0,0,0.08)",
+                overflow: "hidden",
+                minWidth: 24,
+              },
             },
-          },
-          [
-            h("div", {
-              style: { width: `${pct}%`, height: "100%", background: trackColor },
-            }),
-          ]
-        );
+            [
+              h("div", {
+                style: { width: `${pct}%`, height: "100%", background: trackColor },
+              }),
+            ]
+          );
 
-        return h("div", { style: { ...common, gap: 8 } }, [
-          bar,
-          display === "barLabel" ? label : null,
-        ]);
-      }
-
-      if (cell.widget === "image") {
+          node = h("div", { style: { ...common, gap: 8 } }, [
+            bar,
+            display === "barLabel" ? label : null,
+          ]);
+        }
+      } else if (cell.widget === "image") {
         const w = cell.widgetProps?.imageWidth ?? 28;
         const hImg = cell.widgetProps?.imageHeight ?? 28;
-        return h("div", { style: common }, [
+        node = h("div", { style: common }, [
           cell.imageUrl
             ? h("img", {
                 src: cell.imageUrl,
@@ -335,12 +345,10 @@ const TableCellView = defineComponent({
               })
             : h("span", { style: { fontSize: 11, opacity: 0.5 } }, "—"),
         ]);
-      }
-
-      if (cell.widget === "boolean") {
+      } else if (cell.widget === "boolean") {
         const on = Boolean(cell.booleanValue);
         const canToggle = Boolean(p.interactive && p.onCellAction);
-        return h("div", { style: common }, [
+        node = h("div", { style: common }, [
           h(
             "button",
             {
@@ -386,31 +394,32 @@ const TableCellView = defineComponent({
           ),
           h("span", { style: { marginLeft: 6, fontSize: 12 } }, cell.text),
         ]);
+      } else {
+        const textStyle = cell.widgetProps?.textStyle;
+        const canClickText = Boolean(cell.widgetProps?.actions?.onClickBlueprintNodeId);
+        node = h(
+          "div",
+          {
+            style: {
+              ...common,
+              fontFamily: textStyle?.fontFamily,
+              fontStyle: textStyle?.fontStyle,
+              textDecoration:
+                textStyle?.textDecoration === "none" ? undefined : textStyle?.textDecoration,
+              cursor: canClickText ? "pointer" : undefined,
+              color: canClickText && !(common as { color?: string }).color ? "#2563eb" : common.color,
+            },
+            onClick: (e: Event) => {
+              if (!canClickText) return;
+              e.stopPropagation();
+              emit("click", cell.widgetProps?.actions?.onClickBlueprintNodeId);
+            },
+          },
+          cell.text
+        );
       }
 
-      const textStyle = cell.widgetProps?.textStyle;
-      const canClickText = Boolean(cell.widgetProps?.actions?.onClickBlueprintNodeId);
-      return h(
-        "div",
-        {
-          style: {
-            ...common,
-            fontFamily: textStyle?.fontFamily,
-            fontStyle: textStyle?.fontStyle,
-            textDecoration:
-              textStyle?.textDecoration === "none" ? undefined : textStyle?.textDecoration,
-            cursor: canClickText ? "pointer" : undefined,
-            color: canClickText && !(common as { color?: string }).color ? "#2563eb" : common.color,
-          },
-          title: cell.text,
-          onClick: (e: Event) => {
-            if (!canClickText) return;
-            e.stopPropagation();
-            emit("click", cell.widgetProps?.actions?.onClickBlueprintNodeId);
-          },
-        },
-        cell.text
-      );
+      return wrapCellTooltip(cell, node);
     };
   },
 });

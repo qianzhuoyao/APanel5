@@ -5,6 +5,7 @@ import { Button } from "ant-design-vue";
 
 const props = defineProps<{
   modelValue: string;
+  class?: string;
 }>();
 
 const emit = defineEmits<{
@@ -17,6 +18,9 @@ const preRef = ref<HTMLPreElement | null>(null);
 const gutterRef = ref<HTMLDivElement | null>(null);
 
 const lines = computed(() => Math.max(1, (props.modelValue || "").split("\n").length));
+const rootClass = computed(() =>
+  ["flex h-full min-h-0 flex-col overflow-hidden", props.class].filter(Boolean).join(" ")
+);
 
 function escapeHtml(text: string): string {
   return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -88,38 +92,40 @@ watch(
 </script>
 
 <template>
-  <div>
-    <div class="mb-2 flex items-center justify-between gap-2">
+  <div :class="rootClass">
+    <div class="mb-1.5 flex shrink-0 items-center justify-between gap-2">
       <div class="text-[11px] text-gray-500">{{ t("panel.config.tableRowsEditEditorHint") }}</div>
       <Button size="small" @click="formatJson">{{ t("panel.config.tableRowsEditFormat") }}</Button>
     </div>
-    <div class="overflow-hidden rounded-lg border border-zinc-700/80 bg-[#0f1419] shadow-inner">
-      <div class="flex max-h-[min(62vh,560px)] min-h-[420px]">
-        <div
-          ref="gutterRef"
-          aria-hidden="true"
-          class="select-none overflow-hidden border-r border-zinc-800 bg-[#0b1015] px-2 py-3 text-right font-mono text-[12px] leading-5 text-zinc-600"
-          style="min-width: 36px"
-        >
-          <div v-for="n in lines" :key="n">{{ n }}</div>
-        </div>
-        <div class="relative min-w-0 flex-1">
-          <pre
-            ref="preRef"
-            class="pointer-events-none absolute inset-0 m-0 overflow-auto whitespace-pre p-3 font-mono text-[12.5px] leading-5 text-zinc-200"
-            v-html="highlighted + '\n'"
-          />
-          <textarea
-            ref="textareaRef"
-            :value="modelValue"
-            spellcheck="false"
-            class="absolute inset-0 h-full w-full resize-none overflow-auto bg-transparent p-3 font-mono text-[12.5px] leading-5 text-transparent caret-sky-300 outline-none"
-            style="-webkit-text-fill-color: transparent"
-            :aria-label="t('panel.config.tableRowsEditTitle')"
-            @scroll="syncScroll"
-            @input="onInput"
-            @keydown="onKeydown"
-          />
+    <div class="min-h-0 flex-1 overflow-hidden rounded-lg border border-zinc-700/80 bg-[#0f1419] shadow-inner">
+      <div class="relative h-full min-h-0">
+        <div class="absolute inset-0 flex min-h-0">
+          <div
+            ref="gutterRef"
+            aria-hidden="true"
+            class="h-full min-h-0 shrink-0 select-none overflow-hidden border-r border-zinc-800 bg-[#0b1015] px-2 py-3 text-right font-mono text-[12px] leading-5 text-zinc-600"
+            style="min-width: 36px"
+          >
+            <div v-for="n in lines" :key="n">{{ n }}</div>
+          </div>
+          <div class="relative h-full min-h-0 min-w-0 flex-1 overflow-hidden">
+            <pre
+              ref="preRef"
+              class="pointer-events-none absolute inset-0 m-0 overflow-hidden whitespace-pre p-3 font-mono text-[12.5px] leading-5 text-zinc-200"
+              v-html="highlighted + '\n'"
+            />
+            <textarea
+              ref="textareaRef"
+              :value="modelValue"
+              spellcheck="false"
+              class="absolute inset-0 h-full w-full resize-none overflow-auto bg-transparent p-3 font-mono text-[12.5px] leading-5 text-transparent caret-sky-300 outline-none"
+              style="-webkit-text-fill-color: transparent"
+              :aria-label="t('panel.config.tableRowsEditTitle')"
+              @scroll="syncScroll"
+              @input="onInput"
+              @keydown="onKeydown"
+            />
+          </div>
         </div>
       </div>
     </div>

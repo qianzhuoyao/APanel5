@@ -51,7 +51,12 @@ function applyValueMap(
         scope,
       })
     ) {
-      return rule.value;
+      const v = rule.value;
+      // String targets support templates; {current}/{value} = original cell value.
+      if (typeof v === "string") {
+        return resolveTemplate(v, row, raw, false);
+      }
+      return v;
     }
   }
   return raw;
@@ -106,6 +111,7 @@ function resolveTemplate(
     return encode ? encodeURIComponent(s) : s;
   };
   return template
+    .replace(/\{current\}/g, enc(displayValue))
     .replace(/\{value\}/g, enc(displayValue))
     .replace(/\{row\.(\w+)\}/g, (_, key: string) => enc(row.values[key]));
 }
@@ -268,6 +274,7 @@ export function resolveCellDisplay(
   }
   if (widget === "progress") {
     display.progress = resolveProgressPercent(column, row, mapped, ctx.scope);
+    display.text = `${Math.round(display.progress ?? 0)}%`;
   }
   if (widget === "boolean") {
     display.booleanValue = coerceTableBoolean(mapped);
@@ -279,6 +286,27 @@ export function resolveCellDisplay(
   }
   if (widget === "image") {
     display.imageUrl = resolveImageUrl(column, row, mapped);
+  }
+
+  // Pipeline: raw → valueMap (optional templates) → displayTemplate.
+  // {current}/{value} in displayTemplate = mapped result.
+  const displayTpl = column.displayTemplate?.trim();
+  if (displayTpl) {
+    display.text = resolveTemplate(displayTpl, row, mapped, false);
+  }
+
+  if (column.tooltipEnabled) {
+    const tipTpl = column.tooltipTemplate?.trim();
+    const tipText = tipTpl
+      ? resolveTemplate(tipTpl, row, mapped, false)
+      : display.text;
+    if (tipText) {
+      display.tooltip = {
+        enabled: true,
+        text: tipText,
+        placement: column.tooltipPlacement ?? "top",
+      };
+    }
   }
 
   return display;

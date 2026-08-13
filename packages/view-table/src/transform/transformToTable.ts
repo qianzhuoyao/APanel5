@@ -68,17 +68,24 @@ export function resolveRawTableInput(
 
 function recordsFromMatrix(matrix: unknown[][]): Record<string, unknown>[] {
   if (matrix.length === 0) return [];
-  const header = matrix[0].map((h, i) => {
+  const headerRow = matrix[0];
+  if (!Array.isArray(headerRow)) return [];
+  const header = headerRow.map((h, i) => {
     const s = h == null ? "" : String(h).trim();
     return s || `col${i + 1}`;
   });
   return matrix.slice(1).map((row) => {
     const obj: Record<string, unknown> = {};
+    const cells = Array.isArray(row) ? row : [];
     header.forEach((key, i) => {
-      obj[key] = row[i];
+      obj[key] = cells[i];
     });
     return obj;
   });
+}
+
+function isMatrixShape(data: unknown[]): data is unknown[][] {
+  return data.length > 0 && Array.isArray(data[0]);
 }
 
 function toRecordArray(raw: unknown, mode: PanelTableConfig["transform"]): Record<string, unknown>[] {
@@ -90,8 +97,10 @@ function toRecordArray(raw: unknown, mode: PanelTableConfig["transform"]): Recor
 
   if (Array.isArray(data)) {
     if (data.length === 0) return [];
-    if (m === "matrix" || (m === "auto" && Array.isArray(data[0]))) {
-      return recordsFromMatrix(data as unknown[][]);
+    // Matrix mode only when rows are actual arrays. Object[] must stay as records
+    // (selecting "matrix" on demo object JSON used to crash via [].map on an object).
+    if ((m === "matrix" || m === "auto") && isMatrixShape(data)) {
+      return recordsFromMatrix(data);
     }
     if (typeof data[0] === "object" && data[0] != null) {
       return data.map((item, i) =>
@@ -141,6 +150,10 @@ function inferColumns(
       widgetProps: col.widgetProps,
       valueMap: col.valueMap,
       cellStyleRules: col.cellStyleRules,
+      displayTemplate: col.displayTemplate,
+      tooltipEnabled: col.tooltipEnabled,
+      tooltipPlacement: col.tooltipPlacement,
+      tooltipTemplate: col.tooltipTemplate,
     }));
   }
 

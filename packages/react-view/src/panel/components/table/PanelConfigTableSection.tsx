@@ -8,6 +8,7 @@ import type {
   TableColorMapEntry,
   TableHrefRule,
   TableProgressRule,
+  TableTooltipPlacement,
 } from "@arronqzy/view-table";
 import {
   coerceBooleanMapTarget,
@@ -350,7 +351,7 @@ export function PanelConfigTableSection({
     <fieldset disabled={disabled} className={`space-y-3 ${disabled ? "opacity-60" : ""}`}>
       <div className="space-y-2.5 rounded-lg border border-border/55 bg-background/80 p-2.5">
         {groupTitle("panel.config.groupTableData", "panel.config.groupTableDataHint")}
-        <label className={fieldClass}>
+        <label className={fieldClass} data-config-field="table.source">
           {fieldLabel("panel.config.tableSource", "panel.config.tableSourceHint")}
           <Input
             value={table.source ?? ""}
@@ -359,7 +360,7 @@ export function PanelConfigTableSection({
             className={inputClass}
           />
         </label>
-        <div className={fieldClass}>
+        <div className={fieldClass} data-config-field="table.rowsText">
           <div className="flex items-center justify-between gap-2">
             {fieldLabel("panel.config.tableRowsText", "panel.config.tableRowsTextHint")}
             <div className="flex items-center gap-0.5">
@@ -402,7 +403,7 @@ export function PanelConfigTableSection({
             value={table.rowsText ?? ""}
             onChange={(e) => patchTable({ rowsText: e.target.value })}
             placeholder='[{"name":"A"}]'
-            className="min-h-[64px] font-mono text-[11px]"
+            className="min-h-[140px] font-mono text-[11px]"
           />
         </div>
         <details className="rounded-md border border-border/50 bg-muted/10 px-2 py-1.5">
@@ -633,6 +634,67 @@ export function PanelConfigTableSection({
                 </SelectContent>
               </Select>
             </label>
+          </div>
+
+          <div className="space-y-2 rounded-md border border-border/60 bg-muted/15 p-2">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
+                <span>{t("panel.config.tableTooltipEnabled")}</span>
+                <ConfigHintIcon label={t("panel.config.tableTooltipEnabled")}>
+                  <div>{t("panel.config.tableTooltipEnabledHint")}</div>
+                </ConfigHintIcon>
+              </div>
+              <Switch
+                checked={Boolean(selectedColumn.tooltipEnabled)}
+                onCheckedChange={(checked) =>
+                  updateColumnAt(selectedIndex, { tooltipEnabled: checked || undefined })
+                }
+              />
+            </div>
+            {selectedColumn.tooltipEnabled ? (
+              <>
+                <label className={fieldClass}>
+                  {fieldLabel("panel.config.tableTooltipPlacementLabel")}
+                  <Select
+                    value={selectedColumn.tooltipPlacement ?? "top"}
+                    onValueChange={(value) =>
+                      updateColumnAt(selectedIndex, {
+                        tooltipPlacement: value as TableTooltipPlacement,
+                      })
+                    }
+                  >
+                    <SelectTrigger className={inputClass}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(["top", "right", "bottom", "left"] as TableTooltipPlacement[]).map(
+                        (side) => (
+                          <SelectItem key={side} value={side}>
+                            {t(`panel.config.tableTooltipPlacement.${side}`)}
+                          </SelectItem>
+                        )
+                      )}
+                    </SelectContent>
+                  </Select>
+                </label>
+                <label className={fieldClass}>
+                  {fieldLabel(
+                    "panel.config.tableTooltipTemplate",
+                    "panel.config.tableTooltipTemplateHint"
+                  )}
+                  <Input
+                    value={selectedColumn.tooltipTemplate ?? ""}
+                    onChange={(e) =>
+                      updateColumnAt(selectedIndex, {
+                        tooltipTemplate: e.target.value.trim() ? e.target.value : undefined,
+                      })
+                    }
+                    placeholder="{current}"
+                    className={inputClass}
+                  />
+                </label>
+              </>
+            ) : null}
           </div>
 
           <div className="space-y-2 rounded-md border border-border/60 bg-muted/15 p-2">
@@ -1624,12 +1686,26 @@ export function PanelConfigTableSection({
                           };
                           updateColumnAt(selectedIndex, { valueMap: next });
                         }}
+                        placeholder="{current}"
                         className={inputClass}
                       />
                     )}
                   </label>
                 </div>
             ))}
+            <label className={fieldClass}>
+              {fieldLabel("panel.config.tableDisplayTemplate", "panel.config.tableDisplayTemplateHint")}
+              <Input
+                value={selectedColumn.displayTemplate ?? ""}
+                onChange={(e) =>
+                  updateColumnAt(selectedIndex, {
+                    displayTemplate: e.target.value.trim() ? e.target.value : undefined,
+                  })
+                }
+                placeholder="{current}分"
+                className={inputClass}
+              />
+            </label>
           </div>
 
           <div className="space-y-2 border-t border-border/50 pt-2">
@@ -1906,50 +1982,85 @@ export function PanelConfigTableSection({
     </fieldset>
 
     <Dialog open={rowsEditorOpen} onOpenChange={setRowsEditorOpen}>
-      <DialogContent className="z-[10150] w-[min(92vw,560px)] max-w-[560px]">
-        <DialogHeader>
-          <DialogTitle>{t("panel.config.tableRowsEditTitle")}</DialogTitle>
-          <DialogDescription>{t("panel.config.tableRowsEditDesc")}</DialogDescription>
-        </DialogHeader>
-        <JsonCodeEditor
-          value={rowsEditorDraft}
-          onChange={(v) => {
-            setRowsEditorDraft(v);
-            setRowsEditorError(null);
-          }}
-        />
-        {rowsEditorError ? (
-          <div className="text-[11px] text-destructive">{rowsEditorError}</div>
-        ) : null}
-        <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => setRowsEditorOpen(false)}>
-            {t("common.cancel")}
-          </Button>
-          <Button
-            type="button"
-            onClick={() => {
-              const trimmed = rowsEditorDraft.trim();
-              if (!trimmed) {
-                patchTable({ rowsText: "" });
-                setRowsEditorOpen(false);
-                return;
-              }
-              try {
-                const parsed = JSON.parse(trimmed);
-                if (!Array.isArray(parsed)) {
-                  setRowsEditorError(t("panel.config.tableRowsEditNeedArray"));
+      <DialogContent
+        movable={false}
+        resizable={false}
+        className="z-[10150] !flex h-[min(78vh,560px)] max-h-[min(78vh,560px)] w-[min(94vw,680px)] max-w-[680px] !flex-col gap-0 overflow-hidden border-border/60 bg-background p-0 shadow-2xl sm:rounded-xl"
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          height: "min(78vh, 560px)",
+          maxHeight: "min(78vh, 560px)",
+          overflow: "hidden",
+          padding: 0,
+          gap: 0,
+        }}
+      >
+        <div className="flex h-full min-h-0 w-full flex-col overflow-hidden">
+          <DialogHeader className="shrink-0 space-y-0.5 border-b border-border/50 px-4 py-2.5 pr-12 text-left">
+            <DialogTitle className="text-[14px] font-semibold tracking-tight">
+              {t("panel.config.tableRowsEditTitle")}
+            </DialogTitle>
+            <DialogDescription className="text-[12px] leading-4 text-muted-foreground">
+              {t("panel.config.tableRowsEditDesc")}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="relative min-h-0 flex-1 overflow-hidden">
+            <div className="absolute inset-0 p-2">
+              <JsonCodeEditor
+                className="h-full w-full"
+                value={rowsEditorDraft}
+                onChange={(v) => {
+                  setRowsEditorDraft(v);
+                  setRowsEditorError(null);
+                }}
+              />
+            </div>
+          </div>
+
+          {rowsEditorError ? (
+            <div className="shrink-0 px-4 py-1.5 text-[12px] text-destructive">
+              {rowsEditorError}
+            </div>
+          ) : null}
+
+          <DialogFooter className="shrink-0 flex-row justify-end gap-2 border-t border-border/50 bg-muted/20 px-3 py-2 sm:space-x-0">
+            <Button
+              type="button"
+              variant="ghost"
+              className="h-8 rounded-md px-3"
+              onClick={() => setRowsEditorOpen(false)}
+            >
+              {t("common.cancel")}
+            </Button>
+            <Button
+              type="button"
+              className="h-8 rounded-md px-4"
+              onClick={() => {
+                const trimmed = rowsEditorDraft.trim();
+                if (!trimmed) {
+                  patchTable({ rowsText: "" });
+                  setRowsEditorOpen(false);
                   return;
                 }
-                patchTable({ rowsText: JSON.stringify(parsed, null, 2) });
-                setRowsEditorOpen(false);
-              } catch {
-                setRowsEditorError(t("panel.config.tableRowsEditInvalidJson"));
-              }
-            }}
-          >
-            {t("common.save")}
-          </Button>
-        </DialogFooter>
+                try {
+                  const parsed = JSON.parse(trimmed);
+                  if (!Array.isArray(parsed)) {
+                    setRowsEditorError(t("panel.config.tableRowsEditNeedArray"));
+                    return;
+                  }
+                  patchTable({ rowsText: JSON.stringify(parsed, null, 2) });
+                  setRowsEditorOpen(false);
+                } catch {
+                  setRowsEditorError(t("panel.config.tableRowsEditInvalidJson"));
+                }
+              }}
+            >
+              {t("common.save")}
+            </Button>
+          </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
 

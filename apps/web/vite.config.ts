@@ -70,6 +70,20 @@ export default defineConfig({
           "packages/view-table/src/index.ts"
         ),
       },
+      {
+        find: "@arronqzy/webllm-assistant",
+        replacement: path.resolve(
+          monorepoRoot,
+          "packages/webllm-assistant/src/index.ts"
+        ),
+      },
+      {
+        find: "@mlc-ai/web-llm",
+        replacement: path.resolve(
+          monorepoRoot,
+          "packages/webllm-assistant/vendor/bundled/web-llm"
+        ),
+      },
     ],
   },
   server: {
@@ -77,5 +91,17 @@ export default defineConfig({
     fs: {
       allow: [monorepoRoot],
     },
+    // credentialless：尽量保持 crossOriginIsolated（WebLLM/SharedArrayBuffer），
+    // 同时避免 require-corp 阻断无 CORP 的跨域资源导致整页白屏。
+    headers: {
+      "Cross-Origin-Opener-Policy": "same-origin",
+      "Cross-Origin-Embedder-Policy": "credentialless",
+    },
+  },
+  optimizeDeps: {
+    exclude: ["@mlc-ai/web-llm"],
+  },
+  worker: {
+    format: "es",
   },
 });

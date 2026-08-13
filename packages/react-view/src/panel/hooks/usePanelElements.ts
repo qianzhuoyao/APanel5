@@ -573,14 +573,14 @@ export function usePanelElements() {
     []
   );
 
-  const addElementFromMaterial = useCallback((materialType: string, x: number, y: number) => {
+  const addElementFromMaterial = useCallback((materialType: string, x: number, y: number): string | null => {
     const current = store.getState();
     const currentLayers =
       (current.variables?.layers as PanelLayer[] | undefined) ?? [DEFAULT_LAYER];
     const currentLayerId =
       (current.variables?.activeLayerId as string | undefined) ?? DEFAULT_LAYER_ID;
     const layer = currentLayers.find((l) => l.id === currentLayerId);
-    if (!layer || layer.locked) return;
+    if (!layer || layer.locked) return null;
 
     const size = getDefaultSizeByMaterial(materialType);
     const id = randomId("el");
@@ -671,7 +671,7 @@ export function usePanelElements() {
         },
         { meta: { type: "node.add", materialType, id: sourceId } }
       );
-      return;
+      return sourceId;
     }
     store.update(
       (draft) => {
@@ -685,6 +685,7 @@ export function usePanelElements() {
       },
       { meta: { type: "node.add", materialType, id } }
     );
+    return id;
   }, [t]);
 
   const setReferenceCopyMode = useCallback(

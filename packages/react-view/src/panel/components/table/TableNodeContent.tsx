@@ -15,8 +15,24 @@ import {
 } from "@arronqzy/view-table";
 import type { PanelElement } from "../../types";
 import { useI18n } from "@arronqzy/i18n/react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@arronqzy/ui";
 
 export type TableCellActionHandler = (payload: TableCellActionPayload) => void;
+
+function wrapCellTooltip(cell: CellDisplay, node: React.ReactElement) {
+  if (!cell.tooltip?.enabled || !cell.tooltip.text) return node;
+  return (
+    <Tooltip delayDuration={250}>
+      <TooltipTrigger asChild>{node}</TooltipTrigger>
+      <TooltipContent
+        side={cell.tooltip.placement}
+        className="max-w-xs whitespace-pre-wrap break-words"
+      >
+        {cell.tooltip.text}
+      </TooltipContent>
+    </Tooltip>
+  );
+}
 
 function TableCellView({
   cell,
@@ -64,9 +80,11 @@ function TableCellView({
     padding: style.padding ?? "0 8px",
   };
 
+  let content: React.ReactElement;
+
   if (cell.widget === "tag" || cell.widget === "badge") {
     const bg = cell.color ?? "#3b82f6";
-    return (
+    content = (
       <div style={common}>
         <span
           style={{
@@ -97,10 +115,8 @@ function TableCellView({
         </span>
       </div>
     );
-  }
-
-  if (cell.widget === "link") {
-    return (
+  } else if (cell.widget === "link") {
+    content = (
       <div style={common}>
         <a
           href={cell.href || "#"}
@@ -116,29 +132,25 @@ function TableCellView({
         </a>
       </div>
     );
-  }
-
-  if (cell.widget === "progress") {
+  } else if (cell.widget === "progress") {
     const pct = cell.progress ?? 0;
     const display = resolveProgressDisplay(cell.widgetProps);
     const trackColor = cell.color ?? "#3b82f6";
     const label = (
       <span style={{ fontSize: 11, color: "rgba(0,0,0,0.55)", flex: "0 0 auto" }}>
-        {Math.round(pct)}%
+        {cell.text}
       </span>
     );
 
     if (display === "label") {
-      return <div style={common}>{label}</div>;
-    }
-
-    if (display === "circle") {
+      content = <div style={common}>{label}</div>;
+    } else if (display === "circle") {
       const size = Math.max(16, cell.widgetProps?.progressSize ?? 28);
       const stroke = Math.max(2, cell.widgetProps?.progressStrokeWidth ?? 3);
       const r = (size - stroke) / 2;
       const c = 2 * Math.PI * r;
       const offset = c * (1 - Math.max(0, Math.min(100, pct)) / 100);
-      return (
+      content = (
         <div style={{ ...common, gap: 6, justifyContent: "center" }}>
           <svg width={size} height={size} style={{ flex: "0 0 auto" }}>
             <circle
@@ -174,35 +186,33 @@ function TableCellView({
           </svg>
         </div>
       );
+    } else {
+      const bar = (
+        <div
+          style={{
+            flex: 1,
+            height: 8,
+            borderRadius: 99,
+            background: "rgba(0,0,0,0.08)",
+            overflow: "hidden",
+            minWidth: 24,
+          }}
+        >
+          <div style={{ width: `${pct}%`, height: "100%", background: trackColor }} />
+        </div>
+      );
+
+      content = (
+        <div style={{ ...common, gap: 8 }}>
+          {bar}
+          {display === "barLabel" ? label : null}
+        </div>
+      );
     }
-
-    const bar = (
-      <div
-        style={{
-          flex: 1,
-          height: 8,
-          borderRadius: 99,
-          background: "rgba(0,0,0,0.08)",
-          overflow: "hidden",
-          minWidth: 24,
-        }}
-      >
-        <div style={{ width: `${pct}%`, height: "100%", background: trackColor }} />
-      </div>
-    );
-
-    return (
-      <div style={{ ...common, gap: 8 }}>
-        {bar}
-        {display === "barLabel" ? label : null}
-      </div>
-    );
-  }
-
-  if (cell.widget === "image") {
+  } else if (cell.widget === "image") {
     const w = cell.widgetProps?.imageWidth ?? 28;
     const h = cell.widgetProps?.imageHeight ?? 28;
-    return (
+    content = (
       <div style={common}>
         {cell.imageUrl ? (
           <img
@@ -221,12 +231,10 @@ function TableCellView({
         )}
       </div>
     );
-  }
-
-  if (cell.widget === "boolean") {
+  } else if (cell.widget === "boolean") {
     const on = Boolean(cell.booleanValue);
     const canToggle = Boolean(interactive && onCellAction);
-    return (
+    content = (
       <div style={common}>
         <button
           type="button"
@@ -270,30 +278,31 @@ function TableCellView({
         <span style={{ marginLeft: 6, fontSize: 12 }}>{cell.text}</span>
       </div>
     );
+  } else {
+    const textStyle = cell.widgetProps?.textStyle;
+    const canClickText = Boolean(cell.widgetProps?.actions?.onClickBlueprintNodeId);
+    content = (
+      <div
+        style={{
+          ...common,
+          fontFamily: textStyle?.fontFamily,
+          fontStyle: textStyle?.fontStyle,
+          textDecoration: textStyle?.textDecoration === "none" ? undefined : textStyle?.textDecoration,
+          cursor: canClickText ? "pointer" : undefined,
+          color: canClickText && !common.color ? "#2563eb" : common.color,
+        }}
+        onClick={(e) => {
+          if (!canClickText) return;
+          e.stopPropagation();
+          emit("click", cell.widgetProps?.actions?.onClickBlueprintNodeId);
+        }}
+      >
+        {cell.text}
+      </div>
+    );
   }
 
-  const textStyle = cell.widgetProps?.textStyle;
-  const canClickText = Boolean(cell.widgetProps?.actions?.onClickBlueprintNodeId);
-  return (
-    <div
-      style={{
-        ...common,
-        fontFamily: textStyle?.fontFamily,
-        fontStyle: textStyle?.fontStyle,
-        textDecoration: textStyle?.textDecoration === "none" ? undefined : textStyle?.textDecoration,
-        cursor: canClickText ? "pointer" : undefined,
-        color: canClickText && !common.color ? "#2563eb" : common.color,
-      }}
-      title={cell.text}
-      onClick={(e) => {
-        if (!canClickText) return;
-        e.stopPropagation();
-        emit("click", cell.widgetProps?.actions?.onClickBlueprintNodeId);
-      }}
-    >
-      {cell.text}
-    </div>
-  );
+  return wrapCellTooltip(cell, content);
 }
 
 const MemoCell = React.memo(TableCellView);
@@ -373,8 +382,12 @@ export function TableNodeContent({
 
   const model = useMemo(() => {
     const cfg = config ?? {};
-    const raw = resolveRawTableInput(cfg);
-    return transformToTableCached(raw, cfg);
+    try {
+      const raw = resolveRawTableInput(cfg);
+      return transformToTableCached(raw, cfg);
+    } catch {
+      return { columns: [], rows: [] };
+    }
   }, [config]);
 
   const columns = model.columns;
@@ -414,6 +427,7 @@ export function TableNodeContent({
     tableTextColor;
 
   return (
+    <TooltipProvider delayDuration={250}>
     <div
       className="rv-table-node h-full w-full overflow-hidden"
       style={{
@@ -525,5 +539,6 @@ export function TableNodeContent({
         )}
       </div>
     </div>
+    </TooltipProvider>
   );
 }

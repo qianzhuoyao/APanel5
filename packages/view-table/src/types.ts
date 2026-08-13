@@ -2,6 +2,8 @@
 
 export type TableAlign = "left" | "center" | "right";
 
+export type TableTooltipPlacement = "top" | "right" | "bottom" | "left";
+
 export type TableCellWidget =
   | "text"
   | "tag"
@@ -63,6 +65,11 @@ export type Condition = ConditionLeaf | ConditionGroup | ConditionExpr;
 
 export type TableValueMapRule = {
   when: Condition;
+  /**
+   * Replacement when `when` matches. Strings support templates:
+   * `{current}` / `{value}` = original cell value, `{row.field}` = other columns.
+   * Applied before `displayTemplate`.
+   */
   value: string | number | boolean;
 };
 
@@ -202,6 +209,20 @@ export type TableColumnConfig = {
   widget?: TableCellWidget;
   widgetProps?: TableWidgetProps;
   cellStyleRules?: TableStyleRule[];
+  /**
+   * Cell text template applied **after** valueMap.
+   * Placeholders: `{current}` / `{value}` (mapped cell value),
+   * `{row.field}` (other columns). Example: mapped `10` + `{current}分` → `10分`.
+   */
+  displayTemplate?: string;
+  /** Show tooltip on hover for cells in this column. */
+  tooltipEnabled?: boolean;
+  tooltipPlacement?: TableTooltipPlacement;
+  /**
+   * Tooltip content template (same placeholders as displayTemplate).
+   * Empty → use the resolved cell display text.
+   */
+  tooltipTemplate?: string;
 };
 
 export type TableTransformConfig = {
@@ -254,6 +275,10 @@ export type NormalizedColumn = {
   widgetProps?: TableWidgetProps;
   valueMap?: TableValueMapRule[];
   cellStyleRules?: TableStyleRule[];
+  displayTemplate?: string;
+  tooltipEnabled?: boolean;
+  tooltipPlacement?: TableTooltipPlacement;
+  tooltipTemplate?: string;
 };
 
 export type NormalizedRow = {
@@ -282,6 +307,11 @@ export type CellDisplay = {
   booleanValue?: boolean;
   imageUrl?: string;
   color?: string;
+  tooltip?: {
+    enabled: boolean;
+    text: string;
+    placement: TableTooltipPlacement;
+  };
 };
 
 export type RowDisplay = {

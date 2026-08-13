@@ -9,6 +9,12 @@ import {
   modalOverlayStyle,
 } from "../lib/overlay-z-index"
 import { buttonVariants } from "./button"
+import {
+  FloatingWindowChrome,
+  FloatingWindowProvider,
+  useFloatingWindow,
+  useFloatingWindowDrag,
+} from "./floating-window"
 
 const AlertDialog = AlertDialogPrimitive.Root
 
@@ -32,39 +38,107 @@ const AlertDialogOverlay = React.forwardRef<
 ))
 AlertDialogOverlay.displayName = AlertDialogPrimitive.Overlay.displayName
 
+type AlertDialogContentProps = React.ComponentPropsWithoutRef<
+  typeof AlertDialogPrimitive.Content
+> & {
+  overlayClassName?: string
+  movable?: boolean
+  resizable?: boolean
+  minWidth?: number
+  minHeight?: number
+}
+
 const AlertDialogContent = React.forwardRef<
   React.ElementRef<typeof AlertDialogPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Content> & {
-    overlayClassName?: string
+  AlertDialogContentProps
+>(
+  (
+    {
+      className,
+      style,
+      overlayClassName,
+      children,
+      movable = true,
+      resizable = true,
+      minWidth,
+      minHeight,
+      ...props
+    },
+    ref
+  ) => {
+    const floatingEnabled = movable || resizable
+    const {
+      setNodeRef,
+      floatingStyle,
+      onDragPointerDown,
+      onResizePointerDown,
+      dragContext,
+    } = useFloatingWindow({
+      enabled: floatingEnabled,
+      minWidth,
+      minHeight,
+    })
+
+    const setRefs = React.useCallback(
+      (node: HTMLDivElement | null) => {
+        setNodeRef(node)
+        if (typeof ref === "function") ref(node)
+        else if (ref) ref.current = node
+      },
+      [ref, setNodeRef]
+    )
+
+    return (
+      <AlertDialogPortal>
+        <AlertDialogOverlay className={overlayClassName} />
+        <AlertDialogPrimitive.Content
+          ref={setRefs}
+          style={{ ...modalContentStyle, ...floatingStyle, ...style }}
+          className={cn(
+            "fixed left-[50%] top-[50%] grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 pt-8 shadow-lg transition-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg",
+            floatingStyle &&
+              "max-h-none translate-x-0 translate-y-0 animate-none overflow-auto transition-none data-[state=open]:zoom-in-100 data-[state=open]:slide-in-from-left-0 data-[state=open]:slide-in-from-top-0",
+            className
+          )}
+          {...props}
+        >
+          <FloatingWindowProvider value={dragContext}>
+            <FloatingWindowChrome
+              enabled={floatingEnabled}
+              onDragPointerDown={movable ? onDragPointerDown : () => undefined}
+              onResizePointerDown={
+                resizable ? onResizePointerDown : () => () => undefined
+              }
+            />
+            {children}
+          </FloatingWindowProvider>
+        </AlertDialogPrimitive.Content>
+      </AlertDialogPortal>
+    )
   }
->(({ className, style, overlayClassName, ...props }, ref) => (
-  <AlertDialogPortal>
-    <AlertDialogOverlay className={overlayClassName} />
-    <AlertDialogPrimitive.Content
-      ref={ref}
-      style={{ ...modalContentStyle, ...style }}
-      className={cn(
-        "fixed left-[50%] top-[50%] grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg",
-        className
-      )}
-      {...props}
-    />
-  </AlertDialogPortal>
-))
+)
 AlertDialogContent.displayName = AlertDialogPrimitive.Content.displayName
 
 const AlertDialogHeader = ({
   className,
+  onPointerDown,
   ...props
-}: React.HTMLAttributes<HTMLDivElement>) => (
-  <div
-    className={cn(
-      "flex flex-col space-y-2 text-center sm:text-left",
-      className
-    )}
-    {...props}
-  />
-)
+}: React.HTMLAttributes<HTMLDivElement>) => {
+  const drag = useFloatingWindowDrag()
+  return (
+    <div
+      className={cn(
+        "flex cursor-grab flex-col space-y-2 text-center active:cursor-grabbing sm:text-left",
+        className
+      )}
+      onPointerDown={(event) => {
+        drag?.onDragPointerDown(event)
+        onPointerDown?.(event)
+      }}
+      {...props}
+    />
+  )
+}
 AlertDialogHeader.displayName = "AlertDialogHeader"
 
 const AlertDialogFooter = ({

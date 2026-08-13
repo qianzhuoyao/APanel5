@@ -1,10 +1,12 @@
 {
   "name": "@arronqzy/i18n",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Shared Chinese/English i18n for Abuilder (React + Vue)",
   "license": "MIT",
   "type": "module",
-  "files": ["src"],
+  "files": [
+    "src"
+  ],
   "main": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
@@ -21,8 +23,12 @@
     "vue": "^3.4.0"
   },
   "peerDependenciesMeta": {
-    "react": { "optional": true },
-    "vue": { "optional": true }
+    "react": {
+      "optional": true
+    },
+    "vue": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@arronqzy/eslint-config": "workspace:*",

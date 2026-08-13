@@ -77,11 +77,14 @@ export function ConditionEditor({
   const logic = getConditionLogic(value);
   const items = listConditionItems(value);
 
-  const opLabel = (op: ConditionOp) => {
-    const key = `panel.config.tableOp.${op}`;
-    const labeled = t(key);
-    return labeled === key ? op : labeled;
-  };
+  const opLabel = (op: ConditionOp) => t(`panel.config.tableOp.${op}`);
+
+  const logicLabel =
+    logic === "or"
+      ? t("panel.config.tableConditionLogicOr")
+      : logic === "not"
+        ? t("panel.config.tableConditionLogicNot")
+        : t("panel.config.tableConditionLogicAnd");
 
   return (
     <div className="space-y-2">
@@ -93,7 +96,7 @@ export function ConditionEditor({
             onValueChange={(next) => onChange(setConditionLogic(value, next as ConditionLogic))}
           >
             <SelectTrigger className={inputClass}>
-              <SelectValue />
+              <SelectValue>{logicLabel}</SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="and">{t("panel.config.tableConditionLogicAnd")}</SelectItem>
@@ -148,7 +151,7 @@ export function ConditionEditor({
                   }
                 >
                   <SelectTrigger className={inputClass}>
-                    <SelectValue />
+                    <SelectValue>{opLabel(leaf.op)}</SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {CONDITION_OPS.map((op) => (
@@ -172,7 +175,7 @@ export function ConditionEditor({
                       )
                     }
                     className={inputClass}
-                    placeholder="field"
+                    placeholder={t("panel.config.tableConditionFieldPlaceholder")}
                   />
                 </label>
               ) : null}
@@ -189,6 +192,7 @@ export function ConditionEditor({
                       )
                     }
                     className={inputClass}
+                    placeholder={t("panel.config.tableConditionValuePlaceholder")}
                   />
                 </label>
               ) : null}

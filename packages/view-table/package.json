@@ -1,10 +1,12 @@
 {
   "name": "@arronqzy/view-table",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "High-performance table transform / mapping / condition engine for Abuilder",
   "license": "MIT",
   "type": "module",
-  "files": ["src"],
+  "files": [
+    "src"
+  ],
   "main": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts"

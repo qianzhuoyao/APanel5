@@ -51,9 +51,7 @@ const logic = computed(() => getConditionLogic(props.modelValue));
 const items = computed(() => listConditionItems(props.modelValue));
 
 function opLabel(op: ConditionOp) {
-  const key = `panel.config.tableOp.${op}`;
-  const labeled = t(key);
-  return labeled === key ? op : labeled;
+  return t(`panel.config.tableOp.${op}`);
 }
 
 function leafOf(item: Condition): ConditionLeaf {
@@ -160,7 +158,7 @@ function patchLeaf(index: number, patch: Partial<ConditionLeaf>) {
             size="small"
             :value="leafOf(item).field ?? ''"
             :disabled="disabled"
-            placeholder="field"
+            :placeholder="t('panel.config.tableConditionFieldPlaceholder')"
             @update:value="(v: string) => patchLeaf(index, { field: v || undefined })"
           />
         </label>
@@ -173,6 +171,7 @@ function patchLeaf(index: number, patch: Partial<ConditionLeaf>) {
             size="small"
             :value="leafValueText(leafOf(item).value)"
             :disabled="disabled"
+            :placeholder="t('panel.config.tableConditionValuePlaceholder')"
             @update:value="(v: string) => patchLeaf(index, { value: parseLeafValue(v) })"
           />
         </label>

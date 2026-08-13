@@ -15,6 +15,14 @@ import { SelectLayer } from "./components/SelectLayer";
 import { MoveableLayer } from "./components/MoveableLayer";
 import { buildChartOption, CHART_TYPES } from "./utils/chartOptionBuilder";
 import { MaterialSidebar } from "./components/MaterialSidebar";
+import { AssistantChatPanel } from "./ai/AssistantChatPanel";
+import {
+  listLayersFromStore,
+  listPanelElementsFromStore,
+  getActiveLayerIdFromStore,
+  type ApplyAssistantDeps,
+} from "./ai/applyAssistantAction";
+import { revealPanelConfigFromPatch } from "./ai/revealConfigField";
 import {
   BlueprintGraph,
   BlueprintMetaDialog,
@@ -68,6 +76,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  Button,
   Checkbox,
   Dialog,
   DialogContent,
@@ -452,7 +461,10 @@ export function ReactViewPanel({
   const [pendingPreviewLayerId, setPendingPreviewLayerId] = useState<string | null>(null);
   const [panelFontSize, setPanelFontSize] = useState<"sm" | "md" | "lg">("md");
   const [blueprintOpen, setBlueprintOpen] = useState(false);
+  const [assistantOpen, setAssistantOpen] = useState(false);
   const [blueprintGraph, setBlueprintGraph] = useState(() => BlueprintGraph.empty());
+  const blueprintGraphRef = useRef(blueprintGraph);
+  blueprintGraphRef.current = blueprintGraph;
   const [blueprintMeta, setBlueprintMeta] = useState<BlueprintMetaDraft>({
     name: t("panel.defaults.unnamedBlueprint"),
     remark: "",
@@ -1313,6 +1325,164 @@ export function ReactViewPanel({
     const layer = layerById.get(el.layerId);
     return !layer?.locked;
   });
+
+  const selectedIdsRef = useRef(selectedIds);
+  selectedIdsRef.current = selectedIds;
+  const zoomRef = useRef(zoom);
+  zoomRef.current = zoom;
+  const blueprintOpenRef = useRef(blueprintOpen);
+  blueprintOpenRef.current = blueprintOpen;
+  const workspaceLiveRef = useRef({
+    activeProjectId: workspaceProjects.activeProjectId,
+    activeProjectName: workspaceProjects.activeProjectName,
+    dirty: workspaceProjects.dirty,
+    projectCount: workspaceProjects.projects.length,
+  });
+  workspaceLiveRef.current = {
+    activeProjectId: workspaceProjects.activeProjectId,
+    activeProjectName: workspaceProjects.activeProjectName,
+    dirty: workspaceProjects.dirty,
+    projectCount: workspaceProjects.projects.length,
+  };
+
+  const assistantDeps = useMemo<ApplyAssistantDeps>(
+    () => ({
+      addElementFromMaterial,
+      updateElement,
+      deleteElement,
+      duplicateElement,
+      setSelectedIds: (ids) => {
+        selectedIdsRef.current = ids;
+        selectViewElements(ids);
+        // Newly added nodes may not be in DOM until next paint — refresh Moveable targets.
+        requestAnimationFrame(() => {
+          setSelectedTargets(
+            getSelectedTargetsFromIds(canvasRef.current, selectedIdsRef.current)
+          );
+        });
+      },
+      getSelectedIds: () => selectedIdsRef.current,
+      revealConfigFromPatch: (patch) => {
+        window.setTimeout(() => {
+          revealPanelConfigFromPatch(patch);
+        }, 60);
+      },
+      focusWorkspace: (area) => {
+        if (area === "blueprint") {
+          setConfigFocus("blueprint");
+          setBlueprintOpen(true);
+        } else {
+          focusViewConfig();
+        }
+      },
+      getElementIds: () =>
+        new Set(listPanelElementsFromStore().map((el) => el.id)),
+      getElement: (id) => listPanelElementsFromStore().find((el) => el.id === id),
+      listElements: () => listPanelElementsFromStore(),
+      getLayers: () => listLayersFromStore(),
+      getActiveLayerId: () => getActiveLayerIdFromStore(),
+      setActiveLayer,
+      addLayer,
+      renameLayer,
+      setLayerLocked: (id, locked) => {
+        const layer = listLayersFromStore().find((l) => l.id === id);
+        if (!layer) return;
+        if (!!layer.locked !== locked) toggleLayerLock(id);
+      },
+      deleteLayer: (id) => {
+        const result = deleteLayer(id, { mode: "remove" });
+        return result.ok
+          ? { ok: true }
+          : { ok: false, reason: result.reason };
+      },
+      bringElementsToFront,
+      sendElementsToBack,
+      bringElementsForward,
+      sendElementsBackward,
+      getZoom: () => zoomRef.current.x,
+      setZoomAbsolute: (value) => {
+        const next = Math.min(4, Math.max(0.25, value));
+        const rounded = Number(next.toFixed(4));
+        zoomRef.current = { x: rounded, y: rounded };
+        setZoom({ x: rounded, y: rounded });
+      },
+      adjustZoomDelta: (delta) => {
+        const next = Math.min(4, Math.max(0.25, zoomRef.current.x + delta));
+        const rounded = Number(next.toFixed(4));
+        zoomRef.current = { x: rounded, y: rounded };
+        setZoom({ x: rounded, y: rounded });
+      },
+      fitViewport: () => {
+        zoomRef.current = { x: 1, y: 1 };
+        setZoom({ x: 1, y: 1 });
+      },
+      undo,
+      redo,
+      setBlueprintGraph,
+      getBlueprintGraph: () => blueprintGraphRef.current,
+      setBlueprintOpen,
+      getBlueprintOpen: () => blueprintOpenRef.current,
+      runBlueprintAll: () => blueprintDebugSession.runAll(),
+      getWorkspace: () => ({ ...workspaceLiveRef.current }),
+      workspaceSave: () => workspaceProjects.handleSaveProject(),
+      workspaceSync: () => workspaceProjects.handleSyncProject(),
+      workspaceCreate: async (name) => {
+        if (name?.trim()) setProductName(name.trim());
+        return workspaceProjects.handleCreateProject();
+      },
+      workspaceOpen: (id) => workspaceProjects.handleOpenProject(id),
+      workspacePreview: async (id) => {
+        const target =
+          id ?? workspaceLiveRef.current.activeProjectId ?? undefined;
+        if (!target) {
+          const created = await workspaceProjects.handleCreateProject();
+          await openOnlinePreviewForProject(created.id, { syncFirst: false });
+          return;
+        }
+        await openOnlinePreviewForProject(target, { syncFirst: true });
+      },
+      exportPanelJson: () => JSON.stringify(exportPanelData(), null, 2),
+      importPanelJson: (json) => {
+        const parsed = JSON.parse(json) as State;
+        const ok = importPanelData(parsed);
+        if (ok) {
+          selectedIdsRef.current = [];
+          setSelectedIds([]);
+        }
+        return ok;
+      },
+      setTheme: (theme) => applyTheme(theme === "dark"),
+      setLocale,
+      setPanelFontSize,
+    }),
+    [
+      addElementFromMaterial,
+      updateElement,
+      deleteElement,
+      duplicateElement,
+      selectViewElements,
+      focusViewConfig,
+      setActiveLayer,
+      addLayer,
+      renameLayer,
+      toggleLayerLock,
+      deleteLayer,
+      bringElementsToFront,
+      sendElementsToBack,
+      bringElementsForward,
+      sendElementsBackward,
+      undo,
+      redo,
+      setBlueprintGraph,
+      blueprintDebugSession,
+      workspaceProjects,
+      openOnlinePreviewForProject,
+      exportPanelData,
+      importPanelData,
+      applyTheme,
+      setLocale,
+    ]
+  );
   const showActionHint = useCallback((message: string) => {
     toast({
       title: t("panel.messages.operationRestricted"),
@@ -1858,6 +2028,15 @@ export function ReactViewPanel({
           onPreviewProject={openOnlinePreviewForProject}
         />
         <div className="flex-1" />
+        <Button
+          type="button"
+          variant={assistantOpen ? "secondary" : "outline"}
+          size="sm"
+          className="h-7 shrink-0 px-2 text-xs"
+          onClick={() => setAssistantOpen((v) => !v)}
+        >
+          {assistantOpen ? t("panel.ai.hide") : t("panel.ai.open")}
+        </Button>
       </nav>
       <ResizablePanelGroup direction="horizontal" className="min-h-0 w-full flex-1">
         <ResizablePanel defaultSize={15} minSize={15}>
@@ -3043,6 +3222,11 @@ export function ReactViewPanel({
           </div>
         </ResizablePanel>
       </ResizablePanelGroup>
+      <AssistantChatPanel
+        deps={assistantDeps}
+        open={assistantOpen}
+        onOpenChange={setAssistantOpen}
+      />
       <AlertDialog
         open={mappingDeleteConfirmOpen}
         onOpenChange={(open) => {

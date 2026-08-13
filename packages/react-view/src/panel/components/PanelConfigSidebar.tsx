@@ -37,6 +37,10 @@ import { collectElementScopeWarnings } from "../utils/scope-template-warnings";
 import { ScopeConfigProvider } from "./scope-config/ScopeConfigContext";
 import { ScopeTemplateWarningsPanel } from "./scope-config/ScopeTemplateWarningsPanel";
 import { PanelConfigTableSection } from "./table/PanelConfigTableSection";
+import {
+  highlightConfigField,
+  subscribeRevealPanelConfig,
+} from "../ai/revealConfigField";
 
 type UpdateElement = (
   id: string,
@@ -415,6 +419,18 @@ export function PanelConfigSidebar({
     setExpandedSections((prev) => ({ ...prev, [key]: next }));
   };
 
+  useEffect(() => {
+    return subscribeRevealPanelConfig((detail) => {
+      for (const section of detail.sections) {
+        setSectionExpanded(section, true);
+      }
+      window.requestAnimationFrame(() => {
+        const field = detail.fields[0];
+        if (field) highlightConfigField(field);
+      });
+    });
+  }, []);
+
   const renderSection = (
     key: string,
     title: string,
@@ -433,6 +449,7 @@ export function PanelConfigSidebar({
       open={hasSearch ? true : isSectionExpanded(key, defaultOpen)}
       onOpenChange={(open) => setSectionExpanded(key, open)}
       className="rounded-xl border border-border/70 bg-card/95 shadow-sm"
+      data-config-section={key}
     >
       <div className="flex items-center gap-1.5 px-3 py-2">
         <CollapsibleTrigger asChild>
@@ -589,7 +606,7 @@ export function PanelConfigSidebar({
     >
     <aside
       ref={sidebarScrollRef}
-      className={`scope-config-sidebar h-full overflow-auto border-l border-border bg-muted/[0.14] px-3 py-3 text-foreground [&_.scope-field--highlight]:rounded-md [&_.scope-field--highlight]:ring-2 [&_.scope-field--highlight]:ring-amber-400/80 [&_button[role=checkbox]]:border-2 [&_button[role=checkbox]]:border-foreground/80 [&_button[role=checkbox]]:bg-background [&_button[role=checkbox]]:ring-1 [&_button[role=checkbox]]:ring-foreground/40 [&_button[role=checkbox][data-state=checked]]:border-primary [&_button[role=checkbox][data-state=checked]]:ring-primary/40 ${themedScrollbarClass}`}
+      className={`scope-config-sidebar h-full overflow-auto border-l border-border bg-muted/[0.14] px-3 py-3 text-foreground [&_.config-field--highlight]:rounded-md [&_.config-field--highlight]:ring-2 [&_.config-field--highlight]:ring-sky-400/80 [&_.scope-field--highlight]:rounded-md [&_.scope-field--highlight]:ring-2 [&_.scope-field--highlight]:ring-amber-400/80 [&_button[role=checkbox]]:border-2 [&_button[role=checkbox]]:border-foreground/80 [&_button[role=checkbox]]:bg-background [&_button[role=checkbox]]:ring-1 [&_button[role=checkbox]]:ring-foreground/40 [&_button[role=checkbox][data-state=checked]]:border-primary [&_button[role=checkbox][data-state=checked]]:ring-primary/40 ${themedScrollbarClass}`}
     >
       <div className="sticky top-0 z-20 mb-3 rounded-lg border border-border/70 bg-card/95 px-2.5 py-2 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/80">
         <div className="flex items-center justify-between gap-2">
@@ -1883,7 +1900,7 @@ export function PanelConfigSidebar({
             "nodeInfo",
             t("panel.config.sectionNodeInfo"),
             <>
-              <label className="block space-y-1">
+              <label className="block space-y-1" data-config-field="name">
                 <div>{t("panel.config.nodeName")}</div>
                 <Input
                   value={selectedElement.name ?? ""}
@@ -1897,7 +1914,7 @@ export function PanelConfigSidebar({
                 />
               </label>
               <div className="grid grid-cols-3 gap-2">
-                <label className="block space-y-1">
+                <label className="block space-y-1" data-config-field="x">
                   <div>X</div>
                   <Input
                     type="number"
@@ -1910,7 +1927,7 @@ export function PanelConfigSidebar({
                     className="h-7"
                   />
                 </label>
-                <label className="block space-y-1">
+                <label className="block space-y-1" data-config-field="y">
                   <div>Y</div>
                   <Input
                     type="number"
@@ -1925,7 +1942,7 @@ export function PanelConfigSidebar({
                 </label>
               </div>
               <div className="grid grid-cols-3 gap-2">
-                <label className="block space-y-1">
+                <label className="block space-y-1" data-config-field="rotate">
                   <div>{t("panel.config.rotate")}</div>
                   <Input
                     type="number"
@@ -1938,7 +1955,7 @@ export function PanelConfigSidebar({
                     className="h-7"
                   />
                 </label>
-                <label className="block space-y-1">
+                <label className="block space-y-1" data-config-field="width">
                   <div>{t("panel.config.width")}</div>
                   <Input
                     type="number"
@@ -1953,7 +1970,7 @@ export function PanelConfigSidebar({
                     className="h-7"
                   />
                 </label>
-                <label className="block space-y-1">
+                <label className="block space-y-1" data-config-field="height">
                   <div>{t("panel.config.height")}</div>
                   <Input
                     type="number"
@@ -2191,7 +2208,7 @@ export function PanelConfigSidebar({
                   {renderFieldGroup(
                     t("panel.config.groupBasicDisplay"),
                     <>
-                      <label className="block space-y-1.5">
+                      <label className="block space-y-1.5" data-config-field="chart.title">
                         <div>{t("panel.config.title")}</div>
                         <Input
                           value={selectedElement.chart?.title ?? ""}
@@ -2923,6 +2940,7 @@ export function PanelConfigSidebar({
                     </div>
                     <div
                       ref={textEditorRef}
+                      data-config-field="textHtml"
                       className="min-h-[120px] rounded border border-border bg-background px-2 py-1.5 text-xs leading-6 outline-none"
                       style={{
                         fontFamily: selectedElement.textFontFamily || undefined,

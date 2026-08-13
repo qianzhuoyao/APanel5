@@ -8,7 +8,9 @@
       "@arronqzy/react-blueprint": ["../react-blueprint/index.ts"],
       "@arronqzy/rx-store": ["../rx-store/src/index.ts"],
       "@arronqzy/ui": ["../ui/index.ts"],
-      "@arronqzy/view-table": ["../view-table/src/index.ts"]
+      "@arronqzy/view-table": ["../view-table/src/index.ts"],
+      "@arronqzy/webllm-assistant": ["../webllm-assistant/src/index.ts"],
+      "@mlc-ai/web-llm": ["../webllm-assistant/vendor/bundled/web-llm"]
     }
   },
   "include": ["."],

@@ -9,6 +9,7 @@ import type {
   TableCellWidget,
   TableColumnConfig,
   TableStyleProps,
+  TableTooltipPlacement,
   TableWidgetProps,
   TableMockLocale,
 } from "@arronqzy/view-table";
@@ -485,7 +486,7 @@ function patchProgressRuleWhen(ruleIndex: number, when: Condition) {
         </div>
         <Textarea
           :value="table.rowsText ?? ''"
-          :rows="3"
+          :rows="8"
           :disabled="!isEditable"
           placeholder='[{"name":"A"}]'
           @update:value="(v: string) => updateTable({ rowsText: v })"
@@ -699,6 +700,68 @@ function patchProgressRuleWhen(ruleIndex: number, when: Condition) {
               </Select.Option>
             </Select>
           </label>
+        </div>
+
+        <div class="space-y-2 rounded-md border border-gray-200 bg-gray-50/70 p-2">
+          <div class="flex items-center justify-between gap-2">
+            <div class="inline-flex items-center gap-1 text-[11px] font-medium text-gray-600">
+              <span>{{ t("panel.config.tableTooltipEnabled") }}</span>
+              <ConfigHintIcon :label="t('panel.config.tableTooltipEnabled')">
+                <div>{{ t("panel.config.tableTooltipEnabledHint") }}</div>
+              </ConfigHintIcon>
+            </div>
+            <Switch
+              size="small"
+              :checked="Boolean(selectedColumn.column.tooltipEnabled)"
+              :disabled="!isEditable"
+              @update:checked="
+                (v: boolean) =>
+                  patchColumn(selectedColumn!.index, { tooltipEnabled: v || undefined })
+              "
+            />
+          </div>
+          <template v-if="selectedColumn.column.tooltipEnabled">
+            <label class="block space-y-1">
+              <div>{{ t("panel.config.tableTooltipPlacementLabel") }}</div>
+              <Select
+                size="small"
+                class="w-full"
+                :value="selectedColumn.column.tooltipPlacement ?? 'top'"
+                :disabled="!isEditable"
+                @update:value="
+                  (v) =>
+                    patchColumn(selectedColumn!.index, {
+                      tooltipPlacement: v as TableTooltipPlacement,
+                    })
+                "
+              >
+                <Select.Option value="top">{{ t("panel.config.tableTooltipPlacement.top") }}</Select.Option>
+                <Select.Option value="right">{{ t("panel.config.tableTooltipPlacement.right") }}</Select.Option>
+                <Select.Option value="bottom">{{ t("panel.config.tableTooltipPlacement.bottom") }}</Select.Option>
+                <Select.Option value="left">{{ t("panel.config.tableTooltipPlacement.left") }}</Select.Option>
+              </Select>
+            </label>
+            <label class="block space-y-1">
+              <div class="flex items-center gap-1">
+                <span>{{ t("panel.config.tableTooltipTemplate") }}</span>
+                <ConfigHintIcon :label="t('panel.config.tableTooltipTemplate')">
+                  <div>{{ t("panel.config.tableTooltipTemplateHint") }}</div>
+                </ConfigHintIcon>
+              </div>
+              <Input
+                size="small"
+                :value="selectedColumn.column.tooltipTemplate ?? ''"
+                :disabled="!isEditable"
+                placeholder="{current}"
+                @update:value="
+                  (v: string) =>
+                    patchColumn(selectedColumn!.index, {
+                      tooltipTemplate: v.trim() ? v : undefined,
+                    })
+                "
+              />
+            </label>
+          </template>
         </div>
 
         <div class="space-y-2 rounded-md border border-gray-200 bg-gray-50/70 p-2">
@@ -1659,11 +1722,31 @@ function patchProgressRuleWhen(ruleIndex: number, when: Condition) {
               v-else
               size="small"
               :value="String(rule.value ?? '')"
-              :placeholder="t('panel.config.tableDisplayValue')"
+              placeholder="{current}"
               :disabled="!isEditable"
               @update:value="(v: string) => patchValueMapRule(selectedColumn!.index, ruleIndex, { value: v })"
             />
           </div>
+          <label class="block space-y-1">
+            <div class="flex items-center gap-1">
+              <span>{{ t("panel.config.tableDisplayTemplate") }}</span>
+              <ConfigHintIcon :label="t('panel.config.tableDisplayTemplate')">
+                <div>{{ t("panel.config.tableDisplayTemplateHint") }}</div>
+              </ConfigHintIcon>
+            </div>
+            <Input
+              size="small"
+              :value="selectedColumn.column.displayTemplate ?? ''"
+              :disabled="!isEditable"
+              placeholder="{current}分"
+              @update:value="
+                (v: string) =>
+                  patchColumn(selectedColumn!.index, {
+                    displayTemplate: v.trim() ? v : undefined,
+                  })
+              "
+            />
+          </label>
         </div>
 
         <div class="space-y-1.5 border-t border-gray-100 pt-2">
@@ -1850,11 +1933,26 @@ function patchProgressRuleWhen(ruleIndex: number, when: Condition) {
     :title="t('panel.config.tableRowsEditTitle')"
     :ok-text="t('common.save')"
     :cancel-text="t('common.cancel')"
-    width="560px"
+    width="640px"
+    :styles="{
+      body: {
+        height: '480px',
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
+        padding: '8px',
+      },
+    }"
     @ok="saveRowsEditor"
   >
-    <div class="mb-2 text-xs text-gray-500">{{ t("panel.config.tableRowsEditDesc") }}</div>
-    <JsonCodeEditor v-model="rowsEditorDraft" />
+    <div class="mb-1.5 shrink-0 text-xs leading-4 text-gray-500">
+      {{ t("panel.config.tableRowsEditDesc") }}
+    </div>
+    <div class="relative min-h-0 flex-1 overflow-hidden">
+      <div class="absolute inset-0">
+        <JsonCodeEditor v-model="rowsEditorDraft" class="h-full" />
+      </div>
+    </div>
   </Modal>
 
   <Modal
