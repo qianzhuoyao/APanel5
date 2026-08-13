@@ -146,12 +146,23 @@ function blueprintSelectValue(id?: string): string {
   return id?.trim() ? id : "__none__";
 }
 
+/** ant-design-vue Switch emits `CheckedType` (boolean | string). */
+function asSwitchChecked(v: unknown): boolean {
+  return v === true;
+}
+
+/** ant-design-vue Select emits `SelectValue` (string | number | array | undefined). */
+function asSelectString(v: unknown): string {
+  if (Array.isArray(v)) return String(v[0] ?? "");
+  return v == null ? "" : String(v);
+}
+
 function onBlueprintSelect(
   index: number,
   key: keyof TableCellActions,
-  v: string | number | undefined
+  v: unknown
 ) {
-  const next = String(v ?? "");
+  const next = asSelectString(v);
   patchActions(index, {
     [key]: next === "__none__" || !next ? undefined : next,
   });
@@ -441,7 +452,7 @@ function patchProgressRuleWhen(ruleIndex: number, when: Condition) {
           :value="table.source ?? ''"
           placeholder="{scope?.list}"
           :disabled="!isEditable"
-          @update:value="(v: string) => updateTable({ source: v })"
+          @update:value="(v: unknown) => updateTable({ source: asSelectString(v) })"
         />
       </label>
       <label class="block space-y-1.5">
@@ -489,7 +500,7 @@ function patchProgressRuleWhen(ruleIndex: number, when: Condition) {
           :rows="8"
           :disabled="!isEditable"
           placeholder='[{"name":"A"}]'
-          @update:value="(v: string) => updateTable({ rowsText: v })"
+          @update:value="(v: unknown) => updateTable({ rowsText: asSelectString(v) })"
         />
       </label>
       <details class="rounded-md border border-gray-200 bg-gray-50/60 px-2 py-1.5">
@@ -529,7 +540,7 @@ function patchProgressRuleWhen(ruleIndex: number, when: Condition) {
                 size="small"
                 :value="table.transform?.rowIdField ?? ''"
                 :disabled="!isEditable"
-                @update:value="(v: string) => updateTransform({ rowIdField: v })"
+                @update:value="(v: unknown) => updateTransform({ rowIdField: asSelectString(v) })"
               />
             </label>
           </div>
@@ -545,7 +556,7 @@ function patchProgressRuleWhen(ruleIndex: number, when: Condition) {
               :value="table.transform?.path ?? ''"
               placeholder="data.list"
               :disabled="!isEditable"
-              @update:value="(v: string) => updateTransform({ path: v })"
+              @update:value="(v: unknown) => updateTransform({ path: asSelectString(v) })"
             />
           </label>
         </div>
@@ -653,7 +664,7 @@ function patchProgressRuleWhen(ruleIndex: number, when: Condition) {
               size="small"
               :value="selectedColumn.column.field"
               :disabled="!isEditable"
-              @update:value="(v: string) => patchColumn(selectedColumn!.index, { field: v })"
+              @update:value="(v: unknown) => patchColumn(selectedColumn!.index, { field: asSelectString(v) })"
             />
           </label>
           <label class="block space-y-1">
@@ -667,7 +678,7 @@ function patchProgressRuleWhen(ruleIndex: number, when: Condition) {
               size="small"
               :value="selectedColumn.column.title ?? ''"
               :disabled="!isEditable"
-              @update:value="(v: string) => patchColumn(selectedColumn!.index, { title: v })"
+              @update:value="(v: unknown) => patchColumn(selectedColumn!.index, { title: asSelectString(v) })"
             />
           </label>
           <label class="block space-y-1">
@@ -715,8 +726,8 @@ function patchProgressRuleWhen(ruleIndex: number, when: Condition) {
               :checked="Boolean(selectedColumn.column.tooltipEnabled)"
               :disabled="!isEditable"
               @update:checked="
-                (v: boolean) =>
-                  patchColumn(selectedColumn!.index, { tooltipEnabled: v || undefined })
+                (v) =>
+                  patchColumn(selectedColumn!.index, { tooltipEnabled: asSwitchChecked(v) || undefined })
               "
             />
           </div>
@@ -754,10 +765,12 @@ function patchProgressRuleWhen(ruleIndex: number, when: Condition) {
                 :disabled="!isEditable"
                 placeholder="{current}"
                 @update:value="
-                  (v: string) =>
+                  (v: unknown) => {
+                    const s = asSelectString(v).trim();
                     patchColumn(selectedColumn!.index, {
-                      tooltipTemplate: v.trim() ? v : undefined,
-                    })
+                      tooltipTemplate: s ? s : undefined,
+                    });
+                  }
                 "
               />
             </label>
@@ -802,13 +815,15 @@ function patchProgressRuleWhen(ruleIndex: number, when: Condition) {
                   :value="String(selectedColumn.column.widgetProps?.textStyle?.fontWeight ?? 'normal')"
                   :disabled="!isEditable"
                   @update:value="
-                    (v: string) =>
+                    (v) => {
+                      const s = asSelectString(v);
                       patchWidgetProps(selectedColumn!.index, {
                         textStyle: {
                           ...(selectedColumn!.column.widgetProps?.textStyle ?? {}),
-                          fontWeight: v === 'normal' ? undefined : v,
+                          fontWeight: s === 'normal' ? undefined : s,
                         },
-                      })
+                      });
+                    }
                   "
                 >
                   <Select.Option value="normal">{{ t("panel.config.tableTextWeightNormal") }}</Select.Option>
@@ -839,11 +854,11 @@ function patchProgressRuleWhen(ruleIndex: number, when: Condition) {
                   placeholder="inherit"
                   :disabled="!isEditable"
                   @update:value="
-                    (v: string) =>
+                    (v: unknown) =>
                       patchWidgetProps(selectedColumn!.index, {
                         textStyle: {
                           ...(selectedColumn!.column.widgetProps?.textStyle ?? {}),
-                          fontFamily: v || undefined,
+                          fontFamily: asSelectString(v) || undefined,
                         },
                       })
                   "
@@ -857,11 +872,11 @@ function patchProgressRuleWhen(ruleIndex: number, when: Condition) {
                   :value="selectedColumn.column.widgetProps?.textStyle?.fontStyle ?? 'normal'"
                   :disabled="!isEditable"
                   @update:value="
-                    (v: string) =>
+                    (v) =>
                       patchWidgetProps(selectedColumn!.index, {
                         textStyle: {
                           ...(selectedColumn!.column.widgetProps?.textStyle ?? {}),
-                          fontStyle: v as 'normal' | 'italic',
+                          fontStyle: asSelectString(v) as 'normal' | 'italic',
                         },
                       })
                   "
@@ -878,11 +893,11 @@ function patchProgressRuleWhen(ruleIndex: number, when: Condition) {
                   :value="selectedColumn.column.widgetProps?.textStyle?.textDecoration ?? 'none'"
                   :disabled="!isEditable"
                   @update:value="
-                    (v: string) =>
+                    (v) =>
                       patchWidgetProps(selectedColumn!.index, {
                         textStyle: {
                           ...(selectedColumn!.column.widgetProps?.textStyle ?? {}),
-                          textDecoration: v as 'none' | 'underline' | 'line-through',
+                          textDecoration: asSelectString(v) as 'none' | 'underline' | 'line-through',
                         },
                       })
                   "
@@ -905,11 +920,11 @@ function patchProgressRuleWhen(ruleIndex: number, when: Condition) {
                   :value="selectedColumn.column.widgetProps?.textStyle?.overflow ?? 'ellipsis'"
                   :disabled="!isEditable"
                   @update:value="
-                    (v: string) =>
+                    (v: unknown) =>
                       patchWidgetProps(selectedColumn!.index, {
                         textStyle: {
                           ...(selectedColumn!.column.widgetProps?.textStyle ?? {}),
-                          overflow: v as 'ellipsis' | 'wrap',
+                          overflow: asSelectString(v) as 'ellipsis' | 'wrap',
                         },
                       })
                   "
@@ -986,7 +1001,7 @@ function patchProgressRuleWhen(ruleIndex: number, when: Condition) {
                 :placeholder="selectedColumn.column.field"
                 :disabled="!isEditable"
                 @update:value="
-                  (v: string) => patchWidgetProps(selectedColumn!.index, { imageUrlField: v || undefined })
+                  (v: unknown) => patchWidgetProps(selectedColumn!.index, { imageUrlField: asSelectString(v) || undefined })
                 "
               />
             </label>
@@ -1008,7 +1023,7 @@ function patchProgressRuleWhen(ruleIndex: number, when: Condition) {
                   placeholder="{scope?.avatar} / https://…"
                   :disabled="!isEditable"
                   @update:value="
-                    (v: string) => patchWidgetProps(selectedColumn!.index, { imageUrl: v || undefined })
+                    (v: unknown) => patchWidgetProps(selectedColumn!.index, { imageUrl: asSelectString(v) || undefined })
                   "
                 />
               </label>
@@ -1044,8 +1059,8 @@ function patchProgressRuleWhen(ruleIndex: number, when: Condition) {
                   placeholder="{scope?.cdn}/"
                   :disabled="!isEditable"
                   @update:value="
-                    (v: string) =>
-                      patchWidgetProps(selectedColumn!.index, { imageUrlPrefix: v || undefined })
+                    (v: unknown) =>
+                      patchWidgetProps(selectedColumn!.index, { imageUrlPrefix: asSelectString(v) || undefined })
                   "
                 />
               </label>
@@ -1057,8 +1072,8 @@ function patchProgressRuleWhen(ruleIndex: number, when: Condition) {
                   placeholder=".png"
                   :disabled="!isEditable"
                   @update:value="
-                    (v: string) =>
-                      patchWidgetProps(selectedColumn!.index, { imageUrlSuffix: v || undefined })
+                    (v: unknown) =>
+                      patchWidgetProps(selectedColumn!.index, { imageUrlSuffix: asSelectString(v) || undefined })
                   "
                 />
               </label>
@@ -1075,8 +1090,8 @@ function patchProgressRuleWhen(ruleIndex: number, when: Condition) {
                 placeholder="https://cdn/{row.id}.png"
                 :disabled="!isEditable"
                 @update:value="
-                  (v: string) =>
-                    patchWidgetProps(selectedColumn!.index, { imageUrlTemplate: v || undefined })
+                  (v: unknown) =>
+                    patchWidgetProps(selectedColumn!.index, { imageUrlTemplate: asSelectString(v) || undefined })
                 "
               />
             </label>
@@ -1147,7 +1162,7 @@ function patchProgressRuleWhen(ruleIndex: number, when: Condition) {
                 :placeholder="selectedColumn.column.field"
                 :disabled="!isEditable"
                 @update:value="
-                  (v: string) => patchWidgetProps(selectedColumn!.index, { hrefField: v || undefined })
+                  (v: unknown) => patchWidgetProps(selectedColumn!.index, { hrefField: asSelectString(v) || undefined })
                 "
               />
             </label>
@@ -1159,8 +1174,8 @@ function patchProgressRuleWhen(ruleIndex: number, when: Condition) {
                 placeholder="/detail/{row.id}"
                 :disabled="!isEditable"
                 @update:value="
-                  (v: string) =>
-                    patchWidgetProps(selectedColumn!.index, { hrefTemplate: v || undefined })
+                  (v: unknown) =>
+                    patchWidgetProps(selectedColumn!.index, { hrefTemplate: asSelectString(v) || undefined })
                 "
               />
             </label>
@@ -1228,9 +1243,9 @@ function patchProgressRuleWhen(ruleIndex: number, when: Condition) {
                   :placeholder="t('panel.config.tableHrefRuleHref')"
                   :disabled="!isEditable"
                   @update:value="
-                    (v: string) => {
+                    (v: unknown) => {
                       const next = [...(selectedColumn!.column.widgetProps?.hrefRules ?? [])];
-                      next[ruleIndex] = { ...rule, href: v };
+                      next[ruleIndex] = { ...rule, href: asSelectString(v) };
                       patchWidgetProps(selectedColumn!.index, { hrefRules: next });
                     }
                   "
@@ -1243,7 +1258,7 @@ function patchProgressRuleWhen(ruleIndex: number, when: Condition) {
                 size="small"
                 :checked="selectedColumn.column.widgetProps?.openInNewTab !== false"
                 :disabled="!isEditable"
-                @update:checked="(v: boolean) => patchWidgetProps(selectedColumn!.index, { openInNewTab: v })"
+                @update:checked="(v) => patchWidgetProps(selectedColumn!.index, { openInNewTab: asSwitchChecked(v) })"
               />
             </label>
             <label class="block space-y-1">
@@ -1286,9 +1301,9 @@ function patchProgressRuleWhen(ruleIndex: number, when: Condition) {
                 :value="selectedColumn.column.widgetProps?.progressMode ?? 'field'"
                 :disabled="!isEditable"
                 @update:value="
-                  (v: string) =>
+                  (v) =>
                     patchWidgetProps(selectedColumn!.index, {
-                      progressMode: v as NonNullable<TableWidgetProps['progressMode']>,
+                      progressMode: asSelectString(v) as NonNullable<TableWidgetProps['progressMode']>,
                     })
                 "
               >
@@ -1308,8 +1323,8 @@ function patchProgressRuleWhen(ruleIndex: number, when: Condition) {
                 :placeholder="selectedColumn.column.field"
                 :disabled="!isEditable"
                 @update:value="
-                  (v: string) =>
-                    patchWidgetProps(selectedColumn!.index, { progressField: v || undefined })
+                  (v: unknown) =>
+                    patchWidgetProps(selectedColumn!.index, { progressField: asSelectString(v) || undefined })
                 "
               />
             </label>
@@ -1324,8 +1339,8 @@ function patchProgressRuleWhen(ruleIndex: number, when: Condition) {
                 placeholder="80 或 {scope?.pct}"
                 :disabled="!isEditable"
                 @update:value="
-                  (v: string) =>
-                    patchWidgetProps(selectedColumn!.index, { progressStatic: v || undefined })
+                  (v: unknown) =>
+                    patchWidgetProps(selectedColumn!.index, { progressStatic: asSelectString(v) || undefined })
                 "
               />
             </label>
@@ -1391,12 +1406,13 @@ function patchProgressRuleWhen(ruleIndex: number, when: Condition) {
                   :placeholder="t('panel.config.tableProgressRuleValue')"
                   :disabled="!isEditable"
                   @update:value="
-                    (v: string) => {
+                    (v: unknown) => {
                       const next = [...(selectedColumn!.column.widgetProps?.progressRules ?? [])];
-                      const num = Number(v);
+                      const s = asSelectString(v);
+                      const num = Number(s);
                       next[ruleIndex] = {
                         ...rule,
-                        value: v !== '' && !Number.isNaN(num) ? num : v,
+                        value: s !== '' && !Number.isNaN(num) ? num : s,
                       };
                       patchWidgetProps(selectedColumn!.index, { progressRules: next });
                     }
@@ -1420,9 +1436,9 @@ function patchProgressRuleWhen(ruleIndex: number, when: Condition) {
                 "
                 :disabled="!isEditable"
                 @update:value="
-                  (v: string) =>
+                  (v) =>
                     patchWidgetProps(selectedColumn!.index, {
-                      progressDisplay: v as NonNullable<TableWidgetProps['progressDisplay']>,
+                      progressDisplay: asSelectString(v) as NonNullable<TableWidgetProps['progressDisplay']>,
                       showLabel: undefined,
                     })
                 "
@@ -1525,11 +1541,11 @@ function patchProgressRuleWhen(ruleIndex: number, when: Condition) {
                     placeholder="ok"
                     :disabled="!isEditable"
                     @update:value="
-                      (v: string) => {
+                      (v: unknown) => {
                         const next = [
                           ...(selectedColumn!.column.widgetProps?.colorMapEntries ?? []),
                         ];
-                        next[entryIndex] = { ...entry, value: v };
+                        next[entryIndex] = { ...entry, value: asSelectString(v) };
                         patchWidgetProps(selectedColumn!.index, { colorMapEntries: next });
                       }
                     "
@@ -1578,8 +1594,8 @@ function patchProgressRuleWhen(ruleIndex: number, when: Condition) {
                   :value="selectedColumn.column.widgetProps?.trueLabel ?? ''"
                   :disabled="!isEditable"
                   @update:value="
-                    (v: string) =>
-                      patchWidgetProps(selectedColumn!.index, { trueLabel: v || undefined })
+                    (v: unknown) =>
+                      patchWidgetProps(selectedColumn!.index, { trueLabel: asSelectString(v) || undefined })
                   "
                 />
               </label>
@@ -1590,8 +1606,8 @@ function patchProgressRuleWhen(ruleIndex: number, when: Condition) {
                   :value="selectedColumn.column.widgetProps?.falseLabel ?? ''"
                   :disabled="!isEditable"
                   @update:value="
-                    (v: string) =>
-                      patchWidgetProps(selectedColumn!.index, { falseLabel: v || undefined })
+                    (v: unknown) =>
+                      patchWidgetProps(selectedColumn!.index, { falseLabel: asSelectString(v) || undefined })
                   "
                 />
               </label>
@@ -1724,7 +1740,7 @@ function patchProgressRuleWhen(ruleIndex: number, when: Condition) {
               :value="String(rule.value ?? '')"
               placeholder="{current}"
               :disabled="!isEditable"
-              @update:value="(v: string) => patchValueMapRule(selectedColumn!.index, ruleIndex, { value: v })"
+              @update:value="(v: unknown) => patchValueMapRule(selectedColumn!.index, ruleIndex, { value: asSelectString(v) })"
             />
           </div>
           <label class="block space-y-1">
@@ -1740,10 +1756,12 @@ function patchProgressRuleWhen(ruleIndex: number, when: Condition) {
               :disabled="!isEditable"
               placeholder="{current}分"
               @update:value="
-                (v: string) =>
+                (v: unknown) => {
+                  const s = asSelectString(v).trim();
                   patchColumn(selectedColumn!.index, {
-                    displayTemplate: v.trim() ? v : undefined,
-                  })
+                    displayTemplate: s ? s : undefined,
+                  });
+                }
               "
             />
           </label>
@@ -1805,7 +1823,7 @@ function patchProgressRuleWhen(ruleIndex: number, when: Condition) {
           size="small"
           :checked="table.showHeader !== false"
           :disabled="!isEditable"
-          @update:checked="(v: boolean) => updateTable({ showHeader: v })"
+          @update:checked="(v) => updateTable({ showHeader: asSwitchChecked(v) })"
         />
       </label>
       <label class="flex items-center justify-between gap-2">
@@ -1819,7 +1837,7 @@ function patchProgressRuleWhen(ruleIndex: number, when: Condition) {
           size="small"
           :checked="Boolean(table.stripe ?? table.tableStyle?.stripe)"
           :disabled="!isEditable"
-          @update:checked="(v: boolean) => updateTable({ stripe: v })"
+          @update:checked="(v) => updateTable({ stripe: asSwitchChecked(v) })"
         />
       </label>
       <label class="block space-y-1.5">
@@ -1845,7 +1863,7 @@ function patchProgressRuleWhen(ruleIndex: number, when: Condition) {
           size="small"
           :value="table.emptyText ?? ''"
           :disabled="!isEditable"
-          @update:value="(v: string) => updateTable({ emptyText: v })"
+          @update:value="(v: unknown) => updateTable({ emptyText: asSelectString(v) })"
         />
       </label>
       <div class="grid grid-cols-2 gap-2">
