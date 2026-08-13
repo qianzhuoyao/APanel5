@@ -38,6 +38,7 @@ import {
   registerDefaultBehaviors,
   BLUEPRINT_ACTIVATION_INPUT_KEY,
   LIFECYCLE_SIGNAL_KEY,
+  UI_EVENT_PAYLOAD_KEY,
 } from "../behaviors/default.js";
 import { BehaviorRegistry } from "../core/behavior-registry.js";
 import { Executor } from "../core/executor.js";
@@ -205,6 +206,69 @@ export class BlueprintGraphRunner {
       resolveBlueprintName: this.resolveBlueprintName,
     });
     this.cycleValidated = true;
+  }
+
+  private injectedInputs = new Map<string, Value>();
+
+  /**
+   * 从视图交互触发指定蓝图节点：向该节点 in 口注入真信号并执行下游。
+   * payload 写入 scope（UI_EVENT_PAYLOAD_KEY）供 Logic 等节点读取。
+   */
+  async triggerNode(nodeId: string, inputValue?: unknown): Promise<void> {
+    await this.ensureNoBlueprintCycle();
+    this.requireNode(nodeId);
+    const key = `${nodeId}:in`;
+    this.injectedInputs.set(key, createTrueSignal(inputValue ?? true));
+    try {
+      await this.runFromNodeWithUiPayload(nodeId, inputValue);
+    } finally {
+      this.injectedInputs.delete(key);
+    }
+  }
+
+  private async runFromNodeWithUiPayload(
+    nodeId: string,
+    inputValue?: unknown
+  ) {
+    const queue: ExecutionToken[] = [
+      {
+        tokenId: createTokenId(),
+        nodeId,
+        nodeType: this.requireNode(nodeId).nodeType,
+        inPort: "in",
+        scope: cloneScope(),
+      },
+    ];
+    queue[0]!.scope.vars.set(UI_EVENT_PAYLOAD_KEY, inputValue);
+
+    const executor = this.createExecutor(queue);
+
+    while (queue.length > 0) {
+      const token = queue.shift()!;
+      if (!this.syncTokenFromGraph(token)) continue;
+      try {
+        await executor.executeToken(token);
+      } catch (error) {
+        this.setNodeOutput(
+          token.nodeId,
+          "out",
+          createFalseSignal(
+            error instanceof Error ? error.message : String(error)
+          )
+        );
+        const nextNodes = this.findSignalTargets(token.nodeId, "out");
+        for (const target of nextNodes) {
+          queue.push({
+            tokenId: createTokenId(),
+            nodeId: target.nodeId,
+            nodeType: target.nodeType,
+            inPort: target.inPort,
+            scope: token.scope,
+            correlationId: token.correlationId ?? token.tokenId,
+          });
+        }
+      }
+    }
   }
 
   async emitLifecycle(phase: PageLifecyclePhase): Promise<void> {
@@ -1345,8 +1409,11 @@ export class BlueprintGraphRunner {
     );
   }
 
-  /** 单端口多连线：任一为真则视为真（或语义） */
+  /** 单端口多连线：任一为真则视为真（或语义）；支持 triggerNode 注入的入口信号 */
   private resolvePortInputValue(nodeId: string, port: string): Value | undefined {
+    const injected = this.injectedInputs.get(`${nodeId}:${port}`);
+    if (injected !== undefined) return injected;
+
     const inboundEdges = this.findInboundSignalEdges(nodeId, port);
     if (inboundEdges.length === 0) return undefined;
 

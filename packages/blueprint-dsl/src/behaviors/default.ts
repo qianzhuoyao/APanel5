@@ -9,6 +9,7 @@ import { BehaviorRegistry } from "../core/behavior-registry.js";
 
 const LIFECYCLE_SIGNAL_KEY = "__lifecycleSignal";
 const BLUEPRINT_ACTIVATION_INPUT_KEY = "__blueprintActivationInput";
+const UI_EVENT_PAYLOAD_KEY = "__uiEventPayload";
 
 export function registerDefaultBehaviors(registry: BehaviorRegistry) {
   registry.registerJS("logic-noop", async ({ io }) => {
@@ -41,4 +42,4 @@ export function registerDefaultBehaviors(registry: BehaviorRegistry) {
   });
 }
 
-export { LIFECYCLE_SIGNAL_KEY, BLUEPRINT_ACTIVATION_INPUT_KEY };
+export { LIFECYCLE_SIGNAL_KEY, BLUEPRINT_ACTIVATION_INPUT_KEY, UI_EVENT_PAYLOAD_KEY };

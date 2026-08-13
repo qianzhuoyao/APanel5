@@ -7,7 +7,7 @@
 ## 功能特性
 
 - **视图画布**：无限平移/缩放、标尺、多选、Moveable 拖拽/缩放/旋转
-- **丰富物料**：图表（ECharts）、文本、图片、音视频、几何、网格、引用节点等
+- **丰富物料**：图表（ECharts）、**可视化表格**（虚拟滚动 / 列映射 / 条件样式 / Tag 等）、文本、图片、音视频、几何、网格、引用节点等
 - **图层系统**：多图层、映射图层、主图层、锁定与合并
 - **蓝图逻辑**：节点连线编辑、调试执行、时钟/请求/逻辑等内置节点
 - **Scope 驱动**：蓝图执行结果通过 Scope 表达式驱动视图节点属性
@@ -112,6 +112,7 @@ Abuilder26/
 │   ├── vue-blueprint/       # Vue 3 蓝图编辑器（Vue Flow）
 │   ├── blueprint-dsl/       # 蓝图 DSL 与运行时（框架无关）
 │   ├── i18n/                # 共享中英文本（React + Vue）
+│   ├── view-table/          # 表格数据转换 / 条件映射引擎
 │   ├── rx-store/            # 画布状态（Immer + RxJS，框架无关）
 │   ├── react-rx-store/      # rx-store 的 React Hooks
 │   ├── vue-rx-store/        # rx-store 的 Vue Composables
@@ -132,6 +133,7 @@ Abuilder26/
 | `@arronqzy/react-blueprint` | 蓝图画布、调试、蓝图库 | [README](./packages/react-blueprint/README.md) |
 | `@arronqzy/blueprint-dsl` | 节点定义、行为注册、图执行 | [README](./packages/blueprint-dsl/readme.md) |
 | `@arronqzy/i18n` | 共享中英文本（React + Vue） | [README](./packages/i18n/README.md) |
+| `@arronqzy/view-table` | 表格转换 / 列映射 / 条件样式引擎 | [README](./packages/view-table/README.md) |
 | `@arronqzy/rx-store` | 编辑器状态、Undo/Redo、路径订阅 | [README](./packages/rx-store/readme.md) |
 | `@arronqzy/react-rx-store` | `useStore` / `useNode` 等 Hooks | [README](./packages/react-rx-store/README.md) |
 | `@arronqzy/ui` | Button、Dialog、Toast 等 UI 组件 | [README](./packages/ui/README.md) |
@@ -209,6 +211,7 @@ Abuilder26/
 | 顺序 | React 栈 | Vue 栈 |
 |------|----------|--------|
 | 0 | `i18n`（共享） | （同上） |
+| 0b | `view-table`（共享） | （同上） |
 | 1 | `blueprint-dsl` | （同上，共享） |
 | 2 | `rx-store` | （同上，共享） |
 | 3 | `react-rx-store` | `vue-rx-store` |

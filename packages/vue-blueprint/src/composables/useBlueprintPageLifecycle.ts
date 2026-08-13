@@ -241,4 +241,29 @@ export function useBlueprintPageLifecycle(options: UseBlueprintPageLifecycleOpti
   onUnmounted(() => {
     teardownBoot();
   });
+
+  async function triggerBlueprintNode(nodeId: string, inputValue?: unknown) {
+    const id = nodeId.trim();
+    if (!id) return;
+    const opts = runnerOptionsRef.value;
+    if (opts.resolveLibraryBlueprint) {
+      const result = await detectBlueprintReferenceCycle({
+        rootGraph: documentToRunnableGraph(graphRef.value.document, {
+          libraryNameById: opts.libraryNameById,
+        }),
+        rootLibraryBlueprintId: opts.rootLibraryBlueprintId,
+        resolveLibraryBlueprint: opts.resolveLibraryBlueprint,
+        resolveBlueprintName: (libId) =>
+          resolveBlueprintName(opts.libraryNameById, libId),
+      });
+      if (!result.ok) {
+        opts.onExecutionBlocked?.(result.message);
+        return;
+      }
+    }
+    const runner = createRunner(graphRef.value, opts);
+    await runner.triggerNode(id, inputValue);
+  }
+
+  return { triggerBlueprintNode };
 }

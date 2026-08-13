@@ -4,7 +4,10 @@
   "description": "Vue 3 visual view editor for Abuilder (Ant Design Vue)",
   "license": "MIT",
   "type": "module",
-  "files": ["src", "dist"],
+  "files": [
+    "src",
+    "dist"
+  ],
   "exports": {
     ".": "./src/index.ts"
   },
@@ -17,8 +20,10 @@
     "@arronqzy/blueprint-dsl": "workspace:*",
     "@arronqzy/i18n": "workspace:*",
     "@arronqzy/rx-store": "workspace:*",
+    "@arronqzy/view-table": "workspace:*",
     "@arronqzy/vue-blueprint": "workspace:*",
     "@arronqzy/vue-rx-store": "workspace:*",
+    "@tanstack/vue-virtual": "^3.13.2",
     "ant-design-vue": "^4.2.6",
     "dayjs": "^1.11.13",
     "echarts": "^6.0.0",

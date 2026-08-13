@@ -1,0 +1,27 @@
+{
+  "name": "@arronqzy/view-table",
+  "version": "0.1.0",
+  "description": "High-performance table transform / mapping / condition engine for Abuilder",
+  "license": "MIT",
+  "type": "module",
+  "files": ["src"],
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "lint": "eslint \"src/**/*.ts\"",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "build": "pnpm run typecheck",
+    "test": "node --experimental-strip-types ./src/__tests__/run.mjs"
+  },
+  "devDependencies": {
+    "@arronqzy/eslint-config": "workspace:*",
+    "@arronqzy/typescript-config": "workspace:*",
+    "eslint": "^8.57.0",
+    "typescript": "^5.5.4"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

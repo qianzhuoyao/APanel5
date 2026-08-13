@@ -63,6 +63,13 @@ export default defineConfig({
         find: "@arronqzy/rx-store",
         replacement: path.resolve(monorepoRoot, "packages/rx-store/src/index.ts"),
       },
+      {
+        find: "@arronqzy/view-table",
+        replacement: path.resolve(
+          monorepoRoot,
+          "packages/view-table/src/index.ts"
+        ),
+      },
     ],
   },
   server: {

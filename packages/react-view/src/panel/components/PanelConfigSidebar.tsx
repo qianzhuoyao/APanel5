@@ -36,6 +36,7 @@ import { hasViewElementScope } from "../scope/view-scope-store";
 import { collectElementScopeWarnings } from "../utils/scope-template-warnings";
 import { ScopeConfigProvider } from "./scope-config/ScopeConfigContext";
 import { ScopeTemplateWarningsPanel } from "./scope-config/ScopeTemplateWarningsPanel";
+import { PanelConfigTableSection } from "./table/PanelConfigTableSection";
 
 type UpdateElement = (
   id: string,
@@ -57,6 +58,7 @@ export type PanelConfigSidebarProps = {
   ) => void;
   /** 蓝图视图绑定节点写入的信号 scope，用于展示与模版解析 */
   viewElementScope?: unknown;
+  blueprintNodeOptions?: { id: string; label: string }[];
 };
 
 export function PanelConfigSidebar({
@@ -69,6 +71,7 @@ export function PanelConfigSidebar({
   onExcludeSelectedNode,
   onAdjustNodeZOrder,
   viewElementScope,
+  blueprintNodeOptions = [],
 }: PanelConfigSidebarProps) {
   const { t } = useI18n();
   const messages = React.useMemo(() => getPanelMessages(t), [t]);
@@ -2868,6 +2871,25 @@ export function PanelConfigSidebar({
                 ["json", "option", t("panel.config.searchKwAdvanced"), "echarts"]
               )}
             </>
+          ) : selectedElement.materialType === "table" ? (
+            renderSection(
+              "tableConfig",
+              t("panel.config.sectionTable"),
+              <PanelConfigTableSection
+                element={selectedElement}
+                disabled={!isNodeEditable}
+                updateElement={updateElement}
+                blueprintNodeOptions={blueprintNodeOptions}
+              />,
+              true,
+              [
+                t("panel.material.table"),
+                "table",
+                t("panel.config.tableSource"),
+                t("panel.config.tableColumns"),
+                t("panel.config.tableRowsText"),
+              ]
+            )
           ) : selectedElement.materialType === "text" ? (
             renderSection(
               "textConfig",

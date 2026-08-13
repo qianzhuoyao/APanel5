@@ -1,6 +1,7 @@
 import type { TranslateFn } from "@arronqzy/i18n";
 import { tForLocale } from "@arronqzy/i18n";
 import type { PanelChartConfig, PanelLayer } from "../types";
+import { createDefaultTableConfig, type PanelTableConfig } from "@arronqzy/view-table";
 
 const tFallback = tForLocale("zh-CN");
 
@@ -20,6 +21,7 @@ const DEFAULT_NODE_NAME_KEYS: Record<string, string> = {
   audio: "panel.defaults.audio",
   reference: "panel.defaults.reference",
   geometry: "panel.defaults.geometry",
+  table: "panel.defaults.table",
 };
 
 export const DEFAULT_LAYER_ID = "layer-1";
@@ -78,6 +80,8 @@ export function getDefaultSizeByMaterial(materialType: string) {
       return { width: 280, height: 180 };
     case "geometry":
       return { width: 220, height: 220 };
+    case "table":
+      return { width: 480, height: 280 };
     default:
       return { width: 220, height: 130 };
   }
@@ -171,4 +175,17 @@ export function getDefaultChartConfig(
     pieInnerRadius: 30,
     pieOuterRadius: 65,
   };
+}
+
+export function getDefaultTableConfig(
+  materialType: string,
+  t: TranslateFn = tFallback
+): PanelTableConfig | undefined {
+  if (materialType !== "table") return undefined;
+  const cfg = createDefaultTableConfig();
+  cfg.emptyText = t("panel.config.tableEmpty");
+  if (cfg.columns?.[0]) cfg.columns[0].title = t("panel.config.tableColName");
+  if (cfg.columns?.[1]) cfg.columns[1].title = t("panel.config.tableColStatus");
+  if (cfg.columns?.[2]) cfg.columns[2].title = t("panel.config.tableColScore");
+  return cfg;
 }

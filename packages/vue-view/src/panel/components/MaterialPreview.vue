@@ -78,6 +78,22 @@ const common =
       <div class="h-1.5 w-8/12 rounded bg-muted-foreground/45" />
     </div>
   </div>
+  <div v-else-if="id === 'table'" :class="common">
+    <div class="absolute inset-0 flex flex-col gap-1 p-2">
+      <div class="grid h-3 flex-none grid-cols-3 gap-1">
+        <div class="rounded-sm bg-primary/75" />
+        <div class="rounded-sm bg-primary/65" />
+        <div class="rounded-sm bg-primary/70" />
+      </div>
+      <div class="grid min-h-0 flex-1 grid-cols-3 gap-1">
+        <div
+          v-for="idx in 6"
+          :key="idx"
+          class="rounded-sm border border-primary/25 bg-primary/10"
+        />
+      </div>
+    </div>
+  </div>
   <div v-else-if="id === 'rect'" :class="common">
     <div class="absolute inset-2 rounded-md border-2 border-primary/80 bg-primary/15" />
   </div>

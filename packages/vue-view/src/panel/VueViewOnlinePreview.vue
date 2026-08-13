@@ -195,7 +195,7 @@ const lifecycleReady = computed(
   () => Boolean(panelState.value && layerElements.value.length > 0 && layoutReady.value)
 );
 
-useBlueprintPageLifecycle({
+const { triggerBlueprintNode } = useBlueprintPageLifecycle({
   graph: blueprintGraph,
   active: ref(true),
   enabled: lifecycleReady,
@@ -271,6 +271,11 @@ function noopSelect() {}
           :layer-locked="true"
           :preview-mode="true"
           :preview-layout-key="layoutRevision"
+          :on-table-cell-action="
+            (payload) => {
+              void triggerBlueprintNode(payload.blueprintNodeId, payload);
+            }
+          "
           @select-ids="noopSelect"
         />
       </div>

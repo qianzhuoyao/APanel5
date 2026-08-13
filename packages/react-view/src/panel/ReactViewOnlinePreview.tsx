@@ -11,6 +11,7 @@ import {
 import type { LibraryBlueprintResolver, PageLifecyclePhase } from "@arronqzy/blueprint-dsl";
 import type { State } from "@arronqzy/rx-store";
 import { ElementsLayer } from "./components/ElementsLayer";
+import type { TableCellActionHandler } from "./components/table/TableNodeContent";
 import type { PanelElement } from "./types";
 import {
   clearViewElementScopes,
@@ -231,7 +232,7 @@ export function ReactViewOnlinePreview({
   const lifecycleReady =
     !!panelState && layerElements.length > 0 && layoutReady;
 
-  useBlueprintPageLifecycle({
+  const { triggerBlueprintNode } = useBlueprintPageLifecycle({
     graph: blueprintGraph,
     active: true,
     enabled: lifecycleReady,
@@ -252,7 +253,12 @@ export function ReactViewOnlinePreview({
 
   const noopUpdate = useCallback((_id: string, _patch: Partial<PanelElement>) => {}, []);
   const noopSelect = useCallback((_ids: string[]) => {}, []);
-
+  const onTableCellAction = useCallback<TableCellActionHandler>(
+    (payload) => {
+      void triggerBlueprintNode(payload.blueprintNodeId, payload);
+    },
+    [triggerBlueprintNode]
+  );
   if (loadError) {
     return (
       <div className="flex min-h-[100vh] w-full items-center justify-center bg-white px-6 text-center text-sm text-gray-600">
@@ -312,6 +318,7 @@ export function ReactViewOnlinePreview({
             layerLocked
             previewMode
             previewLayoutKey={layoutRevision}
+            onTableCellAction={onTableCellAction}
           />
         </div>
       </div>

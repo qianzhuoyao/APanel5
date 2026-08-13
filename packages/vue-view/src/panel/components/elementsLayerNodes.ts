@@ -15,6 +15,7 @@ import * as echarts from "echarts";
 import type { PanelElement } from "../types";
 import { buildChartOption, CHART_TYPES } from "../utils/chartOptionBuilder";
 import { PREVIEW_LAYOUT_EVENT } from "../utils/panelStateIO";
+import TableNodeContent from "./table/TableNodeContent.vue";
 
 export { CHART_TYPES };
 
@@ -787,7 +788,9 @@ export const ReferenceNodeContent = defineComponent({
                         })
                       : node.materialType === "geometry"
                         ? h(GeometryNodeContent, { element: node })
-                        : h("div", { class: "h-full w-full" }),
+                        : node.materialType === "table"
+                          ? h(TableNodeContent, { element: node })
+                          : h("div", { class: "h-full w-full" }),
                 ]
               ),
             ]

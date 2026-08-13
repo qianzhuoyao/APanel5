@@ -35,6 +35,10 @@ export default defineConfig({
         find: "@arronqzy/blueprint-dsl",
         replacement: path.resolve(monorepoRoot, "packages/blueprint-dsl/src/index.ts"),
       },
+      {
+        find: "@arronqzy/view-table",
+        replacement: path.resolve(monorepoRoot, "packages/view-table/src/index.ts"),
+      },
     ],
   },
   server: {

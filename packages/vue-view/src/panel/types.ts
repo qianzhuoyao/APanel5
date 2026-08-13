@@ -54,6 +54,9 @@ export type PanelElementStyle = {
 
 export type ReferenceCopyMode = "shallow" | "deep";
 
+export type { PanelTableConfig } from "@arronqzy/view-table";
+import type { PanelTableConfig } from "@arronqzy/view-table";
+
 export type PanelElement = {
   id: string;
   layerId: string;
@@ -65,6 +68,7 @@ export type PanelElement = {
   refCopyMode?: ReferenceCopyMode;
   refSnapshot?: PanelElement[];
   chart?: PanelChartConfig;
+  table?: PanelTableConfig;
   textHtml?: string;
   textAllowInput?: boolean;
   textFontFamily?: string;

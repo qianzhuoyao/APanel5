@@ -1208,7 +1208,7 @@ export function ReactViewPanel({
     onProjectApplied: handleWorkspaceProjectApplied,
   });
 
-  useBlueprintPageLifecycle({
+  const { triggerBlueprintNode } = useBlueprintPageLifecycle({
     graph: blueprintGraph,
     active: blueprintOpen,
     bootKey: workspaceProjects.activeProjectId ?? undefined,
@@ -2462,6 +2462,9 @@ export function ReactViewPanel({
                       onSelectIds={selectViewElements}
                       updateElement={updateElement}
                       layerLocked={Boolean(activeLayer?.locked)}
+                      onTableCellAction={(payload) => {
+                        void triggerBlueprintNode(payload.blueprintNodeId, payload);
+                      }}
                     />
 
                     <SelectLayer
@@ -3002,6 +3005,10 @@ export function ReactViewPanel({
               }
               onUpdateBlueprintNode={handleUpdateBlueprintNode}
               blueprintLibraryOptions={blueprintLibraryOptions}
+              blueprintNodeOptions={blueprintGraph.document.nodes.map((node) => ({
+                id: node.id,
+                label: `${node.label || node.id}${node.nodeType ? ` (${node.nodeType})` : ""}`,
+              }))}
               selectedElement={selectedElement}
               selectedElements={selectedElements}
               viewElementScope={selectedElementScope}

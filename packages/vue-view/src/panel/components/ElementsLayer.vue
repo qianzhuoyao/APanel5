@@ -14,6 +14,8 @@ import {
   TextNodeContent,
   VideoNodeContent,
 } from "./elementsLayerNodes";
+import TableNodeContent from "./table/TableNodeContent.vue";
+import type { TableCellActionHandler } from "./table/TableNodeContent.vue";
 
 const props = withDefaults(
   defineProps<{
@@ -28,6 +30,7 @@ const props = withDefaults(
     layerLocked?: boolean;
     previewMode?: boolean;
     previewLayoutKey?: number;
+    onTableCellAction?: TableCellActionHandler;
   }>(),
   { layerLocked: false, previewMode: false }
 );
@@ -45,6 +48,10 @@ const NodeContent = defineComponent({
     layerLocked: { type: Boolean, default: false },
     previewMode: { type: Boolean, default: false },
     previewLayoutKey: { type: Number, default: undefined },
+    onTableCellAction: {
+      type: Function as PropType<TableCellActionHandler | undefined>,
+      default: undefined,
+    },
     updateElement: {
       type: Function as PropType<
         (
@@ -99,6 +106,13 @@ const NodeContent = defineComponent({
       }
       if (el.materialType === "image") {
         return h(ImageNodeContent, { element: el });
+      }
+      if (el.materialType === "table") {
+        return h(TableNodeContent, {
+          element: el,
+          interactive: p.previewMode || Boolean(p.onTableCellAction),
+          onCellAction: p.onTableCellAction,
+        });
       }
       return h(EmptyNodePlaceholder, { element: el });
     };
@@ -160,6 +174,7 @@ function onSelect(id: string, event: MouseEvent) {
       :preview-mode="previewMode"
       :preview-layout-key="previewLayoutKey"
       :update-element="updateElement"
+      :on-table-cell-action="onTableCellAction"
     />
   </div>
 </template>

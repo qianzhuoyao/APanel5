@@ -33,6 +33,7 @@ export type PanelConfigSidebarProps = {
     action: "bringForward" | "sendBackward" | "bringToFront" | "sendToBack"
   ) => void;
   viewElementScope?: unknown;
+  blueprintNodeOptions?: { id: string; label: string }[];
 };
 
 export type BlueprintExecutionLogViewProps = {
@@ -89,6 +90,7 @@ const props = withDefaults(
   {
     allowFalseSignalPropagation: false,
     blueprintLibraryOptions: () => [],
+    blueprintNodeOptions: () => [],
     selectedElements: () => [],
   }
 );
@@ -110,6 +112,7 @@ const viewElementOptions = computed(() =>
       :layers="layers"
       :update-element="updateElement"
       :view-element-scope="viewElementScope"
+      :blueprint-node-options="blueprintNodeOptions"
       :set-reference-copy-mode="setReferenceCopyMode"
       :node-z-order-label="nodeZOrderLabel"
       :on-exclude-selected-node="onExcludeSelectedNode"

@@ -400,7 +400,7 @@ const workspaceProjects = useWorkspaceProjects({
   onProjectApplied: handleWorkspaceProjectApplied,
 });
 
-useBlueprintPageLifecycle({
+const { triggerBlueprintNode } = useBlueprintPageLifecycle({
   graph: blueprintGraph,
   active: blueprintOpen,
   bootKey: computed(() => workspaceProjects.activeProjectId.value ?? undefined),
@@ -412,6 +412,12 @@ useBlueprintPageLifecycle({
   onViewScopeUpdate: handleViewScopeUpdate,
 });
 
+const blueprintNodeOptions = computed(() =>
+  blueprintGraph.value.document.nodes.map((node) => ({
+    id: node.id,
+    label: `${node.label || node.id}${node.nodeType ? ` (${node.nodeType})` : ""}`,
+  }))
+);
 async function loadBlueprintFromLibrary(id: string) {
   const record = await getBlueprintLibraryRecord(id);
   if (!record) {
@@ -752,6 +758,11 @@ onUnmounted(() => window.removeEventListener("keydown", onKeyDown));
                 :selected-ids="selectedIds"
                 :update-element="updateElement"
                 :layer-locked="Boolean(activeLayer?.locked)"
+                :on-table-cell-action="
+                  (payload) => {
+                    void triggerBlueprintNode(payload.blueprintNodeId, payload);
+                  }
+                "
                 @select-ids="selectIds"
               />
               <SelectLayer
@@ -854,6 +865,7 @@ onUnmounted(() => window.removeEventListener("keydown", onKeyDown));
           :selected-blueprint-node="selectedBlueprintNode"
           :allow-false-signal-propagation="blueprintGraph.document.allowFalseSignalPropagation"
           :blueprint-library-options="blueprintLibraryOptions"
+          :blueprint-node-options="blueprintNodeOptions"
           :all-view-elements="allElements"
           :on-update-blueprint-node="handleUpdateBlueprintNode"
           :on-update-allow-false-signal-propagation="handleUpdateAllowFalseSignalPropagation"

@@ -68,6 +68,7 @@ const MATERIAL_LABEL_KEYS: Record<string, string> = {
   audio: "panel.material.audio",
   reference: "panel.material.reference",
   geometry: "panel.material.geometry",
+  table: "panel.material.table",
 };
 
 function getMaterialLabelMap(t: (key: string) => string): Record<string, string> {
@@ -253,6 +254,28 @@ function MaterialPreview({ id }: { id: string }) {
     );
   }
 
+  if (id === "table") {
+    return (
+      <div className={common}>
+        <div className="absolute inset-0 flex flex-col gap-1 p-2">
+          <div className="grid h-3 flex-none grid-cols-3 gap-1">
+            <div className="rounded-sm bg-primary/75" />
+            <div className="rounded-sm bg-primary/65" />
+            <div className="rounded-sm bg-primary/70" />
+          </div>
+          <div className="grid min-h-0 flex-1 grid-cols-3 gap-1">
+            {Array.from({ length: 6 }).map((_, idx) => (
+              <div
+                key={idx}
+                className="rounded-sm border border-primary/25 bg-primary/10"
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (id === "rect") {
     return (
       <div className={common}>
@@ -362,6 +385,7 @@ function getDefaultCategories(t: (key: string) => string): MaterialCategory[] {
       title: t("panel.material.basic"),
       items: [
         { id: "text", title: t("panel.material.text") },
+        { id: "table", title: t("panel.material.table") },
         { id: "geometry", title: t("panel.material.geometry") },
         { id: "grid", title: t("panel.material.grid") },
         { id: "image", title: t("panel.material.image") },

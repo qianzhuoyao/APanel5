@@ -23,6 +23,7 @@ import PanelConfigGeometrySection from "./config/PanelConfigGeometrySection.vue"
 import PanelConfigGridSection from "./config/PanelConfigGridSection.vue";
 import PanelConfigGridChildSpan from "./config/PanelConfigGridChildSpan.vue";
 import PanelConfigReferenceSection from "./config/PanelConfigReferenceSection.vue";
+import PanelConfigTableSection from "./table/PanelConfigTableSection.vue";
 
 const { t, locale } = useI18n();
 const msgs = () => getPanelMessages(t);
@@ -46,9 +47,11 @@ const props = withDefaults(
       action: "bringForward" | "sendBackward" | "bringToFront" | "sendToBack"
     ) => void;
     viewElementScope?: unknown;
+    blueprintNodeOptions?: { id: string; label: string }[];
   }>(),
   {
     selectedElements: () => [],
+    blueprintNodeOptions: () => [],
   }
 );
 
@@ -70,6 +73,7 @@ const expandedSections = ref<Record<string, boolean>>({
   gridChildSpan: true,
   reference: true,
   imageConfig: true,
+  tableConfig: true,
 });
 
 const normalizedSearch = computed(() => configSearch.value.trim().toLowerCase());
@@ -294,6 +298,17 @@ watch(
               @update:open="(v) => setSectionExpanded('textConfig', v)"
             />
 
+            <PanelConfigTableSection
+              v-if="materialType === 'table' && shouldShowSection('tableConfig', t('panel.config.sectionTable'), [t('panel.material.table'), 'table', t('panel.config.tableSource'), t('panel.config.tableColumns'), t('panel.config.tableRowsText')])"
+              :element="selectedElement"
+              :is-editable="isNodeEditable"
+              :open="isSectionExpanded('tableConfig')"
+              :force-open="forceOpenSections"
+              :update-element="updateElement"
+              :blueprint-node-options="blueprintNodeOptions"
+              @update:open="(v) => setSectionExpanded('tableConfig', v)"
+            />
+
             <PanelConfigAudioSection
               v-if="materialType === 'audio' && shouldShowSection('audioConfig', t('panel.config.sectionAudio'), [t('panel.defaults.audio'), 'url', t('panel.config.searchKwRecord')])"
               :element="selectedElement"
@@ -367,7 +382,7 @@ watch(
             />
 
             <div
-              v-if="!isChartElement && materialType && !['text', 'audio', 'video', 'image', 'geometry', 'grid', 'reference'].includes(materialType)"
+              v-if="!isChartElement && materialType && !['text', 'table', 'audio', 'video', 'image', 'geometry', 'grid', 'reference'].includes(materialType)"
               class="text-xs leading-6 text-gray-500"
             >
               {{ t("panel.config.notChartType") }}

@@ -1,8 +1,14 @@
 import type { PanelElement } from "../types";
+import type { PanelTableConfig } from "@arronqzy/view-table";
+import { isUsableTableRawData } from "@arronqzy/view-table";
 import { materializeChartLabelsFromScope } from "./scope-template-chart";
 import {
   SCOPE_SPREAD_TEMPLATE_RE,
   evaluateSpreadScopeExpression,
+  extractSpreadScopeExpression,
+  getValueAtScopePath,
+  isSpreadOnlyScopeTemplate,
+  resolveSpreadScopePath,
 } from "./scope-template-spread";
 
 const SCOPE_TEMPLATE_RE = /\{[^}]+\}|\[\.\.\.\{[^}]+\}\]/;
@@ -54,6 +60,66 @@ export function evaluateScopeTemplate(
   });
 }
 
+function tryParseJson(text: string): unknown | undefined {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return undefined;
+  }
+}
+
+function materializeTemplateValue(template: string, scope: unknown): unknown {
+  const trimmed = template.trim();
+  if (!trimmed) return undefined;
+
+  if (isSpreadOnlyScopeTemplate(trimmed)) {
+    const expression = extractSpreadScopeExpression(trimmed);
+    if (!expression) return undefined;
+    const resolved = resolveSpreadScopePath(expression, scope);
+    if (!resolved.ok) return undefined;
+    if (resolved.itemPathSegments.length === 0) {
+      return resolved.arrayValue;
+    }
+    return resolved.arrayValue.map((item) =>
+      getValueAtScopePath(item, resolved.itemPathSegments)
+    );
+  }
+
+  const singleMatch = /^\{([^}]+)\}$/.exec(trimmed);
+  if (singleMatch) {
+    return evaluateScopeExpression(singleMatch[1]!, scope);
+  }
+
+  if (hasScopeTemplate(trimmed)) {
+    const text = evaluateScopeTemplate(trimmed, scope);
+    const parsed = tryParseJson(text);
+    return parsed !== undefined ? parsed : text;
+  }
+
+  return tryParseJson(trimmed);
+}
+
+/** 将 table.source / rowsText 模版解析为原始行数据（供 transform 使用） */
+export function materializeTableSourceFromScope(
+  table: PanelTableConfig | undefined,
+  scope: unknown
+): unknown | undefined {
+  if (!table) return undefined;
+
+  if (typeof table.source === "string" && table.source.trim()) {
+    return materializeTemplateValue(table.source, scope);
+  }
+
+  if (typeof table.rowsText === "string" && table.rowsText.trim()) {
+    const trimmed = table.rowsText.trim();
+    if (hasScopeTemplate(trimmed) || isSpreadOnlyScopeTemplate(trimmed)) {
+      return materializeTemplateValue(trimmed, scope);
+    }
+  }
+
+  return undefined;
+}
+
 function resolveScopedValue<T>(value: T, scope: unknown): T {
   if (typeof value === "string" && hasScopeTemplate(value)) {
     return evaluateScopeTemplate(value, scope) as T;
@@ -82,6 +148,20 @@ export function resolvePanelElementScope(
     if (labels !== undefined) {
       resolved.chart.labels = labels;
       delete resolved.chart.labelsText;
+    }
+  }
+  if (resolved.table) {
+    const hasDynamicSource =
+      typeof element.table?.source === "string" && element.table.source.trim().length > 0;
+    if (hasDynamicSource) {
+      const raw = materializeTableSourceFromScope(element.table, scope);
+      if (isUsableTableRawData(raw)) {
+        resolved.table = { ...resolved.table, rows: raw };
+      } else {
+        const next = { ...resolved.table };
+        delete next.rows;
+        resolved.table = next;
+      }
     }
   }
   return resolved;

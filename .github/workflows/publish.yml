@@ -32,6 +32,7 @@ jobs:
         run: |
           # Shared
           pnpm -C packages/i18n build
+          pnpm -C packages/view-table build
           # React 栈
           pnpm -C packages/ui run build:css
           pnpm -C packages/react-view run build:css
@@ -46,6 +47,7 @@ jobs:
         run: |
           # 框架无关
           pnpm --filter @arronqzy/i18n publish --access public --no-git-checks
+          pnpm --filter @arronqzy/view-table publish --access public --no-git-checks
           pnpm --filter @arronqzy/blueprint-dsl publish --access public --no-git-checks
           pnpm --filter @arronqzy/rx-store publish --access public --no-git-checks
           # React 绑定

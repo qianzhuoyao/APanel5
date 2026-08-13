@@ -4,6 +4,7 @@ import * as echarts from "echarts";
 import type { PanelElement } from "../types";
 import { buildChartOption, CHART_TYPES } from "../utils/chartOptionBuilder";
 import { PREVIEW_LAYOUT_EVENT } from "../utils/panelStateIO";
+import { TableNodeContent, type TableCellActionHandler } from "./table/TableNodeContent";
 
 export type ElementsLayerProps = {
   elements: PanelElement[];
@@ -20,6 +21,7 @@ export type ElementsLayerProps = {
   previewMode?: boolean;
   /** 预览布局变更时递增，用于触发图表/画布重绘 */
   previewLayoutKey?: number;
+  onTableCellAction?: TableCellActionHandler;
 };
 
 function TextNodeContent({
@@ -787,6 +789,8 @@ function ReferenceNodeContent({
                 />
               ) : node.materialType === "geometry" ? (
                 <GeometryNodeContent element={node} />
+              ) : node.materialType === "table" ? (
+                <TableNodeContent element={node} interactive={false} />
               ) : (
                 <div className="h-full w-full" />
               )}
@@ -807,6 +811,7 @@ export const ElementsLayer = React.memo(function ElementsLayer({
   layerLocked = false,
   previewMode = false,
   previewLayoutKey,
+  onTableCellAction,
 }: ElementsLayerProps) {
   const sortedElements = useMemo(() => {
     return [...elements].sort((a, b) => {
@@ -885,6 +890,12 @@ export const ElementsLayer = React.memo(function ElementsLayer({
               <GeometryNodeContent element={el} />
             ) : el.materialType === "image" ? (
               <ImageNodeContent element={el} />
+            ) : el.materialType === "table" ? (
+              <TableNodeContent
+                element={el}
+                interactive={previewMode || Boolean(onTableCellAction)}
+                onCellAction={onTableCellAction}
+              />
             ) : (
               <EmptyNodePlaceholder element={el} />
             )}

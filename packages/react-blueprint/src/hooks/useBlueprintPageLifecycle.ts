@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   BlueprintGraphRunner,
   detectBlueprintReferenceCycle,
@@ -242,4 +242,32 @@ export function useBlueprintPageLifecycle({
     if (!enabled || !bootCompleted) return;
     void emitPhases(graphRef.current, ["updated"], runnerOptionsRef.current);
   }, [bootCompleted, enabled, onUpdated]);
+
+  const triggerBlueprintNode = useCallback(
+    async (nodeId: string, inputValue?: unknown) => {
+      const id = nodeId.trim();
+      if (!id) return;
+      const opts = runnerOptionsRef.current;
+      if (opts.resolveLibraryBlueprint) {
+        const result = await detectBlueprintReferenceCycle({
+          rootGraph: documentToRunnableGraph(graphRef.current.document, {
+            libraryNameById: opts.libraryNameById,
+          }),
+          rootLibraryBlueprintId: opts.rootLibraryBlueprintId,
+          resolveLibraryBlueprint: opts.resolveLibraryBlueprint,
+          resolveBlueprintName: (libId) =>
+            resolveBlueprintName(opts.libraryNameById, libId),
+        });
+        if (!result.ok) {
+          opts.onExecutionBlocked?.(result.message);
+          return;
+        }
+      }
+      const runner = createRunner(graphRef.current, opts);
+      await runner.triggerNode(id, inputValue);
+    },
+    []
+  );
+
+  return { triggerBlueprintNode };
 }
