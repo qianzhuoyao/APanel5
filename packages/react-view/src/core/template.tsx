@@ -1,5 +1,15 @@
-import { JSX, useRef } from "react";
+import { JSX } from "react";
 import { instructions } from "./instructions";
+
+function isDevMode(): boolean {
+  try {
+    return Boolean(
+      (import.meta as { env?: { DEV?: boolean } }).env?.DEV
+    );
+  } catch {
+    return false;
+  }
+}
 
 /**
  * 事件需要补齐
@@ -15,7 +25,7 @@ export const Template = (
     if (props?.id) {
       instructions.execute(props.id + "click", { e });
     } else {
-      if (import.meta.env.DEV) {
+      if (isDevMode()) {
         console.warn("Template 缺少 id,无法触发事件");
       }
     }
