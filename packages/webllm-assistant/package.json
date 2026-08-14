@@ -1,6 +1,6 @@
 {
   "name": "@arronqzy/webllm-assistant",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Offline WebLLM assistant runtime and action protocol for Abuilder",
   "license": "MIT",
   "type": "module",

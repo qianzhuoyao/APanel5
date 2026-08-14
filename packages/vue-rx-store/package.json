@@ -1,10 +1,13 @@
 {
   "name": "@arronqzy/vue-rx-store",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Vue 3 composables for @arronqzy/rx-store",
   "license": "MIT",
   "type": "module",
-  "files": ["src", "dist"],
+  "files": [
+    "src",
+    "dist"
+  ],
   "main": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts"

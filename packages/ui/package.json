@@ -1,6 +1,6 @@
 {
   "name": "@arronqzy/ui",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "exports": {
     ".": "./index.ts",
     "./counter": "./components/counter.ts",
