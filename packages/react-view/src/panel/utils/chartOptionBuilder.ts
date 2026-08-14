@@ -84,6 +84,40 @@ function deepMerge<T extends Record<string, any>>(base: T, patch?: Record<string
   return next as T;
 }
 
+function mixHex(a: string, b: string, t: number): string {
+  const pa = parseHex(a);
+  const pb = parseHex(b);
+  if (!pa || !pb) return a;
+  const m = (i: number) => Math.round(pa[i]! * (1 - t) + pb[i]! * t);
+  return `#${[m(0), m(1), m(2)].map((n) => n.toString(16).padStart(2, "0")).join("")}`;
+}
+
+function parseHex(hex: string): [number, number, number] | null {
+  const s = hex.replace("#", "").trim();
+  const full =
+    s.length === 3
+      ? s
+          .split("")
+          .map((c) => c + c)
+          .join("")
+      : s.slice(0, 6);
+  if (!/^[0-9a-fA-F]{6}$/.test(full)) return null;
+  return [
+    Number.parseInt(full.slice(0, 2), 16),
+    Number.parseInt(full.slice(2, 4), 16),
+    Number.parseInt(full.slice(4, 6), 16),
+  ];
+}
+
+function pieSliceColors(base: string, count: number): string[] {
+  const n = Math.max(count, 1);
+  if (n === 1) return [base];
+  return Array.from({ length: n }, (_, i) => {
+    const t = n === 1 ? 0 : i / (n - 1);
+    return mixHex(mixHex(base, "#111827", 0.12), "#fefce8", t * 0.45);
+  });
+}
+
 export function buildChartOption(element: PanelElement): EChartsOption {
   const chartType = (element.materialType ?? "") as ChartType;
   const labels = resolveChartLabels(element);
@@ -144,10 +178,11 @@ export function buildChartOption(element: PanelElement): EChartsOption {
   if (chartType === "pie") {
     const inner = element.chart?.pieInnerRadius ?? 30;
     const outer = element.chart?.pieOuterRadius ?? 65;
+    const sliceColors = pieSliceColors(color, labels.length);
     const baseOption: EChartsOption = {
       animation: false,
       title: { text: title, left: "center", top: 6, textStyle: { fontSize: 12 } },
-      color: [chartColor as any],
+      color: sliceColors as any,
       tooltip: tooltipOption,
       series: [
         {
@@ -155,7 +190,11 @@ export function buildChartOption(element: PanelElement): EChartsOption {
           radius: [`${inner}%`, `${outer}%`],
           center: ["50%", "58%"],
           label: { fontSize: 10 },
-          data: labels.map((name, i) => ({ name, value: values[i] ?? 0 })),
+          data: labels.map((name, i) => ({
+            name,
+            value: values[i] ?? 0,
+            itemStyle: { color: sliceColors[i % sliceColors.length] as any },
+          })),
         },
       ],
     };

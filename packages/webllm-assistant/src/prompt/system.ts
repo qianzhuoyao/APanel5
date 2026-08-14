@@ -1,10 +1,12 @@
 import { AGENT_TOOL_CATALOG } from "../tools/catalog";
 import { ABUILDER_HANDBOOK } from "./handbook";
-import { PANEL_MATERIAL_TYPES } from "../actions/schema";
+import { PANEL_MATERIAL_TYPES, parseAssistantAction } from "../actions/schema";
 
 export const DEFAULT_MODEL_ID = "Qwen2.5-1.5B-Instruct-q4f16_1-MLC";
 
 export const OPTIONAL_LARGER_MODEL_ID = "Qwen2.5-3B-Instruct-q4f16_1-MLC";
+
+export const QWEN3_8B_MODEL_ID = "Qwen3-8B-q4f16_1-MLC";
 
 export const ASSISTANT_MODEL_OPTIONS = [
   {
@@ -17,13 +19,21 @@ export const ASSISTANT_MODEL_OPTIONS = [
     labelKey: "panel.ai.model3b",
     hintKey: "panel.ai.model3bHint",
   },
+  {
+    id: QWEN3_8B_MODEL_ID,
+    labelKey: "panel.ai.model8b",
+    hintKey: "panel.ai.model8bHint",
+  },
 ] as const;
+
+export function isQwen3ModelId(modelId: string): boolean {
+  return modelId.startsWith("Qwen3");
+}
 
 export const DEFAULT_AGENT_MAX_STEPS = 8;
 
 export function buildSystemPrompt(editorContextJson: string): string {
-  return `你是 Abuilder 多步 Agent：通过语义工具操作整个可视化编辑器（面板、图层、蓝图、工作区、视口、主题等）。
-本地离线 WebLLM，不能调用云端。
+  return `你是 Abuilder 可视化编辑器的本地离线助手。先理解用户在说什么，再决定闲聊还是改页面。
 
 ${ABUILDER_HANDBOOK}
 
@@ -31,19 +41,26 @@ ${AGENT_TOOL_CATALOG}
 
 可用 materialType：${PANEL_MATERIAL_TYPES.join(", ")}。
 
-【多步规则】
-1. 每步只输出【一个】JSON 对象（可包在 \`\`\`json），禁止额外文字。
-2. 【本轮 userGoal 最高优先】上文只用于指代；禁止重复执行旧任务。
-3. 操作任务：工具 JSON；完成用 agent.done。
-4. 问答/能力介绍：只能 reply，严禁改页面。
-5. 听不懂：reply 说明，不要瞎猜 panel.add。
-6. 改「选中/它」用 selectedIds；刚创建的用 lastActionResult.createdIds。
-7. message 中文简短。
+【意图判断】
+- 打招呼 / 测试 / 谢谢：用 reply 正常回问候，不要问「要不要改页面」。
+- 明确提问：reply 回答，不要改页面。
+- 明确要改页面（添加、删除、改颜色、改大小等）：立刻输出工具 JSON 执行。禁止只用文字说「已经改好了」。
+- 只有当话里像在描述页面改动、但没说清要不要改时，才 reply 问一句「要我改当前页面吗？」。
+- 用户回答「是 / 要改」时，按上一轮目标执行工具。
 
-少样例（照抄结构）：
-reply：{"type":"reply","message":"..."}
+【改颜色】图表颜色在 chart.color，不是 style.backgroundColor。
+例：{"type":"panel.update","id":"<selectedId>","patch":{"chart":{"color":"#eab308","colorMode":"solid"}},"message":"已把饼图改成黄色"}
+
+【多步规则】
+1. 每步只输出一个 JSON（可包在 \`\`\`json），禁止额外文字。
+2. 本轮 userGoal 优先；上文只用于指代。
+3. 改「选中/它」用 selectedIds。
+4. message 必须和真实执行一致。
+
+样例：
+问候：{"type":"reply","message":"你好，我是本地离线助手，可以提问或改页面。"}
 加表：{"type":"panel.add","materialType":"table","x":200,"y":160,"message":"已添加表格"}
-改宽：{"type":"panel.update","id":"<selectedId>","patch":{"width":400},"message":"已改宽"}
+改色：{"type":"panel.update","id":"<selectedId>","patch":{"chart":{"color":"#eab308","colorMode":"solid"}},"message":"已改成黄色"}
 完成：{"type":"agent.done","message":"已完成"}
 
 当前观察（JSON）：
@@ -51,11 +68,36 @@ ${editorContextJson}`;
 }
 
 export function buildForceActionPrompt(): string {
-  return `上一步无效。若当前用户目标是明确的改页面操作，请立刻输出可执行工具 JSON；若目标是问答或你听不懂，请输出 {"type":"reply","message":"..."} 说明，不要瞎执行 panel.add。`;
+  return `若用户在打招呼或提问：reply 正常回答，不要问要不要改页面。若明确要改页面：立刻输出工具 JSON。只有描述了改动却没说清时，才问要不要改页面。禁止口头假装已改好。`;
+}
+
+/** Conversational chat — no tools, no JSON. */
+export function buildChatSystemPrompt(): string {
+  return `你是 Abuilder 可视化编辑器的本地离线助手。
+用中文自然回复用户。打招呼就回问候，并可顺便说可以提问或帮他改页面。
+不要问「你是要我改当前页面吗」，不要输出 JSON，不要复述规则。`;
 }
 
 export function buildForceReplyPrompt(): string {
-  return `用户在纯问答。请只输出 {"type":"reply","message":"用中文 Markdown 回答"}，不要执行任何改页面动作。`;
+  return `请直接用中文回答用户的问题，不要输出 JSON。`;
+}
+
+const LEAKED_REPLY_RE =
+  /^(用中文\s*Markdown\s*回答|\.\.\.|…|直接用中文回答.*)$/i;
+
+/** Turn model output into a user-visible chat reply (plain text preferred). */
+export function unwrapChatReply(raw: string): string {
+  const text = (raw ?? "").trim();
+  if (!text) return "";
+  const parsed = parseAssistantAction(text);
+  if (parsed.ok && parsed.action.type === "reply") {
+    const msg = parsed.action.message.trim();
+    if (!msg || LEAKED_REPLY_RE.test(msg)) return "";
+    return msg;
+  }
+  if (LEAKED_REPLY_RE.test(text)) return "";
+  if (/^\s*\{/.test(text)) return "";
+  return text;
 }
 
 /** Capability / meta questions — never mutate the page. */
@@ -65,20 +107,31 @@ const CAPABILITY_RE =
 const QUESTION_RE =
   /是什么|怎么用|如何用|有哪些|介绍|讲讲|什么意思|为什么|吗$|呢$|\?|？/;
 
+const CONFIRM_EDIT_RE =
+  /^(是|是的|对|要|要改|改吧|确认|可以|好的|嗯)(的|啊|呀)?[!！。.]?$/i;
+
 export function looksLikeCapabilityQuestion(text: string): boolean {
   return CAPABILITY_RE.test(text.trim());
+}
+
+const SMALL_TALK_RE =
+  /^(你好|您好|嗨|哈喽|hello|hi|hey|在吗|在不在|测试一下?|试一下|谢谢|感谢)[!！。.?？~～、，\s]*$/i;
+
+export function looksLikeSmallTalk(text: string): boolean {
+  return SMALL_TALK_RE.test(text.trim());
 }
 
 export function looksLikeEditIntent(text: string): boolean {
   const s = text.trim();
   if (!s) return false;
   if (looksLikeCapabilityQuestion(s)) return false;
+  if (looksLikeSmallTalk(s)) return false;
+  if (CONFIRM_EDIT_RE.test(s)) return true;
   // Short follow-ups that rely on prior chat / current selection.
   if (
     /^(继续|接着做|接着|再来|再改|再调|改一下|调一下|那个|这个|它|刚才那个|刚加的|把它|给它|同上)/.test(
       s
     ) ||
-    /^(继续|接着|再改一下|刚才那个|刚加的)/.test(s) ||
     /把它|给它|刚才那个|刚加的/.test(s)
   ) {
     return true;
@@ -91,36 +144,27 @@ export function looksLikeEditIntent(text: string): boolean {
   ) {
     return false;
   }
-  return /改|设置|配置|修改|更新|添加|加一|加个|删除|移除|换成|改成|做成|生成|写入|填充|样式|颜色|宽度|高度|表格|数据|蓝图|节点|连接|保存|预览|撤销|图层|缩放|主题|语言/.test(
+  return /改|设置|配置|修改|更新|添加|加一|加个|删除|移除|换成|改成|做成|生成|写入|填充|样式|颜色|宽度|高度|期望/.test(
     s
   );
 }
 
-/** Pure Q&A should skip the multi-step agent loop and just reply once. */
+/** Clear chat: questions, greetings. Ambiguous page-change talk goes to the agent. */
 export function looksLikePureQuestion(text: string): boolean {
   const s = text.trim();
   if (!s) return false;
+  if (looksLikeSmallTalk(s)) return true;
   if (looksLikeCapabilityQuestion(s)) return true;
   if (looksLikeEditIntent(s)) return false;
+  if (CONFIRM_EDIT_RE.test(s)) return false;
   return QUESTION_RE.test(s);
 }
 
 /**
- * Vague text that is neither a clear edit nor a clear question.
- * Prefer asking for clarification over mutating the page.
+ * Empty input only. Non-empty chat that is not an edit is handled by the model.
  */
 export function looksLikeUnclearIntent(text: string): boolean {
-  const s = text.trim();
-  if (!s) return true;
-  if (looksLikeCapabilityQuestion(s)) return false;
-  if (looksLikePureQuestion(s)) return false;
-  if (looksLikeEditIntent(s)) return false;
-  if (/^(你好|您好|在吗|嗨|哈喽|hello|hi|嗯|哦|好的|谢谢|ok)$/i.test(s)) {
-    return true;
-  }
-  // Short leftover with no clear verb — ask instead of guessing.
-  if (s.length <= 10 && !/[，。,.!！；;]/.test(s)) return true;
-  return false;
+  return !text.trim();
 }
 
 /**

@@ -1,4 +1,4 @@
-import { DEFAULT_MODEL_ID } from "../prompt/system";
+import { DEFAULT_MODEL_ID, isQwen3ModelId } from "../prompt/system";
 
 export type AssistantEngineStatus =
   | "idle"
@@ -34,6 +34,7 @@ type MLCEngineLike = {
         stream?: boolean;
         temperature?: number;
         max_tokens?: number;
+        extra_body?: { enable_thinking?: boolean };
       }) => Promise<ChatCompletionReply>;
     };
   };
@@ -47,6 +48,13 @@ type WebLLMModule = {
 
 export function isWebGPUAvailable(): boolean {
   return typeof navigator !== "undefined" && "gpu" in navigator;
+}
+
+function stripThinking(text: string): string {
+  return text
+    .replace(/<think>[\s\S]*?<\/think>/gi, "")
+    .replace(/^[\s\S]*?<\/think>/i, "")
+    .trim();
 }
 
 export class WebLLMAssistantRuntime {
@@ -83,6 +91,15 @@ export class WebLLMAssistantRuntime {
     this.modelId = modelId;
     const webllm = await this.ensureModule();
 
+    if (this.engine) {
+      try {
+        await this.engine.unload();
+      } catch {
+        // ignore
+      }
+      this.engine = null;
+    }
+
     const engine = new webllm.MLCEngine({
       initProgressCallback: (report) => {
         this.progress = {
@@ -118,11 +135,16 @@ export class WebLLMAssistantRuntime {
       stream: false,
       temperature: 0,
       max_tokens: 1024,
+      // Qwen3 defaults to thinking; that eats tokens and breaks JSON tool calls.
+      extra_body: isQwen3ModelId(this.modelId)
+        ? { enable_thinking: false }
+        : undefined,
     });
     const content = reply.choices?.[0]?.message?.content;
-    if (typeof content === "string") return content;
-    if (Array.isArray(content)) {
-      return content
+    let raw = "";
+    if (typeof content === "string") raw = content;
+    else if (Array.isArray(content)) {
+      raw = content
         .map((part) => {
           if (typeof part === "string") return part;
           if (part && typeof part === "object" && "text" in part) {
@@ -132,7 +154,7 @@ export class WebLLMAssistantRuntime {
         })
         .join("");
     }
-    return "";
+    return stripThinking(raw);
   }
 
   async unload(): Promise<void> {

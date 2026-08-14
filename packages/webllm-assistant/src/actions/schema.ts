@@ -420,7 +420,7 @@ export function normalizeMaterialType(raw: string): PanelMaterialType | null {
     [/^(reference|引用|参照)$/, "reference"],
     [/^(bar|柱状|柱图|柱状图)$/, "bar"],
     [/^(line|折线|折线图)$/, "line"],
-    [/^(pie|饼图|饼)$/, "pie"],
+    [/^(pie|饼图|饼状图|饼)$/, "pie"],
     [/^(area|面积|面积图)$/, "area"],
     [/^(scatter|散点|散点图)$/, "scatter"],
     [/^(radar|雷达|雷达图)$/, "radar"],
@@ -434,7 +434,12 @@ export function normalizeMaterialType(raw: string): PanelMaterialType | null {
   if (/文本|标题|文字/.test(t)) return "text";
   if (/柱状/.test(t)) return "bar";
   if (/折线/.test(t)) return "line";
-  if (/饼图/.test(t)) return "pie";
+  if (/饼图|饼状图/.test(t)) return "pie";
+  if (/面积图/.test(t)) return "area";
+  if (/散点/.test(t)) return "scatter";
+  if (/雷达/.test(t)) return "radar";
+  if (/仪表/.test(t)) return "gauge";
+  if (/漏斗/.test(t)) return "funnel";
   if (/图片/.test(t)) return "image";
   if (/网格|宫格/.test(t)) return "grid";
   return null;
@@ -453,6 +458,7 @@ export function inferPanelAddFromUserText(text: string): Extract<
   if (!/(加|添加|放一|创建一个|新建一个|帮我做|放入)/.test(s)) return null;
   if (/是什么|怎么用|如何用|有哪些/.test(s) && !/(加|添加)/.test(s)) return null;
 
+  // Charts before geometry/图形 to avoid「饼状图」被当成 geometry。
   const guesses: Array<[RegExp, PanelMaterialType, string]> = [
     [/表格|table/, "table", "表格"],
     [/文本|标题|文字|text/, "text", "文本"],
@@ -460,15 +466,15 @@ export function inferPanelAddFromUserText(text: string): Extract<
     [/图片|image/, "image", "图片"],
     [/视频|video/, "video", "视频"],
     [/音频|audio/, "audio", "音频"],
-    [/几何|图形|geometry/, "geometry", "几何"],
-    [/柱状|bar图?/, "bar", "柱状图"],
-    [/折线|line图?/, "line", "折线图"],
-    [/饼图|pie/, "pie", "饼图"],
+    [/柱状图?|bar图?/, "bar", "柱状图"],
+    [/折线图?|line图?/, "line", "折线图"],
+    [/饼状图|饼形图|饼图|pie\s*chart|pie/, "pie", "饼图"],
     [/面积图|area/, "area", "面积图"],
-    [/散点|scatter/, "scatter", "散点图"],
-    [/雷达|radar/, "radar", "雷达图"],
-    [/仪表|gauge/, "gauge", "仪表盘"],
-    [/漏斗|funnel/, "funnel", "漏斗图"],
+    [/散点图?|scatter/, "scatter", "散点图"],
+    [/雷达图?|radar/, "radar", "雷达图"],
+    [/仪表盘?|gauge/, "gauge", "仪表盘"],
+    [/漏斗图?|funnel/, "funnel", "漏斗图"],
+    [/几何|geometry/, "geometry", "几何"],
   ];
 
   for (const [re, materialType, label] of guesses) {
@@ -476,6 +482,29 @@ export function inferPanelAddFromUserText(text: string): Extract<
     const patch: Record<string, unknown> = { name: label };
     if (materialType === "text") {
       patch.textHtml = "<p>标题</p>";
+    }
+    if (
+      materialType === "bar" ||
+      materialType === "line" ||
+      materialType === "pie" ||
+      materialType === "area" ||
+      materialType === "scatter" ||
+      materialType === "radar" ||
+      materialType === "gauge" ||
+      materialType === "funnel"
+    ) {
+      patch.chart = {
+        title: label,
+        labelsText: '["A","B","C"]',
+        valuesText: "[30,50,20]",
+      };
+      if (materialType === "pie" || materialType === "gauge") {
+        patch.width = 320;
+        patch.height = 320;
+      } else {
+        patch.width = 420;
+        patch.height = 280;
+      }
     }
     return {
       type: "panel.add",

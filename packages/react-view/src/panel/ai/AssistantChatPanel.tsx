@@ -3,18 +3,17 @@ import {
   ASSISTANT_MODEL_OPTIONS,
   DEFAULT_MODEL_ID,
   WebLLMAssistantRuntime,
-  buildSystemPrompt,
   isWebGPUAvailable,
   looksLikePureQuestion,
-  parseAssistantAction,
   inferPanelAddFromUserText,
   runAgentLoop,
   buildEditorContext,
   tryLocalFaqReply,
+  buildChatSystemPrompt,
   buildForceReplyPrompt,
+  unwrapChatReply,
   buildPriorChatMessages,
   buildRecentDialogSummary,
-  looksLikeUnclearIntent,
   UNCLEAR_INTENT_REPLY,
   inferLocalEditorPlan,
   type ChatMessage,
@@ -345,15 +344,6 @@ export function AssistantChatPanel({
           return;
         }
 
-        // Vague greetings / short junk — ask instead of mutating.
-        if (looksLikeUnclearIntent(trimmed)) {
-          pushMessage({
-            role: "assistant",
-            content: t("panel.ai.unclearIntent") || UNCLEAR_INTENT_REPLY,
-          });
-          return;
-        }
-
         // High-confidence local tools (add / resize / delete / save …) — skip model.
         const selectedIds = depsRef.current.getSelectedIds() ?? [];
         const localPlan = inferLocalEditorPlan(trimmed, { selectedIds });
@@ -402,41 +392,20 @@ export function AssistantChatPanel({
         const runtime = runtimeRef.current!;
 
         if (looksLikePureQuestion(trimmed)) {
-          const ctx = buildEditorContext({
-            ...buildObservation(),
-            userGoal: trimmed,
-            recentDialog,
-          });
           const history: ChatMessage[] = [
-            { role: "system", content: buildSystemPrompt(ctx) },
+            { role: "system", content: buildChatSystemPrompt() },
             ...priorChat,
             { role: "user", content: trimmed },
           ];
-          let parsed = parseAssistantAction(await runtime.chat(history));
-          if (parsed.ok && parsed.action.type !== "reply") {
-            // Small models often mutate the page on Q&A — force a reply-only turn.
-            history.push({
-              role: "assistant",
-              content: JSON.stringify(parsed.action),
-            });
+          let message = unwrapChatReply(await runtime.chat(history));
+          if (!message) {
             history.push({ role: "user", content: buildForceReplyPrompt() });
-            parsed = parseAssistantAction(await runtime.chat(history));
+            message = unwrapChatReply(await runtime.chat(history));
           }
-          if (!parsed.ok) {
-            pushMessage({
-              role: "assistant",
-              content: `${t("panel.ai.parseFailed")}\n\n\`\`\`\n${parsed.rawText.slice(0, 800)}\n\`\`\``,
-            });
-            return;
-          }
-          if (parsed.action.type === "reply") {
-            pushMessage({ role: "assistant", content: parsed.action.message });
-            return;
-          }
-          // Still not a reply — refuse to mutate; ask clearly instead.
           pushMessage({
             role: "assistant",
-            content: t("panel.ai.unclearIntent") || UNCLEAR_INTENT_REPLY,
+            content:
+              message || t("panel.ai.unclearIntent") || UNCLEAR_INTENT_REPLY,
           });
           return;
         }
@@ -625,12 +594,17 @@ export function AssistantChatPanel({
                 onValueChange={setModelId}
                 disabled={busy || status === "loading"}
               >
-                <SelectTrigger className="h-8 w-[96px] rounded-md border-border bg-background text-[12px] shadow-none">
+                <SelectTrigger className="h-8 w-[108px] rounded-md border-border bg-background text-[12px] shadow-none">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent position="popper" sideOffset={6}>
                   {ASSISTANT_MODEL_OPTIONS.map((opt) => (
-                    <SelectItem key={opt.id} value={opt.id} className="text-[12px]">
+                    <SelectItem
+                      key={opt.id}
+                      value={opt.id}
+                      className="text-[12px]"
+                      title={t(opt.hintKey)}
+                    >
                       {t(opt.labelKey)}
                     </SelectItem>
                   ))}

@@ -28,6 +28,7 @@ export {
 export type { PriorChatTurn } from "./context/buildPriorChat";
 export {
   buildSystemPrompt,
+  buildChatSystemPrompt,
   buildForceActionPrompt,
   looksLikeEditIntent,
   looksLikePureQuestion,
@@ -35,10 +36,13 @@ export {
   looksLikeUnclearIntent,
   tryLocalFaqReply,
   buildForceReplyPrompt,
+  unwrapChatReply,
   UNCLEAR_INTENT_REPLY,
   DEFAULT_MODEL_ID,
   OPTIONAL_LARGER_MODEL_ID,
+  QWEN3_8B_MODEL_ID,
   ASSISTANT_MODEL_OPTIONS,
+  isQwen3ModelId,
   DEFAULT_AGENT_MAX_STEPS,
 } from "./prompt/system";
 export { ABUILDER_HANDBOOK } from "./prompt/handbook";

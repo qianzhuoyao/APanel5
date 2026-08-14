@@ -10,7 +10,8 @@ text(文本) table(表格) grid image video audio geometry reference
 # 常用 patch
 name / width / height / x / y / textHtml
 table.rowsText(JSON数组字符串) table.source table.columns table.emptyText
-chart.title chart.labelsText chart.valuesText
+chart.title chart.color chart.labelsText chart.valuesText
+饼图改色：patch.chart.color（不要改 style.backgroundColor）
 
 # 蓝图 nodeType
 blueprint lifecycle clock/timer logic fetch json and；连线 blueprint.connect

@@ -103,7 +103,7 @@ export async function runAgentLoop(
           role: "user",
           content:
             step === 1
-              ? `【本轮新目标】${options.userGoal}\n（上文仅供理解指代，勿重复执行旧任务。若是问答/听不懂请 reply，不要乱改页面。）\n请输出第一步工具 JSON。`
+              ? `【本轮新目标】${options.userGoal}\n打招呼或提问请直接 reply。明确要改页面则输出工具 JSON。只有描述了页面改动却没说清时，才问要不要改。禁止口头假装已改好。\n请输出第一步 JSON。`
               : `继续完成本轮目标。上一步结果：${lastActionResult ?? "无"}\n请输出下一步工具 JSON（或 agent.done / reply）。`,
         },
       ];
@@ -141,6 +141,28 @@ export async function runAgentLoop(
       parseFails = 0;
       action = parsed.action;
       rawText = parsed.rawText;
+
+      // Don't let the model claim "already changed" without a tool call.
+      if (
+        action.type === "reply" &&
+        looksLikeClaimedMutation(action.message)
+      ) {
+        const retry = parseAssistantAction(
+          await options.chat([
+            ...messages,
+            { role: "assistant", content: rawText },
+            {
+              role: "user",
+              content:
+                "你没有执行任何改页面工具，不能说已经改好。请立刻输出 panel.update / panel.add 等工具 JSON；若仍不确定，reply 问用户：你是要我改当前页面吗？",
+            },
+          ])
+        );
+        if (retry.ok) {
+          action = retry.action;
+          rawText = retry.rawText;
+        }
+      }
     }
 
     if (action.type === "reply") {
@@ -245,6 +267,10 @@ export async function runAgentLoop(
 function formatOkResult(message: string, createdIds?: string[]): string {
   if (!createdIds?.length) return message;
   return `${message} [createdIds=${createdIds.join(",")}]`;
+}
+
+function looksLikeClaimedMutation(message: string): boolean {
+  return /已(将|把|改|设置|添加|删除|更新|完成)|已经(改|加|删|设)/.test(message);
 }
 
 function finalize(

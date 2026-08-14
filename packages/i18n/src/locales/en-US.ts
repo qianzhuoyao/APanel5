@@ -53,17 +53,19 @@ export const enUS = {
       parseFailed: "Could not parse model output:",
       applyFailed: "Failed",
       needActionHint:
-        "(No executable action. Select a widget and be specific, or switch to 3B.)",
+        "(No executable action. Select a widget and be specific, or switch to 8B.)",
       unclearIntent:
-        "I didn't catch that.\n\nPlease say whether you want to **ask** or **edit**, for example:\n- \"What can you do?\"\n- \"What components are there?\"\n- \"Add a table\"\n- \"Set the selected widget width to 400\"",
+        "Do you want me to **edit the page**, or are you just asking?\n\nSay \"edit\" or be specific, e.g. \"make the selected pie chart yellow\".",
       layerLockedAddFailed: "Active layer is locked. Unlock or switch layers.",
       unknownMaterial:
         "Unknown material 「{type}」. Try: text / table / grid / image / bar / line / pie.",
       error: "Error",
       model15b: "1.5B",
-      model15bHint: "Faster, less VRAM; use 3B for harder tasks",
+      model15bHint: "Faster, less VRAM; use 3B / 8B for harder tasks",
       model3b: "3B",
       model3bHint: "Higher accuracy; larger download and VRAM",
+      model8b: "8B",
+      model8bHint: "Qwen3, smartest; ~6GB VRAM, may fail on low-end GPUs",
       quickMakeLogin: "Simple login page",
       quickMakeLoginSave: "Login page + save",
       quickExplainSelection: "Explain selection",
