@@ -1,6 +1,6 @@
 {
   "name": "@arronqzy/webllm-assistant",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Offline WebLLM assistant runtime and action protocol for Abuilder",
   "license": "MIT",
   "type": "module",
@@ -13,7 +13,8 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "build": "pnpm run typecheck"
   },
   "dependencies": {
     "@mlc-ai/web-llm": "file:vendor/bundled/web-llm"
