@@ -11,3 +11,6 @@ dist-ssr
 .pnpm-store
 server/dist
 public/dist
+
+# local junk from permission recovery
+**/node_modules.root-bak/
