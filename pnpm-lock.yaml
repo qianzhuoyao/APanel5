@@ -842,14 +842,20 @@ importers:
   packages/webllm-assistant:
     dependencies:
       '@mlc-ai/web-llm':
-        specifier: file:vendor/bundled/web-llm
-        version: file:packages/webllm-assistant/vendor/bundled/web-llm
+        specifier: 0.2.79
+        version: 0.2.79
     devDependencies:
       typescript:
         specifier: ^5.5.4
         version: 5.5.4
 
 packages:
+
+  /@mlc-ai/web-llm@0.2.79:
+    resolution: {integrity: sha512-Hy1ZHQ0o2bZGZoVnGK48+fts/ZSKwLe96xjvqL/6C59Mem9HoHTcFE07NC2E23mRmhd01tL655N6CPeYmwWgwQ==}
+    dependencies:
+      loglevel: 1.9.2
+    dev: false
 
   /@alloc/quick-lru@5.2.0:
     resolution: {integrity: sha512-UrcABB+4bUrFABwbluTIBErXwvbsU/V7TZWfmbgJfbkwiBuziS9gxdODUyuiecfdGQ85jglMW6juS3+z5TsKLw==}
@@ -6344,10 +6350,3 @@ packages:
       '@types/react': 19.1.0
       react: 19.2.0
       use-sync-external-store: 1.6.0(react@19.2.0)
-
-  file:packages/webllm-assistant/vendor/bundled/web-llm:
-    resolution: {directory: packages/webllm-assistant/vendor/bundled/web-llm, type: directory}
-    name: '@mlc-ai/web-llm'
-    dependencies:
-      loglevel: 1.9.2
-    dev: false
