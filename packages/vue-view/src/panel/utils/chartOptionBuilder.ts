@@ -84,6 +84,11 @@ function deepMerge<T extends Record<string, any>>(base: T, patch?: Record<string
   return next as T;
 }
 
+function resolveBarWidth(chart?: PanelChartConfig): number | undefined {
+  const width = chart?.barWidth;
+  return typeof width === "number" && Number.isFinite(width) && width > 0 ? width : undefined;
+}
+
 export function buildChartOption(element: PanelElement): EChartsOption {
   const chartType = (element.materialType ?? "") as ChartType;
   const labels = resolveChartLabels(element);
@@ -315,7 +320,8 @@ export function buildChartOption(element: PanelElement): EChartsOption {
           chartType === "line" || chartType === "area"
             ? (element.chart?.smooth ?? true)
             : undefined,
-        barWidth: chartType === "bar" ? (element.chart?.barWidth ?? 24) : undefined,
+        barWidth:
+          chartType === "bar" ? resolveBarWidth(element.chart) : undefined,
         areaStyle: chartType === "area" ? { opacity: 0.25 } : undefined,
         itemStyle: { color: chartColor as any },
         lineStyle: { color: chartColor as any },

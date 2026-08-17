@@ -1369,15 +1369,19 @@ export function PanelConfigSidebar({
                             className="h-7"
                             type="number"
                             min={1}
-                            value={el.chart?.barWidth ?? 24}
-                            onChange={(e) =>
+                            placeholder={t("panel.config.barWidthAuto")}
+                            value={el.chart?.barWidth ?? ""}
+                            onChange={(e) => {
+                              const raw = e.target.value.trim();
                               updateElement(el.id, {
                                 chart: {
                                   ...(el.chart ?? {}),
-                                  barWidth: Math.max(1, Number(e.target.value) || 1),
+                                  barWidth: raw
+                                    ? Math.max(1, Number(raw) || 1)
+                                    : undefined,
                                 },
-                              })
-                            }
+                              });
+                            }}
                           />
                         </label>
                       ) : null}
@@ -2572,10 +2576,16 @@ export function PanelConfigSidebar({
                             <Input
                               type="number"
                               min={1}
-                              value={selectedElement.chart?.barWidth ?? 24}
-                              onChange={(e) =>
-                                updateSelectedChart({ barWidth: Math.max(1, Number(e.target.value) || 1) })
-                              }
+                              placeholder={t("panel.config.barWidthAuto")}
+                              value={selectedElement.chart?.barWidth ?? ""}
+                              onChange={(e) => {
+                                const raw = e.target.value.trim();
+                                updateSelectedChart({
+                                  barWidth: raw
+                                    ? Math.max(1, Number(raw) || 1)
+                                    : undefined,
+                                });
+                              }}
                               className="h-7"
                             />
                           </label>

@@ -35,6 +35,7 @@ import {
   parsePanelLayers,
   resolvePreviewLayerElements,
 } from "./utils/panelStateIO";
+import { applyPreviewSceneFill, readOutputScale } from "./utils/outputScale";
 
 const PREVIEW_BOOT_PHASES: PageLifecyclePhase[] = ["mounted"];
 
@@ -76,6 +77,8 @@ export function ReactViewOnlinePreview({
   >([]);
   const [layoutRevision, setLayoutRevision] = useState(0);
   const [layoutReady, setLayoutReady] = useState(false);
+  const [outputScale, setOutputScale] = useState(() => readOutputScale());
+  const [fillScale, setFillScale] = useState({ scaleX: 1, scaleY: 1 });
 
   const sceneRef = useRef<HTMLDivElement | null>(null);
 
@@ -179,25 +182,38 @@ export function ReactViewOnlinePreview({
 
   const displayElements = useMemo(
     () =>
-      scopedLayerElements.map((el) => ({
-        ...el,
-        x: el.x - sceneBounds.minX,
-        y: el.y - sceneBounds.minY,
-      })),
-    [sceneBounds.minX, sceneBounds.minY, scopedLayerElements]
+      scopedLayerElements.map((el) => {
+        const x = el.x - sceneBounds.minX;
+        const y = el.y - sceneBounds.minY;
+        if (outputScale) return { ...el, x, y };
+        return {
+          ...el,
+          x: x * fillScale.scaleX,
+          y: y * fillScale.scaleY,
+          width: el.width * fillScale.scaleX,
+          height: el.height * fillScale.scaleY,
+        };
+      }),
+    [
+      fillScale.scaleX,
+      fillScale.scaleY,
+      outputScale,
+      sceneBounds.minX,
+      sceneBounds.minY,
+      scopedLayerElements,
+    ]
   );
 
   const applySceneFit = useCallback(() => {
-    const scene = sceneRef.current;
-    if (!scene) return;
-    const vw = window.innerWidth || 1;
-    const vh = window.innerHeight || 1;
-    const sw = Math.max(1, sceneBounds.width);
-    const sh = Math.max(1, sceneBounds.height);
-    const scaleX = vw / sw;
-    const scaleY = vh / sh;
-    if (!Number.isFinite(scaleX) || !Number.isFinite(scaleY)) return;
-    scene.style.transform = `scale(${scaleX}, ${scaleY})`;
+    const enabled = readOutputScale();
+    setOutputScale(enabled);
+    const fill = applyPreviewSceneFill(
+      sceneRef.current,
+      sceneBounds.width,
+      sceneBounds.height,
+      enabled
+    );
+    setFillScale({ scaleX: fill.scaleX, scaleY: fill.scaleY });
     setLayoutRevision((v) => v + 1);
     notifyPreviewLayoutChanged();
   }, [sceneBounds.height, sceneBounds.width]);
@@ -304,9 +320,16 @@ export function ReactViewOnlinePreview({
           id="preview-scene"
           className="relative shrink-0 origin-top-left"
           style={{
-            width: sceneBounds.width,
-            height: sceneBounds.height,
+            width: outputScale
+              ? sceneBounds.width
+              : sceneBounds.width * fillScale.scaleX,
+            height: outputScale
+              ? sceneBounds.height
+              : sceneBounds.height * fillScale.scaleY,
             transformOrigin: "left top",
+            transform: outputScale
+              ? `scale(${fillScale.scaleX}, ${fillScale.scaleY})`
+              : "none",
           }}
         >
           <ElementsLayer

@@ -14,6 +14,7 @@ import { ElementsLayer } from "./components/ElementsLayer";
 import { SelectLayer } from "./components/SelectLayer";
 import { MoveableLayer } from "./components/MoveableLayer";
 import { buildChartOption, CHART_TYPES } from "./utils/chartOptionBuilder";
+import { readOutputScale, writeOutputScale } from "./utils/outputScale";
 import { MaterialSidebar } from "./components/MaterialSidebar";
 import { AssistantChatPanel } from "./ai/AssistantChatPanel";
 import {
@@ -94,6 +95,7 @@ import {
   EmptyTitle,
   Input,
   Menubar,
+  MenubarCheckboxItem,
   MenubarContent,
   MenubarItem,
   MenubarMenu,
@@ -460,6 +462,7 @@ export function ReactViewPanel({
   const [titleIconZoom, setTitleIconZoom] = useState(1.6);
   const [pendingPreviewLayerId, setPendingPreviewLayerId] = useState<string | null>(null);
   const [panelFontSize, setPanelFontSize] = useState<"sm" | "md" | "lg">("md");
+  const [outputScale, setOutputScale] = useState(() => readOutputScale());
   const [blueprintOpen, setBlueprintOpen] = useState(false);
   const [assistantOpen, setAssistantOpen] = useState(false);
   const [blueprintGraph, setBlueprintGraph] = useState(() => BlueprintGraph.empty());
@@ -569,6 +572,10 @@ export function ReactViewPanel({
       // ignore storage errors
     }
   }, [panelFontSize]);
+
+  useEffect(() => {
+    writeOutputScale(outputScale);
+  }, [outputScale]);
 
   useEffect(() => {
     try {
@@ -1784,16 +1791,49 @@ export function ReactViewPanel({
           });
         }
         var scene = document.getElementById("preview-scene");
+        var root = document.getElementById("preview-root");
+        var outputScale = ${outputScale ? "true" : "false"};
+        function rememberBox(node) {
+          if (node.dataset.origLeft != null) return;
+          node.dataset.origLeft = String(parseFloat(node.style.left) || 0);
+          node.dataset.origTop = String(parseFloat(node.style.top) || 0);
+          node.dataset.origWidth = String(parseFloat(node.style.width) || node.offsetWidth || 0);
+          node.dataset.origHeight = String(parseFloat(node.style.height) || node.offsetHeight || 0);
+        }
         function fitScene() {
           if (!scene) return;
           var vw = window.innerWidth || 1;
           var vh = window.innerHeight || 1;
           var sw = ${sceneWidth} || 1;
           var sh = ${sceneHeight} || 1;
-          // 铺满预览窗口：宽高分别缩放，保证内容贴住四边
           var scaleX = vw / sw;
           var scaleY = vh / sh;
-          scene.style.transform = "translate(0px,0px) scale(" + scaleX + "," + scaleY + ")";
+          if (root) root.style.overflow = "hidden";
+          var nodes = scene.querySelectorAll("[data-element-id]");
+          if (outputScale) {
+            scene.style.width = sw + "px";
+            scene.style.height = sh + "px";
+            scene.style.transform = "translate(0px,0px) scale(" + scaleX + "," + scaleY + ")";
+            nodes.forEach(function (node) {
+              rememberBox(node);
+              node.style.left = node.dataset.origLeft + "px";
+              node.style.top = node.dataset.origTop + "px";
+              node.style.width = node.dataset.origWidth + "px";
+              node.style.height = node.dataset.origHeight + "px";
+            });
+            return;
+          }
+          // 块仍按视口撑满，但不对整棵内容做 transform，字体保持原尺寸
+          scene.style.width = vw + "px";
+          scene.style.height = vh + "px";
+          scene.style.transform = "none";
+          nodes.forEach(function (node) {
+            rememberBox(node);
+            node.style.left = (Number(node.dataset.origLeft) * scaleX) + "px";
+            node.style.top = (Number(node.dataset.origTop) * scaleY) + "px";
+            node.style.width = (Number(node.dataset.origWidth) * scaleX) + "px";
+            node.style.height = (Number(node.dataset.origHeight) * scaleY) + "px";
+          });
         }
         fitScene();
         window.addEventListener("resize", fitScene);
@@ -2013,6 +2053,14 @@ export function ReactViewPanel({
                 <MenubarRadioItem value="zh-CN">{t("panel.theme.zhCN")}</MenubarRadioItem>
                 <MenubarRadioItem value="en-US">{t("panel.theme.enUS")}</MenubarRadioItem>
               </MenubarRadioGroup>
+              <MenubarSeparator />
+              <MenubarCheckboxItem
+                checked={outputScale}
+                onCheckedChange={(checked) => setOutputScale(checked === true)}
+                title={t("panel.menubar.outputScaleHint")}
+              >
+                {t("panel.menubar.outputScale")}
+              </MenubarCheckboxItem>
             </MenubarContent>
           </MenubarMenu>
         </Menubar>

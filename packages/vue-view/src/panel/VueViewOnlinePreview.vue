@@ -31,6 +31,7 @@ import {
   parsePanelLayers,
   resolvePreviewLayerElements,
 } from "./utils/panelStateIO";
+import { applyPreviewSceneFill, readOutputScale } from "./utils/outputScale";
 
 const { t, locale } = useI18n();
 
@@ -49,6 +50,8 @@ const blueprintLibraryItems = ref<BlueprintLibraryListItem[]>([]);
 const layoutRevision = ref(0);
 const layoutReady = ref(false);
 const sceneRef = ref<HTMLDivElement | null>(null);
+const outputScale = ref(readOutputScale());
+const fillScale = ref({ scaleX: 1, scaleY: 1 });
 
 const layers = computed(() => (panelState.value ? parsePanelLayers(panelState.value) : []));
 const activeLayerId = computed(() =>
@@ -146,24 +149,30 @@ const scopedLayerElements = computed(() => {
 const sceneBounds = computed(() => computePanelSceneBounds(scopedLayerElements.value));
 
 const displayElements = computed(() =>
-  scopedLayerElements.value.map((el) => ({
-    ...el,
-    x: el.x - sceneBounds.value.minX,
-    y: el.y - sceneBounds.value.minY,
-  }))
+  scopedLayerElements.value.map((el) => {
+    const x = el.x - sceneBounds.value.minX;
+    const y = el.y - sceneBounds.value.minY;
+    if (outputScale.value) return { ...el, x, y };
+    return {
+      ...el,
+      x: x * fillScale.value.scaleX,
+      y: y * fillScale.value.scaleY,
+      width: el.width * fillScale.value.scaleX,
+      height: el.height * fillScale.value.scaleY,
+    };
+  })
 );
 
 function applySceneFit() {
-  const scene = sceneRef.value;
-  if (!scene) return;
-  const vw = window.innerWidth || 1;
-  const vh = window.innerHeight || 1;
-  const sw = Math.max(1, sceneBounds.value.width);
-  const sh = Math.max(1, sceneBounds.value.height);
-  const scaleX = vw / sw;
-  const scaleY = vh / sh;
-  if (!Number.isFinite(scaleX) || !Number.isFinite(scaleY)) return;
-  scene.style.transform = `scale(${scaleX}, ${scaleY})`;
+  const enabled = readOutputScale();
+  outputScale.value = enabled;
+  const fill = applyPreviewSceneFill(
+    sceneRef.value,
+    sceneBounds.value.width,
+    sceneBounds.value.height,
+    enabled
+  );
+  fillScale.value = { scaleX: fill.scaleX, scaleY: fill.scaleY };
   layoutRevision.value += 1;
   notifyPreviewLayoutChanged();
 }
@@ -258,9 +267,10 @@ function noopSelect() {}
         id="preview-scene"
         class="relative shrink-0 origin-top-left"
         :style="{
-          width: `${sceneBounds.width}px`,
-          height: `${sceneBounds.height}px`,
+          width: `${outputScale ? sceneBounds.width : sceneBounds.width * fillScale.scaleX}px`,
+          height: `${outputScale ? sceneBounds.height : sceneBounds.height * fillScale.scaleY}px`,
           transformOrigin: 'left top',
+          transform: outputScale ? `scale(${fillScale.scaleX}, ${fillScale.scaleY})` : 'none',
         }"
       >
         <ElementsLayer

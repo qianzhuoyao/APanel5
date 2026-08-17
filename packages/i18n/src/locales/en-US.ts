@@ -112,6 +112,9 @@ export const enUS = {
       fontSmall: "Font: small",
       fontMedium: "Font: medium",
       fontLarge: "Font: large",
+      outputScale: "Output scale",
+      outputScaleHint:
+        "On: fonts and content scale as the preview fills the screen. Off: blocks still fill the screen, but content stays original size to avoid distortion",
       productName: "Product name",
       productNamePlaceholder: "Enter the current build product name",
       uploadTitleIcon: "Upload title icon",
@@ -351,6 +354,7 @@ export const enUS = {
       gaugeValue: "Gauge value",
       barWidth: "Bar width",
       barWidthPx: "Bar width (px)",
+      barWidthAuto: "Auto",
       smooth: "Smooth curve",
       pieInnerRadius: "Inner radius",
       pieInnerRadiusPct: "Inner radius (%)",

@@ -417,11 +417,16 @@ function onOptionJsonChange(v: string) {
           size="small"
           class="w-full"
           :min="1"
-          :value="element.chart?.barWidth ?? 24"
+          :placeholder="t('panel.config.barWidthAuto')"
+          :value="element.chart?.barWidth ?? null"
           :disabled="!isEditable"
           @update:value="(v) => {
+            if (v == null || v === '') {
+              updateChart({ barWidth: undefined });
+              return;
+            }
             const n = Number(v);
-            if (!Number.isNaN(n)) updateChart({ barWidth: Math.max(1, n) });
+            if (!Number.isNaN(n) && n > 0) updateChart({ barWidth: Math.max(1, n) });
           }"
         />
       </label>

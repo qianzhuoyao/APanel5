@@ -126,7 +126,6 @@ export function getDefaultChartConfig(
     return {
       title: t("panel.defaults.bar"),
       ...common,
-      barWidth: 24,
     };
   }
   if (materialType === "line") {
