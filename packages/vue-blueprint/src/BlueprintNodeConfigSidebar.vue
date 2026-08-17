@@ -5,6 +5,7 @@ import { Checkbox, Input, Select } from "ant-design-vue";
 import {
   LIFECYCLE_NODE_TYPE,
   PAGE_LIFECYCLE_PHASES,
+  type ExecutionTraceEntry,
   type PageLifecyclePhase,
 } from "@arronqzy/blueprint-dsl";
 
@@ -13,6 +14,7 @@ import ClockNodeConfigPanel from "./components/ClockNodeConfigPanel.vue";
 import JsonNodeConfigPanel from "./components/JsonNodeConfigPanel.vue";
 import LogicNodeConfigPanel from "./components/LogicNodeConfigPanel.vue";
 import ViewElementMultiSelect from "./components/ViewElementMultiSelect.vue";
+import ConfigHintIcon from "./components/ConfigHintIcon.vue";
 import {
   getLifecyclePhaseLabel,
   patchNodeConfigSource,
@@ -20,6 +22,7 @@ import {
   resolveBlueprintConfigSource,
   resolveViewElementIds,
   type BlueprintConfigSource,
+  type BlueprintGraphEdge,
   type BlueprintGraphNode,
   type BlueprintNodeRole,
 } from "./graph/document";
@@ -38,6 +41,9 @@ export type BlueprintLibraryOption = {
 
 export type BlueprintNodeConfigSidebarProps = {
   node: BlueprintGraphNode;
+  graphNodes?: BlueprintGraphNode[];
+  graphEdges?: BlueprintGraphEdge[];
+  traceEntries?: ExecutionTraceEntry[];
   viewElementOptions?: BlueprintViewElementOption[];
   blueprintLibraryOptions?: BlueprintLibraryOption[];
   allowFalseSignalPropagation?: boolean;
@@ -68,6 +74,9 @@ export type BlueprintNodeConfigSidebarProps = {
 const props = withDefaults(defineProps<BlueprintNodeConfigSidebarProps>(), {
   viewElementOptions: () => [],
   blueprintLibraryOptions: () => [],
+  graphNodes: () => [],
+  graphEdges: () => [],
+  traceEntries: () => [],
   allowFalseSignalPropagation: false,
 });
 
@@ -173,7 +182,12 @@ function handleConfigSourceChange(value: string) {
       </label>
 
       <div v-if="configSource === 'view'" class="block space-y-1">
-        <span class="text-muted-foreground">{{ t("blueprint.config.linkedViewNodes") }}</span>
+        <span class="inline-flex items-center gap-1 text-muted-foreground">
+          {{ t("blueprint.config.linkedViewNodes") }}
+          <ConfigHintIcon :label="t('blueprint.config.linkedViewNodes')">
+            {{ t("blueprint.config.viewMultiHint") }}
+          </ConfigHintIcon>
+        </span>
         <ViewElementMultiSelect
           :options="viewElementOptions"
           :value="linkedViewElementIds"
@@ -187,10 +201,7 @@ function handleConfigSourceChange(value: string) {
               })
           "
         />
-        <p v-if="linkedViewElementIds.length === 0" class="text-[11px] text-muted-foreground">
-          {{ t("blueprint.config.viewMultiHint") }}
-        </p>
-        <p v-else class="text-[11px] text-muted-foreground">
+        <p v-if="linkedViewElementIds.length > 0" class="text-[11px] text-muted-foreground">
           {{
             t("blueprint.config.linkedViewCount", {
               count: linkedViewElementIds.length,
@@ -206,8 +217,12 @@ function handleConfigSourceChange(value: string) {
         v-if="configSource === 'blueprint'"
         class="space-y-2 rounded-md border border-border/70 bg-muted/20 p-2.5"
       >
-        <div class="font-medium text-foreground">{{ t("blueprint.config.blueprintAttrs") }}</div>
-        <p class="text-[11px] text-muted-foreground">{{ t("blueprint.config.blueprintAttrsHint") }}</p>
+        <div class="flex items-center gap-1.5">
+          <div class="font-medium text-foreground">{{ t("blueprint.config.blueprintAttrs") }}</div>
+          <ConfigHintIcon :label="t('blueprint.config.blueprintAttrs')">
+            {{ t("blueprint.config.blueprintAttrsHint") }}
+          </ConfigHintIcon>
+        </div>
         <label class="block space-y-1">
           <span class="text-muted-foreground">{{ t("blueprint.config.refLibrary") }}</span>
           <Select
@@ -252,15 +267,19 @@ function handleConfigSourceChange(value: string) {
         v-if="configSource === 'lifecycle'"
         class="space-y-2 rounded-md border border-border/70 bg-muted/20 p-2.5"
       >
-        <div class="font-medium text-foreground">{{ t("blueprint.config.lifecycleHook") }}</div>
-        <p class="text-[11px] text-muted-foreground">
-          {{ t("blueprint.config.lifecycleNoInput") }}
-          {{
-            node.lifecyclePhase === "blueprintActivated"
-              ? t("blueprint.config.lifecycleBlueprintActivatedHint")
-              : t("blueprint.config.lifecyclePageHint")
-          }}
-        </p>
+        <div class="flex items-center gap-1.5">
+          <div class="font-medium text-foreground">{{ t("blueprint.config.lifecycleHook") }}</div>
+          <ConfigHintIcon :label="t('blueprint.config.lifecycleHook')">
+            <p>{{ t("blueprint.config.lifecycleNoInput") }}</p>
+            <p>
+              {{
+                node.lifecyclePhase === "blueprintActivated"
+                  ? t("blueprint.config.lifecycleBlueprintActivatedHint")
+                  : t("blueprint.config.lifecyclePageHint")
+              }}
+            </p>
+          </ConfigHintIcon>
+        </div>
         <label class="block space-y-1">
           <span class="text-muted-foreground">{{ t("blueprint.config.listenPhase") }}</span>
           <Select
@@ -290,6 +309,9 @@ function handleConfigSourceChange(value: string) {
       <FetchNodeConfigPanel
         v-if="configSource === 'fetch'"
         :node="node"
+        :graph-nodes="graphNodes"
+        :graph-edges="graphEdges"
+        :trace-entries="traceEntries"
         :on-update-node="onUpdateNode"
       />
       <JsonNodeConfigPanel
@@ -307,8 +329,12 @@ function handleConfigSourceChange(value: string) {
         v-if="configSource === 'and'"
         class="space-y-2 rounded-md border border-border/70 bg-muted/20 p-2.5"
       >
-        <div class="font-medium text-foreground">{{ t("blueprint.config.andTitle") }}</div>
-        <p class="text-[11px] text-muted-foreground">{{ t("blueprint.config.andHint") }}</p>
+        <div class="flex items-center gap-1.5">
+          <div class="font-medium text-foreground">{{ t("blueprint.config.andTitle") }}</div>
+          <ConfigHintIcon :label="t('blueprint.config.andTitle')">
+            {{ t("blueprint.config.andHint") }}
+          </ConfigHintIcon>
+        </div>
       </div>
 
       <template v-if="configSource === 'logic'">

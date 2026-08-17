@@ -3224,6 +3224,8 @@ export function ReactViewPanel({
               configFocus={sidebarConfigFocus}
               executionLog={executionLogView}
               selectedBlueprintNode={selectedBlueprintNode}
+              blueprintGraphNodes={blueprintGraph.document.nodes}
+              blueprintGraphEdges={blueprintGraph.document.edges}
               allowFalseSignalPropagation={
                 blueprintGraph.document.allowFalseSignalPropagation ?? false
               }

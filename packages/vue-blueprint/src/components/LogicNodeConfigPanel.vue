@@ -4,6 +4,7 @@ import { computed, ref } from "vue";
 import { validateLogicSourceCode } from "@arronqzy/blueprint-dsl";
 import type { LogicNodeConfig } from "@arronqzy/blueprint-dsl";
 
+import ConfigHintIcon from "./ConfigHintIcon.vue";
 import type { BlueprintGraphNode } from "../graph/document";
 import { resolveNodeLogicConfig } from "../graph/document";
 
@@ -48,8 +49,12 @@ function handleChange(event: Event) {
 
 <template>
   <div class="space-y-2 rounded-md border border-border/70 bg-muted/20 p-2.5">
-    <div class="font-medium text-foreground">{{ t("blueprint.config.logicTitle") }}</div>
-    <p class="text-[11px] text-muted-foreground">{{ t("blueprint.config.logicHint") }}</p>
+    <div class="flex items-center gap-1.5">
+      <div class="font-medium text-foreground">{{ t("blueprint.config.logicTitle") }}</div>
+      <ConfigHintIcon :label="t('blueprint.config.logicTitle')">
+        {{ t("blueprint.config.logicHint") }}
+      </ConfigHintIcon>
+    </div>
 
     <label class="block space-y-1">
       <span class="text-muted-foreground">{{ t("blueprint.config.jsCode") }}</span>

@@ -5,6 +5,7 @@ import { useI18n } from "@arronqzy/i18n/react";
 
 import type { BlueprintGraphNode } from "../graph/document";
 import { resolveNodeClockConfig } from "../graph/document";
+import { ConfigFieldLabel, ConfigSectionTitle } from "./ConfigHintIcon";
 
 export type ClockNodeConfigPanelProps = {
   node: BlueprintGraphNode;
@@ -73,17 +74,16 @@ export function ClockNodeConfigPanel({
 
   return (
     <div className="space-y-2 rounded-md border border-border/70 bg-muted/20 p-2.5">
-      <div className="font-medium text-foreground">
-        {t("blueprint.config.clockTitle")}
-      </div>
-      <p className="text-[11px] text-muted-foreground">
-        {t("blueprint.config.clockHint")}
-      </p>
+      <ConfigSectionTitle
+        title={t("blueprint.config.clockTitle")}
+        hint={t("blueprint.config.clockHint")}
+      />
 
       <label className="block space-y-1">
-        <span className="text-muted-foreground">
-          {t("blueprint.config.clockIntervalSeconds")}
-        </span>
+        <ConfigFieldLabel
+          label={t("blueprint.config.clockIntervalSeconds")}
+          hint={t("blueprint.config.clockIntervalHint")}
+        />
         <Input
           type="number"
           min={0}
@@ -92,15 +92,13 @@ export function ClockNodeConfigPanel({
           onChange={handleIntervalChange}
           className="h-8"
         />
-        <p className="text-[11px] text-muted-foreground">
-          {t("blueprint.config.clockIntervalHint")}
-        </p>
       </label>
 
       <label className="block space-y-1">
-        <span className="text-muted-foreground">
-          {t("blueprint.config.outputCount")}
-        </span>
+        <ConfigFieldLabel
+          label={t("blueprint.config.outputCount")}
+          hint={t("blueprint.config.outputCountHint")}
+        />
         <Input
           type="number"
           min={1}
@@ -109,9 +107,6 @@ export function ClockNodeConfigPanel({
           onChange={handleOutputCountChange}
           className="h-8"
         />
-        <p className="text-[11px] text-muted-foreground">
-          {t("blueprint.config.outputCountHint")}
-        </p>
       </label>
 
       <label className="flex items-start gap-2">
@@ -127,9 +122,10 @@ export function ClockNodeConfigPanel({
       </label>
 
       <label className="block space-y-1">
-        <span className="text-muted-foreground">
-          {t("blueprint.config.timeFormat")}
-        </span>
+        <ConfigFieldLabel
+          label={t("blueprint.config.timeFormat")}
+          hint={t("blueprint.config.timeFormatHint")}
+        />
         <Input
           value={clockConfig.timeFormat}
           onChange={handleFormatChange}
@@ -137,9 +133,6 @@ export function ClockNodeConfigPanel({
           className="h-8 font-mono text-[11px]"
           placeholder="YYYY-MM-DD HH:mm:ss"
         />
-        <p className="text-[11px] text-muted-foreground">
-          {t("blueprint.config.timeFormatHint")}
-        </p>
       </label>
     </div>
   );

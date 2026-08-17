@@ -10,6 +10,7 @@ import {
 import {
   LIFECYCLE_NODE_TYPE,
   PAGE_LIFECYCLE_PHASES,
+  type ExecutionTraceEntry,
   type PageLifecyclePhase,
 } from "@arronqzy/blueprint-dsl";
 import { useI18n } from "@arronqzy/i18n/react";
@@ -19,6 +20,7 @@ import { ClockNodeConfigPanel } from "./components/ClockNodeConfigPanel";
 import { JsonNodeConfigPanel } from "./components/JsonNodeConfigPanel";
 import { LogicNodeConfigPanel } from "./components/LogicNodeConfigPanel";
 import { ViewElementMultiSelect } from "./components/ViewElementMultiSelect";
+import { ConfigFieldLabel, ConfigHintIcon, ConfigSectionTitle } from "./components/ConfigHintIcon";
 import {
   getLifecyclePhaseLabel,
   patchNodeConfigSource,
@@ -26,6 +28,7 @@ import {
   resolveBlueprintConfigSource,
   resolveViewElementIds,
   type BlueprintConfigSource,
+  type BlueprintGraphEdge,
   type BlueprintGraphNode,
   type BlueprintNodeRole,
 } from "./graph/document";
@@ -42,6 +45,9 @@ export type BlueprintLibraryOption = {
 
 export type BlueprintNodeConfigSidebarProps = {
   node: BlueprintGraphNode;
+  graphNodes?: BlueprintGraphNode[];
+  graphEdges?: BlueprintGraphEdge[];
+  traceEntries?: ExecutionTraceEntry[];
   viewElementOptions?: BlueprintViewElementOption[];
   blueprintLibraryOptions?: BlueprintLibraryOption[];
   allowFalseSignalPropagation?: boolean;
@@ -81,6 +87,9 @@ const ROLE_LABEL_KEYS: Record<BlueprintNodeRole, string> = {
 
 export function BlueprintNodeConfigSidebar({
   node,
+  graphNodes = [],
+  graphEdges = [],
+  traceEntries = [],
   viewElementOptions = [],
   blueprintLibraryOptions = [],
   allowFalseSignalPropagation = false,
@@ -181,7 +190,10 @@ export function BlueprintNodeConfigSidebar({
 
         {configSource === "view" ? (
           <div className="block space-y-1">
-            <span className="text-muted-foreground">{t("blueprint.config.linkedViewNodes")}</span>
+            <ConfigFieldLabel
+              label={t("blueprint.config.linkedViewNodes")}
+              hint={t("blueprint.config.viewMultiHint")}
+            />
             <ViewElementMultiSelect
               options={viewElementOptions}
               value={linkedViewElementIds}
@@ -194,11 +206,7 @@ export function BlueprintNodeConfigSidebar({
                 })
               }
             />
-            {linkedViewElementIds.length === 0 ? (
-              <p className="text-[11px] text-muted-foreground">
-                {t("blueprint.config.viewMultiHint")}
-              </p>
-            ) : (
+            {linkedViewElementIds.length > 0 ? (
               <p className="text-[11px] text-muted-foreground">
                 {t("blueprint.config.linkedViewCount", {
                   count: linkedViewElementIds.length,
@@ -207,16 +215,16 @@ export function BlueprintNodeConfigSidebar({
                     .join("、"),
                 })}
               </p>
-            )}
+            ) : null}
           </div>
         ) : null}
 
         {configSource === "blueprint" ? (
           <div className="space-y-2 rounded-md border border-border/70 bg-muted/20 p-2.5">
-            <div className="font-medium text-foreground">{t("blueprint.config.blueprintAttrs")}</div>
-            <p className="text-[11px] text-muted-foreground">
-              {t("blueprint.config.blueprintAttrsHint")}
-            </p>
+            <ConfigSectionTitle
+              title={t("blueprint.config.blueprintAttrs")}
+              hint={t("blueprint.config.blueprintAttrsHint")}
+            />
             <label className="block space-y-1">
               <span className="text-muted-foreground">{t("blueprint.config.refLibrary")}</span>
               <Select
@@ -264,13 +272,19 @@ export function BlueprintNodeConfigSidebar({
 
         {configSource === "lifecycle" ? (
           <div className="space-y-2 rounded-md border border-border/70 bg-muted/20 p-2.5">
-            <div className="font-medium text-foreground">{t("blueprint.config.lifecycleHook")}</div>
-            <p className="text-[11px] text-muted-foreground">
-              {t("blueprint.config.lifecycleNoInput")}
-              {node.lifecyclePhase === "blueprintActivated"
-                ? t("blueprint.config.lifecycleBlueprintActivatedHint")
-                : t("blueprint.config.lifecyclePageHint")}
-            </p>
+            <div className="flex items-center gap-1.5">
+              <div className="font-medium text-foreground">
+                {t("blueprint.config.lifecycleHook")}
+              </div>
+              <ConfigHintIcon label={t("blueprint.config.lifecycleHook")}>
+                <p>{t("blueprint.config.lifecycleNoInput")}</p>
+                <p>
+                  {node.lifecyclePhase === "blueprintActivated"
+                    ? t("blueprint.config.lifecycleBlueprintActivatedHint")
+                    : t("blueprint.config.lifecyclePageHint")}
+                </p>
+              </ConfigHintIcon>
+            </div>
             <label className="block space-y-1">
               <span className="text-muted-foreground">{t("blueprint.config.listenPhase")}</span>
               <Select
@@ -305,7 +319,13 @@ export function BlueprintNodeConfigSidebar({
         ) : null}
 
         {configSource === "fetch" ? (
-          <FetchNodeConfigPanel node={node} onUpdateNode={onUpdateNode} />
+          <FetchNodeConfigPanel
+            node={node}
+            graphNodes={graphNodes}
+            graphEdges={graphEdges}
+            traceEntries={traceEntries}
+            onUpdateNode={onUpdateNode}
+          />
         ) : null}
 
         {configSource === "json" ? (
@@ -318,10 +338,10 @@ export function BlueprintNodeConfigSidebar({
 
         {configSource === "and" ? (
           <div className="space-y-2 rounded-md border border-border/70 bg-muted/20 p-2.5">
-            <div className="font-medium text-foreground">{t("blueprint.config.andTitle")}</div>
-            <p className="text-[11px] text-muted-foreground">
-              {t("blueprint.config.andHint")}
-            </p>
+            <ConfigSectionTitle
+              title={t("blueprint.config.andTitle")}
+              hint={t("blueprint.config.andHint")}
+            />
           </div>
         ) : null}
 

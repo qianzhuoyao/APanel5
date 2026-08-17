@@ -184,7 +184,11 @@ watch(() => [props.element.id, props.element.textHtml], syncEditorHtml);
         @update:value="(v) => patch({ textColor: v || undefined })"
       />
     </ConfigFieldGroup>
-    <ConfigFieldGroup :title="t('panel.config.groupInputAbility')">
+    <ConfigFieldGroup
+      :title="t('panel.config.groupInputAbility')"
+      collapsible
+      :default-open="false"
+    >
       <label class="flex items-center gap-2">
         <Checkbox
           :checked="element.textAllowInput ?? true"

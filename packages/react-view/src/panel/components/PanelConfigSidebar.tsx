@@ -104,8 +104,8 @@ export function PanelConfigSidebar({
     "scrollbar-thin [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-muted/40 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border/80 [&::-webkit-scrollbar-thumb]:hover:bg-border";
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     nodeInfo: true,
-    styleBackground: true,
-    styleBorder: true,
+    styleBackground: false,
+    styleBorder: false,
     chartBasic: true,
     chartAdvanced: false,
     chartAdvancedHighFreq: true,
@@ -421,9 +421,21 @@ export function PanelConfigSidebar({
 
   useEffect(() => {
     return subscribeRevealPanelConfig((detail) => {
-      for (const section of detail.sections) {
-        setSectionExpanded(section, true);
-      }
+      setExpandedSections((prev) => {
+        const next = { ...prev };
+        for (const section of detail.sections) next[section] = true;
+        next.nodeMore = true;
+        next.styleBgLayout = true;
+        next.chartDisplayMore = true;
+        next.chartTooltip = true;
+        next.chartAxes = true;
+        next.textInputAbility = true;
+        next.audioDisplayStyle = true;
+        next.geometryCanvasScript = true;
+        next.geometrySketch = true;
+        next.referenceCopyStrategy = true;
+        return next;
+      });
       window.requestAnimationFrame(() => {
         const field = detail.fields[0];
         if (field) highlightConfigField(field);
@@ -475,16 +487,48 @@ export function PanelConfigSidebar({
   const renderFieldGroup = (
     title: string,
     children: React.ReactNode,
-    hint?: React.ReactNode
-  ) => (
-    <div className="space-y-2.5 rounded-lg border border-border/55 bg-background/80 p-2.5">
-      <div className="flex items-center gap-1">
+    hint?: React.ReactNode,
+    options?: { groupKey?: string; defaultOpen?: boolean }
+  ) => {
+    const groupKey = options?.groupKey;
+    const defaultOpen = options?.defaultOpen ?? true;
+    const header = (
+      <>
         <div className="text-[11px] font-semibold text-muted-foreground">{title}</div>
         {hint ? <ConfigHintIcon label={title}>{hint}</ConfigHintIcon> : null}
-      </div>
-      {children}
-    </div>
-  );
+      </>
+    );
+    if (!groupKey) {
+      return (
+        <div className="space-y-2.5 rounded-lg border border-border/55 bg-background/80 p-2.5">
+          <div className="flex items-center gap-1">{header}</div>
+          {children}
+        </div>
+      );
+    }
+    const open = hasSearch ? true : isSectionExpanded(groupKey, defaultOpen);
+    return (
+      <Collapsible
+        open={open}
+        onOpenChange={(next) => setSectionExpanded(groupKey, next)}
+        className="space-y-2.5 rounded-lg border border-border/55 bg-background/80 p-2.5"
+      >
+        <div className="flex items-center gap-1.5">
+          <CollapsibleTrigger asChild>
+            <button
+              type="button"
+              className="flex h-5 w-5 items-center justify-center rounded text-[11px] hover:bg-accent"
+              aria-label={open ? t("panel.config.collapseGroup", { title }) : t("panel.config.expandGroup", { title })}
+            >
+              {open ? "▾" : "▸"}
+            </button>
+          </CollapsibleTrigger>
+          {header}
+        </div>
+        <CollapsibleContent className="space-y-2.5">{children}</CollapsibleContent>
+      </Collapsible>
+    );
+  };
   const isNodeCardExpanded = useCallback(
     (id: string) => expandedNodeCards[id] ?? true,
     [expandedNodeCards]
@@ -1883,21 +1927,6 @@ export function PanelConfigSidebar({
               {readonlyReason}
             </div>
           ) : null}
-          <div className="rounded-lg border border-border/60 bg-card/80 px-2.5 py-2 text-xs">
-            <label className="flex items-center gap-2">
-              <Checkbox
-                checked={selectedElement.locked === true}
-                disabled={!canToggleNodeLock}
-                className="h-4 w-4 border-2 border-foreground/80 bg-background ring-1 ring-foreground/40 data-[state=checked]:border-primary data-[state=checked]:ring-primary/40"
-                onCheckedChange={(checked) =>
-                  updateElement(selectedElement.id, {
-                    locked: checked === true,
-                  })
-                }
-              />
-              <span>{t("panel.config.lockNode")}</span>
-            </label>
-          </div>
           <fieldset disabled={!isNodeEditable} className={!isNodeEditable ? "opacity-60" : ""}>
             <div className="space-y-3.5 text-xs">
               {renderSection(
@@ -1917,7 +1946,7 @@ export function PanelConfigSidebar({
                   className="h-7"
                 />
               </label>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 <label className="block space-y-1" data-config-field="x">
                   <div>X</div>
                   <Input
@@ -1945,20 +1974,7 @@ export function PanelConfigSidebar({
                   />
                 </label>
               </div>
-              <div className="grid grid-cols-3 gap-2">
-                <label className="block space-y-1" data-config-field="rotate">
-                  <div>{t("panel.config.rotate")}</div>
-                  <Input
-                    type="number"
-                    value={selectedElement.rotate ?? 0}
-                    onChange={(e) =>
-                      updateElement(selectedElement.id, {
-                        rotate: Number(e.target.value) || 0,
-                      })
-                    }
-                    className="h-7"
-                  />
-                </label>
+              <div className="grid grid-cols-2 gap-2">
                 <label className="block space-y-1" data-config-field="width">
                   <div>{t("panel.config.width")}</div>
                   <Input
@@ -1983,6 +1999,24 @@ export function PanelConfigSidebar({
                     onChange={(e) =>
                       updateElement(selectedElement.id, {
                         height: Math.max(1, Number(e.target.value) || 1),
+                      })
+                    }
+                    className="h-7"
+                  />
+                </label>
+              </div>
+              {renderFieldGroup(
+                t("panel.config.groupNodeMore"),
+                <>
+              <div className="grid grid-cols-2 gap-2">
+                <label className="block space-y-1" data-config-field="rotate">
+                  <div>{t("panel.config.rotate")}</div>
+                  <Input
+                    type="number"
+                    value={selectedElement.rotate ?? 0}
+                    onChange={(e) =>
+                      updateElement(selectedElement.id, {
+                        rotate: Number(e.target.value) || 0,
                       })
                     }
                     className="h-7"
@@ -2027,181 +2061,33 @@ export function PanelConfigSidebar({
               </div>
               <div className="truncate text-muted-foreground">ID: {selectedElement.id}</div>
               <div className="text-muted-foreground">{t("panel.config.type")}: {selectedElement.materialType ?? selectedElement.id}</div>
-            </>,
-            true,
-            [t("panel.config.name"), "id", t("panel.config.type"), t("panel.layers.lockShort"), "locked", "name"]
-          )}
-
-          {renderSection(
-            "styleBackground",
-            t("panel.config.sectionStyleBackground"),
-            <>
-              {renderFieldGroup(
-                t("panel.config.groupBgFill"),
-                <>
-                  {renderColorField(
-                    t("panel.config.backgroundColor"),
-                    selectedElement.style?.backgroundColor ?? "",
-                    (next) => updateSelectedStyle({ backgroundColor: next || undefined })
-                  )}
-                  <label className="block space-y-1">
-                    <div>{t("panel.config.backgroundImage")}</div>
-                    <Input
-                      value={selectedElement.style?.backgroundImage ?? ""}
-                      onChange={(e) => updateSelectedStyle({ backgroundImage: e.target.value || undefined })}
-                      placeholder='url("https://...") / linear-gradient(...)'
-                      className="h-7"
-                    />
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <label className="inline-flex cursor-pointer items-center rounded border border-border px-2 py-1 text-[11px] hover:bg-accent">
-                      {t("panel.config.uploadImage")}
-                      <Input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={async (e) => {
-                          const file = e.target.files?.[0];
-                          e.currentTarget.value = "";
-                          if (!file) return;
-                          await handleUploadBackgroundImage(file);
-                        }}
-                      />
-                    </label>
-                    {uploadStatus ? (
-                      <span className="text-[11px] text-muted-foreground">{uploadStatus}</span>
-                    ) : null}
-                  </div>
-                </>
-              )}
-              {renderFieldGroup(
-                t("panel.config.groupBgLayout"),
-                <div className="grid grid-cols-2 gap-2">
-                  <label className="block space-y-1">
-                    <div>{t("panel.config.backgroundSize")}</div>
-                    <Select
-                      value={selectedElement.style?.backgroundSize ?? "__none__"}
-                      onValueChange={(value) =>
-                        updateSelectedStyle({
-                          backgroundSize: value === "__none__" ? undefined : value,
-                        })
-                      }
-                    >
-                      <SelectTrigger className="h-7">
-                        <SelectValue placeholder={t("panel.config.selectBackgroundSize")} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__none__">{t("common.default")}</SelectItem>
-                        <SelectItem value="cover">cover</SelectItem>
-                        <SelectItem value="contain">contain</SelectItem>
-                        <SelectItem value="100% 100%">100% 100%</SelectItem>
-                        <SelectItem value="auto">auto</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </label>
-                  <label className="block space-y-1">
-                    <div>{t("panel.config.backgroundPosition")}</div>
-                    <Select
-                      value={selectedElement.style?.backgroundPosition ?? "__none__"}
-                      onValueChange={(value) =>
-                        updateSelectedStyle({
-                          backgroundPosition: value === "__none__" ? undefined : value,
-                        })
-                      }
-                    >
-                      <SelectTrigger className="h-7">
-                        <SelectValue placeholder={t("panel.config.selectBackgroundPosition")} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__none__">{t("common.default")}</SelectItem>
-                        <SelectItem value="center">center</SelectItem>
-                        <SelectItem value="top">top</SelectItem>
-                        <SelectItem value="bottom">bottom</SelectItem>
-                        <SelectItem value="left">left</SelectItem>
-                        <SelectItem value="right">right</SelectItem>
-                        <SelectItem value="top left">top left</SelectItem>
-                        <SelectItem value="top right">top right</SelectItem>
-                        <SelectItem value="bottom left">bottom left</SelectItem>
-                        <SelectItem value="bottom right">bottom right</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </label>
-                </div>
+                </>,
+                undefined,
+                { groupKey: "nodeMore", defaultOpen: false }
               )}
             </>,
             true,
-            [t("panel.config.backgroundColor"), t("panel.config.backgroundImage"), "background", "backgroundSize", "backgroundPosition", t("panel.config.searchKwLayout")]
+            [t("panel.config.name"), "id", t("panel.config.type"), t("panel.config.rotate"), t("panel.config.nodeZOrder"), t("panel.layers.lockShort"), "locked", "name"]
           )}
-
-          {renderSection(
-            "styleBorder",
-            t("panel.config.sectionStyleBorder"),
-            <>
-              {renderFieldGroup(
-                t("panel.config.groupBorderGeometry"),
-                <div className="grid grid-cols-2 gap-2">
-                  <label className="block space-y-1">
-                    <div>{t("panel.config.borderWidth")}</div>
-                    <Input
-                      type="number"
-                      min={0}
-                      value={selectedElement.style?.borderWidth ?? 0}
-                      onChange={(e) =>
-                        updateSelectedStyle({ borderWidth: Math.max(0, Number(e.target.value) || 0) })
-                      }
-                      className="h-7"
-                    />
-                  </label>
-                  <label className="block space-y-1">
-                    <div>{t("panel.config.borderRadius")}</div>
-                    <Input
-                      type="number"
-                      min={0}
-                      value={selectedElement.style?.borderRadius ?? 0}
-                      onChange={(e) =>
-                        updateSelectedStyle({ borderRadius: Math.max(0, Number(e.target.value) || 0) })
-                      }
-                      className="h-7"
-                    />
-                  </label>
-                </div>
-              )}
-              {renderFieldGroup(
-                t("panel.config.groupBorderVisual"),
-                <div className="grid grid-cols-2 gap-2">
-                  <label className="block space-y-1">
-                    <div>{t("panel.config.borderStyle")}</div>
-                    <Select
-                      value={selectedElement.style?.borderStyle ?? "solid"}
-                      onValueChange={(value) =>
-                        updateSelectedStyle({
-                          borderStyle: value as NonNullable<PanelElementStyle["borderStyle"]>,
-                        })
-                      }
-                    >
-                      <SelectTrigger className="h-7">
-                        <SelectValue placeholder={t("panel.config.selectBorderStyle")} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">none</SelectItem>
-                        <SelectItem value="solid">solid</SelectItem>
-                        <SelectItem value="dashed">dashed</SelectItem>
-                        <SelectItem value="dotted">dotted</SelectItem>
-                        <SelectItem value="double">double</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </label>
-                  {renderColorField(
-                    t("panel.config.borderColor"),
-                    selectedElement.style?.borderColor ?? "",
-                    (next) => updateSelectedStyle({ borderColor: next || undefined })
-                  )}
-                </div>
-              )}
-            </>,
-            true,
-            [t("panel.config.searchKwBorder"), "border", t("panel.config.searchKwWidth"), t("panel.config.searchKwRadius"), t("panel.config.color"), t("panel.config.searchKwStyle")]
-          )}
+            </div>
+          </fieldset>
+          <div className="rounded-lg border border-border/60 bg-card/80 px-2.5 py-2 text-xs">
+            <label className="flex items-center gap-2">
+              <Checkbox
+                checked={selectedElement.locked === true}
+                disabled={!canToggleNodeLock}
+                className="h-4 w-4 border-2 border-foreground/80 bg-background ring-1 ring-foreground/40 data-[state=checked]:border-primary data-[state=checked]:ring-primary/40"
+                onCheckedChange={(checked) =>
+                  updateElement(selectedElement.id, {
+                    locked: checked === true,
+                  })
+                }
+              />
+              <span>{t("panel.config.lockNode")}</span>
+            </label>
+          </div>
+          <fieldset disabled={!isNodeEditable} className={!isNodeEditable ? "opacity-60" : ""}>
+            <div className="space-y-3.5 text-xs">
 
           {isChartElement ? (
             <>
@@ -2226,6 +2112,126 @@ export function PanelConfigSidebar({
                         selectedElement.chart?.color ?? "#3b82f6",
                         (next) => updateSelectedChart({ color: next || "#3b82f6" })
                       )}
+                    </>
+                  )}
+                  {renderFieldGroup(
+                    t("panel.config.groupData"),
+                    <>
+                      <label className="block space-y-1">
+                        <div>{t("panel.config.labelsCsv")}</div>
+                        <Input
+                          value={getChartLabelsDisplayText(selectedElement.chart)}
+                          onChange={(e) =>
+                            updateSelectedChart({
+                              labelsText: e.target.value,
+                            })
+                          }
+                          className="h-7"
+                        />
+                      </label>
+
+                      <label className="block space-y-1">
+                        <div>{t("panel.config.valuesCsv")}</div>
+                        <Input
+                          value={getChartValuesDisplayText(selectedElement.chart)}
+                          onChange={(e) =>
+                            updateSelectedChart({
+                              valuesText: e.target.value,
+                            })
+                          }
+                          className="h-7"
+                        />
+                      </label>
+                    </>
+                  )}
+
+                  {selectedChartType === "bar" ||
+                  selectedChartType === "line" ||
+                  selectedChartType === "area" ||
+                  selectedChartType === "pie" ? (
+                    renderFieldGroup(
+                      t("panel.config.groupSeries"),
+                      <>
+                        {selectedChartType === "bar" ? (
+                          <label className="block space-y-1">
+                            <div>{t("panel.config.barWidthPx")}</div>
+                            <Input
+                              type="number"
+                              min={1}
+                              placeholder={t("panel.config.barWidthAuto")}
+                              value={selectedElement.chart?.barWidth ?? ""}
+                              onChange={(e) => {
+                                const raw = e.target.value.trim();
+                                updateSelectedChart({
+                                  barWidth: raw
+                                    ? Math.max(1, Number(raw) || 1)
+                                    : undefined,
+                                });
+                              }}
+                              className="h-7"
+                            />
+                          </label>
+                        ) : null}
+
+                        {selectedChartType === "line" || selectedChartType === "area" ? (
+                          <label className="flex items-center gap-2">
+                            <Checkbox
+                              checked={selectedElement.chart?.smooth ?? true}
+                              className="h-4 w-4 border-2 border-foreground/80 bg-background ring-1 ring-foreground/40 data-[state=checked]:border-primary data-[state=checked]:ring-primary/40"
+                              onCheckedChange={(checked) =>
+                                updateSelectedChart({ smooth: checked === true })
+                              }
+                            />
+                            <span>{t("panel.config.smooth")}</span>
+                          </label>
+                        ) : null}
+
+                        {selectedChartType === "pie" ? (
+                          <div className="grid grid-cols-2 gap-2">
+                            <label className="block space-y-1">
+                              <div>{t("panel.config.pieInnerRadiusPct")}</div>
+                              <Input
+                                type="number"
+                                min={0}
+                                max={99}
+                                value={selectedElement.chart?.pieInnerRadius ?? 30}
+                                onChange={(e) =>
+                                  updateSelectedChart({
+                                    pieInnerRadius: Math.max(
+                                      0,
+                                      Math.min(99, Number(e.target.value) || 0)
+                                    ),
+                                  })
+                                }
+                                className="h-7"
+                              />
+                            </label>
+                            <label className="block space-y-1">
+                              <div>{t("panel.config.pieOuterRadiusPct")}</div>
+                              <Input
+                                type="number"
+                                min={1}
+                                max={100}
+                                value={selectedElement.chart?.pieOuterRadius ?? 65}
+                                onChange={(e) =>
+                                  updateSelectedChart({
+                                    pieOuterRadius: Math.max(
+                                      1,
+                                      Math.min(100, Number(e.target.value) || 1)
+                                    ),
+                                  })
+                                }
+                                className="h-7"
+                              />
+                            </label>
+                          </div>
+                        ) : null}
+                      </>
+                    )
+                  ) : null}
+                  {renderFieldGroup(
+                    t("panel.config.groupChartDisplayMore"),
+                    <>
                       <label className="flex items-center gap-2">
                         <Checkbox
                           checked={selectedElement.chart?.colorMode === "gradient"}
@@ -2308,7 +2314,9 @@ export function PanelConfigSidebar({
                           </SelectContent>
                         </Select>
                       </label>
-                    </>
+                    </>,
+                    undefined,
+                    { groupKey: "chartDisplayMore", defaultOpen: false }
                   )}
                   {renderFieldGroup(
                     t("panel.config.groupTooltip"),
@@ -2365,39 +2373,10 @@ export function PanelConfigSidebar({
                           className="h-7"
                         />
                       </label>
-                    </>
+                    </>,
+                    undefined,
+                    { groupKey: "chartTooltip", defaultOpen: false }
                   )}
-                  {renderFieldGroup(
-                    t("panel.config.groupData"),
-                    <>
-                      <label className="block space-y-1">
-                        <div>{t("panel.config.labelsCsv")}</div>
-                        <Input
-                          value={getChartLabelsDisplayText(selectedElement.chart)}
-                          onChange={(e) =>
-                            updateSelectedChart({
-                              labelsText: e.target.value,
-                            })
-                          }
-                          className="h-7"
-                        />
-                      </label>
-
-                      <label className="block space-y-1">
-                        <div>{t("panel.config.valuesCsv")}</div>
-                        <Input
-                          value={getChartValuesDisplayText(selectedElement.chart)}
-                          onChange={(e) =>
-                            updateSelectedChart({
-                              valuesText: e.target.value,
-                            })
-                          }
-                          className="h-7"
-                        />
-                      </label>
-                    </>
-                  )}
-
                   {selectedChartType === "bar" ||
                   selectedChartType === "line" ||
                   selectedChartType === "area" ||
@@ -2559,94 +2538,12 @@ export function PanelConfigSidebar({
                           <span>{t("panel.config.yAxisLabelAutoEllipsis")}</span>
                         </label>
                       </div>
-                      </>
+                      </>,
+                      undefined,
+                      { groupKey: "chartAxes", defaultOpen: false }
                     )
                   ) : null}
 
-                  {selectedChartType === "bar" ||
-                  selectedChartType === "line" ||
-                  selectedChartType === "area" ||
-                  selectedChartType === "pie" ? (
-                    renderFieldGroup(
-                      t("panel.config.groupSeries"),
-                      <>
-                        {selectedChartType === "bar" ? (
-                          <label className="block space-y-1">
-                            <div>{t("panel.config.barWidthPx")}</div>
-                            <Input
-                              type="number"
-                              min={1}
-                              placeholder={t("panel.config.barWidthAuto")}
-                              value={selectedElement.chart?.barWidth ?? ""}
-                              onChange={(e) => {
-                                const raw = e.target.value.trim();
-                                updateSelectedChart({
-                                  barWidth: raw
-                                    ? Math.max(1, Number(raw) || 1)
-                                    : undefined,
-                                });
-                              }}
-                              className="h-7"
-                            />
-                          </label>
-                        ) : null}
-
-                        {selectedChartType === "line" || selectedChartType === "area" ? (
-                          <label className="flex items-center gap-2">
-                            <Checkbox
-                              checked={selectedElement.chart?.smooth ?? true}
-                              className="h-4 w-4 border-2 border-foreground/80 bg-background ring-1 ring-foreground/40 data-[state=checked]:border-primary data-[state=checked]:ring-primary/40"
-                              onCheckedChange={(checked) =>
-                                updateSelectedChart({ smooth: checked === true })
-                              }
-                            />
-                            <span>{t("panel.config.smooth")}</span>
-                          </label>
-                        ) : null}
-
-                        {selectedChartType === "pie" ? (
-                          <div className="grid grid-cols-2 gap-2">
-                            <label className="block space-y-1">
-                              <div>{t("panel.config.pieInnerRadiusPct")}</div>
-                              <Input
-                                type="number"
-                                min={0}
-                                max={99}
-                                value={selectedElement.chart?.pieInnerRadius ?? 30}
-                                onChange={(e) =>
-                                  updateSelectedChart({
-                                    pieInnerRadius: Math.max(
-                                      0,
-                                      Math.min(99, Number(e.target.value) || 0)
-                                    ),
-                                  })
-                                }
-                                className="h-7"
-                              />
-                            </label>
-                            <label className="block space-y-1">
-                              <div>{t("panel.config.pieOuterRadiusPct")}</div>
-                              <Input
-                                type="number"
-                                min={1}
-                                max={100}
-                                value={selectedElement.chart?.pieOuterRadius ?? 65}
-                                onChange={(e) =>
-                                  updateSelectedChart({
-                                    pieOuterRadius: Math.max(
-                                      1,
-                                      Math.min(100, Number(e.target.value) || 1)
-                                    ),
-                                  })
-                                }
-                                className="h-7"
-                              />
-                            </label>
-                          </div>
-                        ) : null}
-                      </>
-                    )
-                  ) : null}
                 </>,
                 true,
                 [
@@ -3096,7 +2993,9 @@ export function PanelConfigSidebar({
                       }
                     />
                     <span>{t("panel.config.allowCanvasInput")}</span>
-                  </label>
+                  </label>,
+                  undefined,
+                  { groupKey: "textInputAbility", defaultOpen: false }
                 )}
               </>,
               true,
@@ -3279,7 +3178,9 @@ export function PanelConfigSidebar({
                         {t("panel.config.audioPosterHint")}
                       </ConfigHintIcon>
                     </div>
-                  </>
+                  </>,
+                  undefined,
+                  { groupKey: "audioDisplayStyle", defaultOpen: false }
                 )}
               </>,
               true,
@@ -3452,7 +3353,8 @@ export function PanelConfigSidebar({
                   </>,
                   <>
                     {t("panel.config.canvasScriptHint")}
-                  </>
+                  </>,
+                  { groupKey: "geometryCanvasScript", defaultOpen: false }
                 )}
                 {renderFieldGroup(
                   t("panel.config.groupSketchOverlay"),
@@ -3549,7 +3451,9 @@ export function PanelConfigSidebar({
                         {t("panel.config.clearSketch")}
                       </button>
                     </div>
-                  </>
+                  </>,
+                  undefined,
+                  { groupKey: "geometrySketch", defaultOpen: false }
                 )}
               </>,
               true,
@@ -3709,17 +3613,193 @@ export function PanelConfigSidebar({
                   </>,
                   <>
                     {t("panel.config.copyStrategyHint")}
-                  </>
+                  </>,
+                  { groupKey: "referenceCopyStrategy", defaultOpen: false }
                 )}
               </>,
               true,
               [t("panel.config.searchKwRef"), "ref", t("panel.config.layer"), t("panel.material.shallowCopy"), t("panel.material.deepCopy"), "snapshot"]
             )
-          ) : (
+          ) : selectedElement.materialType === "image" ? null : (
             <div className="text-xs leading-6 text-muted-foreground">
               {t("panel.config.notChartType")}
             </div>
           )}
+          {renderSection(
+            "styleBackground",
+            t("panel.config.sectionStyleBackground"),
+            <>
+              {renderFieldGroup(
+                t("panel.config.groupBgFill"),
+                <>
+                  {renderColorField(
+                    t("panel.config.backgroundColor"),
+                    selectedElement.style?.backgroundColor ?? "",
+                    (next) => updateSelectedStyle({ backgroundColor: next || undefined })
+                  )}
+                </>
+              )}
+              {renderFieldGroup(
+                t("panel.config.groupBgLayout"),
+                <>
+                  <label className="block space-y-1">
+                    <div>{t("panel.config.backgroundImage")}</div>
+                    <Input
+                      value={selectedElement.style?.backgroundImage ?? ""}
+                      onChange={(e) => updateSelectedStyle({ backgroundImage: e.target.value || undefined })}
+                      placeholder='url("https://...") / linear-gradient(...)'
+                      className="h-7"
+                    />
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <label className="inline-flex cursor-pointer items-center rounded border border-border px-2 py-1 text-[11px] hover:bg-accent">
+                      {t("panel.config.uploadImage")}
+                      <Input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          e.currentTarget.value = "";
+                          if (!file) return;
+                          await handleUploadBackgroundImage(file);
+                        }}
+                      />
+                    </label>
+                    {uploadStatus ? (
+                      <span className="text-[11px] text-muted-foreground">{uploadStatus}</span>
+                    ) : null}
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                  <label className="block space-y-1">
+                    <div>{t("panel.config.backgroundSize")}</div>
+                    <Select
+                      value={selectedElement.style?.backgroundSize ?? "__none__"}
+                      onValueChange={(value) =>
+                        updateSelectedStyle({
+                          backgroundSize: value === "__none__" ? undefined : value,
+                        })
+                      }
+                    >
+                      <SelectTrigger className="h-7">
+                        <SelectValue placeholder={t("panel.config.selectBackgroundSize")} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">{t("common.default")}</SelectItem>
+                        <SelectItem value="cover">cover</SelectItem>
+                        <SelectItem value="contain">contain</SelectItem>
+                        <SelectItem value="100% 100%">100% 100%</SelectItem>
+                        <SelectItem value="auto">auto</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </label>
+                  <label className="block space-y-1">
+                    <div>{t("panel.config.backgroundPosition")}</div>
+                    <Select
+                      value={selectedElement.style?.backgroundPosition ?? "__none__"}
+                      onValueChange={(value) =>
+                        updateSelectedStyle({
+                          backgroundPosition: value === "__none__" ? undefined : value,
+                        })
+                      }
+                    >
+                      <SelectTrigger className="h-7">
+                        <SelectValue placeholder={t("panel.config.selectBackgroundPosition")} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">{t("common.default")}</SelectItem>
+                        <SelectItem value="center">center</SelectItem>
+                        <SelectItem value="top">top</SelectItem>
+                        <SelectItem value="bottom">bottom</SelectItem>
+                        <SelectItem value="left">left</SelectItem>
+                        <SelectItem value="right">right</SelectItem>
+                        <SelectItem value="top left">top left</SelectItem>
+                        <SelectItem value="top right">top right</SelectItem>
+                        <SelectItem value="bottom left">bottom left</SelectItem>
+                        <SelectItem value="bottom right">bottom right</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </label>
+                </div>
+                </>,
+                undefined,
+                { groupKey: "styleBgLayout", defaultOpen: false }
+              )}
+            </>,
+            false,
+            [t("panel.config.backgroundColor"), t("panel.config.backgroundImage"), "background", "backgroundSize", "backgroundPosition", t("panel.config.searchKwLayout")]
+          )}
+
+          {renderSection(
+            "styleBorder",
+            t("panel.config.sectionStyleBorder"),
+            <>
+              {renderFieldGroup(
+                t("panel.config.groupBorderGeometry"),
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="block space-y-1">
+                    <div>{t("panel.config.borderWidth")}</div>
+                    <Input
+                      type="number"
+                      min={0}
+                      value={selectedElement.style?.borderWidth ?? 0}
+                      onChange={(e) =>
+                        updateSelectedStyle({ borderWidth: Math.max(0, Number(e.target.value) || 0) })
+                      }
+                      className="h-7"
+                    />
+                  </label>
+                  <label className="block space-y-1">
+                    <div>{t("panel.config.borderRadius")}</div>
+                    <Input
+                      type="number"
+                      min={0}
+                      value={selectedElement.style?.borderRadius ?? 0}
+                      onChange={(e) =>
+                        updateSelectedStyle({ borderRadius: Math.max(0, Number(e.target.value) || 0) })
+                      }
+                      className="h-7"
+                    />
+                  </label>
+                </div>
+              )}
+              {renderFieldGroup(
+                t("panel.config.groupBorderVisual"),
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="block space-y-1">
+                    <div>{t("panel.config.borderStyle")}</div>
+                    <Select
+                      value={selectedElement.style?.borderStyle ?? "solid"}
+                      onValueChange={(value) =>
+                        updateSelectedStyle({
+                          borderStyle: value as NonNullable<PanelElementStyle["borderStyle"]>,
+                        })
+                      }
+                    >
+                      <SelectTrigger className="h-7">
+                        <SelectValue placeholder={t("panel.config.selectBorderStyle")} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">none</SelectItem>
+                        <SelectItem value="solid">solid</SelectItem>
+                        <SelectItem value="dashed">dashed</SelectItem>
+                        <SelectItem value="dotted">dotted</SelectItem>
+                        <SelectItem value="double">double</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </label>
+                  {renderColorField(
+                    t("panel.config.borderColor"),
+                    selectedElement.style?.borderColor ?? "",
+                    (next) => updateSelectedStyle({ borderColor: next || undefined })
+                  )}
+                </div>
+              )}
+            </>,
+            false,
+            [t("panel.config.searchKwBorder"), "border", t("panel.config.searchKwWidth"), t("panel.config.searchKwRadius"), t("panel.config.color"), t("panel.config.searchKwStyle")]
+          )}
+
           {hasSearch && renderedSectionCount === 0 ? (
             <div className="rounded border border-border/60 bg-background px-2 py-1.5 text-[11px] text-muted-foreground">
               {t("panel.config.noMatch")}

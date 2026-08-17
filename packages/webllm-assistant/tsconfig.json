@@ -10,6 +10,6 @@
       "@mlc-ai/web-llm": ["./vendor/bundled/web-llm"]
     }
   },
-  "include": ["src/**/*.ts"],
+  "include": ["src/**/*.ts", "src/**/*.d.ts"],
   "exclude": ["node_modules", "dist", "vendor"]
 }

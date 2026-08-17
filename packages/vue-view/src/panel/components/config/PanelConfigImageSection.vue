@@ -100,7 +100,11 @@ function onFileChange(e: Event) {
         <span v-if="uploadStatus" class="text-[11px] text-gray-500">{{ uploadStatus }}</span>
       </div>
     </ConfigFieldGroup>
-    <ConfigFieldGroup :title="t('panel.config.groupDisplayMode')">
+    <ConfigFieldGroup
+      :title="t('panel.config.groupDisplayMode')"
+      collapsible
+      :default-open="false"
+    >
       <label class="block space-y-1">
         <div>{{ t("panel.config.objectFitFull") }}</div>
         <Select

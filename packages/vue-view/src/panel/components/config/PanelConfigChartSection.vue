@@ -143,6 +143,100 @@ function onOptionJsonChange(v: string) {
         :disabled="!isEditable"
         @update:value="(v) => updateChart({ color: v || '#3b82f6' })"
       />
+    </ConfigFieldGroup>
+    <ConfigFieldGroup :title="t('panel.config.groupData')">
+      <label class="block space-y-1">
+        <div>{{ t("panel.config.labelsCsv") }}</div>
+        <Input
+          size="small"
+          :value="getChartLabelsDisplayText(element.chart)"
+          :disabled="!isEditable"
+          @update:value="(v: string) => updateChart({ labelsText: v })"
+        />
+      </label>
+      <label class="block space-y-1">
+        <div>{{ t("panel.config.valuesCsv") }}</div>
+        <Input
+          size="small"
+          :value="getChartValuesDisplayText(element.chart)"
+          :disabled="!isEditable"
+          @update:value="(v: string) => updateChart({ valuesText: v })"
+        />
+      </label>
+    </ConfigFieldGroup>
+
+    <ConfigFieldGroup
+      v-if="['bar', 'line', 'area', 'pie'].includes(selectedChartType)"
+      :title="t('panel.config.groupSeries')"
+    >
+      <label v-if="selectedChartType === 'bar'" class="block space-y-1">
+        <div>{{ t("panel.config.barWidthPx") }}</div>
+        <InputNumber
+          size="small"
+          class="w-full"
+          :min="1"
+          :placeholder="t('panel.config.barWidthAuto')"
+          :value="element.chart?.barWidth ?? null"
+          :disabled="!isEditable"
+          @update:value="(v) => {
+            if (v == null || v === '') {
+              updateChart({ barWidth: undefined });
+              return;
+            }
+            const n = Number(v);
+            if (!Number.isNaN(n) && n > 0) updateChart({ barWidth: Math.max(1, n) });
+          }"
+        />
+      </label>
+      <label
+        v-if="selectedChartType === 'line' || selectedChartType === 'area'"
+        class="flex items-center gap-2"
+      >
+        <Checkbox
+          :checked="element.chart?.smooth ?? true"
+          :disabled="!isEditable"
+          @update:checked="(v) => updateChart({ smooth: v === true })"
+        />
+        <span>{{ t("panel.config.smooth") }}</span>
+      </label>
+      <div v-if="selectedChartType === 'pie'" class="grid grid-cols-2 gap-2">
+        <label class="block space-y-1">
+          <div>{{ t("panel.config.pieInnerRadiusPct") }}</div>
+          <InputNumber
+            size="small"
+            class="w-full"
+            :min="0"
+            :max="99"
+            :value="element.chart?.pieInnerRadius ?? 30"
+            :disabled="!isEditable"
+            @update:value="(v) => {
+              const n = Number(v);
+              if (!Number.isNaN(n)) updateChart({ pieInnerRadius: Math.max(0, Math.min(99, n)) });
+            }"
+          />
+        </label>
+        <label class="block space-y-1">
+          <div>{{ t("panel.config.pieOuterRadiusPct") }}</div>
+          <InputNumber
+            size="small"
+            class="w-full"
+            :min="1"
+            :max="100"
+            :value="element.chart?.pieOuterRadius ?? 65"
+            :disabled="!isEditable"
+            @update:value="(v) => {
+              const n = Number(v);
+              if (!Number.isNaN(n)) updateChart({ pieOuterRadius: Math.max(1, Math.min(100, n)) });
+            }"
+          />
+        </label>
+      </div>
+    </ConfigFieldGroup>
+    <ConfigFieldGroup
+      :title="t('panel.config.groupChartDisplayMore')"
+      collapsible
+      :default-open="false"
+    >
       <label class="flex items-center gap-2">
         <Checkbox
           :checked="element.chart?.colorMode === 'gradient'"
@@ -208,7 +302,11 @@ function onOptionJsonChange(v: string) {
       </label>
     </ConfigFieldGroup>
 
-    <ConfigFieldGroup :title="t('panel.config.groupTooltip')">
+    <ConfigFieldGroup
+      :title="t('panel.config.groupTooltip')"
+      collapsible
+      :default-open="false"
+    >
       <div class="grid grid-cols-2 gap-2">
         <label class="flex items-center gap-2">
           <Checkbox
@@ -264,30 +362,11 @@ function onOptionJsonChange(v: string) {
       </label>
     </ConfigFieldGroup>
 
-    <ConfigFieldGroup :title="t('panel.config.groupData')">
-      <label class="block space-y-1">
-        <div>{{ t("panel.config.labelsCsv") }}</div>
-        <Input
-          size="small"
-          :value="getChartLabelsDisplayText(element.chart)"
-          :disabled="!isEditable"
-          @update:value="(v: string) => updateChart({ labelsText: v })"
-        />
-      </label>
-      <label class="block space-y-1">
-        <div>{{ t("panel.config.valuesCsv") }}</div>
-        <Input
-          size="small"
-          :value="getChartValuesDisplayText(element.chart)"
-          :disabled="!isEditable"
-          @update:value="(v: string) => updateChart({ valuesText: v })"
-        />
-      </label>
-    </ConfigFieldGroup>
-
     <ConfigFieldGroup
       v-if="['bar', 'line', 'area', 'scatter'].includes(selectedChartType)"
       :title="t('panel.config.groupAxes')"
+      collapsible
+      :default-open="false"
     >
       <div class="grid grid-cols-2 gap-2">
         <label class="block">
@@ -407,73 +486,6 @@ function onOptionJsonChange(v: string) {
       </div>
     </ConfigFieldGroup>
 
-    <ConfigFieldGroup
-      v-if="['bar', 'line', 'area', 'pie'].includes(selectedChartType)"
-      :title="t('panel.config.groupSeries')"
-    >
-      <label v-if="selectedChartType === 'bar'" class="block space-y-1">
-        <div>{{ t("panel.config.barWidthPx") }}</div>
-        <InputNumber
-          size="small"
-          class="w-full"
-          :min="1"
-          :placeholder="t('panel.config.barWidthAuto')"
-          :value="element.chart?.barWidth ?? null"
-          :disabled="!isEditable"
-          @update:value="(v) => {
-            if (v == null || v === '') {
-              updateChart({ barWidth: undefined });
-              return;
-            }
-            const n = Number(v);
-            if (!Number.isNaN(n) && n > 0) updateChart({ barWidth: Math.max(1, n) });
-          }"
-        />
-      </label>
-      <label
-        v-if="selectedChartType === 'line' || selectedChartType === 'area'"
-        class="flex items-center gap-2"
-      >
-        <Checkbox
-          :checked="element.chart?.smooth ?? true"
-          :disabled="!isEditable"
-          @update:checked="(v) => updateChart({ smooth: v === true })"
-        />
-        <span>{{ t("panel.config.smooth") }}</span>
-      </label>
-      <div v-if="selectedChartType === 'pie'" class="grid grid-cols-2 gap-2">
-        <label class="block space-y-1">
-          <div>{{ t("panel.config.pieInnerRadiusPct") }}</div>
-          <InputNumber
-            size="small"
-            class="w-full"
-            :min="0"
-            :max="99"
-            :value="element.chart?.pieInnerRadius ?? 30"
-            :disabled="!isEditable"
-            @update:value="(v) => {
-              const n = Number(v);
-              if (!Number.isNaN(n)) updateChart({ pieInnerRadius: Math.max(0, Math.min(99, n)) });
-            }"
-          />
-        </label>
-        <label class="block space-y-1">
-          <div>{{ t("panel.config.pieOuterRadiusPct") }}</div>
-          <InputNumber
-            size="small"
-            class="w-full"
-            :min="1"
-            :max="100"
-            :value="element.chart?.pieOuterRadius ?? 65"
-            :disabled="!isEditable"
-            @update:value="(v) => {
-              const n = Number(v);
-              if (!Number.isNaN(n)) updateChart({ pieOuterRadius: Math.max(1, Math.min(100, n)) });
-            }"
-          />
-        </label>
-      </div>
-    </ConfigFieldGroup>
   </ConfigSection>
 
   <ConfigSection

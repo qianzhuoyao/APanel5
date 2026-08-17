@@ -4,6 +4,7 @@ import { useI18n } from "@arronqzy/i18n/react";
 import {
   BlueprintExecutionLogPanel,
   BlueprintNodeConfigSidebar,
+  type BlueprintGraphEdge,
   type BlueprintGraphNode,
   type ExecutionLogSettings,
   type ExecutionTraceEntry,
@@ -41,6 +42,8 @@ export type WorkspaceConfigSidebarProps = Omit<
   configFocus: WorkspaceConfigFocus;
   executionLog?: BlueprintExecutionLogViewProps;
   selectedBlueprintNode: BlueprintGraphNode | null;
+  blueprintGraphNodes?: BlueprintGraphNode[];
+  blueprintGraphEdges?: BlueprintGraphEdge[];
   allowFalseSignalPropagation?: boolean;
   onUpdateAllowFalseSignalPropagation?: (value: boolean) => void;
   onUpdateBlueprintNode: (
@@ -74,6 +77,8 @@ export function WorkspaceConfigSidebar({
   configFocus,
   executionLog,
   selectedBlueprintNode,
+  blueprintGraphNodes = [],
+  blueprintGraphEdges = [],
   allowFalseSignalPropagation = false,
   onUpdateAllowFalseSignalPropagation,
   onUpdateBlueprintNode,
@@ -151,6 +156,9 @@ export function WorkspaceConfigSidebar({
   return (
     <BlueprintNodeConfigSidebar
       node={selectedBlueprintNode}
+      graphNodes={blueprintGraphNodes}
+      graphEdges={blueprintGraphEdges}
+      traceEntries={executionLog?.entries}
       allowFalseSignalPropagation={allowFalseSignalPropagation}
       onUpdateAllowFalseSignalPropagation={onUpdateAllowFalseSignalPropagation}
       viewElementOptions={viewElementOptions}

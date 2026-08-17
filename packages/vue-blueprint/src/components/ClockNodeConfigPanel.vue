@@ -4,6 +4,7 @@ import { computed } from "vue";
 import { Checkbox, Input } from "ant-design-vue";
 import type { ClockNodeConfig } from "@arronqzy/blueprint-dsl";
 
+import ConfigHintIcon from "./ConfigHintIcon.vue";
 import type { BlueprintGraphNode } from "../graph/document";
 import { resolveNodeClockConfig } from "../graph/document";
 
@@ -60,11 +61,20 @@ function handleEmitImmediatelyChange(checked: boolean) {
 
 <template>
   <div class="space-y-2 rounded-md border border-border/70 bg-muted/20 p-2.5">
-    <div class="font-medium text-foreground">{{ t("blueprint.config.clockTitle") }}</div>
-    <p class="text-[11px] text-muted-foreground">{{ t("blueprint.config.clockHint") }}</p>
+    <div class="flex items-center gap-1.5">
+      <div class="font-medium text-foreground">{{ t("blueprint.config.clockTitle") }}</div>
+      <ConfigHintIcon :label="t('blueprint.config.clockTitle')">
+        {{ t("blueprint.config.clockHint") }}
+      </ConfigHintIcon>
+    </div>
 
     <label class="block space-y-1">
-      <span class="text-muted-foreground">{{ t("blueprint.config.clockIntervalSeconds") }}</span>
+      <span class="inline-flex items-center gap-1 text-muted-foreground">
+        {{ t("blueprint.config.clockIntervalSeconds") }}
+        <ConfigHintIcon :label="t('blueprint.config.clockIntervalSeconds')">
+          {{ t("blueprint.config.clockIntervalHint") }}
+        </ConfigHintIcon>
+      </span>
       <Input
         type="number"
         :min="0"
@@ -73,13 +83,15 @@ function handleEmitImmediatelyChange(checked: boolean) {
         :value="clockConfig.intervalSeconds"
         @update:value="handleIntervalChange"
       />
-      <p class="text-[11px] text-muted-foreground">
-        {{ t("blueprint.config.clockIntervalHint") }}
-      </p>
     </label>
 
     <label class="block space-y-1">
-      <span class="text-muted-foreground">{{ t("blueprint.config.outputCount") }}</span>
+      <span class="inline-flex items-center gap-1 text-muted-foreground">
+        {{ t("blueprint.config.outputCount") }}
+        <ConfigHintIcon :label="t('blueprint.config.outputCount')">
+          {{ t("blueprint.config.outputCountHint") }}
+        </ConfigHintIcon>
+      </span>
       <Input
         type="number"
         :min="1"
@@ -88,9 +100,6 @@ function handleEmitImmediatelyChange(checked: boolean) {
         :value="clockConfig.outputCount"
         @update:value="handleOutputCountChange"
       />
-      <p class="text-[11px] text-muted-foreground">
-        {{ t("blueprint.config.outputCountHint") }}
-      </p>
     </label>
 
     <label class="flex items-start gap-2">
@@ -105,7 +114,12 @@ function handleEmitImmediatelyChange(checked: boolean) {
     </label>
 
     <label class="block space-y-1">
-      <span class="text-muted-foreground">{{ t("blueprint.config.timeFormat") }}</span>
+      <span class="inline-flex items-center gap-1 text-muted-foreground">
+        {{ t("blueprint.config.timeFormat") }}
+        <ConfigHintIcon :label="t('blueprint.config.timeFormat')">
+          {{ t("blueprint.config.timeFormatHint") }}
+        </ConfigHintIcon>
+      </span>
       <Input
         size="small"
         :value="clockConfig.timeFormat"
@@ -114,9 +128,6 @@ function handleEmitImmediatelyChange(checked: boolean) {
         placeholder="YYYY-MM-DD HH:mm:ss"
         @input="handleFormatChange"
       />
-      <p class="text-[11px] text-muted-foreground">
-        {{ t("blueprint.config.timeFormatHint") }}
-      </p>
     </label>
   </div>
 </template>

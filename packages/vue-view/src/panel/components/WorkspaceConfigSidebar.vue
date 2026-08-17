@@ -5,6 +5,7 @@ import { Empty } from "ant-design-vue";
 import {
   BlueprintExecutionLogPanel,
   BlueprintNodeConfigSidebar,
+  type BlueprintGraphEdge,
   type BlueprintGraphNode,
   type ExecutionLogSettings,
   type ExecutionTraceEntry,
@@ -56,6 +57,9 @@ export type WorkspaceConfigSidebarProps = Omit<
   configFocus: WorkspaceConfigFocus;
   executionLog?: BlueprintExecutionLogViewProps;
   selectedBlueprintNode: BlueprintGraphNode | null;
+  blueprintGraphNodes?: BlueprintGraphNode[];
+  blueprintGraphEdges?: BlueprintGraphEdge[];
+  blueprintTraceEntries?: ExecutionTraceEntry[];
   allowFalseSignalPropagation?: boolean;
   onUpdateAllowFalseSignalPropagation?: (value: boolean) => void;
   onUpdateBlueprintNode: (
@@ -90,6 +94,9 @@ const props = withDefaults(
   {
     allowFalseSignalPropagation: false,
     blueprintLibraryOptions: () => [],
+    blueprintGraphNodes: () => [],
+    blueprintGraphEdges: () => [],
+    blueprintTraceEntries: () => [],
     blueprintNodeOptions: () => [],
     selectedElements: () => [],
   }
@@ -143,6 +150,9 @@ const viewElementOptions = computed(() =>
     <BlueprintNodeConfigSidebar
       v-else
       :node="selectedBlueprintNode"
+      :graph-nodes="blueprintGraphNodes"
+      :graph-edges="blueprintGraphEdges"
+      :trace-entries="blueprintTraceEntries.length ? blueprintTraceEntries : executionLog?.entries ?? []"
       :allow-false-signal-propagation="allowFalseSignalPropagation"
       :on-update-allow-false-signal-propagation="onUpdateAllowFalseSignalPropagation"
       :view-element-options="viewElementOptions"

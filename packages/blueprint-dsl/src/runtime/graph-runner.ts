@@ -4,6 +4,7 @@ import {
   normalizeFetchRequestConfig,
   resolveFetchRequestUrl,
 } from "../fetch-config.js";
+import { applyFetchConfigScope, resolveFetchIncomingScope } from "../incoming-node-scope.js";
 import type { JsonNodeConfig } from "../json-config.js";
 import {
   DEFAULT_JSON_NODE_CONFIG,
@@ -78,6 +79,8 @@ import {
 export type RunnableGraphNode = {
   id: string;
   nodeType: string;
+  label?: string;
+  role?: string;
   lifecyclePhase?: PageLifecyclePhase;
   /** 蓝图库记录 id，Blueprint 节点引用嵌套蓝图时使用 */
   libraryBlueprintId?: string;
@@ -1076,7 +1079,15 @@ export class BlueprintGraphRunner {
           return;
         }
 
-        const config = normalizeFetchRequestConfig(node.fetchConfig);
+        const incomingScope = runner.buildFetchIncomingScope(
+          token.nodeId,
+          inputPort,
+          input
+        );
+        const config = applyFetchConfigScope(
+          normalizeFetchRequestConfig(node.fetchConfig),
+          incomingScope
+        );
         resolveFetchRequestUrl(config);
 
         const result = await executeFetch(config, {
@@ -1407,6 +1418,27 @@ export class BlueprintGraphRunner {
       (edge) =>
         edge.target === nodeId && (edge.targetHandle ?? "in") === port
     );
+  }
+
+  private buildFetchIncomingScope(
+    nodeId: string,
+    port: string,
+    fallbackInput: Value | undefined
+  ) {
+    return resolveFetchIncomingScope({
+      fetchNodeId: nodeId,
+      inputPort: port,
+      nodes: this.graph.nodes.map((node) => ({
+        id: node.id,
+        label: node.label,
+        nodeType: node.nodeType,
+        role: node.role,
+      })),
+      edges: this.graph.edges,
+      getOutput: (sourceId, sourcePort) =>
+        this.getNodeOutput(sourceId, sourcePort),
+      fallbackInput,
+    });
   }
 
   /** 单端口多连线：任一为真则视为真（或语义）；支持 triggerNode 注入的入口信号 */

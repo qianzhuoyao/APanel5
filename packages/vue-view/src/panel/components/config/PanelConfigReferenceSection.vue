@@ -57,7 +57,11 @@ function patch(patch: Partial<PanelElement>) {
         </Select>
       </label>
     </ConfigFieldGroup>
-    <ConfigFieldGroup :title="t('panel.config.groupCopyStrategy')">
+    <ConfigFieldGroup
+      :title="t('panel.config.groupCopyStrategy')"
+      collapsible
+      :default-open="false"
+    >
       <template #hint>
         {{ t("panel.config.copyStrategyHint") }}
       </template>

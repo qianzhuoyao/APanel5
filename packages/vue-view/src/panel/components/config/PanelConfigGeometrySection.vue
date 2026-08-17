@@ -138,7 +138,11 @@ function clearSketch() {
         @update:value="(v) => patch({ geometryColor: v || '#3b82f6' })"
       />
     </ConfigFieldGroup>
-    <ConfigFieldGroup :title="t('panel.config.groupCanvasScript')">
+    <ConfigFieldGroup
+      :title="t('panel.config.groupCanvasScript')"
+      collapsible
+      :default-open="false"
+    >
       <template #hint>
         {{ t("panel.config.canvasScriptHint") }}
       </template>
@@ -152,7 +156,11 @@ function clearSketch() {
         @update:value="(v: string) => patch({ geometryScript: v || undefined })"
       />
     </ConfigFieldGroup>
-    <ConfigFieldGroup :title="t('panel.config.groupSketchOverlay')">
+    <ConfigFieldGroup
+      :title="t('panel.config.groupSketchOverlay')"
+      collapsible
+      :default-open="false"
+    >
       <div class="flex items-center gap-2">
         <label class="block space-y-1">
           <div class="text-[11px]">{{ t("panel.config.penColor") }}</div>

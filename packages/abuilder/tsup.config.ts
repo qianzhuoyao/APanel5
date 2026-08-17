@@ -8,7 +8,13 @@ export default defineConfig({
   clean: true,
   treeshake: true,
   splitting: false,
-  external: ["react", "react-dom", "react/jsx-runtime"],
+  external: [
+    "react",
+    "react-dom",
+    "react/jsx-runtime",
+    "@mlc-ai/web-llm",
+    "@mlc-ai/web-llm?url",
+  ],
   esbuildOptions(options) {
     options.jsx = "automatic";
   },

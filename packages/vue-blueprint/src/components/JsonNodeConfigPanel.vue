@@ -4,6 +4,7 @@ import { computed, ref } from "vue";
 import { validateJsonString } from "@arronqzy/blueprint-dsl";
 import type { JsonNodeConfig } from "@arronqzy/blueprint-dsl";
 
+import ConfigHintIcon from "./ConfigHintIcon.vue";
 import type { BlueprintGraphNode } from "../graph/document";
 import { resolveNodeJsonConfig } from "../graph/document";
 
@@ -48,8 +49,12 @@ function handleChange(event: Event) {
 
 <template>
   <div class="space-y-2 rounded-md border border-border/70 bg-muted/20 p-2.5">
-    <div class="font-medium text-foreground">{{ t("blueprint.config.jsonTitle") }}</div>
-    <p class="text-[11px] text-muted-foreground">{{ t("blueprint.config.jsonHint") }}</p>
+    <div class="flex items-center gap-1.5">
+      <div class="font-medium text-foreground">{{ t("blueprint.config.jsonTitle") }}</div>
+      <ConfigHintIcon :label="t('blueprint.config.jsonTitle')">
+        {{ t("blueprint.config.jsonHint") }}
+      </ConfigHintIcon>
+    </div>
 
     <label class="block space-y-1">
       <span class="text-muted-foreground">{{ t("blueprint.config.jsonContent") }}</span>

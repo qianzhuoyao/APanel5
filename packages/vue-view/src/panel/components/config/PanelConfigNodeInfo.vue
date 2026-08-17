@@ -4,6 +4,7 @@ import { Checkbox, Input, InputNumber, Select } from "ant-design-vue";
 import type { PanelElement, PanelLayer } from "../../types";
 import { getPanelMessages } from "../../constants/messages";
 import ConfigSection from "./ConfigSection.vue";
+import ConfigFieldGroup from "./ConfigFieldGroup.vue";
 
 const { t, locale } = useI18n();
 const msgs = () => getPanelMessages(t);
@@ -52,7 +53,7 @@ function patch(patch: Partial<PanelElement>) {
         @update:value="(v: string) => patch({ name: v || undefined })"
       />
     </label>
-    <div class="grid grid-cols-3 gap-2">
+    <div class="grid grid-cols-2 gap-2">
       <label class="block space-y-1">
         <div>X</div>
         <InputNumber
@@ -74,17 +75,7 @@ function patch(patch: Partial<PanelElement>) {
         />
       </label>
     </div>
-    <div class="grid grid-cols-3 gap-2">
-      <label class="block space-y-1">
-        <div>{{ t("panel.config.rotate") }}</div>
-        <InputNumber
-          size="small"
-          class="w-full"
-          :value="element.rotate ?? 0"
-          :disabled="!isEditable"
-          @update:value="(v) => { const n = Number(v); if (!Number.isNaN(n)) patch({ rotate: n }); }"
-        />
-      </label>
+    <div class="grid grid-cols-2 gap-2">
       <label class="block space-y-1">
         <div>{{ t("panel.config.width") }}</div>
         <InputNumber
@@ -105,6 +96,23 @@ function patch(patch: Partial<PanelElement>) {
           :value="element.height"
           :disabled="!isEditable"
           @update:value="(v) => { const n = Number(v); if (!Number.isNaN(n)) patch({ height: Math.max(1, n) }); }"
+        />
+      </label>
+    </div>
+    <ConfigFieldGroup
+      :title="t('panel.config.groupNodeMore')"
+      collapsible
+      :default-open="false"
+    >
+    <div class="grid grid-cols-2 gap-2">
+      <label class="block space-y-1">
+        <div>{{ t("panel.config.rotate") }}</div>
+        <InputNumber
+          size="small"
+          class="w-full"
+          :value="element.rotate ?? 0"
+          :disabled="!isEditable"
+          @update:value="(v) => { const n = Number(v); if (!Number.isNaN(n)) patch({ rotate: n }); }"
         />
       </label>
     </div>
@@ -148,6 +156,7 @@ function patch(patch: Partial<PanelElement>) {
     </div>
     <div class="truncate text-gray-400">ID: {{ element.id }}</div>
     <div class="text-gray-400">{{ t("panel.config.type") }}: {{ element.materialType ?? element.id }}</div>
+    </ConfigFieldGroup>
     <div class="rounded-lg border border-gray-200/60 bg-white/80 px-2.5 py-2">
       <label class="flex items-center gap-2">
         <Checkbox

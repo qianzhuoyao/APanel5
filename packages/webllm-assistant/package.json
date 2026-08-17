@@ -5,11 +5,13 @@
   "license": "MIT",
   "type": "module",
   "files": [
-    "src"
+    "src",
+    "src/vite-plugin.ts"
   ],
   "main": "./src/index.ts",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./vite": "./src/vite-plugin.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit",

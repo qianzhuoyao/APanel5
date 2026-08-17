@@ -76,6 +76,12 @@ function onFileChange(e: Event) {
         :disabled="!isEditable"
         @update:value="(v) => patchStyle({ backgroundColor: v || undefined })"
       />
+    </ConfigFieldGroup>
+    <ConfigFieldGroup
+      :title="t('panel.config.groupBgLayout')"
+      collapsible
+      :default-open="false"
+    >
       <label class="block space-y-1">
         <div>{{ t("panel.scope.fieldStyleBackgroundImage") }}</div>
         <Input
@@ -102,8 +108,6 @@ function onFileChange(e: Event) {
         </label>
         <span v-if="uploadStatus" class="text-[11px] text-gray-500">{{ uploadStatus }}</span>
       </div>
-    </ConfigFieldGroup>
-    <ConfigFieldGroup :title="t('panel.config.groupBgLayout')">
       <div class="grid grid-cols-2 gap-2">
         <label class="block space-y-1">
           <div>{{ t("panel.scope.fieldStyleBackgroundSize") }}</div>

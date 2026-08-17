@@ -3,13 +3,14 @@ import { fileURLToPath } from "node:url";
 
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
+import { webllmAssistant } from "@arronqzy/webllm-assistant/vite";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const monorepoRoot = path.resolve(__dirname, "../..");
 
 export default defineConfig({
   cacheDir: path.resolve(__dirname, ".vite-cache"),
-  plugins: [react()],
+  plugins: [react(), webllmAssistant()],
   resolve: {
     alias: [
       {
@@ -71,6 +72,13 @@ export default defineConfig({
         ),
       },
       {
+        find: "@arronqzy/webllm-assistant/vite",
+        replacement: path.resolve(
+          monorepoRoot,
+          "packages/webllm-assistant/src/vite-plugin.ts"
+        ),
+      },
+      {
         find: "@arronqzy/webllm-assistant",
         replacement: path.resolve(
           monorepoRoot,
@@ -81,7 +89,7 @@ export default defineConfig({
         find: "@mlc-ai/web-llm",
         replacement: path.resolve(
           monorepoRoot,
-          "packages/webllm-assistant/vendor/bundled/web-llm"
+          "packages/webllm-assistant/vendor/bundled/web-llm/lib/index.js"
         ),
       },
     ],
@@ -100,6 +108,11 @@ export default defineConfig({
   },
   optimizeDeps: {
     exclude: ["@mlc-ai/web-llm"],
+  },
+  build: {
+    commonjsOptions: {
+      exclude: [/@mlc-ai\/web-llm/, /node_modules[\\/]\.pnpm[\\/]@mlc-ai\+web-llm/],
+    },
   },
   worker: {
     format: "es",

@@ -7,6 +7,8 @@ export * from "./core/behavior-registry.js";
 export * from "./core/executor.js";
 export * from "./behaviors/default.js";
 export * from "./fetch-config.js";
+export * from "./scope-template.js";
+export * from "./incoming-node-scope.js";
 export * from "./json-config.js";
 export * from "./logic-config.js";
 export * from "./clock-config.js";

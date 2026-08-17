@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from "@arronqzy/i18n/vue";
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, onMounted, provide, ref, watch } from "vue";
 import { Empty, Input } from "ant-design-vue";
 import type { PanelElement, PanelLayer, ReferenceCopyMode } from "../types";
 import { CHART_TYPES } from "../utils/chartOptionBuilder";
@@ -61,8 +61,8 @@ const sidebarScrollRef = ref<HTMLElement | null>(null);
 
 const expandedSections = ref<Record<string, boolean>>({
   nodeInfo: true,
-  styleBackground: true,
-  styleBorder: true,
+  styleBackground: false,
+  styleBorder: false,
   chartBasic: true,
   chartAdvanced: false,
   textConfig: true,
@@ -123,6 +123,7 @@ const scopeWarnings = computed(() => {
 const materialType = computed(() => props.selectedElement?.materialType ?? "");
 
 const forceOpenSections = computed(() => hasSearch.value);
+provide("configHasSearch", hasSearch);
 
 function isSectionExpanded(key: string, defaultValue = true) {
   return expandedSections.value[key] ?? defaultValue;
@@ -259,23 +260,6 @@ watch(
               @update:open="(v) => setSectionExpanded('nodeInfo', v)"
             />
 
-            <PanelConfigStyleSections
-              v-if="
-                shouldShowSection('styleBackground', t('panel.config.sectionStyleBackground'), [t('panel.config.backgroundColor'), 'background']) ||
-                shouldShowSection('styleBorder', t('panel.config.sectionStyleBorder'), [t('panel.config.searchKwBorder'), 'border'])
-              "
-              :element="selectedElement"
-              :is-editable="isNodeEditable"
-              :show-background="shouldShowSection('styleBackground', t('panel.config.sectionStyleBackground'), [t('panel.config.backgroundColor'), 'background'])"
-              :show-border="shouldShowSection('styleBorder', t('panel.config.sectionStyleBorder'), [t('panel.config.searchKwBorder'), 'border'])"
-              :background-open="isSectionExpanded('styleBackground')"
-              :border-open="isSectionExpanded('styleBorder')"
-              :force-open="forceOpenSections"
-              :update-element="updateElement"
-              @update:background-open="(v) => setSectionExpanded('styleBackground', v)"
-              @update:border-open="(v) => setSectionExpanded('styleBorder', v)"
-            />
-
             <PanelConfigChartSection
               v-if="isChartElement && shouldShowSection('chartBasic', t('panel.config.sectionChartBasic'), [t('panel.material.charts'), 'tooltip'])"
               :element="selectedElement"
@@ -379,6 +363,23 @@ watch(
               :set-reference-copy-mode="setReferenceCopyMode"
               :update-element="updateElement"
               @update:open="(v) => setSectionExpanded('reference', v)"
+            />
+
+            <PanelConfigStyleSections
+              v-if="
+                shouldShowSection('styleBackground', t('panel.config.sectionStyleBackground'), [t('panel.config.backgroundColor'), 'background']) ||
+                shouldShowSection('styleBorder', t('panel.config.sectionStyleBorder'), [t('panel.config.searchKwBorder'), 'border'])
+              "
+              :element="selectedElement"
+              :is-editable="isNodeEditable"
+              :show-background="shouldShowSection('styleBackground', t('panel.config.sectionStyleBackground'), [t('panel.config.backgroundColor'), 'background'])"
+              :show-border="shouldShowSection('styleBorder', t('panel.config.sectionStyleBorder'), [t('panel.config.searchKwBorder'), 'border'])"
+              :background-open="isSectionExpanded('styleBackground')"
+              :border-open="isSectionExpanded('styleBorder')"
+              :force-open="forceOpenSections"
+              :update-element="updateElement"
+              @update:background-open="(v) => setSectionExpanded('styleBackground', v)"
+              @update:border-open="(v) => setSectionExpanded('styleBorder', v)"
             />
 
             <div

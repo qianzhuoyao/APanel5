@@ -5,6 +5,7 @@ import { useI18n } from "@arronqzy/i18n/react";
 
 import type { BlueprintGraphNode } from "../graph/document";
 import { resolveNodeJsonConfig } from "../graph/document";
+import { ConfigSectionTitle } from "./ConfigHintIcon";
 
 export type JsonNodeConfigPanelProps = {
   node: BlueprintGraphNode;
@@ -53,12 +54,10 @@ export function JsonNodeConfigPanel({
 
   return (
     <div className="space-y-2 rounded-md border border-border/70 bg-muted/20 p-2.5">
-      <div className="font-medium text-foreground">
-        {t("blueprint.config.jsonTitle")}
-      </div>
-      <p className="text-[11px] text-muted-foreground">
-        {t("blueprint.config.jsonHint")}
-      </p>
+      <ConfigSectionTitle
+        title={t("blueprint.config.jsonTitle")}
+        hint={t("blueprint.config.jsonHint")}
+      />
 
       <label className="block space-y-1">
         <span className="text-muted-foreground">

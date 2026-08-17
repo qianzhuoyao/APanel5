@@ -211,6 +211,7 @@ export function resolveNodeFetchConfig(
       ...DEFAULT_FETCH_REQUEST_CONFIG.headers,
       ...node.fetchConfig?.headers,
     },
+    headersJson: node.fetchConfig?.headersJson,
     swaggerEndpoints: node.fetchConfig?.swaggerEndpoints,
   };
 }

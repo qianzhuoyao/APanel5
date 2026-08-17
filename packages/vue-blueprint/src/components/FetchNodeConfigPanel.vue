@@ -3,11 +3,14 @@ import { useI18n } from "@arronqzy/i18n/vue";
 import { computed, ref } from "vue";
 import { Button, Input, Select } from "ant-design-vue";
 import type {
+  ExecutionTraceEntry,
   FetchHttpMethod,
   FetchRequestConfig,
   FetchResponseType,
 } from "@arronqzy/blueprint-dsl";
 import {
+  applyFetchConfigScope,
+  draftFetchHeadersText,
   FETCH_CACHES,
   FETCH_CREDENTIALS,
   FETCH_HTTP_METHODS,
@@ -15,9 +18,14 @@ import {
   FETCH_NODE_TYPE,
   FETCH_REDIRECTS,
   FETCH_RESPONSE_TYPES,
+  fetchConfigHasScopeTemplate,
+  latestTraceOutputsByNode,
+  parseFetchHeadersJson,
+  resolveFetchIncomingScope,
+  resolveFetchRequestUrl,
 } from "@arronqzy/blueprint-dsl";
 
-import type { BlueprintGraphNode } from "../graph/document";
+import type { BlueprintGraphEdge, BlueprintGraphNode } from "../graph/document";
 import { resolveNodeFetchConfig } from "../graph/document";
 import {
   cancelFetchDebugTask,
@@ -27,25 +35,80 @@ import {
   useFetchDebugTask,
   useSwaggerLoadTask,
 } from "../fetch-config-task-store";
+import ConfigHintIcon from "./ConfigHintIcon.vue";
 import FetchUrlAutocomplete from "./FetchUrlAutocomplete.vue";
 
 const { t } = useI18n();
 
 export type FetchNodeConfigPanelProps = {
   node: BlueprintGraphNode;
+  graphNodes?: BlueprintGraphNode[];
+  graphEdges?: BlueprintGraphEdge[];
+  traceEntries?: ExecutionTraceEntry[];
   onUpdateNode: (
     nodeId: string,
     patch: Partial<Pick<BlueprintGraphNode, "fetchConfig" | "configSource">>
   ) => void;
 };
 
-const props = defineProps<FetchNodeConfigPanelProps>();
+const props = withDefaults(defineProps<FetchNodeConfigPanelProps>(), {
+  graphNodes: () => [],
+  graphEdges: () => [],
+  traceEntries: () => [],
+});
 
 const validationError = ref<string | null>(null);
 const fetchValidationError = ref<string | null>(null);
 const debugExpanded = ref(false);
 
 const fetchConfig = computed(() => resolveNodeFetchConfig(props.node));
+const incomingScope = computed(() => {
+  const outputs = latestTraceOutputsByNode(props.traceEntries);
+  return resolveFetchIncomingScope({
+    fetchNodeId: props.node.id,
+    nodes: props.graphNodes,
+    edges: props.graphEdges,
+    getOutput: (sourceId, port) => outputs[sourceId]?.[port],
+  });
+});
+const usesScopeTemplate = computed(() => fetchConfigHasScopeTemplate(fetchConfig.value));
+const resolvedFetchConfig = computed(() =>
+  applyFetchConfigScope(fetchConfig.value, incomingScope.value)
+);
+const resolvedUrlPreview = computed(() => {
+  if (!usesScopeTemplate.value) return "";
+  try {
+    return resolveFetchRequestUrl(resolvedFetchConfig.value);
+  } catch {
+    return resolvedFetchConfig.value.url?.trim() ?? "";
+  }
+});
+const incomingScopeJson = computed(() => {
+  if (incomingScope.value === undefined) return "";
+  try {
+    return JSON.stringify(incomingScope.value, null, 2);
+  } catch {
+    return String(incomingScope.value);
+  }
+});
+const headersDraft = computed(() => draftFetchHeadersText(fetchConfig.value));
+const resolvedHeadersPreview = computed(() => {
+  if (!usesScopeTemplate.value) return "";
+  const headers = resolvedFetchConfig.value.headers;
+  if (!headers || Object.keys(headers).length === 0) return "";
+  try {
+    return JSON.stringify(headers, null, 2);
+  } catch {
+    return "";
+  }
+});
+const incomingHasPendingValue = computed(() => {
+  const scope = incomingScope.value;
+  if (!scope || typeof scope !== "object") return false;
+  const entries =
+    "kind" in scope ? [scope] : Object.values(scope as Record<string, { kind?: string }>);
+  return entries.some((entry) => entry && entry.kind === "pending");
+});
 const endpoints = computed(() => fetchConfig.value.swaggerEndpoints ?? []);
 const hasSwaggerEndpoints = computed(() => endpoints.value.length > 0);
 const urlInputMode = computed(
@@ -105,16 +168,20 @@ function handleAbortSwagger() {
 }
 
 function handleSendFetchDebug() {
-  const url = fetchConfig.value.url?.trim();
+  const resolved = applyFetchConfigScope(fetchConfig.value, incomingScope.value);
+  const url = resolved.url?.trim();
   if (!url) {
-    fetchValidationError.value = t("blueprint.config.fillRequestUrlFirst");
+    fetchValidationError.value =
+      usesScopeTemplate.value && fetchConfig.value.url?.trim()
+        ? t("blueprint.config.fetchScopeUnresolved")
+        : t("blueprint.config.fillRequestUrlFirst");
     return;
   }
 
   fetchValidationError.value = null;
   startFetchDebugTask({
     nodeId: props.node.id,
-    config: fetchConfig.value,
+    config: resolved,
   });
 }
 
@@ -149,24 +216,42 @@ const debugOk = computed(() => {
 });
 
 function handleHeadersBlur(event: Event) {
-  try {
-    const headers = JSON.parse((event.target as HTMLTextAreaElement).value || "{}") as Record<
-      string,
-      string
-    >;
-    props.onUpdateNode(props.node.id, patchFetchConfig(props.node, { headers }));
-  } catch {
-    /* 保留上次有效值 */
-  }
+  const headersJson = (event.target as HTMLTextAreaElement).value;
+  const parsed = parseFetchHeadersJson(headersJson);
+  props.onUpdateNode(
+    props.node.id,
+    patchFetchConfig(props.node, {
+      headersJson,
+      ...(parsed ? { headers: parsed } : {}),
+    })
+  );
 }
 </script>
 
 <template>
   <div class="space-y-2 rounded-md border border-border/70 bg-muted/20 p-2.5">
-    <div class="font-medium text-foreground">{{ t("blueprint.config.fetchTitle") }}</div>
-    <p class="text-[11px] text-muted-foreground">
-      {{ t("blueprint.config.fetchHint") }}
-    </p>
+    <div class="flex items-center gap-1.5">
+      <div class="font-medium text-foreground">{{ t("blueprint.config.fetchTitle") }}</div>
+      <ConfigHintIcon :label="t('blueprint.config.fetchTitle')">
+        {{ t("blueprint.config.fetchHint") }}
+      </ConfigHintIcon>
+    </div>
+    <div class="space-y-1 rounded-md border border-gray-200/80 bg-white/80 p-2">
+      <div class="flex items-center gap-1.5 text-[11px] font-medium text-gray-800">
+        {{ t("blueprint.config.fetchScopeTitle") }}
+        <ConfigHintIcon :label="t('blueprint.config.fetchScopeTitle')">
+          <p>{{ t("blueprint.config.fetchScopeHint") }}</p>
+          <p>{{ t("blueprint.config.fetchScopeEmpty") }}</p>
+          <p>{{ t("blueprint.config.fetchScopePending") }}</p>
+        </ConfigHintIcon>
+      </div>
+      <template v-if="incomingScope !== undefined">
+        <p v-if="incomingHasPendingValue" class="text-[11px] text-amber-700">
+          {{ t("blueprint.config.fetchScopePending") }}
+        </p>
+        <pre class="max-h-[180px] overflow-auto rounded border border-gray-200 bg-gray-50 p-2 font-mono text-[10px] leading-relaxed text-gray-800">{{ incomingScopeJson }}</pre>
+      </template>
+    </div>
 
     <label class="block space-y-1">
       <span class="text-muted-foreground">{{ t("blueprint.config.swaggerUrlOptional") }}</span>
@@ -254,7 +339,7 @@ function handleHeadersBlur(event: Event) {
           <Input
             size="small"
             :value="fetchConfig.apiBaseUrl ?? ''"
-            placeholder="https://api.example.com/v1"
+            placeholder="https://api.example.com/v1/{scope?.value?.tenant}"
             class="font-mono text-[11px]"
             @update:value="
               (v) => onUpdateNode(node.id, patchFetchConfig(node, { apiBaseUrl: String(v) }))
@@ -313,7 +398,7 @@ function handleHeadersBlur(event: Event) {
           size="small"
           :value="fetchConfig.url"
           :disabled="loadingFetchDebug"
-          placeholder="https://api.example.com/data"
+          placeholder="https://api.example.com/users/{scope?.value?.id}"
           class="flex-1 font-mono text-[11px]"
           @update:value="(v) => onUpdateNode(node.id, patchFetchConfig(node, { url: String(v) }))"
         />
@@ -338,6 +423,12 @@ function handleHeadersBlur(event: Event) {
         </Button>
       </div>
 
+      <p
+        v-if="usesScopeTemplate && resolvedUrlPreview"
+        class="break-all font-mono text-[10px] text-gray-500"
+      >
+        {{ t("blueprint.config.fetchScopeResolvedUrl") }}: {{ resolvedUrlPreview }}
+      </p>
       <p v-if="loadingFetchDebug" class="text-[11px] text-muted-foreground">
         {{ t("blueprint.config.sendingDebug") }}
       </p>
@@ -418,15 +509,26 @@ function handleHeadersBlur(event: Event) {
     </label>
 
     <label class="block space-y-1">
-      <span class="text-muted-foreground">{{ t("blueprint.config.requestHeadersJson") }}</span>
+      <span class="inline-flex items-center gap-1 text-muted-foreground">
+        {{ t("blueprint.config.requestHeadersJson") }}
+        <ConfigHintIcon :label="t('blueprint.config.requestHeadersJson')">
+          {{ t("blueprint.config.fetchHeadersHint") }}
+        </ConfigHintIcon>
+      </span>
       <textarea
-        :key="`${node.id}-headers-${JSON.stringify(fetchConfig.headers)}`"
-        :value="JSON.stringify(fetchConfig.headers ?? {}, null, 2)"
+        :key="`${node.id}-headers-${headersDraft}`"
+        :value="headersDraft"
         rows="4"
         class="w-full rounded-md border border-input bg-background px-2 py-1.5 font-mono text-[11px] leading-relaxed text-foreground shadow-sm outline-none focus-visible:ring-1 focus-visible:ring-primary"
-        placeholder='{"Content-Type":"application/json"}'
+        placeholder='{"Authorization":"Bearer {scope?.value?.token}"}'
         @blur="handleHeadersBlur"
       />
+      <p
+        v-if="usesScopeTemplate && resolvedHeadersPreview"
+        class="whitespace-pre-wrap break-all font-mono text-[10px] text-gray-500"
+      >
+        {{ t("blueprint.config.fetchScopeResolvedHeaders") }}: {{ resolvedHeadersPreview }}
+      </p>
     </label>
 
     <label class="block space-y-1">
@@ -435,7 +537,7 @@ function handleHeadersBlur(event: Event) {
         :value="fetchConfig.body ?? ''"
         rows="4"
         class="w-full rounded-md border border-input bg-background px-2 py-1.5 font-mono text-[11px] leading-relaxed text-foreground shadow-sm outline-none focus-visible:ring-1 focus-visible:ring-primary"
-        placeholder='{"key":"value"}'
+        placeholder='{"id":"{scope?.value?.id}"}'
         @input="
           (e) =>
             onUpdateNode(

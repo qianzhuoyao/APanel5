@@ -1,4 +1,4 @@
-import { useCallback, useState, type ChangeEvent } from "react";
+import { useCallback, useMemo, useState, type ChangeEvent } from "react";
 import {
   Button,
   Input,
@@ -10,11 +10,14 @@ import {
   cn,
 } from "@arronqzy/ui";
 import type {
+  ExecutionTraceEntry,
   FetchHttpMethod,
   FetchRequestConfig,
   FetchResponseType,
 } from "@arronqzy/blueprint-dsl";
 import {
+  applyFetchConfigScope,
+  draftFetchHeadersText,
   FETCH_CACHES,
   FETCH_CREDENTIALS,
   FETCH_HTTP_METHODS,
@@ -22,9 +25,14 @@ import {
   FETCH_NODE_TYPE,
   FETCH_REDIRECTS,
   FETCH_RESPONSE_TYPES,
+  fetchConfigHasScopeTemplate,
+  latestTraceOutputsByNode,
+  parseFetchHeadersJson,
+  resolveFetchIncomingScope,
+  resolveFetchRequestUrl,
 } from "@arronqzy/blueprint-dsl";
 
-import type { BlueprintGraphNode } from "../graph/document";
+import type { BlueprintGraphEdge, BlueprintGraphNode } from "../graph/document";
 import { resolveNodeFetchConfig } from "../graph/document";
 import {
   cancelSwaggerLoadTask,
@@ -36,6 +44,7 @@ import {
 } from "../fetch-config-task-store";
 import { useI18n } from "@arronqzy/i18n/react";
 
+import { ConfigFieldLabel, ConfigHintIcon, ConfigSectionTitle } from "./ConfigHintIcon";
 import { FetchUrlAutocomplete } from "./FetchUrlAutocomplete";
 
 function SendIcon({ className }: { className?: string }) {
@@ -231,6 +240,9 @@ function LoaderIcon({ className }: { className?: string }) {
 
 export type FetchNodeConfigPanelProps = {
   node: BlueprintGraphNode;
+  graphNodes?: BlueprintGraphNode[];
+  graphEdges?: BlueprintGraphEdge[];
+  traceEntries?: ExecutionTraceEntry[];
   onUpdateNode: (
     nodeId: string,
     patch: Partial<Pick<BlueprintGraphNode, "fetchConfig" | "configSource">>
@@ -251,6 +263,9 @@ function patchFetchConfig(
 
 export function FetchNodeConfigPanel({
   node,
+  graphNodes = [],
+  graphEdges = [],
+  traceEntries = [],
   onUpdateNode,
 }: FetchNodeConfigPanelProps) {
   const { t } = useI18n();
@@ -268,6 +283,55 @@ export function FetchNodeConfigPanel({
   const [validationError, setValidationError] = useState<string | null>(null);
   const [fetchValidationError, setFetchValidationError] = useState<string | null>(null);
   const swaggerError = validationError ?? swaggerTaskError;
+  const incomingScope = useMemo(() => {
+    const outputs = latestTraceOutputsByNode(traceEntries);
+    return resolveFetchIncomingScope({
+      fetchNodeId: node.id,
+      nodes: graphNodes,
+      edges: graphEdges,
+      getOutput: (sourceId, port) => outputs[sourceId]?.[port],
+    });
+  }, [graphEdges, graphNodes, node.id, traceEntries]);
+  const usesScopeTemplate = fetchConfigHasScopeTemplate(fetchConfig);
+  const resolvedFetchConfig = useMemo(
+    () => applyFetchConfigScope(fetchConfig, incomingScope),
+    [fetchConfig, incomingScope]
+  );
+  const resolvedUrlPreview = useMemo(() => {
+    if (!usesScopeTemplate) return "";
+    try {
+      return resolveFetchRequestUrl(resolvedFetchConfig);
+    } catch {
+      return resolvedFetchConfig.url?.trim() ?? "";
+    }
+  }, [resolvedFetchConfig, usesScopeTemplate]);
+  const incomingScopeJson = useMemo(() => {
+    if (incomingScope === undefined) return "";
+    try {
+      return JSON.stringify(incomingScope, null, 2);
+    } catch {
+      return String(incomingScope);
+    }
+  }, [incomingScope]);
+  const headersDraft = draftFetchHeadersText(fetchConfig);
+  const resolvedHeadersPreview = useMemo(() => {
+    if (!usesScopeTemplate) return "";
+    const headers = resolvedFetchConfig.headers;
+    if (!headers || Object.keys(headers).length === 0) return "";
+    try {
+      return JSON.stringify(headers, null, 2);
+    } catch {
+      return "";
+    }
+  }, [resolvedFetchConfig.headers, usesScopeTemplate]);
+  const incomingHasPendingValue = useMemo(() => {
+    if (!incomingScope || typeof incomingScope !== "object") return false;
+    const entries =
+      "kind" in incomingScope
+        ? [incomingScope]
+        : Object.values(incomingScope as Record<string, { kind?: string }>);
+    return entries.some((entry) => entry && entry.kind === "pending");
+  }, [incomingScope]);
 
   const setUrlInputMode = useCallback(
     (mode: "swagger" | "manual") => {
@@ -307,30 +371,72 @@ export function FetchNodeConfigPanel({
   }, [node.id]);
 
   const handleSendFetchDebug = useCallback(() => {
-    const url = fetchConfig.url?.trim();
+    const resolved = applyFetchConfigScope(fetchConfig, incomingScope);
+    const url = resolved.url?.trim();
     if (!url) {
-      setFetchValidationError(t("blueprint.config.fillRequestUrlFirst"));
+      setFetchValidationError(
+        usesScopeTemplate && fetchConfig.url?.trim()
+          ? t("blueprint.config.fetchScopeUnresolved")
+          : t("blueprint.config.fillRequestUrlFirst")
+      );
       return;
     }
 
     setFetchValidationError(null);
     startFetchDebugTask({
       nodeId: node.id,
-      config: fetchConfig,
+      config: resolved,
     });
-  }, [fetchConfig, node.id]);
+  }, [fetchConfig, incomingScope, node.id, t, usesScopeTemplate]);
 
   const handleAbortFetchDebug = useCallback(() => {
     cancelFetchDebugTask(node.id);
     setFetchValidationError(null);
   }, [node.id]);
 
+  const handleHeadersBlur = useCallback(
+    (e: ChangeEvent<HTMLTextAreaElement>) => {
+      const headersJson = e.target.value;
+      const parsed = parseFetchHeadersJson(headersJson);
+      onUpdateNode(
+        node.id,
+        patchFetchConfig(node, {
+          headersJson,
+          ...(parsed ? { headers: parsed } : {}),
+        })
+      );
+    },
+    [node, onUpdateNode]
+  );
+
   return (
     <div className="space-y-2 rounded-md border border-border/70 bg-muted/20 p-2.5">
-      <div className="font-medium text-foreground">{t("blueprint.config.fetchTitle")}</div>
-      <p className="text-[11px] text-muted-foreground">
-        {t("blueprint.config.fetchHint")}
-      </p>
+      <ConfigSectionTitle
+        title={t("blueprint.config.fetchTitle")}
+        hint={t("blueprint.config.fetchHint")}
+      />
+      <div className="space-y-1 rounded-md border border-border/60 bg-background/70 p-2">
+        <div className="flex items-center gap-1.5 text-[11px] font-medium text-foreground">
+          {t("blueprint.config.fetchScopeTitle")}
+          <ConfigHintIcon label={t("blueprint.config.fetchScopeTitle")}>
+            <p>{t("blueprint.config.fetchScopeHint")}</p>
+            <p>{t("blueprint.config.fetchScopeEmpty")}</p>
+            <p>{t("blueprint.config.fetchScopePending")}</p>
+          </ConfigHintIcon>
+        </div>
+        {incomingScope === undefined ? null : (
+          <>
+            {incomingHasPendingValue ? (
+              <p className="text-[11px] text-amber-700 dark:text-amber-300">
+                {t("blueprint.config.fetchScopePending")}
+              </p>
+            ) : null}
+            <pre className="max-h-[180px] overflow-auto rounded border border-border/60 bg-muted/30 p-2 font-mono text-[10px] leading-relaxed text-foreground">
+              {incomingScopeJson}
+            </pre>
+          </>
+        )}
+      </div>
 
       <label className="block space-y-1">
         <span className="text-muted-foreground">{t("blueprint.config.swaggerUrlOptional")}</span>
@@ -440,7 +546,7 @@ export function FetchNodeConfigPanel({
                     patchFetchConfig(node, { apiBaseUrl: e.target.value })
                   )
                 }
-                placeholder="https://api.example.com/v1"
+                placeholder="https://api.example.com/v1/{scope?.value?.tenant}"
                 className="h-8 font-mono text-[11px]"
               />
             </label>
@@ -489,7 +595,7 @@ export function FetchNodeConfigPanel({
               onChange={(e: ChangeEvent<HTMLInputElement>) =>
                 onUpdateNode(node.id, patchFetchConfig(node, { url: e.target.value }))
               }
-              placeholder="https://api.example.com/data"
+              placeholder="https://api.example.com/users/{scope?.value?.id}"
               className="h-8 flex-1 font-mono text-[11px]"
             />
             <AsyncSendButton
@@ -504,6 +610,11 @@ export function FetchNodeConfigPanel({
             />
           </div>
         )}
+        {usesScopeTemplate && resolvedUrlPreview ? (
+          <p className="break-all font-mono text-[10px] text-muted-foreground">
+            {t("blueprint.config.fetchScopeResolvedUrl")}: {resolvedUrlPreview}
+          </p>
+        ) : null}
         {loadingFetchDebug ? (
           <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
             <LoaderIcon className="h-3.5 w-3.5 shrink-0" />
@@ -541,25 +652,23 @@ export function FetchNodeConfigPanel({
       </label>
 
       <label className="block space-y-1">
-        <span className="text-muted-foreground">{t("blueprint.config.requestHeadersJson")}</span>
+        <ConfigFieldLabel
+          label={t("blueprint.config.requestHeadersJson")}
+          hint={t("blueprint.config.fetchHeadersHint")}
+        />
         <textarea
-          defaultValue={JSON.stringify(fetchConfig.headers ?? {}, null, 2)}
-          key={`${node.id}-headers-${JSON.stringify(fetchConfig.headers)}`}
-          onBlur={(e) => {
-            try {
-              const headers = JSON.parse(e.target.value || "{}") as Record<
-                string,
-                string
-              >;
-              onUpdateNode(node.id, patchFetchConfig(node, { headers }));
-            } catch {
-              /* 保留上次有效值 */
-            }
-          }}
+          defaultValue={headersDraft}
+          key={`${node.id}-headers-${headersDraft}`}
+          onBlur={handleHeadersBlur}
           rows={4}
           className="w-full rounded-md border border-input bg-background px-2 py-1.5 font-mono text-[11px] leading-relaxed text-foreground shadow-sm outline-none focus-visible:ring-1 focus-visible:ring-primary"
-          placeholder='{"Content-Type":"application/json"}'
+          placeholder='{"Authorization":"Bearer {scope?.value?.token}"}'
         />
+        {usesScopeTemplate && resolvedHeadersPreview ? (
+          <p className="whitespace-pre-wrap break-all font-mono text-[10px] text-muted-foreground">
+            {t("blueprint.config.fetchScopeResolvedHeaders")}: {resolvedHeadersPreview}
+          </p>
+        ) : null}
       </label>
 
       <label className="block space-y-1">
@@ -571,7 +680,7 @@ export function FetchNodeConfigPanel({
           }
           rows={4}
           className="w-full rounded-md border border-input bg-background px-2 py-1.5 font-mono text-[11px] leading-relaxed text-foreground shadow-sm outline-none focus-visible:ring-1 focus-visible:ring-primary"
-          placeholder='{"key":"value"}'
+          placeholder='{"id":"{scope?.value?.id}"}'
         />
       </label>
 

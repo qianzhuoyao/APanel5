@@ -168,7 +168,11 @@ function onPosterFileChange(e: Event) {
         :src="element.audioSrc || element.audioRemoteUrl || ''"
       />
     </ConfigFieldGroup>
-    <ConfigFieldGroup :title="t('panel.config.groupDisplayStyle')">
+    <ConfigFieldGroup
+      :title="t('panel.config.groupDisplayStyle')"
+      collapsible
+      :default-open="false"
+    >
       <label class="flex items-center gap-2">
         <Checkbox
           :checked="element.mediaAutoPauseOnEdit !== false"

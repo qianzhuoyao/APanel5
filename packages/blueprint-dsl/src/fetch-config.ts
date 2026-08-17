@@ -37,6 +37,11 @@ export type FetchRequestConfig = {
   url: string;
   method?: FetchHttpMethod;
   headers?: Record<string, string>;
+  /**
+   * 请求头编辑器原文。可写 JSON，也可整段写成 `{scope?...}`。
+   * 运行时优先按该字段解析，避免未加引号的模板在 JSON.parse 时被丢掉。
+   */
+  headersJson?: string;
   body?: string;
   credentials?: RequestCredentials;
   mode?: RequestMode;
@@ -78,6 +83,7 @@ export function normalizeFetchRequestConfig(
       ...DEFAULT_FETCH_REQUEST_CONFIG.headers,
       ...config?.headers,
     },
+    headersJson: config?.headersJson,
     swaggerEndpoints: config?.swaggerEndpoints,
   };
 }

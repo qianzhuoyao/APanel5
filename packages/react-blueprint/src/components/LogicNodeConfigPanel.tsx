@@ -5,6 +5,7 @@ import { useI18n } from "@arronqzy/i18n/react";
 
 import type { BlueprintGraphNode } from "../graph/document";
 import { resolveNodeLogicConfig } from "../graph/document";
+import { ConfigSectionTitle } from "./ConfigHintIcon";
 
 export type LogicNodeConfigPanelProps = {
   node: BlueprintGraphNode;
@@ -52,12 +53,10 @@ export function LogicNodeConfigPanel({
 
   return (
     <div className="space-y-2 rounded-md border border-border/70 bg-muted/20 p-2.5">
-      <div className="font-medium text-foreground">
-        {t("blueprint.config.logicTitle")}
-      </div>
-      <p className="text-[11px] text-muted-foreground">
-        {t("blueprint.config.logicHint")}
-      </p>
+      <ConfigSectionTitle
+        title={t("blueprint.config.logicTitle")}
+        hint={t("blueprint.config.logicHint")}
+      />
 
       <label className="block space-y-1">
         <span className="text-muted-foreground">

@@ -23,6 +23,8 @@ export function documentToRunnableGraph(
       return {
         id: node.id,
         nodeType,
+        label: node.label,
+        role: node.role,
         lifecyclePhase: node.lifecyclePhase,
         libraryBlueprintId: node.libraryBlueprintId,
         viewElementIds:

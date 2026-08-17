@@ -1,4 +1,5 @@
 import { DEFAULT_MODEL_ID, isQwen3ModelId } from "../prompt/system";
+import { loadWebLlmModule, type WebLLMModule } from "./load-web-llm";
 
 export type AssistantEngineStatus =
   | "idle"
@@ -40,12 +41,6 @@ type MLCEngineLike = {
   };
 };
 
-type WebLLMModule = {
-  MLCEngine: new (config?: {
-    initProgressCallback?: (report: { progress?: number; text?: string }) => void;
-  }) => MLCEngineLike;
-};
-
 export function isWebGPUAvailable(): boolean {
   return typeof navigator !== "undefined" && "gpu" in navigator;
 }
@@ -71,7 +66,7 @@ export class WebLLMAssistantRuntime {
 
   async ensureModule(): Promise<WebLLMModule> {
     if (this.webllm) return this.webllm;
-    this.webllm = (await import("@mlc-ai/web-llm")) as unknown as WebLLMModule;
+    this.webllm = await loadWebLlmModule();
     return this.webllm;
   }
 
