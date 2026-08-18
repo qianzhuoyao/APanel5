@@ -19,10 +19,13 @@ import {
   FETCH_REDIRECTS,
   FETCH_RESPONSE_TYPES,
   fetchConfigHasScopeTemplate,
+  getFetchBodyValidationError,
+  getFetchHeadersValidationError,
   latestTraceOutputsByNode,
   parseFetchHeadersJson,
   resolveFetchIncomingScope,
   resolveFetchRequestUrl,
+  resolveFetchScopeAutocompleteRoot,
 } from "@arronqzy/blueprint-dsl";
 
 import type { BlueprintGraphEdge, BlueprintGraphNode } from "../graph/document";
@@ -37,6 +40,7 @@ import {
 } from "../fetch-config-task-store";
 import ConfigHintIcon from "./ConfigHintIcon.vue";
 import FetchUrlAutocomplete from "./FetchUrlAutocomplete.vue";
+import ScopeTemplateAutocompleteHost from "./ScopeTemplateAutocompleteHost.vue";
 
 const { t } = useI18n();
 
@@ -102,6 +106,16 @@ const resolvedHeadersPreview = computed(() => {
     return "";
   }
 });
+const resolvedBodyPreview = computed(() => {
+  if (!usesScopeTemplate.value) return "";
+  return resolvedFetchConfig.value.body?.trim() ?? "";
+});
+const headersJsonError = computed(() =>
+  getFetchHeadersValidationError(fetchConfig.value, incomingScope.value)
+);
+const bodyJsonError = computed(() =>
+  getFetchBodyValidationError(fetchConfig.value.body, resolvedFetchConfig.value.body)
+);
 const incomingHasPendingValue = computed(() => {
   const scope = incomingScope.value;
   if (!scope || typeof scope !== "object") return false;
@@ -109,6 +123,10 @@ const incomingHasPendingValue = computed(() => {
     "kind" in scope ? [scope] : Object.values(scope as Record<string, { kind?: string }>);
   return entries.some((entry) => entry && entry.kind === "pending");
 });
+const autocompleteScope = computed(() =>
+  resolveFetchScopeAutocompleteRoot(incomingScope.value)
+);
+const formRef = ref<HTMLElement | null>(null);
 const endpoints = computed(() => fetchConfig.value.swaggerEndpoints ?? []);
 const hasSwaggerEndpoints = computed(() => endpoints.value.length > 0);
 const urlInputMode = computed(
@@ -177,6 +195,23 @@ function handleSendFetchDebug() {
         : t("blueprint.config.fillRequestUrlFirst");
     return;
   }
+  const headersError = getFetchHeadersValidationError(
+    fetchConfig.value,
+    incomingScope.value
+  );
+  if (headersError) {
+    fetchValidationError.value = t("blueprint.config.fetchHeadersInvalidJson", {
+      error: headersError,
+    });
+    return;
+  }
+  const bodyError = getFetchBodyValidationError(fetchConfig.value.body, resolved.body);
+  if (bodyError) {
+    fetchValidationError.value = t("blueprint.config.fetchBodyInvalidJson", {
+      error: bodyError,
+    });
+    return;
+  }
 
   fetchValidationError.value = null;
   startFetchDebugTask({
@@ -215,7 +250,7 @@ const debugOk = computed(() => {
   return result ? result.status >= 200 && result.status < 300 : false;
 });
 
-function handleHeadersBlur(event: Event) {
+function handleHeadersInput(event: Event) {
   const headersJson = (event.target as HTMLTextAreaElement).value;
   const parsed = parseFetchHeadersJson(headersJson);
   props.onUpdateNode(
@@ -229,7 +264,11 @@ function handleHeadersBlur(event: Event) {
 </script>
 
 <template>
-  <div class="space-y-2 rounded-md border border-border/70 bg-muted/20 p-2.5">
+  <div
+    ref="formRef"
+    class="space-y-2 rounded-md border border-border/70 bg-muted/20 p-2.5"
+  >
+    <ScopeTemplateAutocompleteHost :scope="autocompleteScope" :container-ref="formRef" />
     <div class="flex items-center gap-1.5">
       <div class="font-medium text-foreground">{{ t("blueprint.config.fetchTitle") }}</div>
       <ConfigHintIcon :label="t('blueprint.config.fetchTitle')">
@@ -261,6 +300,7 @@ function handleHeadersBlur(event: Event) {
           :value="fetchConfig.swaggerDocsUrl ?? ''"
           :disabled="loadingSwagger"
           placeholder="https://example.com/v3/api-docs"
+          data-scope-autocomplete="off"
           class="flex-1 font-mono text-[11px]"
           @update:value="
             (v) =>
@@ -516,13 +556,16 @@ function handleHeadersBlur(event: Event) {
         </ConfigHintIcon>
       </span>
       <textarea
-        :key="`${node.id}-headers-${headersDraft}`"
         :value="headersDraft"
         rows="4"
-        class="w-full rounded-md border border-input bg-background px-2 py-1.5 font-mono text-[11px] leading-relaxed text-foreground shadow-sm outline-none focus-visible:ring-1 focus-visible:ring-primary"
+        class="w-full rounded-md border bg-background px-2 py-1.5 font-mono text-[11px] leading-relaxed text-foreground shadow-sm outline-none focus-visible:ring-1 focus-visible:ring-primary"
+        :class="headersJsonError ? 'border-destructive' : 'border-input'"
         placeholder='{"Authorization":"Bearer {scope?.value?.token}"}'
-        @blur="handleHeadersBlur"
+        @input="handleHeadersInput"
       />
+      <p v-if="headersJsonError" class="text-[11px] text-destructive">
+        {{ t("blueprint.config.fetchHeadersInvalidJson", { error: headersJsonError }) }}
+      </p>
       <p
         v-if="usesScopeTemplate && resolvedHeadersPreview"
         class="whitespace-pre-wrap break-all font-mono text-[10px] text-gray-500"
@@ -532,11 +575,17 @@ function handleHeadersBlur(event: Event) {
     </label>
 
     <label class="block space-y-1">
-      <span class="text-muted-foreground">{{ t("blueprint.config.requestBody") }}</span>
+      <span class="inline-flex items-center gap-1 text-muted-foreground">
+        {{ t("blueprint.config.requestBody") }}
+        <ConfigHintIcon :label="t('blueprint.config.requestBody')">
+          {{ t("blueprint.config.fetchBodyHint") }}
+        </ConfigHintIcon>
+      </span>
       <textarea
         :value="fetchConfig.body ?? ''"
         rows="4"
-        class="w-full rounded-md border border-input bg-background px-2 py-1.5 font-mono text-[11px] leading-relaxed text-foreground shadow-sm outline-none focus-visible:ring-1 focus-visible:ring-primary"
+        class="w-full rounded-md border bg-background px-2 py-1.5 font-mono text-[11px] leading-relaxed text-foreground shadow-sm outline-none focus-visible:ring-1 focus-visible:ring-primary"
+        :class="bodyJsonError ? 'border-destructive' : 'border-input'"
         placeholder='{"id":"{scope?.value?.id}"}'
         @input="
           (e) =>
@@ -546,6 +595,15 @@ function handleHeadersBlur(event: Event) {
             )
         "
       />
+      <p v-if="bodyJsonError" class="text-[11px] text-destructive">
+        {{ t("blueprint.config.fetchBodyInvalidJson", { error: bodyJsonError }) }}
+      </p>
+      <p
+        v-if="usesScopeTemplate && resolvedBodyPreview"
+        class="whitespace-pre-wrap break-all font-mono text-[10px] text-gray-500"
+      >
+        {{ t("blueprint.config.fetchScopeResolvedBody") }}: {{ resolvedBodyPreview }}
+      </p>
     </label>
 
     <div class="grid grid-cols-2 gap-2">

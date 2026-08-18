@@ -105,6 +105,7 @@ const {
   onEdgesChange,
   onNodeDragStop,
   onConnect,
+  onConnectEnd,
   isValidConnection,
 } = flowState;
 
@@ -201,6 +202,7 @@ function handleDeleteEdge(edgeId: string) {
       @nodes-change="onNodesChange"
       @edges-change="onEdgesChange"
       @connect="onConnect"
+      @connect-end="onConnectEnd"
       :is-valid-connection="isValidConnection"
       @node-drag-stop="onNodeDragStop"
       @pane-context-menu="onPaneContextMenu"

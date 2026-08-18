@@ -28,6 +28,14 @@ export function clearViewElementScopes() {
   emit();
 }
 
+export function removeViewElementScopes(elementIds: readonly string[]) {
+  let changed = false;
+  for (const id of elementIds) {
+    if (scopes.delete(id)) changed = true;
+  }
+  if (changed) emit();
+}
+
 export function setViewElementScope(elementId: string, scope: unknown) {
   scopes.set(elementId, scope);
   emit();

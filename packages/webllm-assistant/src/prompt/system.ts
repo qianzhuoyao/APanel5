@@ -212,7 +212,7 @@ export function tryLocalFaqReply(text: string): string | null {
       "蓝图用于编排逻辑：",
       "",
       "- 底部打开蓝图面板",
-      "- 常用节点：lifecycle / clock / logic / fetch / json",
+      "- 常用节点：lifecycle / event / clock / logic / fetch / json",
       "- 用连线把节点串起来，再运行",
       "",
       "也可让我说「蓝图加定时器」来自动添加。",

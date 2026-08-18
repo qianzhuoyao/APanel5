@@ -29,6 +29,7 @@ export const BLUEPRINT_NODE_ALIASES = [
   "fetch",
   "json",
   "and",
+  "event",
 ] as const;
 
 export type BlueprintNodeAlias = (typeof BLUEPRINT_NODE_ALIASES)[number];

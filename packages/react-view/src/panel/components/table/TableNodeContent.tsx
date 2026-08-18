@@ -5,8 +5,11 @@ import {
   resolveCellDisplay,
   resolveRowDisplay,
   stylePropsToCss,
+  tableTextStyleToCss,
   resolveRawTableInput,
   resolveProgressDisplay,
+  resolveTableBodyBackground,
+  resolveTableHeaderBackground,
   type PanelTableConfig,
   type NormalizedColumn,
   type NormalizedRow,
@@ -64,8 +67,12 @@ function TableCellView({
   };
 
   const style = stylePropsToCss(cell.style);
+  const textCss = tableTextStyleToCss(cell.widgetProps?.textStyle);
   const textOverflow = cell.widgetProps?.textStyle?.overflow ?? "ellipsis";
-  const isWrap = cell.widget === "text" && textOverflow === "wrap";
+  const isWrap =
+    textOverflow === "wrap" &&
+    cell.widget !== "image" &&
+    cell.widget !== "progress";
   const common: React.CSSProperties = {
     ...style,
     overflow: "hidden",
@@ -98,6 +105,7 @@ function TableCellView({
             lineHeight: "20px",
             color: "#fff",
             background: bg,
+            ...textCss,
           }}
         >
           {cell.widget === "badge" ? (
@@ -126,7 +134,13 @@ function TableCellView({
             e.stopPropagation();
             emit("click", cell.widgetProps?.actions?.onClickBlueprintNodeId);
           }}
-          style={{ color: "#2563eb", textDecoration: "underline", overflow: "hidden", textOverflow: "ellipsis" }}
+          style={{
+            color: "#2563eb",
+            textDecoration: "underline",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            ...textCss,
+          }}
         >
           {cell.text || cell.href}
         </a>
@@ -137,7 +151,14 @@ function TableCellView({
     const display = resolveProgressDisplay(cell.widgetProps);
     const trackColor = cell.color ?? "#3b82f6";
     const label = (
-      <span style={{ fontSize: 11, color: "rgba(0,0,0,0.55)", flex: "0 0 auto" }}>
+      <span
+        style={{
+          fontSize: 11,
+          color: "rgba(0,0,0,0.55)",
+          flex: "0 0 auto",
+          ...textCss,
+        }}
+      >
         {cell.text}
       </span>
     );
@@ -178,8 +199,15 @@ function TableCellView({
               y="50%"
               dominantBaseline="central"
               textAnchor="middle"
-              fontSize={Math.max(8, Math.round(size * 0.32))}
-              fill="rgba(0,0,0,0.65)"
+              fontSize={
+                typeof textCss.fontSize === "number"
+                  ? textCss.fontSize
+                  : Math.max(8, Math.round(size * 0.32))
+              }
+              fill={typeof textCss.color === "string" ? textCss.color : "rgba(0,0,0,0.65)"}
+              fontFamily={typeof textCss.fontFamily === "string" ? textCss.fontFamily : undefined}
+              fontWeight={textCss.fontWeight}
+              fontStyle={typeof textCss.fontStyle === "string" ? textCss.fontStyle : undefined}
             >
               {Math.round(pct)}
             </text>
@@ -227,7 +255,7 @@ function TableCellView({
             draggable={false}
           />
         ) : (
-          <span style={{ fontSize: 11, opacity: 0.5 }}>—</span>
+        <span style={{ fontSize: 11, opacity: 0.5, ...textCss }}>—</span>
         )}
       </div>
     );
@@ -275,21 +303,18 @@ function TableCellView({
             }}
           />
         </button>
-        <span style={{ marginLeft: 6, fontSize: 12 }}>{cell.text}</span>
+        <span style={{ marginLeft: 6, fontSize: 12, ...textCss }}>{cell.text}</span>
       </div>
     );
   } else {
-    const textStyle = cell.widgetProps?.textStyle;
     const canClickText = Boolean(cell.widgetProps?.actions?.onClickBlueprintNodeId);
     content = (
       <div
         style={{
           ...common,
-          fontFamily: textStyle?.fontFamily,
-          fontStyle: textStyle?.fontStyle,
-          textDecoration: textStyle?.textDecoration === "none" ? undefined : textStyle?.textDecoration,
+          ...textCss,
           cursor: canClickText ? "pointer" : undefined,
-          color: canClickText && !common.color ? "#2563eb" : common.color,
+          color: canClickText && !common.color && !textCss.color ? "#2563eb" : (textCss.color as string | undefined) ?? common.color,
         }}
         onClick={(e) => {
           if (!canClickText) return;
@@ -431,7 +456,7 @@ export function TableNodeContent({
     <div
       className="rv-table-node h-full w-full overflow-hidden"
       style={{
-        background: (tableConfig.tableStyle?.backgroundColor as string) || "#fff",
+        background: resolveTableBodyBackground(tableConfig.tableStyle?.backgroundColor),
         border:
           tableConfig.tableStyle?.borderWidth != null
             ? `${tableConfig.tableStyle.borderWidth}px solid ${tableConfig.tableStyle.borderColor ?? "rgba(0,0,0,0.12)"}`
@@ -455,7 +480,7 @@ export function TableNodeContent({
             position: tableConfig.tableStyle?.stickyHeader === false ? "relative" : "sticky",
             top: 0,
             zIndex: 2,
-            background: (tableConfig.headerStyle?.backgroundColor as string) || "rgba(0,0,0,0.04)",
+            background: resolveTableHeaderBackground(tableConfig.headerStyle?.backgroundColor),
             borderBottom: "1px solid rgba(0,0,0,0.1)",
             ...headerStyle,
             color: headerTextColor,
@@ -489,7 +514,7 @@ export function TableNodeContent({
         </div>
       ) : null}
 
-      <div ref={parentRef} className="min-h-0 flex-1 overflow-auto">
+      <div ref={parentRef} className="min-h-0 flex-1 overflow-auto" style={{ background: "transparent" }}>
         {model.rows.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center gap-2 px-3 text-center text-xs text-muted-foreground">
             <svg

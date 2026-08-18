@@ -1,7 +1,7 @@
 import type { TranslateFn } from "@arronqzy/i18n";
 import { tForLocale } from "@arronqzy/i18n";
 import { createDefaultTableConfig, type PanelTableConfig } from "@arronqzy/view-table";
-import type { PanelChartConfig, PanelLayer } from "../types";
+import type { PanelChartConfig, PanelLayer, PanelElement } from "../types";
 
 const DEFAULT_NODE_NAME_KEYS: Record<string, string> = {
   bar: "panel.defaults.bar",
@@ -86,6 +86,33 @@ export function getDefaultSizeByMaterial(materialType: string) {
     default:
       return { width: 220, height: 130 };
   }
+}
+
+export function cssTextLineHeight(
+  value: number | "auto" | undefined
+): string | undefined {
+  if (value === "auto") return "normal";
+  if (typeof value === "number" && Number.isFinite(value) && value > 0) {
+    return String(value);
+  }
+  return undefined;
+}
+
+export function cssTextAlignStyle(align: PanelElement["textAlign"]): {
+  textAlign: "left" | "center" | "right" | "justify";
+  display?: "flex";
+  flexDirection?: "column";
+  justifyContent?: "center";
+} {
+  if (align === "middle") {
+    return {
+      textAlign: "center",
+      display: "flex",
+      flexDirection: "column",
+      justifyContent: "center",
+    };
+  }
+  return { textAlign: align ?? "left" };
 }
 
 export function getDefaultTextContent(

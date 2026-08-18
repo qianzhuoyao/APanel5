@@ -26,10 +26,13 @@ import {
   FETCH_REDIRECTS,
   FETCH_RESPONSE_TYPES,
   fetchConfigHasScopeTemplate,
+  getFetchBodyValidationError,
+  getFetchHeadersValidationError,
   latestTraceOutputsByNode,
   parseFetchHeadersJson,
   resolveFetchIncomingScope,
   resolveFetchRequestUrl,
+  resolveFetchScopeAutocompleteRoot,
 } from "@arronqzy/blueprint-dsl";
 
 import type { BlueprintGraphEdge, BlueprintGraphNode } from "../graph/document";
@@ -46,6 +49,7 @@ import { useI18n } from "@arronqzy/i18n/react";
 
 import { ConfigFieldLabel, ConfigHintIcon, ConfigSectionTitle } from "./ConfigHintIcon";
 import { FetchUrlAutocomplete } from "./FetchUrlAutocomplete";
+import { ScopeTemplateAutocompleteHost } from "./ScopeTemplateAutocompleteHost";
 
 function SendIcon({ className }: { className?: string }) {
   return (
@@ -324,6 +328,18 @@ export function FetchNodeConfigPanel({
       return "";
     }
   }, [resolvedFetchConfig.headers, usesScopeTemplate]);
+  const resolvedBodyPreview = useMemo(() => {
+    if (!usesScopeTemplate) return "";
+    return resolvedFetchConfig.body?.trim() ?? "";
+  }, [resolvedFetchConfig.body, usesScopeTemplate]);
+  const headersJsonError = useMemo(
+    () => getFetchHeadersValidationError(fetchConfig, incomingScope),
+    [fetchConfig, incomingScope]
+  );
+  const bodyJsonError = useMemo(
+    () => getFetchBodyValidationError(fetchConfig.body, resolvedFetchConfig.body),
+    [fetchConfig.body, resolvedFetchConfig.body]
+  );
   const incomingHasPendingValue = useMemo(() => {
     if (!incomingScope || typeof incomingScope !== "object") return false;
     const entries =
@@ -332,6 +348,8 @@ export function FetchNodeConfigPanel({
         : Object.values(incomingScope as Record<string, { kind?: string }>);
     return entries.some((entry) => entry && entry.kind === "pending");
   }, [incomingScope]);
+  const autocompleteScope = resolveFetchScopeAutocompleteRoot(incomingScope);
+  const [formEl, setFormEl] = useState<HTMLDivElement | null>(null);
 
   const setUrlInputMode = useCallback(
     (mode: "swagger" | "manual") => {
@@ -381,6 +399,20 @@ export function FetchNodeConfigPanel({
       );
       return;
     }
+    const headersError = getFetchHeadersValidationError(fetchConfig, incomingScope);
+    if (headersError) {
+      setFetchValidationError(
+        t("blueprint.config.fetchHeadersInvalidJson", { error: headersError })
+      );
+      return;
+    }
+    const bodyError = getFetchBodyValidationError(fetchConfig.body, resolved.body);
+    if (bodyError) {
+      setFetchValidationError(
+        t("blueprint.config.fetchBodyInvalidJson", { error: bodyError })
+      );
+      return;
+    }
 
     setFetchValidationError(null);
     startFetchDebugTask({
@@ -394,7 +426,7 @@ export function FetchNodeConfigPanel({
     setFetchValidationError(null);
   }, [node.id]);
 
-  const handleHeadersBlur = useCallback(
+  const handleHeadersChange = useCallback(
     (e: ChangeEvent<HTMLTextAreaElement>) => {
       const headersJson = e.target.value;
       const parsed = parseFetchHeadersJson(headersJson);
@@ -410,7 +442,14 @@ export function FetchNodeConfigPanel({
   );
 
   return (
-    <div className="space-y-2 rounded-md border border-border/70 bg-muted/20 p-2.5">
+    <div
+      ref={setFormEl}
+      className="space-y-2 rounded-md border border-border/70 bg-muted/20 p-2.5"
+    >
+      <ScopeTemplateAutocompleteHost
+        scope={autocompleteScope}
+        container={formEl}
+      />
       <ConfigSectionTitle
         title={t("blueprint.config.fetchTitle")}
         hint={t("blueprint.config.fetchHint")}
@@ -444,6 +483,7 @@ export function FetchNodeConfigPanel({
           <Input
             value={fetchConfig.swaggerDocsUrl ?? ""}
             disabled={loadingSwagger}
+            data-scope-autocomplete="off"
             onChange={(e: ChangeEvent<HTMLInputElement>) =>
               onUpdateNode(
                 node.id,
@@ -657,13 +697,20 @@ export function FetchNodeConfigPanel({
           hint={t("blueprint.config.fetchHeadersHint")}
         />
         <textarea
-          defaultValue={headersDraft}
-          key={`${node.id}-headers-${headersDraft}`}
-          onBlur={handleHeadersBlur}
+          value={headersDraft}
+          onChange={handleHeadersChange}
           rows={4}
-          className="w-full rounded-md border border-input bg-background px-2 py-1.5 font-mono text-[11px] leading-relaxed text-foreground shadow-sm outline-none focus-visible:ring-1 focus-visible:ring-primary"
+          className={cn(
+            "w-full rounded-md border bg-background px-2 py-1.5 font-mono text-[11px] leading-relaxed text-foreground shadow-sm outline-none focus-visible:ring-1 focus-visible:ring-primary",
+            headersJsonError ? "border-destructive" : "border-input"
+          )}
           placeholder='{"Authorization":"Bearer {scope?.value?.token}"}'
         />
+        {headersJsonError ? (
+          <p className="text-[11px] text-destructive">
+            {t("blueprint.config.fetchHeadersInvalidJson", { error: headersJsonError })}
+          </p>
+        ) : null}
         {usesScopeTemplate && resolvedHeadersPreview ? (
           <p className="whitespace-pre-wrap break-all font-mono text-[10px] text-muted-foreground">
             {t("blueprint.config.fetchScopeResolvedHeaders")}: {resolvedHeadersPreview}
@@ -672,16 +719,32 @@ export function FetchNodeConfigPanel({
       </label>
 
       <label className="block space-y-1">
-        <span className="text-muted-foreground">{t("blueprint.config.requestBody")}</span>
+        <ConfigFieldLabel
+          label={t("blueprint.config.requestBody")}
+          hint={t("blueprint.config.fetchBodyHint")}
+        />
         <textarea
           value={fetchConfig.body ?? ""}
           onChange={(e) =>
             onUpdateNode(node.id, patchFetchConfig(node, { body: e.target.value }))
           }
           rows={4}
-          className="w-full rounded-md border border-input bg-background px-2 py-1.5 font-mono text-[11px] leading-relaxed text-foreground shadow-sm outline-none focus-visible:ring-1 focus-visible:ring-primary"
+          className={cn(
+            "w-full rounded-md border bg-background px-2 py-1.5 font-mono text-[11px] leading-relaxed text-foreground shadow-sm outline-none focus-visible:ring-1 focus-visible:ring-primary",
+            bodyJsonError ? "border-destructive" : "border-input"
+          )}
           placeholder='{"id":"{scope?.value?.id}"}'
         />
+        {bodyJsonError ? (
+          <p className="text-[11px] text-destructive">
+            {t("blueprint.config.fetchBodyInvalidJson", { error: bodyJsonError })}
+          </p>
+        ) : null}
+        {usesScopeTemplate && resolvedBodyPreview ? (
+          <p className="whitespace-pre-wrap break-all font-mono text-[10px] text-muted-foreground">
+            {t("blueprint.config.fetchScopeResolvedBody")}: {resolvedBodyPreview}
+          </p>
+        ) : null}
       </label>
 
       <div className="grid grid-cols-2 gap-2">

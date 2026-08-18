@@ -10,6 +10,8 @@ import {
   resolveNodeJsonConfig,
   resolveNodeLogicConfig,
   resolveViewElementIds,
+  resolveNodeEventConfig,
+  getViewEventTypeLabel,
 } from "./document";
 import type { BlueprintFlowNodeData } from "./react-flow-adapter";
 
@@ -93,6 +95,24 @@ export function resolveBlueprintNodeSummary(
         );
       }
       return t("blueprint.node.summaryViewMany", { count: ids.length });
+    }
+    case "event": {
+      const ids = resolveViewElementIds(data);
+      const types = resolveNodeEventConfig(data).eventTypes;
+      const typeLabel = types.map((type) => getViewEventTypeLabel(t, type)).join(" / ");
+      if (ids.length === 0) {
+        return truncate(
+          t("blueprint.node.summaryEventNoView", { events: typeLabel }),
+          44
+        );
+      }
+      return truncate(
+        t("blueprint.node.summaryEvent", {
+          events: typeLabel,
+          count: ids.length,
+        }),
+        44
+      );
     }
     case "and":
       return t("blueprint.node.summaryAnd");

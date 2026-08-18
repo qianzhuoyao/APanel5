@@ -36,6 +36,7 @@ export function documentToRunnableGraph(
         jsonConfig: node.jsonConfig,
         logicConfig: node.logicConfig,
         clockConfig: node.clockConfig,
+        eventConfig: node.eventConfig,
         blueprintName: node.libraryBlueprintId
           ? (options?.libraryNameById?.get(node.libraryBlueprintId) ??
             node.label)

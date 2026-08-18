@@ -37,15 +37,19 @@ function patchStyle(patch: Record<string, string | undefined>) {
 }
 
 async function handleUploadImage(file: File) {
-  const base64 = await readFileAsDataUrl(file, msgs().readImageFailed);
-  patchStyle({ backgroundImage: `url("${base64}")` });
-  uploadStatus.value = t("panel.config.uploadWrittenBase64");
-  const url = await uploadFileToRemote(file);
-  if (url) {
-    patchStyle({ backgroundImageRemoteUrl: url });
-    uploadStatus.value = t("panel.config.uploadServerAndBase64");
-  } else {
-    uploadStatus.value = t("panel.config.uploadServerFailedKeepBase64");
+  try {
+    const base64 = await readFileAsDataUrl(file, msgs().readImageFailed);
+    patchStyle({ backgroundImage: `url("${base64}")` });
+    uploadStatus.value = t("panel.config.uploadWrittenBase64");
+    const url = await uploadFileToRemote(file);
+    if (url) {
+      patchStyle({ backgroundImageRemoteUrl: url });
+      uploadStatus.value = t("panel.config.uploadServerAndBase64");
+    } else {
+      uploadStatus.value = t("panel.config.uploadServerFailedKeepBase64");
+    }
+  } catch (error) {
+    uploadStatus.value = error instanceof Error ? error.message : msgs().readImageFailed;
   }
 }
 

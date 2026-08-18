@@ -58,14 +58,17 @@ type DropdownState = {
 
 export function ScopeTemplateAutocompleteHost({
   scope,
+  container,
   containerRef,
 }: {
   scope: unknown;
+  container?: HTMLElement | null;
   containerRef?: RefObject<HTMLElement | null>;
 }) {
   const [dropdown, setDropdown] = useState<DropdownState | null>(null);
   const dropdownRef = useRef<DropdownState | null>(null);
   dropdownRef.current = dropdown;
+  const root = container ?? containerRef?.current ?? null;
 
   const closeDropdown = useCallback(() => {
     setDropdown(null);
@@ -123,8 +126,7 @@ export function ScopeTemplateAutocompleteHost({
   );
 
   useEffect(() => {
-    const container = containerRef?.current;
-    if (!container || scope === undefined) return;
+    if (!root || scope === undefined) return;
 
     const onFocusIn = (event: FocusEvent) => {
       if (!isAutocompleteTarget(event.target)) return;
@@ -185,33 +187,27 @@ export function ScopeTemplateAutocompleteHost({
       ) {
         return;
       }
-      if (!container.contains(target)) {
+      if (!root.contains(target)) {
         closeDropdown();
       }
     };
 
-    container.addEventListener("focusin", onFocusIn);
-    container.addEventListener("input", onInput, true);
-    container.addEventListener("keydown", onKeyDown, true);
+    root.addEventListener("focusin", onFocusIn);
+    root.addEventListener("input", onInput, true);
+    root.addEventListener("keydown", onKeyDown, true);
     window.addEventListener("pointerdown", onPointerDown, true);
     window.addEventListener("scroll", closeDropdown, true);
     window.addEventListener("resize", closeDropdown);
 
     return () => {
-      container.removeEventListener("focusin", onFocusIn);
-      container.removeEventListener("input", onInput, true);
-      container.removeEventListener("keydown", onKeyDown, true);
+      root.removeEventListener("focusin", onFocusIn);
+      root.removeEventListener("input", onInput, true);
+      root.removeEventListener("keydown", onKeyDown, true);
       window.removeEventListener("pointerdown", onPointerDown, true);
       window.removeEventListener("scroll", closeDropdown, true);
       window.removeEventListener("resize", closeDropdown);
     };
-  }, [
-    applySuggestion,
-    closeDropdown,
-    containerRef,
-    refreshForInput,
-    scope,
-  ]);
+  }, [applySuggestion, closeDropdown, refreshForInput, root, scope]);
 
   if (!dropdown || scope === undefined) return null;
 

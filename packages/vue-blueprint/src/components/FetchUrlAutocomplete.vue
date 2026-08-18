@@ -142,6 +142,7 @@ function handleKeyDown(event: KeyboardEvent) {
     <input
       :value="inputValue"
       :readOnly="selectOnly && !open"
+      data-scope-autocomplete="off"
       :placeholder="placeholder"
       class="flex h-8 w-full rounded-md border border-input bg-background px-2 py-1 text-[11px] text-foreground shadow-sm outline-none focus-visible:ring-1 focus-visible:ring-primary"
       :class="selectOnly && !open ? 'cursor-pointer font-medium' : 'font-mono'"

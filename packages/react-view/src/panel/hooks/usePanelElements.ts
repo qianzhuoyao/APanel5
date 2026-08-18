@@ -9,6 +9,7 @@ import type {
   ReferenceCopyMode,
 } from "../types";
 import { getPanelMessages } from "../constants/messages";
+import { removeViewElementScopes } from "../scope/view-scope-store";
 import {
   DEFAULT_LAYER,
   DEFAULT_LAYER_ID,
@@ -367,6 +368,7 @@ export function usePanelElements() {
     });
     const idSet = new Set(unlockedIds);
     if (idSet.size === 0) return;
+    const familyIds = new Set<string>();
     store.update(
       (draft) => {
         const deletedSourceIds = new Set<string>();
@@ -376,7 +378,7 @@ export function usePanelElements() {
           const props = n.props as PanelElement;
           deletedSourceIds.add(props.mappingSourceNodeId ?? props.id);
         });
-        const familyIds = new Set<string>();
+        familyIds.clear();
         (draft.root.children ?? []).forEach((n) => {
           if (!isPanelElementNode(n) || !n.props) return;
           const props = n.props as PanelElement;
@@ -389,6 +391,7 @@ export function usePanelElements() {
       },
       { meta: { type: "node.batch-delete", ids: Array.from(idSet) } }
     );
+    removeViewElementScopes([...familyIds]);
   }, [byId, layerById]);
 
   const bringElementsToFront = useCallback((ids: string[]) => {
@@ -1059,6 +1062,13 @@ export function usePanelElements() {
 
   const exportPanelData = useCallback(() => {
     const current = store.getState();
+    if (typeof structuredClone === "function") {
+      try {
+        return structuredClone(current) as State;
+      } catch {
+        /* fall through */
+      }
+    }
     return JSON.parse(JSON.stringify(current)) as State;
   }, []);
 

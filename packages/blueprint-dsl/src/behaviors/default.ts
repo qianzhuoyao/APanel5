@@ -5,11 +5,13 @@ import {
   isTrueSignal,
 } from "../node-signal.js";
 import type { LifecycleSignal } from "../lifecycle.js";
+import type { ViewEventSignal } from "../event-config.js";
 import { BehaviorRegistry } from "../core/behavior-registry.js";
 
 const LIFECYCLE_SIGNAL_KEY = "__lifecycleSignal";
 const BLUEPRINT_ACTIVATION_INPUT_KEY = "__blueprintActivationInput";
 const UI_EVENT_PAYLOAD_KEY = "__uiEventPayload";
+const VIEW_EVENT_SIGNAL_KEY = "__viewEventSignal";
 
 export function registerDefaultBehaviors(registry: BehaviorRegistry) {
   registry.registerJS("logic-noop", async ({ io }) => {
@@ -40,6 +42,23 @@ export function registerDefaultBehaviors(registry: BehaviorRegistry) {
     }
     io.emitFlow("out");
   });
+
+  registry.registerJS("event-emit", async ({ token, io }) => {
+    const payload = token.scope.vars.get(VIEW_EVENT_SIGNAL_KEY) as
+      | ViewEventSignal
+      | undefined;
+    if (!payload) {
+      // 生命周期输入只负责注册，不向下游发出信号
+      return;
+    }
+    io.setOutput("out", createTrueSignal(payload));
+    io.emitFlow("out");
+  });
 }
 
-export { LIFECYCLE_SIGNAL_KEY, BLUEPRINT_ACTIVATION_INPUT_KEY, UI_EVENT_PAYLOAD_KEY };
+export {
+  LIFECYCLE_SIGNAL_KEY,
+  BLUEPRINT_ACTIVATION_INPUT_KEY,
+  UI_EVENT_PAYLOAD_KEY,
+  VIEW_EVENT_SIGNAL_KEY,
+};

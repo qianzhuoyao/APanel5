@@ -1,4 +1,4 @@
-import { computed, onMounted, ref, shallowRef, toValue, type MaybeRefOrGetter } from "vue";
+import { computed, onMounted, onUnmounted, ref, shallowRef, toValue, watch, type MaybeRefOrGetter } from "vue";
 import {
   BlueprintGraph,
   type BlueprintDocument,
@@ -22,6 +22,7 @@ import {
   workspaceSnapshotsEqual,
   type WorkspaceSnapshot,
 } from "../library/workspace-snapshot";
+import { runBusyTask } from "../utils/async-work";
 
 export type UseWorkspaceProjectsOptions = {
   exportPanelData: () => State;
@@ -59,6 +60,20 @@ export function useWorkspaceProjects(options: UseWorkspaceProjectsOptions) {
   const activeProjectId = ref<string | null>(null);
   const activeProjectName = ref<string | null>(null);
   const syncedSnapshotRef = shallowRef<WorkspaceSnapshot | null>(null);
+  let syncedPanelRevision: unknown = null;
+  let pendingRevisionSync = false;
+  const previewWindows = new Map<string, Window>();
+  const previewingProjectIds = ref<string[]>([]);
+  let previewPollTimer: number | undefined;
+
+  function refreshPreviewing() {
+    const ids: string[] = [];
+    for (const [id, win] of previewWindows) {
+      if (!win.closed) ids.push(id);
+      else previewWindows.delete(id);
+    }
+    previewingProjectIds.value = ids;
+  }
 
   function resolveProjectName() {
     void locale.value;
@@ -67,7 +82,6 @@ export function useWorkspaceProjects(options: UseWorkspaceProjectsOptions) {
 
   function buildCurrentSnapshot(): WorkspaceSnapshot {
     return {
-      panelState: options.exportPanelData(),
       blueprintDocument: toValue(options.blueprintDocument),
       blueprintMeta: { ...toValue(options.blueprintMeta) },
       productName: toValue(options.productName),
@@ -81,15 +95,30 @@ export function useWorkspaceProjects(options: UseWorkspaceProjectsOptions) {
 
   onMounted(() => {
     void refreshProjects();
+    previewPollTimer = window.setInterval(refreshPreviewing, 2000);
   });
+
+  onUnmounted(() => {
+    if (previewPollTimer !== undefined) window.clearInterval(previewPollTimer);
+  });
+
+  watch(
+    () => toValue(options.panelRevision),
+    (revision) => {
+      if (!pendingRevisionSync) return;
+      syncedPanelRevision = revision;
+      pendingRevisionSync = false;
+    }
+  );
 
   const dirty = computed(() => {
     if (!activeProjectId.value || !syncedSnapshotRef.value) return false;
-    void toValue(options.panelRevision);
+    if (pendingRevisionSync) return false;
     void toValue(options.blueprintDocument);
     void toValue(options.blueprintMeta);
     void toValue(options.productName);
     void toValue(options.titleIconDataUrl);
+    if (toValue(options.panelRevision) !== syncedPanelRevision) return true;
     return !workspaceSnapshotsEqual(buildCurrentSnapshot(), syncedSnapshotRef.value);
   });
 
@@ -109,12 +138,13 @@ export function useWorkspaceProjects(options: UseWorkspaceProjectsOptions) {
     activeProjectId.value = record.id;
     activeProjectName.value = record.name;
     syncedSnapshotRef.value = cloneWorkspaceSnapshot({
-      panelState: record.panelState,
       blueprintDocument,
       blueprintMeta,
       productName: record.productName,
       titleIconDataUrl: record.titleIconDataUrl ?? "",
     });
+    syncedPanelRevision = toValue(options.panelRevision);
+    pendingRevisionSync = true;
     options.onProjectApplied?.({
       ...record,
       blueprintDocument,
@@ -127,7 +157,7 @@ export function useWorkspaceProjects(options: UseWorkspaceProjectsOptions) {
     name: string;
     createdAt?: number;
   }) {
-    const snapshot = buildCurrentSnapshot();
+    const snapshot = cloneWorkspaceSnapshot(buildCurrentSnapshot());
     const now = Date.now();
     const id = persistOptions.id ?? createWorkspaceProjectId();
     const createdAt = persistOptions.createdAt ?? now;
@@ -138,7 +168,7 @@ export function useWorkspaceProjects(options: UseWorkspaceProjectsOptions) {
       name,
       createdAt,
       updatedAt: now,
-      panelState: snapshot.panelState,
+      panelState: options.exportPanelData(),
       blueprintDocument: snapshot.blueprintDocument,
       blueprintMeta: snapshot.blueprintMeta,
       productName: snapshot.productName,
@@ -150,81 +180,121 @@ export function useWorkspaceProjects(options: UseWorkspaceProjectsOptions) {
     broadcastWorkspaceProjectUpdate(id, now);
     activeProjectId.value = id;
     activeProjectName.value = name;
-    syncedSnapshotRef.value = cloneWorkspaceSnapshot(snapshot);
+    syncedSnapshotRef.value = snapshot;
+    syncedPanelRevision = toValue(options.panelRevision);
+    pendingRevisionSync = false;
     await refreshProjects();
     return record;
   }
 
   async function handleCreateProject() {
-    const name = resolveProjectName();
-    const record = await persistProject({ name });
-    return { name, id: record.id };
+    return runBusyTask(t("common.savingWorkspace"), async () => {
+      const name = resolveProjectName();
+      const record = await persistProject({ name });
+      return { name, id: record.id };
+    });
   }
 
   async function handleSaveProject() {
-    if (!activeProjectId.value) {
+    const projectId = activeProjectId.value;
+    if (!projectId) {
       return handleCreateProject();
     }
-    const existing = await getWorkspaceProject(activeProjectId.value);
-    const name = resolveProjectName();
-    const record = await persistProject({
-      id: activeProjectId.value,
-      name,
-      createdAt: existing?.createdAt,
+    return runBusyTask(t("common.savingWorkspace"), async () => {
+      const existing = await getWorkspaceProject(projectId);
+      const name = resolveProjectName();
+      const record = await persistProject({
+        id: projectId,
+        name,
+        createdAt: existing?.createdAt,
+      });
+      return { name, id: record.id };
     });
-    return { name, id: record.id };
   }
 
   async function handleOpenProject(id: string) {
-    const record = await getWorkspaceProject(id);
-    if (!record) {
-      await refreshProjects();
-      throw new Error(t("panel.messages.workspaceNotFound"));
-    }
-    applyProjectRecord(record);
+    await runBusyTask(t("common.loadingWorkspace"), async () => {
+      const record = await getWorkspaceProject(id);
+      if (!record) {
+        await refreshProjects();
+        throw new Error(t("panel.messages.workspaceNotFound"));
+      }
+      applyProjectRecord(record);
+    });
   }
 
   async function handleSyncProject() {
-    if (!activeProjectId.value) {
-      throw new Error(t("panel.messages.saveWorkspaceFirst"));
-    }
-    const existing = await getWorkspaceProject(activeProjectId.value);
-    if (!existing) {
-      activeProjectId.value = null;
-      activeProjectName.value = null;
-      syncedSnapshotRef.value = null;
-      await refreshProjects();
-      throw new Error(t("panel.messages.workspaceNotFound"));
-    }
-    const name = resolveProjectName() || existing.name;
-    await persistProject({
-      id: activeProjectId.value,
-      name,
-      createdAt: existing.createdAt,
+    return runBusyTask(t("common.syncingWorkspace"), async () => {
+      if (!activeProjectId.value) {
+        throw new Error(t("panel.messages.saveWorkspaceFirst"));
+      }
+      const existing = await getWorkspaceProject(activeProjectId.value);
+      if (!existing) {
+        activeProjectId.value = null;
+        activeProjectName.value = null;
+        syncedSnapshotRef.value = null;
+        await refreshProjects();
+        throw new Error(t("panel.messages.workspaceNotFound"));
+      }
+      const name = resolveProjectName() || existing.name;
+      await persistProject({
+        id: activeProjectId.value,
+        name,
+        createdAt: existing.createdAt,
+      });
+      return name;
     });
-    return name;
   }
 
   async function handleDeleteProject(id: string) {
-    await deleteWorkspaceProject(id);
-    if (activeProjectId.value === id) {
-      activeProjectId.value = null;
-      activeProjectName.value = null;
-      syncedSnapshotRef.value = null;
-    }
-    await refreshProjects();
+    await runBusyTask(t("common.deletingWorkspace"), async () => {
+      await deleteWorkspaceProject(id);
+      if (activeProjectId.value === id) {
+        activeProjectId.value = null;
+        activeProjectName.value = null;
+        syncedSnapshotRef.value = null;
+      }
+      previewWindows.delete(id);
+      refreshPreviewing();
+      await refreshProjects();
+    });
   }
 
   async function handlePreviewProject(id: string, previewOptions?: { syncFirst?: boolean }) {
-    if (previewOptions?.syncFirst && activeProjectId.value === id && dirty.value) {
-      await handleSyncProject();
-    }
-    const record =
-      (await getWorkspaceProject(id)) ?? readWorkspacePreviewCache(id);
-    if (record) {
-      writeWorkspacePreviewCache(record);
-    }
-    window.open(buildOnlinePreviewUrl(id), "_blank", "noopener,noreferrer");
+    await runBusyTask(t("common.openingPreview"), async () => {
+      if (previewOptions?.syncFirst && activeProjectId.value === id && dirty.value) {
+        await handleSyncProject();
+      }
+      const record =
+        (await getWorkspaceProject(id)) ?? readWorkspacePreviewCache(id);
+      if (record) {
+        writeWorkspacePreviewCache(record);
+      }
+      const existing = previewWindows.get(id);
+      if (existing && !existing.closed) {
+        try {
+          existing.focus();
+        } catch {
+          /* ignore */
+        }
+        refreshPreviewing();
+        return;
+      }
+      const win = window.open(
+        buildOnlinePreviewUrl(id),
+        `abuilder-preview-${id}`
+      );
+      if (win) {
+        previewWindows.set(id, win);
+        try {
+          win.opener = null;
+          win.focus();
+        } catch {
+          /* ignore */
+        }
+      }
+      refreshPreviewing();
+    });
   }
 
   return {
@@ -232,6 +302,7 @@ export function useWorkspaceProjects(options: UseWorkspaceProjectsOptions) {
     activeProjectId,
     activeProjectName,
     dirty,
+    previewingProjectIds,
     handleCreateProject,
     handleSaveProject,
     handleOpenProject,

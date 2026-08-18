@@ -1,12 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   BlueprintGraphRunner,
+  collectArmedViewEventNodeIds,
   detectBlueprintReferenceCycle,
+  EVENT_NODE_TYPE,
+  LIFECYCLE_NODE_TYPE,
   type LibraryBlueprintResolver,
   type PageLifecyclePhase,
+  type ViewEventSignal,
 } from "@arronqzy/blueprint-dsl";
 
 import type { BlueprintGraph } from "../graph/blueprint-graph";
+import { resolveRunnableNodeType } from "../graph/document";
 import { documentToRunnableGraph } from "../runtime/document-to-runnable-graph";
 
 const PAGE_BOOT_PHASES: PageLifecyclePhase[] = [
@@ -96,12 +101,30 @@ function createRunner(graph: BlueprintGraph, options: RunnerOptions) {
   );
 }
 
+function collectArmedIds(
+  graph: BlueprintGraph,
+  firedPhases: ReadonlySet<string>
+) {
+  return collectArmedViewEventNodeIds(
+    graph.document.nodes.map((node) => ({
+      id: node.id,
+      nodeType: resolveRunnableNodeType(node),
+      lifecyclePhase: node.lifecyclePhase,
+    })),
+    graph.document.edges,
+    EVENT_NODE_TYPE,
+    LIFECYCLE_NODE_TYPE,
+    firedPhases
+  );
+}
+
 async function emitPhases(
   graph: BlueprintGraph,
   phases: PageLifecyclePhase[],
-  options: RunnerOptions
-) {
-  if (!phases.length) return;
+  options: RunnerOptions,
+  onPhaseFired?: (phase: PageLifecyclePhase) => void
+): Promise<boolean> {
+  if (!phases.length) return true;
 
   if (options.resolveLibraryBlueprint) {
     const result = await detectBlueprintReferenceCycle({
@@ -115,14 +138,16 @@ async function emitPhases(
     });
     if (!result.ok) {
       options.onExecutionBlocked?.(result.message);
-      return;
+      return false;
     }
   }
 
   const runner = createRunner(graph, options);
   for (const phase of phases) {
     await runner.emitLifecycle(phase);
+    onPhaseFired?.(phase);
   }
+  return true;
 }
 
 /**
@@ -164,37 +189,64 @@ export function useBlueprintPageLifecycle({
   const bootPhasesKey = bootPhases.join("|");
   const bootTrigger = bootKey ?? "__initial__";
   const [bootCompleted, setBootCompleted] = useState(false);
+  const [firedLifecyclePhases, setFiredLifecyclePhases] = useState<
+    ReadonlySet<PageLifecyclePhase>
+  >(() => new Set());
+  const firedLifecyclePhasesRef = useRef(firedLifecyclePhases);
+  firedLifecyclePhasesRef.current = firedLifecyclePhases;
   const hadBootRef = useRef(false);
   const activeRef = useRef(active);
   activeRef.current = active;
   const prevActiveRef = useRef<boolean | undefined>(undefined);
 
+  const resetFiredPhases = useCallback(() => {
+    setFiredLifecyclePhases(new Set());
+  }, []);
+
+  const markPhaseFired = useCallback((phase: PageLifecyclePhase) => {
+    setFiredLifecyclePhases((prev) => {
+      if (prev.has(phase)) return prev;
+      const next = new Set(prev);
+      next.add(phase);
+      return next;
+    });
+  }, []);
+
   useEffect(() => {
     if (!enabled) {
       setBootCompleted(false);
+      resetFiredPhases();
       return;
     }
 
     let cancelled = false;
 
     const runBoot = async () => {
+      resetFiredPhases();
       if (waitForPageReady) {
         await waitForPagePaint();
       }
       if (cancelled) return;
 
-      await emitPhases(
+      const bootOk = await emitPhases(
         graphRef.current,
         bootPhases,
-        runnerOptionsRef.current
+        runnerOptionsRef.current,
+        (phase) => {
+          if (!cancelled) markPhaseFired(phase);
+        }
       );
       if (cancelled) return;
+      if (!bootOk) return;
 
       if (activeRef.current) {
         await emitPhases(
           graphRef.current,
           ["activated"],
-          runnerOptionsRef.current
+          runnerOptionsRef.current,
+          (phase) => {
+            if (!cancelled) markPhaseFired(phase);
+          }
         );
       }
       if (cancelled) return;
@@ -209,6 +261,7 @@ export function useBlueprintPageLifecycle({
     return () => {
       cancelled = true;
       setBootCompleted(false);
+      resetFiredPhases();
       prevActiveRef.current = undefined;
       if (hadBootRef.current) {
         hadBootRef.current = false;
@@ -219,7 +272,14 @@ export function useBlueprintPageLifecycle({
         );
       }
     };
-  }, [bootPhasesKey, bootTrigger, enabled, waitForPageReady]);
+  }, [
+    bootPhasesKey,
+    bootTrigger,
+    enabled,
+    waitForPageReady,
+    markPhaseFired,
+    resetFiredPhases,
+  ]);
 
   useEffect(() => {
     if (!enabled || !bootCompleted) return;
@@ -231,17 +291,24 @@ export function useBlueprintPageLifecycle({
     }
     prevActiveRef.current = active;
 
+    const phase: PageLifecyclePhase = active ? "activated" : "deactivated";
     void emitPhases(
       graphRef.current,
-      [active ? "activated" : "deactivated"],
-      runnerOptionsRef.current
+      [phase],
+      runnerOptionsRef.current,
+      markPhaseFired
     );
-  }, [active, bootCompleted, enabled]);
+  }, [active, bootCompleted, enabled, markPhaseFired]);
 
   useEffect(() => {
     if (!enabled || !bootCompleted) return;
-    void emitPhases(graphRef.current, ["updated"], runnerOptionsRef.current);
-  }, [bootCompleted, enabled, onUpdated]);
+    void emitPhases(
+      graphRef.current,
+      ["updated"],
+      runnerOptionsRef.current,
+      markPhaseFired
+    );
+  }, [bootCompleted, enabled, onUpdated, markPhaseFired]);
 
   const triggerBlueprintNode = useCallback(
     async (nodeId: string, inputValue?: unknown) => {
@@ -269,5 +336,30 @@ export function useBlueprintPageLifecycle({
     []
   );
 
-  return { triggerBlueprintNode };
+  const emitViewEvent = useCallback(async (payload: ViewEventSignal) => {
+    if (!payload?.node?.id || !payload.eventType) return;
+    const opts = runnerOptionsRef.current;
+    if (opts.resolveLibraryBlueprint) {
+      const result = await detectBlueprintReferenceCycle({
+        rootGraph: documentToRunnableGraph(graphRef.current.document, {
+          libraryNameById: opts.libraryNameById,
+        }),
+        rootLibraryBlueprintId: opts.rootLibraryBlueprintId,
+        resolveLibraryBlueprint: opts.resolveLibraryBlueprint,
+        resolveBlueprintName: (libId) =>
+          resolveBlueprintName(opts.libraryNameById, libId),
+      });
+      if (!result.ok) {
+        opts.onExecutionBlocked?.(result.message);
+        return;
+      }
+    }
+    const runner = createRunner(graphRef.current, opts);
+    await runner.emitViewEvent(
+      payload,
+      collectArmedIds(graphRef.current, firedLifecyclePhasesRef.current)
+    );
+  }, []);
+
+  return { triggerBlueprintNode, emitViewEvent, firedLifecyclePhases };
 }

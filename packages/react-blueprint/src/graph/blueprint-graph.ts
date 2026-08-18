@@ -5,6 +5,7 @@ import {
   filterInvalidBlueprintEdges,
   patchNodeConfigSource,
   resolveNodeClockConfig,
+  resolveNodeEventConfig,
   resolveNodeFetchConfig,
   resolveNodeJsonConfig,
   resolveNodeLogicConfig,
@@ -198,6 +199,7 @@ export class BlueprintGraph {
         | "jsonConfig"
         | "logicConfig"
         | "clockConfig"
+        | "eventConfig"
       >
     >
   ) {
@@ -249,6 +251,12 @@ export class BlueprintGraph {
           nextNode.clockConfig = {
             ...resolveNodeClockConfig(n),
             ...patch.clockConfig,
+          };
+        }
+        if (patch.eventConfig) {
+          nextNode.eventConfig = {
+            ...resolveNodeEventConfig(n),
+            ...patch.eventConfig,
           };
         }
         return {

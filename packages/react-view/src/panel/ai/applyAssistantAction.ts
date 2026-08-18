@@ -202,6 +202,7 @@ function applyBlueprintAddNode(
     fetch: "fetch",
     json: "json",
     and: "and",
+    event: "event",
   };
   const configSource = configSourceMap[alias];
   if (configSource && configSource !== "logic") {

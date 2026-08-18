@@ -75,8 +75,8 @@ export type PanelElement = {
   textFontSize?: number;
   textFontWeight?: string;
   textColor?: string;
-  textLineHeight?: number;
-  textAlign?: "left" | "center" | "right" | "justify";
+  textLineHeight?: number | "auto";
+  textAlign?: "left" | "center" | "right" | "justify" | "middle";
   gridRows?: number;
   gridCols?: number;
   gridGap?: number;

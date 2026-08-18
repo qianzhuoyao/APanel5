@@ -1,11 +1,8 @@
 <script setup lang="ts">
 import {
-  onMounted,
-  onUnmounted,
-  ref,
-  shallowRef,
   toValue,
   watch,
+  shallowRef,
   type MaybeRef,
 } from "vue";
 import {
@@ -206,7 +203,7 @@ watch(
   <Teleport v-if="dropdown && scope !== undefined" to="body">
     <div
       data-scope-ac-list
-      class="fixed z-[10120] max-h-44 min-w-[140px] overflow-auto rounded-md border border-border bg-popover py-1 text-popover-foreground shadow-md"
+      class="fixed z-[10120] max-h-44 min-w-[140px] overflow-auto rounded-md border border-border bg-white py-1 text-gray-800 shadow-md"
       :style="{
         left: `${dropdown.rect.left}px`,
         top: `${dropdown.rect.bottom + 4}px`,
@@ -218,14 +215,14 @@ watch(
         :key="key"
         type="button"
         :class="[
-          'flex w-full flex-col items-start gap-0.5 px-2 py-1.5 text-left text-[11px] hover:bg-accent',
-          index === dropdown.activeIndex && 'bg-accent',
+          'flex w-full flex-col items-start gap-0.5 px-2 py-1.5 text-left text-[11px] hover:bg-gray-100',
+          index === dropdown.activeIndex && 'bg-gray-100',
         ]"
         @mousedown.prevent
         @click="applySuggestion(index)"
       >
-        <span class="font-medium text-foreground">{{ key }}</span>
-        <span class="font-mono text-[10px] text-muted-foreground">{{
+        <span class="font-medium text-gray-800">{{ key }}</span>
+        <span class="font-mono text-[10px] text-gray-500">{{
           `{${buildScopeExpression(dropdown.state.path, key)}}`
         }}</span>
       </button>

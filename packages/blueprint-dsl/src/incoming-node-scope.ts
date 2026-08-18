@@ -2,7 +2,9 @@ import type { FetchRequestConfig } from "./fetch-config.js";
 import {
   evaluateScopeExpression,
   evaluateScopeTemplate,
+  evaluateScopeTemplateInJson,
   hasScopeTemplate,
+  looksLikeJsonText,
   stringifyScopeValue,
 } from "./scope-template.js";
 import { isFalseSignal, isTrueSignal } from "./node-signal.js";
@@ -39,6 +41,24 @@ export type IncomingNodeScopeEntry = {
 export type IncomingNodeScope =
   | IncomingNodeScopeEntry
   | Record<string, IncomingNodeScopeEntry>;
+
+/** 尚无上游数据时，仍可联想 scope 的固定字段 */
+export const FETCH_SCOPE_AUTOCOMPLETE_FALLBACK: IncomingNodeScopeEntry = {
+  id: "",
+  name: "",
+  type: "",
+  role: "",
+  port: "out",
+  kind: "pending",
+  value: {},
+  error: "",
+  timestamp: 0,
+  isoTime: "",
+};
+
+export function resolveFetchScopeAutocompleteRoot(scope: unknown): unknown {
+  return scope === undefined ? FETCH_SCOPE_AUTOCOMPLETE_FALLBACK : scope;
+}
 
 function readOutputSignal(output: unknown): Pick<
   IncomingNodeScopeEntry,
@@ -191,6 +211,94 @@ function resolveTemplateString(
   return evaluateScopeTemplate(value, scope);
 }
 
+export function parseJsonText(
+  text: string
+): { ok: true; value: unknown } | { ok: false; error: string } {
+  try {
+    return { ok: true, value: JSON.parse(text) as unknown };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "JSON 格式无效",
+    };
+  }
+}
+
+export function validateFetchJsonText(
+  text: string,
+  options?: { allowEmpty?: boolean }
+): { ok: true } | { ok: false; error: string } {
+  const trimmed = text.trim();
+  if (!trimmed) {
+    if (options?.allowEmpty === false) {
+      return { ok: false, error: "内容不能为空" };
+    }
+    return { ok: true };
+  }
+  if (isWholeScopeExpression(trimmed)) {
+    return { ok: true };
+  }
+  if (!looksLikeJsonText(trimmed)) {
+    return { ok: true };
+  }
+  const parsed = parseJsonText(trimmed);
+  return parsed.ok ? { ok: true } : parsed;
+}
+
+export function resolveFetchBody(
+  body: string | undefined,
+  scope?: unknown
+): string | undefined {
+  if (body === undefined) return undefined;
+  const trimmed = body.trim();
+  if (!trimmed) return body;
+  if (scope !== undefined && isWholeScopeExpression(trimmed)) {
+    const value = evaluateScopeExpression(trimmed.slice(1, -1), scope);
+    if (value === undefined) return "";
+    if (typeof value === "string") return value;
+    return stringifyScopeValue(value);
+  }
+  if (scope === undefined || !hasScopeTemplate(body)) return body;
+  if (looksLikeJsonText(trimmed)) {
+    return evaluateScopeTemplateInJson(body, scope);
+  }
+  return evaluateScopeTemplate(body, scope);
+}
+
+export function getFetchBodyValidationError(
+  body: string | undefined,
+  resolvedBody?: string
+): string | null {
+  const source = (resolvedBody ?? body ?? "").trim();
+  if (!source) return null;
+  if (isWholeScopeExpression(source)) return null;
+  if (!looksLikeJsonText(source)) return null;
+  const parsed = parseJsonText(source);
+  if (parsed.ok) return null;
+  // 仍含未求值的 {scope?...} 时，等上游数据再校验
+  if (hasScopeTemplate(source)) return null;
+  return parsed.error;
+}
+
+export function getFetchHeadersValidationError(
+  config: FetchRequestConfig,
+  scope?: unknown
+): string | null {
+  const raw = (config.headersJson ?? "").trim();
+  if (!raw) return null;
+  if (isWholeScopeExpression(raw) || hasScopeTemplate(raw)) {
+    if (scope === undefined) return null;
+    const parsed = parseFetchHeadersJson(raw, scope);
+    if (!parsed) return "请求头模板解析后不是有效的 JSON 对象";
+    return null;
+  }
+  const result = validateFetchJsonText(raw);
+  if (!result.ok) return result.error;
+  const parsed = parseFetchHeadersJson(raw, scope);
+  if (!parsed) return "请求头不是有效的 JSON 对象";
+  return null;
+}
+
 /** `{scope?...}` 整段表达式，区别于 JSON 对象 `{ "Authorization": "..." }` */
 export function isWholeScopeExpression(text: string): boolean {
   const trimmed = text.trim();
@@ -233,10 +341,17 @@ export function parseFetchHeadersJson(
     const inner = trimmed.slice(1, -1);
     return asHeaderRecord(evaluateScopeExpression(inner, scope));
   }
+  let jsonText = trimmed;
+  if (scope !== undefined && hasScopeTemplate(trimmed) && looksLikeJsonText(trimmed)) {
+    jsonText = evaluateScopeTemplateInJson(trimmed, scope);
+  }
   try {
-    const parsed = asHeaderRecord(JSON.parse(trimmed));
+    const parsed = asHeaderRecord(JSON.parse(jsonText));
     if (!parsed) return undefined;
-    return applyScopeToHeaderRecord(parsed, scope);
+    if (jsonText === trimmed) {
+      return applyScopeToHeaderRecord(parsed, scope);
+    }
+    return parsed;
   } catch {
     return undefined;
   }
@@ -269,16 +384,17 @@ export function applyFetchConfigScope(
   config: FetchRequestConfig,
   scope: unknown
 ): FetchRequestConfig {
-  if (scope === undefined) {
-    const headers = resolveFetchHeaders(config);
-    return headers === config.headers ? config : { ...config, headers };
-  }
   const headers = resolveFetchHeaders(config, scope);
+  const body = resolveFetchBody(config.body, scope);
+  if (scope === undefined) {
+    if (headers === config.headers && body === config.body) return config;
+    return { ...config, headers, body };
+  }
   return {
     ...config,
     url: resolveTemplateString(config.url, scope) ?? "",
     apiBaseUrl: resolveTemplateString(config.apiBaseUrl, scope),
-    body: resolveTemplateString(config.body, scope),
+    body,
     headers,
   };
 }

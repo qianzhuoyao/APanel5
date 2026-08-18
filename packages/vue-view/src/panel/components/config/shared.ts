@@ -1,4 +1,6 @@
 import type { PanelChartConfig } from "../../types";
+import { resolveLocale, tForLocale } from "@arronqzy/i18n";
+import { runBusyTask } from "../../utils/async-work";
 
 export function mergeOptionPatch(
   base: Record<string, unknown> | undefined,
@@ -38,29 +40,22 @@ export function sectionMatchesSearch(
   );
 }
 
-export function readFileAsDataUrl(
-  file: File,
-  errorMessage: string
-): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result ?? ""));
-    reader.onerror = () => reject(new Error(errorMessage));
-    reader.readAsDataURL(file);
-  });
-}
+export { readFileAsDataUrl } from "../../utils/async-work";
 
 export async function uploadFileToRemote(file: File): Promise<string | undefined> {
-  try {
-    const form = new FormData();
-    form.append("file", file);
-    const resp = await fetch("/api/upload", { method: "POST", body: form });
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    const data = (await resp.json()) as { url?: string };
-    return data.url;
-  } catch {
-    return undefined;
-  }
+  const t = tForLocale(resolveLocale());
+  return runBusyTask(t("common.uploadingFile"), async () => {
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const resp = await fetch("/api/upload", { method: "POST", body: form });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const data = (await resp.json()) as { url?: string };
+      return data.url;
+    } catch {
+      return undefined;
+    }
+  });
 }
 
 export function patchChart(

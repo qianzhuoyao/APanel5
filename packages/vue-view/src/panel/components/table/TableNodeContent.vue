@@ -8,8 +8,11 @@ import {
   resolveCellDisplay,
   resolveRowDisplay,
   stylePropsToCss,
+  tableTextStyleToCss,
   resolveRawTableInput,
   resolveProgressDisplay,
+  resolveTableBodyBackground,
+  resolveTableHeaderBackground,
   type PanelTableConfig,
   type NormalizedColumn,
   type NormalizedRow,
@@ -102,7 +105,7 @@ const headerTextColor = computed(
 );
 
 const rootStyle = computed(() => ({
-  background: (config.value.tableStyle?.backgroundColor as string) || "#fff",
+  background: resolveTableBodyBackground(config.value.tableStyle?.backgroundColor),
   border:
     config.value.tableStyle?.borderWidth != null
       ? `${config.value.tableStyle.borderWidth}px solid ${config.value.tableStyle.borderColor ?? "rgba(0,0,0,0.12)"}`
@@ -126,7 +129,7 @@ const headerRowStyle = computed(() => ({
       : ("sticky" as const),
   top: 0,
   zIndex: 2,
-  background: (config.value.headerStyle?.backgroundColor as string) || "rgba(0,0,0,0.04)",
+  background: resolveTableHeaderBackground(config.value.headerStyle?.backgroundColor),
   borderBottom: "1px solid rgba(0,0,0,0.1)",
   ...headerStyle.value,
   color: headerTextColor.value,
@@ -145,7 +148,8 @@ function headerJustify(align: NormalizedColumn["align"]) {
 function cellCommonStyle(cell: CellDisplay): Record<string, string | number> {
   const style = stylePropsToCss(cell.style);
   const textOverflow = cell.widgetProps?.textStyle?.overflow ?? "ellipsis";
-  const isWrap = cell.widget === "text" && textOverflow === "wrap";
+  const isWrap =
+    textOverflow === "wrap" && cell.widget !== "image" && cell.widget !== "progress";
   return {
     ...style,
     overflow: "hidden",
@@ -189,6 +193,7 @@ const TableCellView = defineComponent({
     return (): VNode => {
       const cell = p.cell;
       const common = cellCommonStyle(cell);
+      const textCss = tableTextStyleToCss(cell.widgetProps?.textStyle);
       let node: VNode;
 
       if (cell.widget === "tag" || cell.widget === "badge") {
@@ -208,6 +213,7 @@ const TableCellView = defineComponent({
                 lineHeight: "20px",
                 color: "#fff",
                 background: bg,
+                ...textCss,
               },
             },
             [
@@ -243,6 +249,7 @@ const TableCellView = defineComponent({
                 textDecoration: "underline",
                 overflow: "hidden",
                 textOverflow: "ellipsis",
+                ...textCss,
               },
             },
             cell.text || cell.href
@@ -254,7 +261,14 @@ const TableCellView = defineComponent({
         const trackColor = cell.color ?? "#3b82f6";
         const label = h(
           "span",
-          { style: { fontSize: 11, color: "rgba(0,0,0,0.55)", flex: "0 0 auto" } },
+          {
+            style: {
+              fontSize: 11,
+              color: "rgba(0,0,0,0.55)",
+              flex: "0 0 auto",
+              ...textCss,
+            },
+          },
           cell.text
         );
 
@@ -295,8 +309,16 @@ const TableCellView = defineComponent({
                   y: "50%",
                   "dominant-baseline": "central",
                   "text-anchor": "middle",
-                  "font-size": Math.max(8, Math.round(size * 0.32)),
-                  fill: "rgba(0,0,0,0.65)",
+                  "font-size":
+                    typeof textCss.fontSize === "number"
+                      ? textCss.fontSize
+                      : Math.max(8, Math.round(size * 0.32)),
+                  fill: typeof textCss.color === "string" ? textCss.color : "rgba(0,0,0,0.65)",
+                  "font-family":
+                    typeof textCss.fontFamily === "string" ? textCss.fontFamily : undefined,
+                  "font-weight": textCss.fontWeight,
+                  "font-style":
+                    typeof textCss.fontStyle === "string" ? textCss.fontStyle : undefined,
                 },
                 String(Math.round(pct))
               ),
@@ -343,7 +365,7 @@ const TableCellView = defineComponent({
                 },
                 draggable: false,
               })
-            : h("span", { style: { fontSize: 11, opacity: 0.5 } }, "—"),
+            : h("span", { style: { fontSize: 11, opacity: 0.5, ...textCss } }, "—"),
         ]);
       } else if (cell.widget === "boolean") {
         const on = Boolean(cell.booleanValue);
@@ -392,22 +414,21 @@ const TableCellView = defineComponent({
               }),
             ]
           ),
-          h("span", { style: { marginLeft: 6, fontSize: 12 } }, cell.text),
+          h("span", { style: { marginLeft: 6, fontSize: 12, ...textCss } }, cell.text),
         ]);
       } else {
-        const textStyle = cell.widgetProps?.textStyle;
         const canClickText = Boolean(cell.widgetProps?.actions?.onClickBlueprintNodeId);
         node = h(
           "div",
           {
             style: {
               ...common,
-              fontFamily: textStyle?.fontFamily,
-              fontStyle: textStyle?.fontStyle,
-              textDecoration:
-                textStyle?.textDecoration === "none" ? undefined : textStyle?.textDecoration,
+              ...textCss,
               cursor: canClickText ? "pointer" : undefined,
-              color: canClickText && !(common as { color?: string }).color ? "#2563eb" : common.color,
+              color:
+                canClickText && !(common as { color?: string }).color && !textCss.color
+                  ? "#2563eb"
+                  : (textCss.color as string | undefined) ?? (common as { color?: string }).color,
             },
             onClick: (e: Event) => {
               if (!canClickText) return;
@@ -504,7 +525,7 @@ const TableRowView = defineComponent({
       </div>
     </div>
 
-    <div ref="parentRef" class="min-h-0 flex-1 overflow-auto">
+    <div ref="parentRef" class="min-h-0 flex-1 overflow-auto" style="background: transparent">
       <div
         v-if="model.rows.length === 0"
         class="flex h-full flex-col items-center justify-center gap-2 px-3 text-center text-xs text-gray-400"

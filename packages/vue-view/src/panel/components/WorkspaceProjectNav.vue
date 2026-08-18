@@ -19,6 +19,7 @@ const props = defineProps<{
   activeProjectId: string | null;
   activeProjectName: string | null;
   dirty: boolean;
+  previewingProjectIds?: string[];
 }>();
 
 const emit = defineEmits<{
@@ -76,8 +77,10 @@ const projectMenu = computed(() =>
       default: () =>
         props.projects.length === 0
           ? [h(Menu.Item, { key: "empty", disabled: true }, () => t("panel.workspace.noSavedWorkspaces"))]
-          : props.projects.map((project) =>
-              h(
+          : props.projects.map((project) => {
+              const isCurrent = props.activeProjectId === project.id;
+              const isPreviewing = (props.previewingProjectIds ?? []).includes(project.id);
+              return h(
                 "div",
                 { key: project.id, class: "px-1 py-0.5" },
                 h("div", { class: "flex items-center gap-1" }, [
@@ -86,16 +89,41 @@ const projectMenu = computed(() =>
                     {
                       type: "button",
                       class: [
-                        "min-w-0 flex-1 rounded px-2 py-1.5 text-left text-xs hover:bg-accent",
-                        props.activeProjectId === project.id
-                          ? "bg-accent/60 font-medium"
+                        "min-w-0 flex-1 rounded px-2 py-1.5 text-left text-xs hover:bg-gray-100",
+                        isCurrent
+                          ? "bg-blue-50 font-medium text-blue-700 ring-1 ring-inset ring-blue-300"
+                          : "",
+                        !isCurrent && isPreviewing
+                          ? "bg-sky-50 ring-1 ring-inset ring-sky-300"
                           : "",
                       ].join(" "),
                       onClick: () =>
                         void runAction(() => emit("openProject", project.id)),
                     },
                     [
-                      h("div", { class: "truncate" }, project.name),
+                      h("div", { class: "flex items-center gap-1" }, [
+                        h("div", { class: "min-w-0 flex-1 truncate" }, project.name),
+                        isCurrent
+                          ? h(
+                              "span",
+                              {
+                                class:
+                                  "shrink-0 rounded bg-blue-600 px-1 py-px text-[9px] leading-none text-white",
+                              },
+                              t("panel.workspace.currentBadge")
+                            )
+                          : null,
+                        isPreviewing
+                          ? h(
+                              "span",
+                              {
+                                class:
+                                  "shrink-0 rounded bg-sky-600 px-1 py-px text-[9px] leading-none text-white",
+                              },
+                              t("panel.workspace.previewingBadge")
+                            )
+                          : null,
+                      ]),
                       h(
                         "div",
                         { class: "truncate text-[10px] text-muted-foreground" },
@@ -132,8 +160,8 @@ const projectMenu = computed(() =>
                     () => t("common.delete")
                   ),
                 ])
-              )
-            ),
+              );
+            }),
     }
   )
 );

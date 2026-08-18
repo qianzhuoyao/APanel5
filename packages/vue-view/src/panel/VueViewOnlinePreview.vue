@@ -8,8 +8,11 @@ import {
   listBlueprintLibrary,
   useBlueprintPageLifecycle,
   type BlueprintLibraryListItem,
+  resolveRunnableNodeType,
+  resolveViewElementIds,
 } from "@arronqzy/vue-blueprint";
 import type { LibraryBlueprintResolver, PageLifecyclePhase } from "@arronqzy/blueprint-dsl";
+import { collectArmedViewEventBindings, EVENT_NODE_TYPE, LIFECYCLE_NODE_TYPE } from "@arronqzy/blueprint-dsl";
 import type { State } from "@arronqzy/rx-store";
 import ElementsLayer from "./components/ElementsLayer.vue";
 import {
@@ -204,7 +207,7 @@ const lifecycleReady = computed(
   () => Boolean(panelState.value && layerElements.value.length > 0 && layoutReady.value)
 );
 
-const { triggerBlueprintNode } = useBlueprintPageLifecycle({
+const { triggerBlueprintNode, emitViewEvent, firedLifecyclePhases } = useBlueprintPageLifecycle({
   graph: blueprintGraph,
   active: ref(true),
   enabled: lifecycleReady,
@@ -219,6 +222,22 @@ const { triggerBlueprintNode } = useBlueprintPageLifecycle({
   rootLibraryBlueprintId: ref(null),
   onViewScopeUpdate: handleViewScopeUpdate,
 });
+
+const boundViewEventTypes = computed(() =>
+  collectArmedViewEventBindings(
+    blueprintGraph.value.document.nodes.map((node) => ({
+      id: node.id,
+      nodeType: resolveRunnableNodeType(node),
+      lifecyclePhase: node.lifecyclePhase,
+      viewElementIds: resolveViewElementIds(node),
+      eventConfig: node.eventConfig,
+    })),
+    blueprintGraph.value.document.edges,
+    EVENT_NODE_TYPE,
+    LIFECYCLE_NODE_TYPE,
+    firedLifecyclePhases.value
+  )
+);
 
 onMounted(() => {
   const onResize = () => applySceneFit();
@@ -240,8 +259,9 @@ function noopSelect() {}
 
   <div
     v-else-if="!panelState"
-    class="flex min-h-screen w-full items-center justify-center bg-white text-sm text-gray-600"
+    class="flex min-h-screen w-full flex-col items-center justify-center gap-3 bg-white text-sm text-gray-600"
   >
+    <div class="h-9 w-9 animate-spin rounded-full border-2 border-gray-300 border-t-gray-700" />
     {{ t("panel.workspace.previewLoading") }}
   </div>
 
@@ -284,6 +304,12 @@ function noopSelect() {}
           :on-table-cell-action="
             (payload) => {
               void triggerBlueprintNode(payload.blueprintNodeId, payload);
+            }
+          "
+          :bound-view-event-types="boundViewEventTypes"
+          :on-view-ui-event="
+            (payload) => {
+              void emitViewEvent(payload);
             }
           "
           @select-ids="noopSelect"

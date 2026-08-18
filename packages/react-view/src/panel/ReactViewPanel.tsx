@@ -7,6 +7,7 @@ import { usePanelElements } from "./hooks/usePanelElements";
 import { useWorkspaceProjects } from "./hooks/useWorkspaceProjects";
 import type { WorkspaceProjectRecord } from "./library/workspace-project-db";
 import { WorkspaceProjectNav } from "./components/WorkspaceProjectNav";
+import { BusyOverlay } from "./components/BusyOverlay";
 import { PanelCanvas } from "./components/PanelCanvas";
 import { PanelRulers } from "./components/PanelRulers";
 import { type ViewportZoom } from "./viewportZoom";
@@ -15,6 +16,12 @@ import { SelectLayer } from "./components/SelectLayer";
 import { MoveableLayer } from "./components/MoveableLayer";
 import { buildChartOption, CHART_TYPES } from "./utils/chartOptionBuilder";
 import { readOutputScale, writeOutputScale } from "./utils/outputScale";
+import {
+  assertFileSize,
+  parseJsonText,
+  readFileAsDataUrl,
+  runBusyTask,
+} from "./utils/async-work";
 import { MaterialSidebar } from "./components/MaterialSidebar";
 import { AssistantChatPanel } from "./ai/AssistantChatPanel";
 import {
@@ -45,13 +52,15 @@ import {
   useBlueprintNodeSelectionGuard,
   useBlueprintPageLifecycle,
   stopAllClockSchedules,
+  resolveRunnableNodeType,
+  resolveViewElementIds,
   type BlueprintDocument,
   type BlueprintGraphNode,
   type BlueprintLibraryListItem,
   type BlueprintMetaDraft,
 } from "@arronqzy/react-blueprint";
 import type { LibraryBlueprintResolver } from "@arronqzy/blueprint-dsl";
-import { abortClockNode } from "@arronqzy/blueprint-dsl";
+import { abortClockNode, collectArmedViewEventBindings, EVENT_NODE_TYPE, LIFECYCLE_NODE_TYPE } from "@arronqzy/blueprint-dsl";
 import { WorkspaceStageSplit } from "./components/WorkspaceStageSplit";
 import {
   WorkspaceConfigSidebar,
@@ -736,6 +745,7 @@ export function ReactViewPanel({
           | "jsonConfig"
           | "logicConfig"
           | "clockConfig"
+          | "eventConfig"
         >
       >
     ) => {
@@ -987,18 +997,20 @@ export function ReactViewPanel({
         void refreshBlueprintLibrary();
         return;
       }
-      setBlueprintGraph(BlueprintGraph.fromDocument(record.document));
-      setBlueprintMeta({
-        name: record.name,
-        remark: record.remark ?? "",
+      await runBusyTask(t("common.loadingBlueprint"), async () => {
+        setBlueprintGraph(BlueprintGraph.fromDocument(record.document));
+        setBlueprintMeta({
+          name: record.name,
+          remark: record.remark ?? "",
+        });
+        setActiveBlueprintLibraryId(record.id);
+        setBlueprintSyncedDocument(record.document);
+        setSelectedBlueprintNodeId(null);
+        setConfigFocus("blueprint");
+        setBlueprintOpen(true);
       });
-      setActiveBlueprintLibraryId(record.id);
-      setBlueprintSyncedDocument(record.document);
-      setSelectedBlueprintNodeId(null);
-      setConfigFocus("blueprint");
-      setBlueprintOpen(true);
     },
-    [refreshBlueprintLibrary]
+    [refreshBlueprintLibrary, t]
   );
 
   const snapshotWorkspaceBlueprint = useCallback(() => {
@@ -1052,66 +1064,70 @@ export function ReactViewPanel({
 
   const syncBlueprintToLibrary = useCallback(async () => {
     if (!activeBlueprintLibraryId) return;
+    await runBusyTask(t("common.syncingBlueprint"), async () => {
+      const existing = await getBlueprintLibraryRecord(activeBlueprintLibraryId);
+      if (!existing) {
+        toast({ title: t("panel.messages.blueprintNotFound") });
+        void refreshBlueprintLibrary();
+        setActiveBlueprintLibraryId(null);
+        setBlueprintSyncedDocument(null);
+        return;
+      }
 
-    const existing = await getBlueprintLibraryRecord(activeBlueprintLibraryId);
-    if (!existing) {
-      toast({ title: t("panel.messages.blueprintNotFound") });
-      void refreshBlueprintLibrary();
-      setActiveBlueprintLibraryId(null);
-      setBlueprintSyncedDocument(null);
-      return;
-    }
-
-    const record = buildLibraryRecord({
-      id: existing.id,
-      createdAt: existing.createdAt,
-      document: blueprintGraph.document,
-      meta: blueprintMeta,
-      source: existing.source,
+      const record = buildLibraryRecord({
+        id: existing.id,
+        createdAt: existing.createdAt,
+        document: blueprintGraph.document,
+        meta: blueprintMeta,
+        source: existing.source,
+      });
+      await putBlueprintLibraryRecord(record);
+      setBlueprintSyncedDocument(blueprintGraph.document);
+      await refreshBlueprintLibrary();
+      toast({ title: messages.blueprintSynced(record.name) });
     });
-    await putBlueprintLibraryRecord(record);
-    setBlueprintSyncedDocument(blueprintGraph.document);
-    await refreshBlueprintLibrary();
-    toast({ title: messages.blueprintSynced(record.name) });
   }, [
     activeBlueprintLibraryId,
     blueprintGraph.document,
     blueprintMeta,
     refreshBlueprintLibrary,
+    t,
   ]);
 
   const saveBlueprintToLibrary = useCallback(
     async (meta: BlueprintMetaDraft) => {
-      setBlueprintMeta(meta);
+      await runBusyTask(t("common.savingBlueprint"), async () => {
+        setBlueprintMeta(meta);
 
-      let recordId = activeBlueprintLibraryId ?? undefined;
-      let createdAt: number | undefined;
-      if (activeBlueprintLibraryId) {
-        const existing = await getBlueprintLibraryRecord(activeBlueprintLibraryId);
-        if (existing?.source === "saved") {
-          recordId = existing.id;
-          createdAt = existing.createdAt;
+        let recordId = activeBlueprintLibraryId ?? undefined;
+        let createdAt: number | undefined;
+        if (activeBlueprintLibraryId) {
+          const existing = await getBlueprintLibraryRecord(activeBlueprintLibraryId);
+          if (existing?.source === "saved") {
+            recordId = existing.id;
+            createdAt = existing.createdAt;
+          } else {
+            recordId = createLibraryBlueprintId();
+          }
         } else {
           recordId = createLibraryBlueprintId();
         }
-      } else {
-        recordId = createLibraryBlueprintId();
-      }
 
-      const record = buildLibraryRecord({
-        id: recordId,
-        createdAt,
-        document: blueprintGraph.document,
-        meta,
-        source: "saved",
+        const record = buildLibraryRecord({
+          id: recordId,
+          createdAt,
+          document: blueprintGraph.document,
+          meta,
+          source: "saved",
+        });
+        await putBlueprintLibraryRecord(record);
+        setActiveBlueprintLibraryId(record.id);
+        setBlueprintSyncedDocument(blueprintGraph.document);
+        await refreshBlueprintLibrary();
+        toast({ title: t("panel.messages.blueprintSavedLocal") });
       });
-      await putBlueprintLibraryRecord(record);
-      setActiveBlueprintLibraryId(record.id);
-      setBlueprintSyncedDocument(blueprintGraph.document);
-      await refreshBlueprintLibrary();
-      toast({ title: t("panel.messages.blueprintSavedLocal") });
     },
-    [activeBlueprintLibraryId, blueprintGraph.document, refreshBlueprintLibrary]
+    [activeBlueprintLibraryId, blueprintGraph.document, refreshBlueprintLibrary, t]
   );
 
   const openBlueprintMetaDialog = useCallback((mode: "export" | "save") => {
@@ -1122,16 +1138,18 @@ export function ReactViewPanel({
   const handleBlueprintMetaConfirm = useCallback(
     async (meta: BlueprintMetaDraft) => {
       if (blueprintMetaDialogMode === "export") {
-        setBlueprintMeta(meta);
-        downloadBlueprintExport(
-          buildBlueprintExportPayload(blueprintGraph.document, meta)
-        );
-        toast({ title: t("panel.messages.blueprintExported") });
+        await runBusyTask(t("common.exportingPanel"), async () => {
+          setBlueprintMeta(meta);
+          downloadBlueprintExport(
+            buildBlueprintExportPayload(blueprintGraph.document, meta)
+          );
+          toast({ title: t("panel.messages.blueprintExported") });
+        });
         return;
       }
       await saveBlueprintToLibrary(meta);
     },
-    [blueprintGraph.document, blueprintMetaDialogMode, saveBlueprintToLibrary]
+    [blueprintGraph.document, blueprintMetaDialogMode, saveBlueprintToLibrary, t]
   );
 
   const handleRenameBlueprintLibraryItem = useCallback(
@@ -1170,22 +1188,32 @@ export function ReactViewPanel({
 
   const handleBlueprintImportFile = useCallback(
     async (file: File) => {
-      const text = await file.text();
-      const payload = parseBlueprintImportFile(JSON.parse(text) as unknown);
-      const record = libraryRecordFromImport(payload);
-      await putBlueprintLibraryRecord(record);
-      await refreshBlueprintLibrary();
-      if (!activeBlueprintLibraryId) {
-        snapshotWorkspaceBlueprint();
+      try {
+        await runBusyTask(t("common.importingBlueprint"), async () => {
+          assertFileSize(file, "json");
+          const text = await file.text();
+          const payload = parseBlueprintImportFile(await parseJsonText(text));
+          const record = libraryRecordFromImport(payload);
+          await putBlueprintLibraryRecord(record);
+          await refreshBlueprintLibrary();
+          if (!activeBlueprintLibraryId) {
+            snapshotWorkspaceBlueprint();
+          }
+          await loadBlueprintFromLibrary(record.id);
+          toast({ title: t("panel.messages.blueprintImported") });
+        });
+      } catch (error) {
+        toast({
+          title: error instanceof Error ? error.message : t("panel.messages.importInvalidFormat"),
+        });
       }
-      await loadBlueprintFromLibrary(record.id);
-      toast({ title: t("panel.messages.blueprintImported") });
     },
     [
       activeBlueprintLibraryId,
       loadBlueprintFromLibrary,
       refreshBlueprintLibrary,
       snapshotWorkspaceBlueprint,
+      t,
     ]
   );
 
@@ -1227,7 +1255,7 @@ export function ReactViewPanel({
     onProjectApplied: handleWorkspaceProjectApplied,
   });
 
-  const { triggerBlueprintNode } = useBlueprintPageLifecycle({
+  const { triggerBlueprintNode, emitViewEvent, firedLifecyclePhases } = useBlueprintPageLifecycle({
     graph: blueprintGraph,
     active: blueprintOpen,
     bootKey: workspaceProjects.activeProjectId ?? undefined,
@@ -1238,6 +1266,24 @@ export function ReactViewPanel({
     onExecutionBlocked: handleBlueprintExecutionBlocked,
     onViewScopeUpdate: handleViewScopeUpdate,
   });
+
+  const boundViewEventTypes = useMemo(
+    () =>
+      collectArmedViewEventBindings(
+        blueprintGraph.document.nodes.map((node) => ({
+          id: node.id,
+          nodeType: resolveRunnableNodeType(node),
+          lifecyclePhase: node.lifecyclePhase,
+          viewElementIds: resolveViewElementIds(node),
+          eventConfig: node.eventConfig,
+        })),
+        blueprintGraph.document.edges,
+        EVENT_NODE_TYPE,
+        LIFECYCLE_NODE_TYPE,
+        firedLifecyclePhases
+      ),
+    [blueprintGraph.document.nodes, blueprintGraph.document.edges, firedLifecyclePhases]
+  );
 
   const handleWorkspaceCreateProject = useCallback(async () => {
     const result = await workspaceProjects.handleCreateProject();
@@ -1250,6 +1296,7 @@ export function ReactViewPanel({
   const handleWorkspaceOpenProject = useCallback(
     async (id: string) => {
       try {
+        stopAllClockSchedules();
         clearViewElementScopes();
         await workspaceProjects.handleOpenProject(id);
         setSelectedIds([]);
@@ -1563,70 +1610,72 @@ export function ReactViewPanel({
   );
 
   const handleExport = useCallback(() => {
-    const data = exportPanelData();
-    const blob = new Blob([JSON.stringify(data, null, 2)], {
-      type: "application/json",
+    void runBusyTask(t("common.exportingPanel"), async () => {
+      const data = exportPanelData();
+      const blob = new Blob([JSON.stringify(data, null, 2)], {
+        type: "application/json",
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const safeName = (productName.trim() || "panel")
+        .replace(/[\\/:*?"<>|]/g, "-")
+        .replace(/\s+/g, "-");
+      a.download = `${safeName}-${Date.now()}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
     });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    const safeName = (productName.trim() || "panel")
-      .replace(/[\\/:*?"<>|]/g, "-")
-      .replace(/\s+/g, "-");
-    a.download = `${safeName}-${Date.now()}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }, [exportPanelData, productName]);
+  }, [exportPanelData, productName, t]);
 
   const handleImportFile = useCallback(
     async (file: File) => {
-      const text = await file.text();
-      const parsed = JSON.parse(text) as State;
-      const ok = importPanelData(parsed);
-      if (!ok) {
-        window.alert(messages.importInvalidFormat);
-      } else {
-        setSelectedIds([]);
+      try {
+        await runBusyTask(t("common.importingPanel"), async () => {
+          assertFileSize(file, "json");
+          const text = await file.text();
+          const parsed = await parseJsonText<State>(text);
+          const ok = importPanelData(parsed);
+          if (!ok) {
+            window.alert(messages.importInvalidFormat);
+          } else {
+            setSelectedIds([]);
+          }
+        });
+      } catch (error) {
+        window.alert(
+          error instanceof Error ? error.message : messages.importInvalidFormat
+        );
       }
     },
-    [importPanelData]
+    [importPanelData, t]
   );
 
-  const normalizeTitleIconFile = useCallback((file: File) => {
+  const normalizeTitleIconFile = useCallback(async (file: File) => {
+    const src = await readFileAsDataUrl(file, "read-failed", "image");
     return new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onerror = () => reject(new Error("read-failed"));
-      reader.onload = () => {
-        const src = typeof reader.result === "string" ? reader.result : "";
-        if (!src) {
-          reject(new Error("empty-data"));
+      const img = new Image();
+      img.onload = () => {
+        const size = 64;
+        const canvas = document.createElement("canvas");
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          reject(new Error("canvas-context-failed"));
           return;
         }
-        const img = new Image();
-        img.onload = () => {
-          const size = 64;
-          const canvas = document.createElement("canvas");
-          canvas.width = size;
-          canvas.height = size;
-          const ctx = canvas.getContext("2d");
-          if (!ctx) {
-            reject(new Error("canvas-context-failed"));
-            return;
-          }
-          ctx.clearRect(0, 0, size, size);
-          // 保持长宽比居中绘制，统一导出 PNG，提升 favicon 兼容性
-          const scale = Math.min(size / img.width, size / img.height);
-          const drawW = img.width * scale;
-          const drawH = img.height * scale;
-          const dx = (size - drawW) / 2;
-          const dy = (size - drawH) / 2;
-          ctx.drawImage(img, dx, dy, drawW, drawH);
-          resolve(canvas.toDataURL("image/png"));
-        };
-        img.onerror = () => reject(new Error("image-decode-failed"));
-        img.src = src;
+        ctx.clearRect(0, 0, size, size);
+        const scale = Math.min(size / img.width, size / img.height);
+        const drawW = img.width * scale;
+        const drawH = img.height * scale;
+        const dx = (size - drawW) / 2;
+        const dy = (size - drawH) / 2;
+        ctx.drawImage(img, dx, dy, drawW, drawH);
+        img.src = "";
+        resolve(canvas.toDataURL("image/png"));
       };
-      reader.readAsDataURL(file);
+      img.onerror = () => reject(new Error("image-decode-failed"));
+      img.src = src;
     });
   }, []);
 
@@ -1935,6 +1984,7 @@ export function ReactViewPanel({
       ].join(" ")}
       style={{ ["--panel-font-px" as string]: `${panelFontPx}px` }}
     >
+      <BusyOverlay />
       <TooltipProvider delayDuration={120}>
         <Tooltip open={ellipsisTooltip.open}>
           <TooltipTrigger asChild>
@@ -1952,6 +2002,11 @@ export function ReactViewPanel({
       <style>{`
         .panel-font-root :is(span, label, p, strong, button, input, textarea, select, option, a, li) {
           font-size: var(--panel-font-px) !important;
+        }
+        /* 画布节点、富文本内容使用各自的字号，不被编辑器 UI 字号强制覆盖 */
+        .panel-font-root [data-workspace-region="view"] :is(span, label, p, strong, button, input, textarea, select, option, a, li),
+        .panel-font-root [data-panel-user-text] :is(span, label, p, strong, button, input, textarea, select, option, a, li) {
+          font-size: inherit !important;
         }
         .panel-font-root :is(input, textarea):focus,
         .panel-font-root :is(input, textarea):focus-visible {
@@ -2069,6 +2124,7 @@ export function ReactViewPanel({
           activeProjectId={workspaceProjects.activeProjectId}
           activeProjectName={workspaceProjects.activeProjectName}
           dirty={workspaceProjects.dirty}
+          previewingProjectIds={workspaceProjects.previewingProjectIds}
           onCreateProject={handleWorkspaceCreateProject}
           onOpenProject={handleWorkspaceOpenProject}
           onSyncProject={handleWorkspaceSyncProject}
@@ -2558,8 +2614,10 @@ export function ReactViewPanel({
                   try {
                     const normalizedDataUrl = await normalizeTitleIconFile(file);
                     setTitleIconDataUrl(normalizedDataUrl);
-                  } catch {
-                    window.alert(messages.iconReadFailed);
+                  } catch (error) {
+                    window.alert(
+                      error instanceof Error ? error.message : messages.iconReadFailed
+                    );
                   }
                 }}
               />
@@ -2691,6 +2749,10 @@ export function ReactViewPanel({
                       layerLocked={Boolean(activeLayer?.locked)}
                       onTableCellAction={(payload) => {
                         void triggerBlueprintNode(payload.blueprintNodeId, payload);
+                      }}
+                      boundViewEventTypes={boundViewEventTypes}
+                      onViewUiEvent={(payload) => {
+                        void emitViewEvent(payload);
                       }}
                     />
 

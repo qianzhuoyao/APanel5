@@ -6,12 +6,15 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  Checkbox,
 } from "@arronqzy/ui";
 import {
   LIFECYCLE_NODE_TYPE,
   PAGE_LIFECYCLE_PHASES,
+  VIEW_EVENT_TYPES,
   type ExecutionTraceEntry,
   type PageLifecyclePhase,
+  type ViewEventType,
 } from "@arronqzy/blueprint-dsl";
 import { useI18n } from "@arronqzy/i18n/react";
 
@@ -23,9 +26,12 @@ import { ViewElementMultiSelect } from "./components/ViewElementMultiSelect";
 import { ConfigFieldLabel, ConfigHintIcon, ConfigSectionTitle } from "./components/ConfigHintIcon";
 import {
   getLifecyclePhaseLabel,
+  getViewEventTypeLabel,
+  inspectEventNodeInputs,
   patchNodeConfigSource,
   pruneViewElementIds,
   resolveBlueprintConfigSource,
+  resolveNodeEventConfig,
   resolveViewElementIds,
   type BlueprintConfigSource,
   type BlueprintGraphEdge,
@@ -70,6 +76,7 @@ export type BlueprintNodeConfigSidebarProps = {
         | "jsonConfig"
         | "logicConfig"
         | "clockConfig"
+        | "eventConfig"
       >
     >
   ) => void;
@@ -83,6 +90,7 @@ const ROLE_LABEL_KEYS: Record<BlueprintNodeRole, string> = {
   json: "blueprint.config.roleJson",
   logic: "blueprint.config.roleLogic",
   clock: "blueprint.config.roleClock",
+  event: "blueprint.config.roleEvent",
 };
 
 export function BlueprintNodeConfigSidebar({
@@ -99,6 +107,7 @@ export function BlueprintNodeConfigSidebar({
   const { t } = useI18n();
   const configSource = resolveBlueprintConfigSource(node);
   const linkedViewElementIds = resolveViewElementIds(node);
+  const selectedEventTypes = resolveNodeEventConfig(node).eventTypes;
   const existingViewElementIdSet = useMemo(
     () => new Set(viewElementOptions.map((opt) => opt.id)),
     [viewElementOptions]
@@ -108,7 +117,7 @@ export function BlueprintNodeConfigSidebar({
   );
 
   useEffect(() => {
-    if (configSource !== "view") return;
+    if (configSource !== "view" && configSource !== "event") return;
     // 视图画布尚未就绪时不清理，避免误删有效绑定导致绑定节点「执行了但不写 scope」
     if (viewElementOptions.length === 0) return;
     const linked = resolveViewElementIds(node);
@@ -118,7 +127,7 @@ export function BlueprintNodeConfigSidebar({
     onUpdateNode(node.id, {
       viewElementIds: pruned.length > 0 ? pruned : undefined,
       viewElementId: undefined,
-      configSource: "view",
+      configSource,
     });
   }, [
     configSource,
@@ -131,6 +140,10 @@ export function BlueprintNodeConfigSidebar({
   ]);
 
   const roleLabel = t(ROLE_LABEL_KEYS[node.role] ?? "blueprint.config.roleLogic");
+  const eventInputs = useMemo(
+    () => inspectEventNodeInputs(node.id, graphNodes, graphEdges),
+    [graphEdges, graphNodes, node.id]
+  );
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-background text-foreground">
@@ -160,7 +173,7 @@ export function BlueprintNodeConfigSidebar({
               const nextSource = value as BlueprintConfigSource;
               onUpdateNode(node.id, {
                 ...patchNodeConfigSource(node, nextSource),
-                ...(nextSource === "view"
+                ...(nextSource === "view" || nextSource === "event"
                   ? {
                       viewElementIds: linkedViewElementIds,
                       viewElementId: undefined,
@@ -183,16 +196,21 @@ export function BlueprintNodeConfigSidebar({
               <SelectItem value="fetch">{t("blueprint.config.configFetch")}</SelectItem>
               <SelectItem value="json">{t("blueprint.config.configJson")}</SelectItem>
               <SelectItem value="clock">{t("blueprint.config.configClock")}</SelectItem>
+              <SelectItem value="event">{t("blueprint.config.configEvent")}</SelectItem>
               <SelectItem value="view">{t("blueprint.config.configView")}</SelectItem>
             </SelectContent>
           </Select>
         </label>
 
-        {configSource === "view" ? (
+        {configSource === "view" || configSource === "event" ? (
           <div className="block space-y-1">
             <ConfigFieldLabel
               label={t("blueprint.config.linkedViewNodes")}
-              hint={t("blueprint.config.viewMultiHint")}
+              hint={
+                configSource === "event"
+                  ? t("blueprint.config.eventViewHint")
+                  : t("blueprint.config.viewMultiHint")
+              }
             />
             <ViewElementMultiSelect
               options={viewElementOptions}
@@ -202,7 +220,7 @@ export function BlueprintNodeConfigSidebar({
                 onUpdateNode(node.id, {
                   viewElementIds: next,
                   viewElementId: undefined,
-                  configSource: "view",
+                  configSource,
                 })
               }
             />
@@ -267,6 +285,55 @@ export function BlueprintNodeConfigSidebar({
                 {t("blueprint.config.allowFalsePropagateBlueprint")}
               </span>
             </label>
+          </div>
+        ) : null}
+
+        {configSource === "event" ? (
+          <div className="space-y-2 rounded-md border border-border/70 bg-muted/20 p-2.5">
+            <div className="flex items-center gap-1.5">
+              <div className="font-medium text-foreground">
+                {t("blueprint.config.eventListen")}
+              </div>
+              <ConfigHintIcon label={t("blueprint.config.eventListen")}>
+                <p>{t("blueprint.config.eventNoInput")}</p>
+                <p>{t("blueprint.config.eventHint")}</p>
+              </ConfigHintIcon>
+            </div>
+            {eventInputs.nonLifecycleCount > 0 ? (
+              <p className="rounded border border-destructive/40 bg-destructive/10 px-2 py-1.5 text-[11px] leading-relaxed text-destructive">
+                {t("blueprint.config.eventInputNotLifecycle")}
+              </p>
+            ) : eventInputs.lifecycleCount === 0 ? (
+              <p className="rounded border border-amber-500/40 bg-amber-500/10 px-2 py-1.5 text-[11px] leading-relaxed text-amber-700 dark:text-amber-300">
+                {t("blueprint.config.eventInputMissing")}
+              </p>
+            ) : null}
+            <div className="space-y-1.5">
+              {VIEW_EVENT_TYPES.map((eventType) => {
+                const checked = selectedEventTypes.includes(eventType);
+                return (
+                  <label key={eventType} className="flex items-center gap-2">
+                    <Checkbox
+                      checked={checked}
+                      className="h-3.5 w-3.5 border-2 border-foreground/80 bg-background ring-1 ring-foreground/40 data-[state=checked]:border-primary data-[state=checked]:ring-primary/40"
+                      onCheckedChange={(nextChecked: boolean | "indeterminate") => {
+                        const nextTypes: ViewEventType[] =
+                          nextChecked === true
+                            ? [...new Set([...selectedEventTypes, eventType])]
+                            : selectedEventTypes.filter((type) => type !== eventType);
+                        onUpdateNode(node.id, {
+                          eventConfig: {
+                            eventTypes: nextTypes.length > 0 ? nextTypes : ["click"],
+                          },
+                          configSource: "event",
+                        });
+                      }}
+                    />
+                    <span>{getViewEventTypeLabel(t, eventType)}</span>
+                  </label>
+                );
+              })}
+            </div>
           </div>
         ) : null}
 

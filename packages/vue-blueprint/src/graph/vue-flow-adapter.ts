@@ -20,6 +20,7 @@ export type BlueprintFlowNodeData = {
   fetchConfig?: BlueprintGraphNode["fetchConfig"];
   jsonConfig?: BlueprintGraphNode["jsonConfig"];
   clockConfig?: BlueprintGraphNode["clockConfig"];
+  eventConfig?: BlueprintGraphNode["eventConfig"];
   logicConfig?: BlueprintGraphNode["logicConfig"];
   /** 调试执行时时钟节点已发送次数 */
   clockEmitProgress?: { current: number; total: number } | null;
@@ -70,6 +71,8 @@ export function toVueFlowNodes(document: BlueprintDocument): VueFlowNodeView[] {
           ? "fetch"
           : n.role === "json"
             ? "json"
+            : n.role === "event"
+              ? "event"
             : "logic",
     position: { ...n.position },
     width: BP_FLOW_NODE_WIDTH,
@@ -91,6 +94,7 @@ export function toVueFlowNodes(document: BlueprintDocument): VueFlowNodeView[] {
       fetchConfig: n.fetchConfig,
       jsonConfig: n.jsonConfig,
       clockConfig: n.clockConfig,
+      eventConfig: n.eventConfig,
       logicConfig: n.logicConfig,
     },
   }));

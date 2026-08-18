@@ -37,10 +37,12 @@ import { collectElementScopeWarnings } from "../utils/scope-template-warnings";
 import { ScopeConfigProvider } from "./scope-config/ScopeConfigContext";
 import { ScopeTemplateWarningsPanel } from "./scope-config/ScopeTemplateWarningsPanel";
 import { PanelConfigTableSection } from "./table/PanelConfigTableSection";
+import { cssTextLineHeight, cssTextAlignStyle } from "../utils/panelElementDefaults";
 import {
   highlightConfigField,
   subscribeRevealPanelConfig,
 } from "../ai/revealConfigField";
+import { readFileAsDataUrl, runBusyTask } from "../utils/async-work";
 
 type UpdateElement = (
   id: string,
@@ -262,31 +264,34 @@ export function PanelConfigSidebar({
   const handleUploadBackgroundImage = useCallback(
     async (file: File) => {
       if (!selectedElement) return;
-      const base64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(String(reader.result ?? ""));
-        reader.onerror = () => reject(new Error(messages.readImageFailed));
-        reader.readAsDataURL(file);
-      });
-      updateSelectedStyle({
-        backgroundImage: `url("${base64}")`,
-      });
-      setUploadStatus(t("panel.config.uploadWrittenBase64"));
       try {
-        const form = new FormData();
-        form.append("file", file);
-        const resp = await fetch("/api/upload", { method: "POST", body: form });
-        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-        const data = (await resp.json()) as { url?: string };
-        if (data.url) {
-          updateSelectedStyle({ backgroundImageRemoteUrl: data.url });
-          setUploadStatus(t("panel.config.uploadServerAndBase64"));
-        }
-      } catch {
-        setUploadStatus(t("panel.config.uploadServerFailedKeepBase64"));
+        await runBusyTask(t("common.uploadingFile"), async () => {
+          const base64 = await readFileAsDataUrl(file, messages.readImageFailed, "image");
+          updateSelectedStyle({
+            backgroundImage: `url("${base64}")`,
+          });
+          setUploadStatus(t("panel.config.uploadWrittenBase64"));
+          try {
+            const form = new FormData();
+            form.append("file", file);
+            const resp = await fetch("/api/upload", { method: "POST", body: form });
+            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+            const data = (await resp.json()) as { url?: string };
+            if (data.url) {
+              updateSelectedStyle({ backgroundImageRemoteUrl: data.url });
+              setUploadStatus(t("panel.config.uploadServerAndBase64"));
+            }
+          } catch {
+            setUploadStatus(t("panel.config.uploadServerFailedKeepBase64"));
+          }
+        });
+      } catch (error) {
+        setUploadStatus(
+          error instanceof Error ? error.message : messages.readImageFailed
+        );
       }
     },
-    [selectedElement, updateSelectedStyle]
+    [messages.readImageFailed, selectedElement, t, updateSelectedStyle]
   );
   const updateSelectedAudio = useCallback(
     (patch: Partial<PanelElement>) => {
@@ -298,43 +303,47 @@ export function PanelConfigSidebar({
   const handleUploadAudioFile = useCallback(
     async (file: File) => {
       if (!selectedElement || selectedElement.materialType !== "audio") return;
-      const base64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(String(reader.result ?? ""));
-        reader.onerror = () => reject(new Error(messages.readAudioFailed));
-        reader.readAsDataURL(file);
-      });
-      updateSelectedAudio({ audioSrc: base64 });
-      setAudioStatus(messages.audioLocalSaved);
       try {
-        const form = new FormData();
-        form.append("file", file);
-        const resp = await fetch("/api/upload", { method: "POST", body: form });
-        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-        const data = (await resp.json()) as { url?: string };
-        if (data.url) {
-          updateSelectedAudio({ audioRemoteUrl: data.url });
-          setAudioStatus(messages.audioRemoteUploaded);
-        }
-      } catch {
-        setAudioStatus(messages.audioServerUploadFailed);
+        await runBusyTask(t("common.uploadingFile"), async () => {
+          const base64 = await readFileAsDataUrl(file, messages.readAudioFailed, "audio");
+          updateSelectedAudio({ audioSrc: base64 });
+          setAudioStatus(messages.audioLocalSaved);
+          try {
+            const form = new FormData();
+            form.append("file", file);
+            const resp = await fetch("/api/upload", { method: "POST", body: form });
+            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+            const data = (await resp.json()) as { url?: string };
+            if (data.url) {
+              updateSelectedAudio({ audioRemoteUrl: data.url });
+              setAudioStatus(messages.audioRemoteUploaded);
+            }
+          } catch {
+            setAudioStatus(messages.audioServerUploadFailed);
+          }
+        });
+      } catch (error) {
+        setAudioStatus(
+          error instanceof Error ? error.message : messages.readAudioFailed
+        );
       }
     },
-    [selectedElement, updateSelectedAudio]
+    [messages, selectedElement, t, updateSelectedAudio]
   );
   const handleUploadAudioPoster = useCallback(
     async (file: File) => {
       if (!selectedElement || selectedElement.materialType !== "audio") return;
-      const base64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(String(reader.result ?? ""));
-        reader.onerror = () => reject(new Error(messages.readImageFailed));
-        reader.readAsDataURL(file);
-      });
-      updateSelectedAudio({ audioPosterImage: base64 });
-      setAudioStatus(messages.audioPosterSet);
+      try {
+        const base64 = await readFileAsDataUrl(file, messages.readImageFailed, "image");
+        updateSelectedAudio({ audioPosterImage: base64 });
+        setAudioStatus(messages.audioPosterSet);
+      } catch (error) {
+        setAudioStatus(
+          error instanceof Error ? error.message : messages.readImageFailed
+        );
+      }
     },
-    [selectedElement, updateSelectedAudio]
+    [messages, selectedElement, updateSelectedAudio]
   );
   const stopRecordingAudio = useCallback(() => {
     recorderRef.current?.stop();
@@ -356,14 +365,15 @@ export function PanelConfigSidebar({
       };
       recorder.onstop = async () => {
         const blob = new Blob(audioChunksRef.current, { type: recorder.mimeType || "audio/webm" });
-        const dataUrl = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(String(reader.result ?? ""));
-          reader.onerror = () => reject(new Error(messages.readRecordAudioFailed));
-          reader.readAsDataURL(blob);
-        });
-        updateSelectedAudio({ audioSrc: dataUrl });
-        setAudioStatus(messages.audioRecordSaved);
+        try {
+          const dataUrl = await readFileAsDataUrl(blob, messages.readRecordAudioFailed, "audio");
+          updateSelectedAudio({ audioSrc: dataUrl });
+          setAudioStatus(messages.audioRecordSaved);
+        } catch (error) {
+          setAudioStatus(
+            error instanceof Error ? error.message : messages.readRecordAudioFailed
+          );
+        }
         recordStreamRef.current?.getTracks().forEach((track) => track.stop());
         recordStreamRef.current = null;
         recorderRef.current = null;
@@ -387,29 +397,32 @@ export function PanelConfigSidebar({
   const handleUploadVideoFile = useCallback(
     async (file: File) => {
       if (!selectedElement || selectedElement.materialType !== "video") return;
-      const base64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(String(reader.result ?? ""));
-        reader.onerror = () => reject(new Error(messages.readVideoFailed));
-        reader.readAsDataURL(file);
-      });
-      updateSelectedVideo({ videoSrc: base64 });
-      setVideoStatus(messages.videoLocalSaved);
       try {
-        const form = new FormData();
-        form.append("file", file);
-        const resp = await fetch("/api/upload", { method: "POST", body: form });
-        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-        const data = (await resp.json()) as { url?: string };
-        if (data.url) {
-          updateSelectedVideo({ videoRemoteUrl: data.url });
-          setVideoStatus(messages.videoRemoteUploaded);
-        }
-      } catch {
-        setVideoStatus(messages.videoServerUploadFailed);
+        await runBusyTask(t("common.uploadingFile"), async () => {
+          const base64 = await readFileAsDataUrl(file, messages.readVideoFailed, "video");
+          updateSelectedVideo({ videoSrc: base64 });
+          setVideoStatus(messages.videoLocalSaved);
+          try {
+            const form = new FormData();
+            form.append("file", file);
+            const resp = await fetch("/api/upload", { method: "POST", body: form });
+            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+            const data = (await resp.json()) as { url?: string };
+            if (data.url) {
+              updateSelectedVideo({ videoRemoteUrl: data.url });
+              setVideoStatus(messages.videoRemoteUploaded);
+            }
+          } catch {
+            setVideoStatus(messages.videoServerUploadFailed);
+          }
+        });
+      } catch (error) {
+        setVideoStatus(
+          error instanceof Error ? error.message : messages.readVideoFailed
+        );
       }
     },
-    [selectedElement, updateSelectedVideo]
+    [messages, selectedElement, t, updateSelectedVideo]
   );
 
   const isSectionExpanded = (key: string, defaultValue = true) =>
@@ -2848,7 +2861,8 @@ export function PanelConfigSidebar({
                     <div
                       ref={textEditorRef}
                       data-config-field="textHtml"
-                      className="min-h-[120px] rounded border border-border bg-background px-2 py-1.5 text-xs leading-6 outline-none"
+                      data-panel-user-text=""
+                      className="min-h-[120px] rounded border border-border bg-background px-2 py-1.5 leading-6 outline-none"
                       style={{
                         fontFamily: selectedElement.textFontFamily || undefined,
                         fontSize: selectedElement.textFontSize
@@ -2856,10 +2870,8 @@ export function PanelConfigSidebar({
                           : undefined,
                         fontWeight: selectedElement.textFontWeight || undefined,
                         color: selectedElement.textColor || undefined,
-                        lineHeight: selectedElement.textLineHeight
-                          ? String(selectedElement.textLineHeight)
-                          : undefined,
-                        textAlign: selectedElement.textAlign ?? "left",
+                        lineHeight: cssTextLineHeight(selectedElement.textLineHeight),
+                        ...cssTextAlignStyle(selectedElement.textAlign),
                       }}
                       contentEditable
                       suppressContentEditableWarning
@@ -2935,7 +2947,7 @@ export function PanelConfigSidebar({
                           value={selectedElement.textAlign ?? "left"}
                           onValueChange={(value) =>
                             updateSelectedText({
-                              textAlign: value as "left" | "center" | "right" | "justify",
+                              textAlign: value as PanelElement["textAlign"],
                             })
                           }
                         >
@@ -2945,19 +2957,40 @@ export function PanelConfigSidebar({
                           <SelectContent>
                             <SelectItem value="left">{t("panel.config.alignLeft")}</SelectItem>
                             <SelectItem value="center">{t("panel.config.alignCenter")}</SelectItem>
+                            <SelectItem value="middle">{t("panel.config.alignMiddle")}</SelectItem>
                             <SelectItem value="right">{t("panel.config.alignRight")}</SelectItem>
                             <SelectItem value="justify">{t("panel.config.alignJustify")}</SelectItem>
                           </SelectContent>
                         </Select>
                       </label>
                       <label className="block space-y-1">
-                        <div>{t("panel.config.lineHeight")}</div>
+                        <div className="flex items-center justify-between gap-2">
+                          <span>{t("panel.config.lineHeight")}</span>
+                          <label className="flex items-center gap-1 font-normal">
+                            <Checkbox
+                              checked={selectedElement.textLineHeight === "auto"}
+                              className="h-3.5 w-3.5 border-2 border-foreground/80 bg-background ring-1 ring-foreground/40 data-[state=checked]:border-primary data-[state=checked]:ring-primary/40"
+                              onCheckedChange={(checked) =>
+                                updateSelectedText({
+                                  textLineHeight: checked === true ? "auto" : 1.6,
+                                })
+                              }
+                            />
+                            <span>{t("panel.config.lineHeightAuto")}</span>
+                          </label>
+                        </div>
                         <Input
                           type="number"
                           min={1}
                           max={3}
                           step={0.1}
-                          value={selectedElement.textLineHeight ?? 1.6}
+                          disabled={selectedElement.textLineHeight === "auto"}
+                          placeholder={t("panel.config.lineHeightAuto")}
+                          value={
+                            selectedElement.textLineHeight === "auto"
+                              ? ""
+                              : (selectedElement.textLineHeight ?? 1.6)
+                          }
                           onChange={(e) =>
                             updateSelectedText({
                               textLineHeight: Math.min(

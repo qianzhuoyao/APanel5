@@ -1,4 +1,5 @@
 import type { SwaggerApiEndpoint } from "./swagger.js";
+import { looksLikeJsonText } from "./scope-template.js";
 
 export const FETCH_HTTP_METHODS = [
   "GET",
@@ -189,6 +190,24 @@ export async function executeFetch(
   const body =
     hasBody && config.body?.trim() ? config.body : undefined;
 
+  if (body && looksLikeJsonText(body)) {
+    try {
+      JSON.parse(body);
+    } catch (error) {
+      throw new Error(
+        `请求体不是有效 JSON：${error instanceof Error ? error.message : "格式无效"}`
+      );
+    }
+  }
+
+  const headers: Record<string, string> = { ...(config.headers ?? {}) };
+  const hasContentType = Object.keys(headers).some(
+    (key) => key.toLowerCase() === "content-type"
+  );
+  if (body && looksLikeJsonText(body) && !hasContentType) {
+    headers["Content-Type"] = "application/json";
+  }
+
   const timeoutMs = config.timeoutMs ?? 30000;
   const controller = new AbortController();
   const unlinkExternal = linkAbortSignal(controller, options?.signal);
@@ -200,10 +219,7 @@ export async function executeFetch(
   try {
     const response = await fetch(url, {
       method,
-      headers:
-        config.headers && Object.keys(config.headers).length > 0
-          ? config.headers
-          : undefined,
+      headers: Object.keys(headers).length > 0 ? headers : undefined,
       body,
       credentials: config.credentials,
       mode: config.mode,

@@ -8,6 +8,7 @@ export const JSON_NODE_TYPE = "JsonNode";
 export const CLOCK_NODE_TYPE = "Clock";
 export const AND_NODE_TYPE = "AndLogic";
 export const VIEW_NODE_TYPE = "ViewBind";
+export const EVENT_NODE_TYPE = "ViewEvent";
 
 /** 蓝图引用节点：单入单出，收到真信号后执行嵌套蓝图 */
 export const blueprintNodeDefinition: NodeDefinition = {
@@ -75,6 +76,14 @@ export const viewBindNodeDefinition: NodeDefinition = {
   behavior: { kind: "js", ref: "view-bind-run" },
 };
 
+/** 视图事件节点：输入必须来自生命周期节点，对应阶段触发后注册事件，视图事件发生时输出真信号 */
+export const viewEventNodeDefinition: NodeDefinition = {
+  type: EVENT_NODE_TYPE,
+  inputs: [{ name: "in", kind: "data" }],
+  outputs: [{ name: "out", kind: "data" }],
+  behavior: { kind: "js", ref: "event-emit" },
+};
+
 export const nodeDefinitionRegistry: Record<string, NodeDefinition> = {
   [BLUEPRINT_NODE_TYPE]: blueprintNodeDefinition,
   [DEFAULT_LOGIC_NODE_TYPE]: defaultLogicNodeDefinition,
@@ -84,6 +93,7 @@ export const nodeDefinitionRegistry: Record<string, NodeDefinition> = {
   [CLOCK_NODE_TYPE]: clockNodeDefinition,
   [AND_NODE_TYPE]: andLogicNodeDefinition,
   [VIEW_NODE_TYPE]: viewBindNodeDefinition,
+  [EVENT_NODE_TYPE]: viewEventNodeDefinition,
 };
 
 export function getNodeDefinition(type: string): NodeDefinition {

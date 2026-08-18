@@ -10,6 +10,8 @@ const { t } = useI18n();
 export type BlueprintNodeShellProps = BlueprintNodeCardProps & {
   selected?: boolean;
   executionTone?: BlueprintNodeExecutionTone | null;
+  targetTitle?: string;
+  sourceTitle?: string;
 };
 
 const props = withDefaults(defineProps<BlueprintNodeShellProps>(), {
@@ -49,7 +51,7 @@ const emit = defineEmits<{
       :position="Position.Left"
       id="in"
       class="bp-flow-handle bp-flow-handle--target"
-      :title="t('blueprint.node.signalIn')"
+      :title="props.targetTitle || t('blueprint.node.signalIn')"
     />
     <BlueprintNodeCard
       :node-id="nodeId"
@@ -67,7 +69,7 @@ const emit = defineEmits<{
       :position="Position.Right"
       id="out"
       class="bp-flow-handle bp-flow-handle--source"
-      :title="t('blueprint.node.signalOut')"
+      :title="props.sourceTitle || t('blueprint.node.signalOut')"
     />
   </div>
 </template>

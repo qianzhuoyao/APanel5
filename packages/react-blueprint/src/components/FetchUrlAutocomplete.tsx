@@ -103,6 +103,7 @@ export function FetchUrlAutocomplete({
       <input
         value={inputValue}
         readOnly={selectOnly && !open}
+        data-scope-autocomplete="off"
         placeholder={placeholder}
         onChange={(e) => {
           if (selectOnly) {

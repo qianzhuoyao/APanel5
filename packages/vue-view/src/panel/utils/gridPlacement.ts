@@ -187,3 +187,32 @@ export function computeSnapPatchForNewElementOnLayer(
     height: nearest.height,
   };
 }
+
+function isGridAncestorOf(
+  ancestorId: string,
+  el: PanelElement,
+  byId: Map<string, PanelElement>
+): boolean {
+  let current: PanelElement | undefined = el;
+  const seen = new Set<string>();
+  while (current?.parentGridId && !seen.has(current.id)) {
+    if (current.parentGridId === ancestorId) return true;
+    seen.add(current.id);
+    current = byId.get(current.parentGridId);
+  }
+  return false;
+}
+
+/** 父网格先于格子内子节点绘制，避免网格占位层盖住内容 */
+export function comparePanelElementsPaintOrder(
+  a: PanelElement,
+  b: PanelElement,
+  byId: Map<string, PanelElement>
+): number {
+  if (isGridAncestorOf(a.id, b, byId)) return -1;
+  if (isGridAncestorOf(b.id, a, byId)) return 1;
+  const za = a.zIndex ?? 1;
+  const zb = b.zIndex ?? 1;
+  if (za !== zb) return za - zb;
+  return a.id.localeCompare(b.id);
+}

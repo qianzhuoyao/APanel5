@@ -6,4 +6,5 @@ export {
   JSON_NODE_TYPE,
   CLOCK_NODE_TYPE,
   AND_NODE_TYPE,
+  EVENT_NODE_TYPE,
 } from "@arronqzy/blueprint-dsl";

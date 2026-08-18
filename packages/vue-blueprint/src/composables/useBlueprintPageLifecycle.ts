@@ -1,12 +1,17 @@
 import { onUnmounted, ref, shallowRef, toValue, watch, type MaybeRefOrGetter, type Ref } from "vue";
 import {
   BlueprintGraphRunner,
+  collectArmedViewEventNodeIds,
   detectBlueprintReferenceCycle,
+  EVENT_NODE_TYPE,
+  LIFECYCLE_NODE_TYPE,
   type LibraryBlueprintResolver,
   type PageLifecyclePhase,
+  type ViewEventSignal,
 } from "@arronqzy/blueprint-dsl";
 
 import type { BlueprintGraph } from "../graph/blueprint-graph";
+import { resolveRunnableNodeType } from "../graph/document";
 import { documentToRunnableGraph } from "../runtime/document-to-runnable-graph";
 
 const PAGE_BOOT_PHASES: PageLifecyclePhase[] = [
@@ -87,12 +92,30 @@ function createRunner(graph: BlueprintGraph, options: RunnerOptions) {
   );
 }
 
+function collectArmedIds(
+  graph: BlueprintGraph,
+  firedPhases: ReadonlySet<string>
+) {
+  return collectArmedViewEventNodeIds(
+    graph.document.nodes.map((node) => ({
+      id: node.id,
+      nodeType: resolveRunnableNodeType(node),
+      lifecyclePhase: node.lifecyclePhase,
+    })),
+    graph.document.edges,
+    EVENT_NODE_TYPE,
+    LIFECYCLE_NODE_TYPE,
+    firedPhases
+  );
+}
+
 async function emitPhases(
   graph: BlueprintGraph,
   phases: PageLifecyclePhase[],
-  options: RunnerOptions
-) {
-  if (!phases.length) return;
+  options: RunnerOptions,
+  onPhaseFired?: (phase: PageLifecyclePhase) => void
+): Promise<boolean> {
+  if (!phases.length) return true;
 
   const rootLibraryBlueprintId = toValue(options.rootLibraryBlueprintId ?? null);
   const libraryNameById = toValue(options.libraryNameById);
@@ -109,14 +132,16 @@ async function emitPhases(
     });
     if (!result.ok) {
       options.onExecutionBlocked?.(result.message);
-      return;
+      return false;
     }
   }
 
   const runner = createRunner(graph, options);
   for (const phase of phases) {
     await runner.emitLifecycle(phase);
+    onPhaseFired?.(phase);
   }
+  return true;
 }
 
 export function useBlueprintPageLifecycle(options: UseBlueprintPageLifecycleOptions) {
@@ -133,9 +158,21 @@ export function useBlueprintPageLifecycle(options: UseBlueprintPageLifecycleOpti
   const bootPhasesKey = bootPhases.join("|");
   const bootTrigger = options.bootKey ?? "__initial__";
   const bootCompleted = ref(false);
+  const firedLifecyclePhases = ref<ReadonlySet<PageLifecyclePhase>>(new Set());
   const hadBoot = ref(false);
   const prevActive = ref<boolean | undefined>(undefined);
   let bootCancelled = false;
+
+  const resetFiredPhases = () => {
+    firedLifecyclePhases.value = new Set();
+  };
+
+  const markPhaseFired = (phase: PageLifecyclePhase) => {
+    if (firedLifecyclePhases.value.has(phase)) return;
+    const next = new Set(firedLifecyclePhases.value);
+    next.add(phase);
+    firedLifecyclePhases.value = next;
+  };
 
   watch(
     () => resolveValue(options.graph),
@@ -163,10 +200,12 @@ export function useBlueprintPageLifecycle(options: UseBlueprintPageLifecycleOpti
     const enabled = resolveValue(options.enabled ?? true);
     if (!enabled) {
       bootCompleted.value = false;
+      resetFiredPhases();
       return;
     }
 
     bootCancelled = false;
+    resetFiredPhases();
     const waitForPageReady = options.waitForPageReady ?? false;
 
     if (waitForPageReady) {
@@ -174,12 +213,27 @@ export function useBlueprintPageLifecycle(options: UseBlueprintPageLifecycleOpti
     }
     if (bootCancelled) return;
 
-    await emitPhases(graphRef.value, bootPhases, runnerOptionsRef.value);
+    const bootOk = await emitPhases(
+      graphRef.value,
+      bootPhases,
+      runnerOptionsRef.value,
+      (phase) => {
+        if (!bootCancelled) markPhaseFired(phase);
+      }
+    );
     if (bootCancelled) return;
+    if (!bootOk) return;
 
     const active = resolveValue(options.active ?? true);
     if (active) {
-      await emitPhases(graphRef.value, ["activated"], runnerOptionsRef.value);
+      await emitPhases(
+        graphRef.value,
+        ["activated"],
+        runnerOptionsRef.value,
+        (phase) => {
+          if (!bootCancelled) markPhaseFired(phase);
+        }
+      );
     }
     if (bootCancelled) return;
 
@@ -191,6 +245,7 @@ export function useBlueprintPageLifecycle(options: UseBlueprintPageLifecycleOpti
   const teardownBoot = () => {
     bootCancelled = true;
     bootCompleted.value = false;
+    resetFiredPhases();
     prevActive.value = undefined;
     if (hadBoot.value) {
       hadBoot.value = false;
@@ -222,10 +277,12 @@ export function useBlueprintPageLifecycle(options: UseBlueprintPageLifecycleOpti
         return;
       }
       prevActive.value = active;
+      const phase: PageLifecyclePhase = active ? "activated" : "deactivated";
       void emitPhases(
         graphRef.value,
-        [active ? "activated" : "deactivated"],
-        runnerOptionsRef.value
+        [phase],
+        runnerOptionsRef.value,
+        markPhaseFired
       );
     }
   );
@@ -234,7 +291,12 @@ export function useBlueprintPageLifecycle(options: UseBlueprintPageLifecycleOpti
     () => [bootCompleted.value, resolveValue(options.enabled ?? true), resolveValue(options.onUpdated)],
     ([completed, enabled]) => {
       if (!enabled || !completed) return;
-      void emitPhases(graphRef.value, ["updated"], runnerOptionsRef.value);
+      void emitPhases(
+        graphRef.value,
+        ["updated"],
+        runnerOptionsRef.value,
+        markPhaseFired
+      );
     }
   );
 
@@ -267,5 +329,32 @@ export function useBlueprintPageLifecycle(options: UseBlueprintPageLifecycleOpti
     await runner.triggerNode(id, inputValue);
   }
 
-  return { triggerBlueprintNode };
+  async function emitViewEvent(payload: ViewEventSignal) {
+    if (!payload?.node?.id || !payload.eventType) return;
+    const opts = runnerOptionsRef.value;
+    const libraryNameById = toValue(opts.libraryNameById);
+    const rootLibraryBlueprintId = toValue(opts.rootLibraryBlueprintId ?? null);
+    if (opts.resolveLibraryBlueprint) {
+      const result = await detectBlueprintReferenceCycle({
+        rootGraph: documentToRunnableGraph(graphRef.value.document, {
+          libraryNameById,
+        }),
+        rootLibraryBlueprintId,
+        resolveLibraryBlueprint: opts.resolveLibraryBlueprint,
+        resolveBlueprintName: (libId) =>
+          resolveBlueprintName(libraryNameById, libId),
+      });
+      if (!result.ok) {
+        opts.onExecutionBlocked?.(result.message);
+        return;
+      }
+    }
+    const runner = createRunner(graphRef.value, opts);
+    await runner.emitViewEvent(
+      payload,
+      collectArmedIds(graphRef.value, firedLifecyclePhases.value)
+    );
+  }
+
+  return { triggerBlueprintNode, emitViewEvent, firedLifecyclePhases };
 }

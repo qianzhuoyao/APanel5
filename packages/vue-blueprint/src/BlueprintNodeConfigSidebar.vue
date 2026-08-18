@@ -5,8 +5,10 @@ import { Checkbox, Input, Select } from "ant-design-vue";
 import {
   LIFECYCLE_NODE_TYPE,
   PAGE_LIFECYCLE_PHASES,
+  VIEW_EVENT_TYPES,
   type ExecutionTraceEntry,
   type PageLifecyclePhase,
+  type ViewEventType,
 } from "@arronqzy/blueprint-dsl";
 
 import FetchNodeConfigPanel from "./components/FetchNodeConfigPanel.vue";
@@ -17,9 +19,12 @@ import ViewElementMultiSelect from "./components/ViewElementMultiSelect.vue";
 import ConfigHintIcon from "./components/ConfigHintIcon.vue";
 import {
   getLifecyclePhaseLabel,
+  getViewEventTypeLabel,
+  inspectEventNodeInputs,
   patchNodeConfigSource,
   pruneViewElementIds,
   resolveBlueprintConfigSource,
+  resolveNodeEventConfig,
   resolveViewElementIds,
   type BlueprintConfigSource,
   type BlueprintGraphEdge,
@@ -66,6 +71,7 @@ export type BlueprintNodeConfigSidebarProps = {
         | "jsonConfig"
         | "logicConfig"
         | "clockConfig"
+        | "eventConfig"
       >
     >
   ) => void;
@@ -82,6 +88,7 @@ const props = withDefaults(defineProps<BlueprintNodeConfigSidebarProps>(), {
 
 const configSource = computed(() => resolveBlueprintConfigSource(props.node));
 const linkedViewElementIds = computed(() => resolveViewElementIds(props.node));
+const selectedEventTypes = computed(() => resolveNodeEventConfig(props.node).eventTypes);
 const existingViewElementIdSet = computed(
   () => new Set(props.viewElementOptions.map((opt) => opt.id))
 );
@@ -97,10 +104,15 @@ const ROLE_LABEL_KEYS: Record<BlueprintNodeRole, string> = {
   json: "blueprint.config.roleJson",
   logic: "blueprint.config.roleLogic",
   clock: "blueprint.config.roleClock",
+  event: "blueprint.config.roleEvent",
 };
 
 const roleLabel = computed(() =>
   t(ROLE_LABEL_KEYS[props.node.role] ?? "blueprint.config.roleLogic")
+);
+
+const eventInputs = computed(() =>
+  inspectEventNodeInputs(props.node.id, props.graphNodes, props.graphEdges)
 );
 
 watch(
@@ -113,7 +125,7 @@ watch(
     () => props.viewElementOptions.length,
   ],
   () => {
-    if (configSource.value !== "view") return;
+    if (configSource.value !== "view" && configSource.value !== "event") return;
     if (props.viewElementOptions.length === 0) return;
     const linked = resolveViewElementIds(props.node);
     if (linked.length === 0) return;
@@ -122,7 +134,7 @@ watch(
     props.onUpdateNode(props.node.id, {
       viewElementIds: pruned.length > 0 ? pruned : undefined,
       viewElementId: undefined,
-      configSource: "view",
+      configSource: configSource.value,
     });
   }
 );
@@ -131,7 +143,7 @@ function handleConfigSourceChange(value: string) {
   const nextSource = value as BlueprintConfigSource;
   props.onUpdateNode(props.node.id, {
     ...patchNodeConfigSource(props.node, nextSource),
-    ...(nextSource === "view"
+    ...(nextSource === "view" || nextSource === "event"
       ? {
           viewElementIds: linkedViewElementIds.value,
           viewElementId: undefined,
@@ -140,6 +152,19 @@ function handleConfigSourceChange(value: string) {
           viewElementIds: undefined,
           viewElementId: undefined,
         }),
+  });
+}
+
+function toggleEventType(eventType: ViewEventType, checked: boolean) {
+  const current = selectedEventTypes.value;
+  const nextTypes: ViewEventType[] = checked
+    ? [...new Set([...current, eventType])]
+    : current.filter((type) => type !== eventType);
+  props.onUpdateNode(props.node.id, {
+    eventConfig: {
+      eventTypes: nextTypes.length > 0 ? nextTypes : ["click"],
+    },
+    configSource: "event",
   });
 }
 </script>
@@ -177,15 +202,16 @@ function handleConfigSourceChange(value: string) {
           <Select.Option value="fetch">{{ t("blueprint.config.configFetch") }}</Select.Option>
           <Select.Option value="json">{{ t("blueprint.config.configJson") }}</Select.Option>
           <Select.Option value="clock">{{ t("blueprint.config.configClock") }}</Select.Option>
+          <Select.Option value="event">{{ t("blueprint.config.configEvent") }}</Select.Option>
           <Select.Option value="view">{{ t("blueprint.config.configView") }}</Select.Option>
         </Select>
       </label>
 
-      <div v-if="configSource === 'view'" class="block space-y-1">
+      <div v-if="configSource === 'view' || configSource === 'event'" class="block space-y-1">
         <span class="inline-flex items-center gap-1 text-muted-foreground">
           {{ t("blueprint.config.linkedViewNodes") }}
           <ConfigHintIcon :label="t('blueprint.config.linkedViewNodes')">
-            {{ t("blueprint.config.viewMultiHint") }}
+            {{ configSource === 'event' ? t("blueprint.config.eventViewHint") : t("blueprint.config.viewMultiHint") }}
           </ConfigHintIcon>
         </span>
         <ViewElementMultiSelect
@@ -197,7 +223,7 @@ function handleConfigSourceChange(value: string) {
               onUpdateNode(node.id, {
                 viewElementIds: next,
                 viewElementId: undefined,
-                configSource: 'view',
+                configSource,
               })
           "
         />
@@ -260,6 +286,42 @@ function handleConfigSourceChange(value: string) {
           <span class="text-[11px] leading-relaxed text-muted-foreground">
             {{ t("blueprint.config.allowFalsePropagateBlueprint") }}
           </span>
+        </label>
+      </div>
+
+      <div
+        v-if="configSource === 'event'"
+        class="space-y-2 rounded-md border border-border/70 bg-muted/20 p-2.5"
+      >
+        <div class="flex items-center gap-1.5">
+          <div class="font-medium text-foreground">{{ t("blueprint.config.eventListen") }}</div>
+          <ConfigHintIcon :label="t('blueprint.config.eventListen')">
+            <p>{{ t("blueprint.config.eventNoInput") }}</p>
+            <p>{{ t("blueprint.config.eventHint") }}</p>
+          </ConfigHintIcon>
+        </div>
+        <p
+          v-if="eventInputs.nonLifecycleCount > 0"
+          class="rounded border border-destructive/40 bg-destructive/10 px-2 py-1.5 text-[11px] leading-relaxed text-destructive"
+        >
+          {{ t("blueprint.config.eventInputNotLifecycle") }}
+        </p>
+        <p
+          v-else-if="eventInputs.lifecycleCount === 0"
+          class="rounded border border-amber-500/40 bg-amber-500/10 px-2 py-1.5 text-[11px] leading-relaxed text-amber-700"
+        >
+          {{ t("blueprint.config.eventInputMissing") }}
+        </p>
+        <label
+          v-for="eventType in VIEW_EVENT_TYPES"
+          :key="eventType"
+          class="flex items-center gap-2"
+        >
+          <Checkbox
+            :checked="selectedEventTypes.includes(eventType)"
+            @update:checked="(v) => toggleEventType(eventType, Boolean(v))"
+          />
+          <span>{{ getViewEventTypeLabel(t, eventType) }}</span>
         </label>
       </div>
 

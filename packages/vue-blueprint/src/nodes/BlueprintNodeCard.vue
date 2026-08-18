@@ -10,7 +10,7 @@ export type BlueprintNodeCardProps = {
   meta?: string;
   subtitle?: string;
   progressLabel?: string;
-  variant?: "blueprint" | "logic" | "and" | "lifecycle" | "fetch" | "json" | "clock";
+  variant?: "blueprint" | "logic" | "and" | "lifecycle" | "event" | "fetch" | "json" | "clock";
   selected?: boolean;
   hideLeadingDot?: boolean;
 };
@@ -46,6 +46,11 @@ const variantStyle = {
     badge: "bg-amber-500/10 text-amber-700 dark:text-amber-300",
     dot: "bg-amber-500",
   },
+  event: {
+    accent: "border-l-fuchsia-500 dark:border-l-fuchsia-400",
+    badge: "bg-fuchsia-500/10 text-fuchsia-700 dark:text-fuchsia-300",
+    dot: "bg-fuchsia-500",
+  },
   fetch: {
     accent: "border-l-violet-500 dark:border-l-violet-400",
     badge: "bg-violet-500/10 text-violet-700 dark:text-violet-300",
@@ -74,7 +79,12 @@ const v = variantStyle[props.variant];
         'bp-node-card w-[168px] overflow-hidden rounded-lg border border-border bg-card text-card-foreground shadow-sm',
         'transition-[box-shadow,border-color] duration-150',
         hideLeadingDot
-          ? 'border-t-[3px] border-t-amber-500 dark:border-t-amber-400'
+          ? cn(
+              'border-t-[3px]',
+              variant === 'event'
+                ? 'border-t-fuchsia-500 dark:border-t-fuchsia-400'
+                : 'border-t-amber-500 dark:border-t-amber-400'
+            )
           : cn('border-l-[3px]', v.accent),
         selected &&
           'border-primary/50 shadow-[0_0_0_1px_hsl(var(--primary)/0.35),0_4px_12px_hsl(var(--primary)/0.12)]'

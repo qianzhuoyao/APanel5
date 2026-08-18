@@ -64,6 +64,7 @@ export type WorkspaceConfigSidebarProps = Omit<
         | "jsonConfig"
         | "logicConfig"
         | "clockConfig"
+        | "eventConfig"
       >
     >
   ) => void;

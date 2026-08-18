@@ -10,12 +10,16 @@ export type BlueprintNodeShellProps = BlueprintNodeCardProps & {
   selected?: boolean;
   /** 调试执行中当前节点的信号高亮（与用户选中独立） */
   executionTone?: BlueprintNodeExecutionTone | null;
+  targetTitle?: string;
+  sourceTitle?: string;
 };
 
 /** 左进右出的标准节点连线布局 */
 export function BlueprintNodeShell({
   selected = false,
   executionTone = null,
+  targetTitle,
+  sourceTitle,
   ...cardProps
 }: BlueprintNodeShellProps) {
   const { t } = useI18n();
@@ -32,7 +36,7 @@ export function BlueprintNodeShell({
         position={Position.Left}
         id="in"
         className="bp-flow-handle bp-flow-handle--target"
-        title={t("blueprint.node.signalIn")}
+        title={targetTitle ?? t("blueprint.node.signalIn")}
       />
       <BlueprintNodeCard {...cardProps} selected={selected} />
       <Handle
@@ -40,7 +44,7 @@ export function BlueprintNodeShell({
         position={Position.Right}
         id="out"
         className="bp-flow-handle bp-flow-handle--source"
-        title={t("blueprint.node.signalOut")}
+        title={sourceTitle ?? t("blueprint.node.signalOut")}
       />
     </div>
   );

@@ -35,15 +35,19 @@ function patch(patch: Partial<PanelElement>) {
 }
 
 async function handleUploadVideoFile(file: File) {
-  const base64 = await readFileAsDataUrl(file, msgs().readVideoFailed);
-  patch({ videoSrc: base64 });
-  videoStatus.value = msgs().videoLocalSaved;
-  const url = await uploadFileToRemote(file);
-  if (url) {
-    patch({ videoRemoteUrl: url });
-    videoStatus.value = msgs().videoRemoteUploaded;
-  } else {
-    videoStatus.value = msgs().videoServerUploadFailed;
+  try {
+    const base64 = await readFileAsDataUrl(file, msgs().readVideoFailed, "video");
+    patch({ videoSrc: base64 });
+    videoStatus.value = msgs().videoLocalSaved;
+    const url = await uploadFileToRemote(file);
+    if (url) {
+      patch({ videoRemoteUrl: url });
+      videoStatus.value = msgs().videoRemoteUploaded;
+    } else {
+      videoStatus.value = msgs().videoServerUploadFailed;
+    }
+  } catch (error) {
+    videoStatus.value = error instanceof Error ? error.message : msgs().readVideoFailed;
   }
 }
 

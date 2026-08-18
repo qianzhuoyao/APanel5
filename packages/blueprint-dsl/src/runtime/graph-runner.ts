@@ -4,7 +4,12 @@ import {
   normalizeFetchRequestConfig,
   resolveFetchRequestUrl,
 } from "../fetch-config.js";
-import { applyFetchConfigScope, resolveFetchIncomingScope } from "../incoming-node-scope.js";
+import {
+  applyFetchConfigScope,
+  getFetchBodyValidationError,
+  getFetchHeadersValidationError,
+  resolveFetchIncomingScope,
+} from "../incoming-node-scope.js";
 import type { JsonNodeConfig } from "../json-config.js";
 import {
   DEFAULT_JSON_NODE_CONFIG,
@@ -23,6 +28,8 @@ import {
   normalizeClockConfig,
   validateClockScheduleConfig,
 } from "../clock-config.js";
+import type { ViewEventNodeConfig, ViewEventSignal } from "../event-config.js";
+import { normalizeViewEventConfig } from "../event-config.js";
 import {
   buildClockSessionKey,
   scheduleClockOutputs,
@@ -40,6 +47,7 @@ import {
   BLUEPRINT_ACTIVATION_INPUT_KEY,
   LIFECYCLE_SIGNAL_KEY,
   UI_EVENT_PAYLOAD_KEY,
+  VIEW_EVENT_SIGNAL_KEY,
 } from "../behaviors/default.js";
 import { BehaviorRegistry } from "../core/behavior-registry.js";
 import { Executor } from "../core/executor.js";
@@ -58,6 +66,7 @@ import {
 import {
   BLUEPRINT_NODE_TYPE,
   CLOCK_NODE_TYPE,
+  EVENT_NODE_TYPE,
   getNodeDefinition,
   LIFECYCLE_NODE_TYPE,
   VIEW_NODE_TYPE,
@@ -91,6 +100,7 @@ export type RunnableGraphNode = {
   jsonConfig?: JsonNodeConfig;
   logicConfig?: LogicNodeConfig;
   clockConfig?: ClockNodeConfig;
+  eventConfig?: ViewEventNodeConfig;
 };
 
 export type RunnableGraphEdge = {
@@ -304,6 +314,28 @@ export class BlueprintGraphRunner {
 
     for (const node of targets) {
       await this.runFromNode(node.id, signal, parentScope, inputValue);
+    }
+  }
+
+  /**
+   * 视图节点触发事件时，匹配已注册（上游生命周期已触发）且绑定了该元素、事件类型的事件节点，发出真信号。
+   */
+  async emitViewEvent(
+    payload: ViewEventSignal,
+    armedNodeIds?: ReadonlySet<string>
+  ): Promise<void> {
+    await this.ensureNoBlueprintCycle();
+    const targets = this.graph.nodes.filter((node) => {
+      if (node.nodeType !== EVENT_NODE_TYPE) return false;
+      if (armedNodeIds && !armedNodeIds.has(node.id)) return false;
+      if (!(node.viewElementIds ?? []).includes(payload.node.id)) return false;
+      return normalizeViewEventConfig(node.eventConfig).eventTypes.includes(
+        payload.eventType
+      );
+    });
+
+    for (const node of targets) {
+      await this.runFromNode(node.id, undefined, undefined, undefined, payload);
     }
   }
 
@@ -1088,6 +1120,14 @@ export class BlueprintGraphRunner {
           normalizeFetchRequestConfig(node.fetchConfig),
           incomingScope
         );
+        const headersError = getFetchHeadersValidationError(config, incomingScope);
+        if (headersError) {
+          throw new Error(headersError);
+        }
+        const bodyError = getFetchBodyValidationError(config.body, config.body);
+        if (bodyError) {
+          throw new Error(`请求体不是有效 JSON：${bodyError}`);
+        }
         resolveFetchRequestUrl(config);
 
         const result = await executeFetch(config, {
@@ -1266,7 +1306,8 @@ export class BlueprintGraphRunner {
     nodeId: string,
     lifecycleSignal?: LifecycleSignal,
     parentScope?: Scope,
-    activationInput?: unknown
+    activationInput?: unknown,
+    viewEvent?: ViewEventSignal
   ) {
     const queue: ExecutionToken[] = [
       {
@@ -1286,6 +1327,10 @@ export class BlueprintGraphRunner {
         BLUEPRINT_ACTIVATION_INPUT_KEY,
         activationInput
       );
+    }
+    if (viewEvent) {
+      queue[0]!.scope.vars.set(VIEW_EVENT_SIGNAL_KEY, viewEvent);
+      queue[0]!.scope.vars.set(UI_EVENT_PAYLOAD_KEY, viewEvent);
     }
 
     const executor = this.createExecutor(queue);
@@ -1362,7 +1407,9 @@ export class BlueprintGraphRunner {
     }
     return this.graph.nodes.filter(
       (node) =>
-        node.nodeType !== LIFECYCLE_NODE_TYPE && !hasIncoming.has(node.id)
+        node.nodeType !== LIFECYCLE_NODE_TYPE &&
+        node.nodeType !== EVENT_NODE_TYPE &&
+        !hasIncoming.has(node.id)
     );
   }
 

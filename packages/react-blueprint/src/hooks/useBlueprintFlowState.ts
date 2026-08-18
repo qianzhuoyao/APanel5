@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useI18n } from "@arronqzy/i18n/react";
+import { toast } from "@arronqzy/ui";
 import {
   addEdge,
   useEdgesState,
@@ -7,12 +9,16 @@ import {
   type Connection,
   type Edge,
   type EdgeChange,
+  type FinalConnectionState,
   type Node,
   type NodeChange,
 } from "@xyflow/react";
 
 import type { BlueprintGraph } from "../graph/blueprint-graph";
-import { sanitizeBlueprintDocument } from "../graph/document";
+import {
+  resolveBlueprintConnectionIssue,
+  sanitizeBlueprintDocument,
+} from "../graph/document";
 import {
   applyFlowNodePositions,
   BP_EDGE_STYLE,
@@ -452,6 +458,8 @@ export function useBlueprintFlowState({
     [getNodes, onGraphChange]
   );
 
+  const { t } = useI18n();
+
   const isValidConnection = useCallback(
     (connection: Edge | Connection) => {
       if (!connection.source || !connection.target) return false;
@@ -464,14 +472,38 @@ export function useBlueprintFlowState({
       }
 
       const targetNode = rfNodes.find((n) => n.id === connection.target);
-      // 生命周期节点无输入口，禁止连入
-      if (targetNode?.data.role === "lifecycle") {
-        return false;
-      }
-
-      return true;
+      const sourceNode = rfNodes.find((n) => n.id === connection.source);
+      return !resolveBlueprintConnectionIssue(sourceNode?.data, targetNode?.data);
     },
     [getNodes]
+  );
+
+  const onConnectEnd = useCallback(
+    (_event: MouseEvent | TouchEvent, state: FinalConnectionState) => {
+      if (state.isValid) return;
+      const fromNode = state.fromNode as Node<BlueprintFlowNodeData> | null;
+      const toNode = state.toNode as Node<BlueprintFlowNodeData> | null;
+      if (!fromNode?.data || !toNode?.data) return;
+
+      const fromIsSource = state.fromHandle?.type !== "target";
+      const sourceData = fromIsSource ? fromNode.data : toNode.data;
+      const targetData = fromIsSource ? toNode.data : fromNode.data;
+      const issue = resolveBlueprintConnectionIssue(sourceData, targetData);
+      if (issue === "event-requires-lifecycle") {
+        toast({
+          title: t("blueprint.config.eventConnectNeedLifecycle"),
+          variant: "destructive",
+        });
+        return;
+      }
+      if (issue === "lifecycle-no-input") {
+        toast({
+          title: t("blueprint.config.lifecycleNoInput"),
+          variant: "destructive",
+        });
+      }
+    },
+    [t]
   );
 
   return {
@@ -481,6 +513,7 @@ export function useBlueprintFlowState({
     onEdgesChange,
     onNodeDragStop,
     onConnect,
+    onConnectEnd,
     isValidConnection,
   };
 }

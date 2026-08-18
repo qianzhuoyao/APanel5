@@ -16,6 +16,14 @@ import {
 } from "./elementsLayerNodes";
 import TableNodeContent from "./table/TableNodeContent.vue";
 import type { TableCellActionHandler } from "./table/TableNodeContent.vue";
+import { comparePanelElementsPaintOrder } from "../utils/gridPlacement";
+import {
+  createViewEventSignal,
+  snapshotDomEvent,
+  snapshotViewEventNode,
+  type ViewEventSignal,
+  type ViewEventType,
+} from "@arronqzy/blueprint-dsl";
 
 const props = withDefaults(
   defineProps<{
@@ -31,6 +39,8 @@ const props = withDefaults(
     previewMode?: boolean;
     previewLayoutKey?: number;
     onTableCellAction?: TableCellActionHandler;
+    boundViewEventTypes?: ReadonlyMap<string, ReadonlySet<ViewEventType>>;
+    onViewUiEvent?: (payload: ViewEventSignal) => void;
   }>(),
   { layerLocked: false, previewMode: false }
 );
@@ -119,14 +129,11 @@ const NodeContent = defineComponent({
   },
 });
 
-const sortedElements = computed(() =>
-  [...props.elements].sort((a, b) => {
-    const za = a.zIndex ?? 1;
-    const zb = b.zIndex ?? 1;
-    if (za !== zb) return za - zb;
-    return a.id.localeCompare(b.id);
-  })
-);
+const sortedElements = computed(() => {
+  const byId = new Map<string, PanelElement>();
+  for (const el of props.allElements) byId.set(el.id, el);
+  return [...props.elements].sort((a, b) => comparePanelElementsPaintOrder(a, b, byId));
+});
 
 function onSelect(id: string, event: MouseEvent) {
   if (props.previewMode) return;
@@ -141,6 +148,23 @@ function onSelect(id: string, event: MouseEvent) {
   }
   emit("selectIds", [id]);
 }
+
+function emitViewUiEvent(el: PanelElement, eventType: ViewEventType, event: MouseEvent) {
+  if (!props.onViewUiEvent) return;
+  if (!props.boundViewEventTypes?.get(el.id)?.has(eventType)) return;
+  props.onViewUiEvent(
+    createViewEventSignal({
+      eventType,
+      event: snapshotDomEvent(event),
+      node: snapshotViewEventNode(el),
+    })
+  );
+}
+
+function hasViewEvent(el: PanelElement) {
+  const types = props.boundViewEventTypes?.get(el.id);
+  return Boolean(types && types.size > 0 && props.onViewUiEvent);
+}
 </script>
 
 <template>
@@ -151,6 +175,7 @@ function onSelect(id: string, event: MouseEvent) {
       'absolute select-none',
       previewMode ? '' : 'rv-selectable',
       !previewMode && selectedIds.includes(el.id) ? 'ring-2 ring-blue-500/90 ring-offset-0' : '',
+      hasViewEvent(el) ? 'cursor-pointer' : '',
     ]"
     :data-element-id="el.id"
     :style="{
@@ -165,6 +190,11 @@ function onSelect(id: string, event: MouseEvent) {
       ...getNodeVisualStyle(el),
     }"
     @mousedown="onSelect(el.id, $event)"
+    @click="emitViewUiEvent(el, 'click', $event)"
+    @dblclick="emitViewUiEvent(el, 'dblclick', $event)"
+    @contextmenu="emitViewUiEvent(el, 'contextmenu', $event)"
+    @mouseenter="emitViewUiEvent(el, 'mouseenter', $event)"
+    @mouseleave="emitViewUiEvent(el, 'mouseleave', $event)"
   >
     <NodeContent
       :element="el"

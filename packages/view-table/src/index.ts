@@ -32,7 +32,11 @@ export {
   resolveCellDisplay,
   resolveRowDisplay,
   stylePropsToCss,
+  tableTextStyleToCss,
   resolveProgressDisplay,
+  isCssTransparent,
+  resolveTableBodyBackground,
+  resolveTableHeaderBackground,
 } from "./resolve/resolveDisplay";
 export {
   TransformCache,

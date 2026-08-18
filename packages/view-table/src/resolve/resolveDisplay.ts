@@ -9,6 +9,7 @@ import type {
   RowDisplay,
   TableProgressDisplay,
   TableStyleProps,
+  TableTextStyle,
   TableWidgetProps,
 } from "../types";
 
@@ -258,7 +259,7 @@ export function resolveCellDisplay(
     color: pickColor(column, text, raw),
   };
 
-  if (widget === "text" && column.widgetProps?.textStyle) {
+  if (column.widgetProps?.textStyle && widget !== "image") {
     const ts = column.widgetProps.textStyle;
     display.style = mergeStyle(display.style, {
       color: ts.color,
@@ -266,7 +267,6 @@ export function resolveCellDisplay(
       fontWeight: ts.fontWeight,
       textAlign: ts.textAlign,
     });
-    // keep extended typography on widgetProps for renderers
   }
 
   if (widget === "link") {
@@ -317,7 +317,14 @@ export function resolveRowDisplay(
   config: PanelTableConfig,
   ctx: CellDisplayContext = {}
 ): RowDisplay {
+  const stripe = Boolean(config.stripe ?? config.tableStyle?.stripe);
   let style: TableStyleProps = {};
+  if (stripe && row.index % 2 === 1) {
+    style = mergeStyle(style, {
+      backgroundColor:
+        config.tableStyle?.stripeBackgroundColor ?? "rgba(0,0,0,0.02)",
+    });
+  }
   if (config.rowStyleRules?.length) {
     for (const rule of config.rowStyleRules) {
       if (
@@ -331,14 +338,56 @@ export function resolveRowDisplay(
       }
     }
   }
-  const stripe = Boolean(config.stripe ?? config.tableStyle?.stripe);
-  if (stripe && row.index % 2 === 1) {
-    style = mergeStyle(style, {
-      backgroundColor:
-        config.tableStyle?.stripeBackgroundColor ?? "rgba(0,0,0,0.02)",
-    });
-  }
   return { style, stripe };
+}
+
+export function isCssTransparent(value?: string): boolean {
+  const raw = value?.trim().toLowerCase();
+  if (!raw) return false;
+  if (raw === "transparent" || raw === "none") return true;
+  const rgba = raw.match(
+    /^rgba?\(\s*[\d.]+\s*,\s*[\d.]+\s*,\s*[\d.]+\s*(?:,\s*([\d.]+)\s*)?\)$/
+  );
+  if (rgba) {
+    const alpha = rgba[1];
+    return alpha != null && Number(alpha) === 0;
+  }
+  if (/^#([\da-f]{4})$/i.test(raw)) return raw.endsWith("0");
+  if (/^#([\da-f]{8})$/i.test(raw)) return raw.slice(-2) === "00";
+  return false;
+}
+
+/** 未配置时保持默认实底；显式 transparent / 0 alpha 则透出下层 */
+export function resolveTableSurfaceBackground(
+  backgroundColor: string | undefined,
+  fallback: string
+): string {
+  const raw = backgroundColor?.trim();
+  if (!raw) return fallback;
+  return raw;
+}
+
+export function resolveTableBodyBackground(backgroundColor?: string): string {
+  return resolveTableSurfaceBackground(backgroundColor, "#fff");
+}
+
+export function resolveTableHeaderBackground(backgroundColor?: string): string {
+  return resolveTableSurfaceBackground(backgroundColor, "rgba(0,0,0,0.04)");
+}
+
+export function tableTextStyleToCss(
+  style?: TableTextStyle | null
+): Record<string, string | number> {
+  if (!style) return {};
+  const css: Record<string, string | number> = {};
+  if (style.color) css.color = style.color;
+  if (style.fontSize != null) css.fontSize = style.fontSize;
+  if (style.fontWeight != null) css.fontWeight = style.fontWeight;
+  if (style.fontFamily) css.fontFamily = style.fontFamily;
+  if (style.fontStyle) css.fontStyle = style.fontStyle;
+  if (style.textDecoration) css.textDecoration = style.textDecoration;
+  if (style.textAlign) css.textAlign = style.textAlign;
+  return css;
 }
 
 export function stylePropsToCss(style: TableStyleProps): Record<string, string | number> {

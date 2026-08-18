@@ -27,6 +27,7 @@ import ConfigSection from "../config/ConfigSection.vue";
 import ConfigHintIcon from "../ConfigHintIcon.vue";
 import ConditionEditor from "./ConditionEditor.vue";
 import JsonCodeEditor from "./JsonCodeEditor.vue";
+import { readFileAsDataUrl, runBusyTask } from "../../utils/async-work";
 
 const { t } = useI18n();
 
@@ -256,29 +257,27 @@ const imageUploadHint = ref("");
 
 async function uploadImageForColumn(index: number, file: File) {
   try {
-    const base64 = await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(String(reader.result ?? ""));
-      reader.onerror = () => reject(new Error("read failed"));
-      reader.readAsDataURL(file);
-    });
-    patchWidgetProps(index, { imageUrlMode: "static", imageUrl: base64 });
-    imageUploadHint.value = t("panel.config.uploadWrittenBase64");
-    try {
-      const form = new FormData();
-      form.append("file", file);
-      const resp = await fetch("/api/upload", { method: "POST", body: form });
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      const data = (await resp.json()) as { url?: string };
-      if (data.url) {
-        patchWidgetProps(index, { imageUrlMode: "static", imageUrl: data.url });
-        imageUploadHint.value = t("panel.config.uploadServerAndBase64");
+    await runBusyTask(t("common.uploadingFile"), async () => {
+      const base64 = await readFileAsDataUrl(file, t("panel.messages.readImageFailed"), "image");
+      patchWidgetProps(index, { imageUrlMode: "static", imageUrl: base64 });
+      imageUploadHint.value = t("panel.config.uploadWrittenBase64");
+      try {
+        const form = new FormData();
+        form.append("file", file);
+        const resp = await fetch("/api/upload", { method: "POST", body: form });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const data = (await resp.json()) as { url?: string };
+        if (data.url) {
+          patchWidgetProps(index, { imageUrlMode: "static", imageUrl: data.url });
+          imageUploadHint.value = t("panel.config.uploadServerAndBase64");
+        }
+      } catch {
+        imageUploadHint.value = t("panel.config.uploadServerFailedKeepBase64");
       }
-    } catch {
-      imageUploadHint.value = t("panel.config.uploadServerFailedKeepBase64");
-    }
-  } catch {
-    imageUploadHint.value = t("panel.messages.readImageFailed");
+    });
+  } catch (error) {
+    imageUploadHint.value =
+      error instanceof Error ? error.message : t("panel.messages.readImageFailed");
   }
 }
 
@@ -785,7 +784,7 @@ function patchProgressRuleWhen(ruleIndex: number, when: Condition) {
             </ConfigHintIcon>
           </div>
 
-          <template v-if="(selectedColumn.column.widget ?? 'text') === 'text'">
+          <template v-if="(selectedColumn.column.widget ?? 'text') !== 'image'">
             <div class="grid grid-cols-2 gap-2">
               <label class="block space-y-1">
                 <div>{{ t("panel.config.tableTextFontSize") }}</div>
@@ -934,6 +933,9 @@ function patchProgressRuleWhen(ruleIndex: number, when: Condition) {
                 </Select>
               </label>
             </div>
+          </template>
+
+          <template v-if="(selectedColumn.column.widget ?? 'text') === 'text'">
             <label class="block space-y-1">
               <div class="inline-flex items-center gap-1">
                 {{ t("panel.config.tableActionOnClick") }}
@@ -1868,10 +1870,20 @@ function patchProgressRuleWhen(ruleIndex: number, when: Condition) {
       </label>
       <div class="grid grid-cols-2 gap-2">
         <ConfigColorField
-          :label="t('panel.config.tableHeaderBg')"
-          :value="(table.headerStyle?.backgroundColor as string) ?? 'rgba(0,0,0,0.04)'"
+          :label="t('panel.config.tableBodyBg')"
+          :value="(table.tableStyle?.backgroundColor as string) ?? ''"
           :disabled="!isEditable"
-          @update:value="(v) => updateHeaderStyle({ backgroundColor: v || 'rgba(0,0,0,0.04)' })"
+          allow-transparent
+          fallback-hex="#ffffff"
+          @update:value="(v) => updateTableStyle({ backgroundColor: v || undefined })"
+        />
+        <ConfigColorField
+          :label="t('panel.config.tableHeaderBg')"
+          :value="(table.headerStyle?.backgroundColor as string) ?? ''"
+          :disabled="!isEditable"
+          allow-transparent
+          fallback-hex="#f3f4f6"
+          @update:value="(v) => updateHeaderStyle({ backgroundColor: v || undefined })"
         />
         <label class="block space-y-1.5">
           <div>{{ t("panel.config.tableHeaderFontSize") }}</div>
@@ -1939,6 +1951,8 @@ function patchProgressRuleWhen(ruleIndex: number, when: Condition) {
           :label="t('panel.config.tableBgColor')"
           :value="(rule.style.backgroundColor as string) ?? '#eff6ff'"
           :disabled="!isEditable"
+          allow-transparent
+          fallback-hex="#eff6ff"
           @update:value="(v) => patchRowStyleRule(ruleIndex, { backgroundColor: v || '#eff6ff' })"
         />
       </div>

@@ -5,6 +5,15 @@ import type { PanelElement } from "../types";
 import { buildChartOption, CHART_TYPES } from "../utils/chartOptionBuilder";
 import { PREVIEW_LAYOUT_EVENT } from "../utils/panelStateIO";
 import { TableNodeContent, type TableCellActionHandler } from "./table/TableNodeContent";
+import { comparePanelElementsPaintOrder } from "../utils/gridPlacement";
+import { cssTextLineHeight, cssTextAlignStyle } from "../utils/panelElementDefaults";
+import {
+  createViewEventSignal,
+  snapshotDomEvent,
+  snapshotViewEventNode,
+  type ViewEventSignal,
+  type ViewEventType,
+} from "@arronqzy/blueprint-dsl";
 
 export type ElementsLayerProps = {
   elements: PanelElement[];
@@ -22,6 +31,8 @@ export type ElementsLayerProps = {
   /** 预览布局变更时递增，用于触发图表/画布重绘 */
   previewLayoutKey?: number;
   onTableCellAction?: TableCellActionHandler;
+  boundViewEventTypes?: ReadonlyMap<string, ReadonlySet<ViewEventType>>;
+  onViewUiEvent?: (payload: ViewEventSignal) => void;
 };
 
 function TextNodeContent({
@@ -41,8 +52,8 @@ function TextNodeContent({
     fontSize: element.textFontSize ? `${element.textFontSize}px` : undefined,
     fontWeight: element.textFontWeight || undefined,
     color: element.textColor || undefined,
-    lineHeight: element.textLineHeight ? String(element.textLineHeight) : undefined,
-    textAlign: element.textAlign ?? "left",
+    lineHeight: cssTextLineHeight(element.textLineHeight),
+    ...cssTextAlignStyle(element.textAlign),
   };
 
   useEffect(() => {
@@ -56,7 +67,8 @@ function TextNodeContent({
   return (
     <div
       ref={ref}
-      className="h-full w-full overflow-auto break-words p-2 text-sm leading-relaxed outline-none"
+      data-panel-user-text=""
+      className="h-full w-full overflow-auto break-words p-2 outline-none"
       style={textStyle}
       contentEditable={editable}
       suppressContentEditableWarning
@@ -99,34 +111,23 @@ function GridNodeContent({
     });
     return set;
   }, [allElements, cols, element.id, element.layerId, rows]);
-  const occupiedBlocks = useMemo(() => {
-    return allElements
-      .filter(
-        (el) =>
-          el.parentGridId === element.id &&
-          el.layerId === element.layerId &&
-          el.gridSlotIndex !== undefined
-      )
-      .map((el) => {
-        const start = Math.max(0, Math.floor(el.gridSlotIndex ?? 0));
-        const baseRow = Math.floor(start / cols);
-        const baseCol = start % cols;
-        const rowSpan = Math.max(1, Math.min(rows - baseRow, Math.floor(el.gridRowSpan ?? 1)));
-        const colSpan = Math.max(1, Math.min(cols - baseCol, Math.floor(el.gridColSpan ?? 1)));
-        return {
-          id: el.id,
-          rowStart: baseRow + 1,
-          rowEnd: baseRow + rowSpan + 1,
-          colStart: baseCol + 1,
-          colEnd: baseCol + colSpan + 1,
-        };
-      });
-  }, [allElements, cols, element.id, element.layerId, rows]);
   if (previewMode) {
     return <div className="relative h-full w-full" />;
   }
+  const total = rows * cols;
+  const emptyCount = total - occupied.size;
   return (
-    <div className="relative h-full w-full">
+    <div
+      className="pointer-events-none relative h-full w-full overflow-hidden rounded-md"
+      style={
+        emptyCount > 0
+          ? {
+              border: "2px dashed rgba(14, 165, 233, 0.7)",
+              background: "rgba(14, 165, 233, 0.08)",
+            }
+          : undefined
+      }
+    >
       <div
         className="h-full w-full"
         style={{
@@ -138,41 +139,41 @@ function GridNodeContent({
           boxSizing: "border-box",
         }}
       >
-        {Array.from({ length: rows * cols }).map((_, idx) => (
-          <div
-            key={idx}
-            className={[
-              "rounded border border-dashed",
-              occupied.has(idx)
-                ? "border-primary/70 bg-primary/10"
-                : "border-border/60 bg-muted/20",
-            ].join(" ")}
-            title={occupied.has(idx) ? t("panel.config.slotOccupied", { n: idx + 1 }) : t("panel.config.slotEmpty", { n: idx + 1 })}
-          />
-        ))}
+        {Array.from({ length: total }).map((_, idx) => {
+          const filled = occupied.has(idx);
+          return (
+            <div
+              key={idx}
+              className={
+                filled
+                  ? "pointer-events-none"
+                  : "pointer-events-auto flex flex-col items-center justify-center gap-0.5 rounded-md text-[11px] font-semibold"
+              }
+              style={
+                filled
+                  ? undefined
+                  : {
+                      border: "2px dashed rgba(2, 132, 199, 0.85)",
+                      background: "rgba(186, 230, 253, 0.72)",
+                      color: "rgba(3, 105, 161, 0.95)",
+                    }
+              }
+              title={
+                filled
+                  ? t("panel.config.slotOccupied", { n: idx + 1 })
+                  : t("panel.config.slotEmpty", { n: idx + 1 })
+              }
+            >
+              {filled ? null : <span>{idx + 1}</span>}
+            </div>
+          );
+        })}
       </div>
-      <div
-        className="pointer-events-none absolute inset-0"
-        style={{
-          display: "grid",
-          gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
-          gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))`,
-          gap: `${gap}px`,
-          padding: `${padding}px`,
-          boxSizing: "border-box",
-        }}
-      >
-        {occupiedBlocks.map((block) => (
-          <div
-            key={block.id}
-            className="rounded border border-primary/70 bg-primary/20"
-            style={{
-              gridColumn: `${block.colStart} / ${block.colEnd}`,
-              gridRow: `${block.rowStart} / ${block.rowEnd}`,
-            }}
-          />
-        ))}
-      </div>
+      {occupied.size === 0 ? (
+        <div className="pointer-events-none absolute bottom-1.5 left-0 right-0 text-center text-[11px] font-medium text-sky-800/90">
+          {t("panel.config.gridDropHint")}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -812,19 +813,34 @@ export const ElementsLayer = React.memo(function ElementsLayer({
   previewMode = false,
   previewLayoutKey,
   onTableCellAction,
+  boundViewEventTypes,
+  onViewUiEvent,
 }: ElementsLayerProps) {
+  const emitViewUiEvent = useCallback(
+    (el: PanelElement, eventType: ViewEventType, domEvent: React.MouseEvent | MouseEvent) => {
+      if (!onViewUiEvent) return;
+      if (!boundViewEventTypes?.get(el.id)?.has(eventType)) return;
+      onViewUiEvent(
+        createViewEventSignal({
+          eventType,
+          event: snapshotDomEvent(domEvent),
+          node: snapshotViewEventNode(el),
+        })
+      );
+    },
+    [boundViewEventTypes, onViewUiEvent]
+  );
   const sortedElements = useMemo(() => {
-    return [...elements].sort((a, b) => {
-      const za = a.zIndex ?? 1;
-      const zb = b.zIndex ?? 1;
-      if (za !== zb) return za - zb;
-      return a.id.localeCompare(b.id);
-    });
-  }, [elements]);
+    const byId = new Map<string, PanelElement>();
+    for (const el of allElements) byId.set(el.id, el);
+    return [...elements].sort((a, b) => comparePanelElementsPaintOrder(a, b, byId));
+  }, [allElements, elements]);
   return (
     <>
       {sortedElements.map((el) => {
         const isSelected = selectedIds.includes(el.id);
+        const boundTypes = boundViewEventTypes?.get(el.id);
+        const hasViewEvent = Boolean(boundTypes && boundTypes.size > 0 && onViewUiEvent);
         return (
           <div
             key={el.id}
@@ -832,6 +848,7 @@ export const ElementsLayer = React.memo(function ElementsLayer({
               "absolute select-none",
               previewMode ? "" : "rv-selectable",
               !previewMode && isSelected ? "ring-2 ring-blue-500/90 ring-offset-0" : "",
+              hasViewEvent ? "cursor-pointer" : "",
             ].join(" ")}
             data-element-id={el.id}
             onMouseDown={(e) => {
@@ -848,6 +865,11 @@ export const ElementsLayer = React.memo(function ElementsLayer({
                 onSelectIds([el.id]);
               }
             }}
+            onClick={(e) => emitViewUiEvent(el, "click", e)}
+            onDoubleClick={(e) => emitViewUiEvent(el, "dblclick", e)}
+            onContextMenu={(e) => emitViewUiEvent(el, "contextmenu", e)}
+            onMouseEnter={(e) => emitViewUiEvent(el, "mouseenter", e)}
+            onMouseLeave={(e) => emitViewUiEvent(el, "mouseleave", e)}
             style={{
               left: el.x,
               top: el.y,

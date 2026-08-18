@@ -35,6 +35,7 @@ export type WorkspaceProjectNavProps = {
   activeProjectId: string | null;
   activeProjectName: string | null;
   dirty: boolean;
+  previewingProjectIds?: string[];
   onCreateProject: () => Promise<{ name: string; id: string } | void>;
   onOpenProject: (id: string) => Promise<void>;
   onSyncProject: () => Promise<string | void>;
@@ -47,6 +48,7 @@ export function WorkspaceProjectNav({
   activeProjectId,
   activeProjectName,
   dirty,
+  previewingProjectIds = [],
   onCreateProject,
   onOpenProject,
   onSyncProject,
@@ -136,14 +138,22 @@ export function WorkspaceProjectNav({
               {projects.length === 0 ? (
                 <DropdownMenuItem disabled>{t("panel.workspace.noSavedWorkspaces")}</DropdownMenuItem>
               ) : (
-                projects.map((project) => (
+                projects.map((project) => {
+                  const isCurrent = activeProjectId === project.id;
+                  const isPreviewing = previewingProjectIds.includes(project.id);
+                  return (
                   <div key={project.id} className="px-1 py-0.5">
                     <div className="flex items-center gap-1">
                       <button
                         type="button"
                         className={[
                           "min-w-0 flex-1 rounded px-2 py-1.5 text-left text-xs hover:bg-accent",
-                          activeProjectId === project.id ? "bg-accent/60 font-medium" : "",
+                          isCurrent
+                            ? "bg-primary/15 font-medium text-primary ring-1 ring-inset ring-primary/40"
+                            : "",
+                          !isCurrent && isPreviewing
+                            ? "bg-sky-500/10 ring-1 ring-inset ring-sky-400/50"
+                            : "",
                         ].join(" ")}
                         onClick={() =>
                           void runAction(async () => {
@@ -151,7 +161,19 @@ export function WorkspaceProjectNav({
                           })
                         }
                       >
-                        <div className="truncate">{project.name}</div>
+                        <div className="flex items-center gap-1">
+                          <div className="min-w-0 flex-1 truncate">{project.name}</div>
+                          {isCurrent ? (
+                            <span className="shrink-0 rounded bg-primary px-1 py-px text-[9px] leading-none text-primary-foreground">
+                              {t("panel.workspace.currentBadge")}
+                            </span>
+                          ) : null}
+                          {isPreviewing ? (
+                            <span className="shrink-0 rounded bg-sky-600 px-1 py-px text-[9px] leading-none text-white">
+                              {t("panel.workspace.previewingBadge")}
+                            </span>
+                          ) : null}
+                        </div>
                         <div className="truncate text-[10px] text-muted-foreground">
                           {formatUpdatedAt(project.updatedAt)}
                         </div>
@@ -182,7 +204,8 @@ export function WorkspaceProjectNav({
                       </Button>
                     </div>
                   </div>
-                ))
+                  );
+                })
               )}
               {/* <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => void runAction(onCreateProject)}>

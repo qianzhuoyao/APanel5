@@ -17,6 +17,7 @@ import {
   generateMockTableRows,
   stringifyMockTableRows,
   type TableMockLocale,
+  isCssTransparent,
 } from "@arronqzy/view-table";
 import type { PanelElement } from "../../types";
 import { ConfigHintIcon } from "../ConfigHintIcon";
@@ -24,6 +25,7 @@ import { ConditionEditor } from "./ConditionEditor";
 import { JsonCodeEditor } from "./JsonCodeEditor";
 import { useI18n } from "@arronqzy/i18n/react";
 import React, { useMemo, useRef, useState } from "react";
+import { readFileAsDataUrl, runBusyTask } from "../../utils/async-work";
 import {
   Button,
   Dialog,
@@ -217,35 +219,34 @@ export function PanelConfigTableSection({
 
   const uploadImageForColumn = async (index: number, file: File) => {
     try {
-      const base64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(String(reader.result ?? ""));
-        reader.onerror = () => reject(new Error("read failed"));
-        reader.readAsDataURL(file);
-      });
-      patchWidgetProps(index, {
-        imageUrlMode: "static",
-        imageUrl: base64,
-      });
-      setImageUploadHint(t("panel.config.uploadWrittenBase64"));
-      try {
-        const form = new FormData();
-        form.append("file", file);
-        const resp = await fetch("/api/upload", { method: "POST", body: form });
-        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-        const data = (await resp.json()) as { url?: string };
-        if (data.url) {
-          patchWidgetProps(index, {
-            imageUrlMode: "static",
-            imageUrl: data.url,
-          });
-          setImageUploadHint(t("panel.config.uploadServerAndBase64"));
+      await runBusyTask(t("common.uploadingFile"), async () => {
+        const base64 = await readFileAsDataUrl(file, t("panel.messages.readImageFailed"), "image");
+        patchWidgetProps(index, {
+          imageUrlMode: "static",
+          imageUrl: base64,
+        });
+        setImageUploadHint(t("panel.config.uploadWrittenBase64"));
+        try {
+          const form = new FormData();
+          form.append("file", file);
+          const resp = await fetch("/api/upload", { method: "POST", body: form });
+          if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+          const data = (await resp.json()) as { url?: string };
+          if (data.url) {
+            patchWidgetProps(index, {
+              imageUrlMode: "static",
+              imageUrl: data.url,
+            });
+            setImageUploadHint(t("panel.config.uploadServerAndBase64"));
+          }
+        } catch {
+          setImageUploadHint(t("panel.config.uploadServerFailedKeepBase64"));
         }
-      } catch {
-        setImageUploadHint(t("panel.config.uploadServerFailedKeepBase64"));
-      }
-    } catch {
-      setImageUploadHint(t("panel.messages.readImageFailed"));
+      });
+    } catch (error) {
+      setImageUploadHint(
+        error instanceof Error ? error.message : t("panel.messages.readImageFailed")
+      );
     }
   };
 
@@ -321,27 +322,45 @@ export function PanelConfigTableSection({
     value: string,
     onChange: (next: string) => void,
     hintKey?: string,
-    placeholder = "#000000"
+    placeholder = "#000000",
+    allowTransparent = false
   ) => {
     const label = t(labelKey);
+    const transparent = allowTransparent && isCssTransparent(value);
+    const fallbackHex = placeholder.startsWith("#") ? placeholder : "#ffffff";
     return (
       <div className={fieldClass}>
         {fieldLabel(labelKey, hintKey)}
-        <div className="flex items-center gap-2">
-          <Input
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            placeholder={placeholder}
-            className={`${inputClass} min-w-0 flex-1`}
-          />
-          <Input
-            type="color"
-            value={toPickerHex(value, placeholder.startsWith("#") ? placeholder : "#000000")}
-            onChange={(e) => onChange(e.target.value)}
-            className="h-7 w-10 shrink-0 cursor-pointer p-1"
-            aria-label={t("common.colorPickerAria", { label })}
-          />
-        </div>
+        {allowTransparent ? (
+          <label className="flex items-center gap-2 text-[11px]">
+            <Switch
+              checked={transparent}
+              onCheckedChange={(checked) => onChange(checked ? "transparent" : fallbackHex)}
+            />
+            <span>{t("panel.config.tableBgTransparent")}</span>
+          </label>
+        ) : null}
+        {transparent ? (
+          <div className="text-[10px] text-muted-foreground">
+            {t("panel.config.tableBgTransparentHint")}
+          </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            <Input
+              value={value}
+              onChange={(e) => onChange(e.target.value)}
+              placeholder={placeholder}
+              className={`${inputClass} min-w-0 flex-1`}
+            />
+            <Input
+              type="color"
+              value={toPickerHex(value, fallbackHex)}
+              onChange={(e) => onChange(e.target.value)}
+              className="h-7 w-10 shrink-0 cursor-pointer p-1"
+              aria-label={t("common.colorPickerAria", { label })}
+            />
+          </div>
+        )}
       </div>
     );
   };
@@ -705,9 +724,8 @@ export function PanelConfigTableSection({
                 </ConfigHintIcon>
               </div>
 
-              {(selectedColumn.widget ?? "text") === "text" ? (
-                <>
-                  <div className="grid grid-cols-2 gap-2">
+              {(selectedColumn.widget ?? "text") !== "image" ? (
+                <div className="grid grid-cols-2 gap-2">
                     <label className={fieldClass}>
                       {fieldLabel("panel.config.tableTextFontSize")}
                       <Input
@@ -849,6 +867,10 @@ export function PanelConfigTableSection({
                       </Select>
                     </label>
                   </div>
+              ) : null}
+
+              {(selectedColumn.widget ?? "text") === "text" ? (
+                <>
                   <label className={fieldClass}>
                     {fieldLabel("panel.config.tableActionOnClick", "panel.config.tableActionBlueprintHint")}
                     <BlueprintNodeSelect
@@ -1850,6 +1872,14 @@ export function PanelConfigTableSection({
         </label>
         <div className="grid grid-cols-2 gap-2">
           {colorField(
+            "panel.config.tableBodyBg",
+            table.tableStyle?.backgroundColor ?? "",
+            (next) => patchTableStyle({ backgroundColor: next || undefined }),
+            "panel.config.tableBodyBgHint",
+            "#ffffff",
+            true
+          )}
+          {colorField(
             "panel.config.tableStyleColor",
             table.tableStyle?.color ?? "",
             (next) => patchTableStyle({ color: next || undefined }),
@@ -1875,8 +1905,9 @@ export function PanelConfigTableSection({
             "panel.config.tableHeaderBg",
             table.headerStyle?.backgroundColor ?? "",
             (next) => patchHeaderStyle({ backgroundColor: next || undefined }),
-            undefined,
-            "#f3f4f6"
+            "panel.config.tableHeaderBgHint",
+            "#f3f4f6",
+            true
           )}
           <label className={fieldClass}>
             {fieldLabel("panel.config.tableHeaderFontSize")}
@@ -1969,7 +2000,8 @@ export function PanelConfigTableSection({
                   patchTable({ rowStyleRules: next });
                 },
                 "panel.config.tableBgColorHint",
-                "#ecfccb"
+                "#ecfccb",
+                true
               )}
             </div>
         ))}

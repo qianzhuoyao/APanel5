@@ -3,6 +3,7 @@ import { useI18n } from "@arronqzy/i18n/vue";
 import { onMounted, ref, watch } from "vue";
 import { Checkbox, Input, InputNumber, Select } from "ant-design-vue";
 import type { PanelElement } from "../../types";
+import { cssTextLineHeight, cssTextAlignStyle } from "../../utils/panelElementDefaults";
 import ConfigColorField from "./ConfigColorField.vue";
 import ConfigFieldGroup from "./ConfigFieldGroup.vue";
 import ConfigSection from "./ConfigSection.vue";
@@ -87,15 +88,16 @@ watch(() => [props.element.id, props.element.textHtml], syncEditorHtml);
       </div>
       <div
         ref="textEditorRef"
-        class="min-h-[120px] rounded border border-gray-200 bg-white px-2 py-1.5 text-xs leading-6 outline-none"
+        data-panel-user-text=""
+        class="min-h-[120px] rounded border border-gray-200 bg-white px-2 py-1.5 leading-6 outline-none"
         :contenteditable="isEditable"
         :style="{
           fontFamily: element.textFontFamily || undefined,
           fontSize: element.textFontSize ? `${element.textFontSize}px` : undefined,
           fontWeight: element.textFontWeight || undefined,
           color: element.textColor || undefined,
-          lineHeight: element.textLineHeight ? String(element.textLineHeight) : undefined,
-          textAlign: element.textAlign ?? 'left',
+          lineHeight: cssTextLineHeight(element.textLineHeight),
+          ...cssTextAlignStyle(element.textAlign),
         }"
         @input="(e) => {
           const nextHtml = (e.target as HTMLDivElement).innerHTML;
@@ -156,20 +158,32 @@ watch(() => [props.element.id, props.element.textHtml], syncEditorHtml);
           >
             <Select.Option value="left">{{ t("panel.config.alignLeft") }}</Select.Option>
             <Select.Option value="center">{{ t("panel.config.alignCenter") }}</Select.Option>
+            <Select.Option value="middle">{{ t("panel.config.alignMiddle") }}</Select.Option>
             <Select.Option value="right">{{ t("panel.config.alignRight") }}</Select.Option>
             <Select.Option value="justify">{{ t("panel.config.alignJustify") }}</Select.Option>
           </Select>
         </label>
         <label class="block space-y-1">
-          <div>{{ t("panel.config.lineHeight") }}</div>
+          <div class="flex items-center justify-between gap-2">
+            <span>{{ t("panel.config.lineHeight") }}</span>
+            <label class="flex items-center gap-1 font-normal">
+              <Checkbox
+                :checked="element.textLineHeight === 'auto'"
+                :disabled="!isEditable"
+                @update:checked="(v) => patch({ textLineHeight: v ? 'auto' : 1.6 })"
+              />
+              <span>{{ t("panel.config.lineHeightAuto") }}</span>
+            </label>
+          </div>
           <InputNumber
             size="small"
             class="w-full"
             :min="1"
             :max="3"
             :step="0.1"
-            :value="element.textLineHeight ?? 1.6"
-            :disabled="!isEditable"
+            :value="element.textLineHeight === 'auto' ? undefined : (element.textLineHeight ?? 1.6)"
+            :disabled="!isEditable || element.textLineHeight === 'auto'"
+            :placeholder="t('panel.config.lineHeightAuto')"
             @update:value="(v) => {
               const n = Number(v);
               if (!Number.isNaN(n)) patch({ textLineHeight: Math.min(3, Math.max(1, n)) });

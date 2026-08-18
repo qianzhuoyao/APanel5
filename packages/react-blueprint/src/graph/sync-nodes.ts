@@ -48,12 +48,13 @@ export function nodeStructureSignature(
     jsonConfig?: { jsonString?: string };
     logicConfig?: { sourceCode?: string };
     clockConfig?: { intervalSeconds?: number; timeFormat?: string; outputCount?: number; emitImmediately?: boolean };
+    eventConfig?: { eventTypes?: string[] };
   }>
 ): string {
   return nodes
     .map(
       (n) =>
-        `${n.id}:${n.role}:${n.label}:${n.configSource ?? ""}:${n.lifecyclePhase ?? ""}:${n.libraryBlueprintId ?? ""}:${n.nodeType ?? ""}:${(n.viewElementIds ?? (n.viewElementId ? [n.viewElementId] : [])).join(",")}:${n.fetchConfig?.url ?? ""}:${n.fetchConfig?.method ?? ""}:${n.fetchConfig?.apiBaseUrl ?? ""}:${n.fetchConfig?.swaggerDocsUrl ?? ""}:${n.jsonConfig?.jsonString ?? ""}:${n.logicConfig?.sourceCode ?? ""}:${n.clockConfig?.intervalSeconds ?? ""}:${n.clockConfig?.timeFormat ?? ""}:${n.clockConfig?.outputCount ?? ""}:${n.clockConfig?.emitImmediately ?? ""}`
+        `${n.id}:${n.role}:${n.label}:${n.configSource ?? ""}:${n.lifecyclePhase ?? ""}:${n.libraryBlueprintId ?? ""}:${n.nodeType ?? ""}:${(n.viewElementIds ?? (n.viewElementId ? [n.viewElementId] : [])).join(",")}:${n.fetchConfig?.url ?? ""}:${n.fetchConfig?.method ?? ""}:${n.fetchConfig?.apiBaseUrl ?? ""}:${n.fetchConfig?.swaggerDocsUrl ?? ""}:${n.jsonConfig?.jsonString ?? ""}:${n.logicConfig?.sourceCode ?? ""}:${n.clockConfig?.intervalSeconds ?? ""}:${n.clockConfig?.timeFormat ?? ""}:${n.clockConfig?.outputCount ?? ""}:${n.clockConfig?.emitImmediately ?? ""}:${(n.eventConfig?.eventTypes ?? []).join(",")}`
     )
     .sort()
     .join("|");

@@ -15,6 +15,7 @@ import * as echarts from "echarts";
 import type { PanelElement } from "../types";
 import { buildChartOption, CHART_TYPES } from "../utils/chartOptionBuilder";
 import { PREVIEW_LAYOUT_EVENT } from "../utils/panelStateIO";
+import { cssTextLineHeight, cssTextAlignStyle } from "../utils/panelElementDefaults";
 import TableNodeContent from "./table/TableNodeContent.vue";
 
 export { CHART_TYPES };
@@ -74,8 +75,8 @@ export const TextNodeContent = defineComponent({
       fontSize: p.element.textFontSize ? `${p.element.textFontSize}px` : undefined,
       fontWeight: p.element.textFontWeight || undefined,
       color: p.element.textColor || undefined,
-      lineHeight: p.element.textLineHeight ? String(p.element.textLineHeight) : undefined,
-      textAlign: p.element.textAlign ?? "left",
+      lineHeight: cssTextLineHeight(p.element.textLineHeight),
+      ...cssTextAlignStyle(p.element.textAlign),
     }));
     watch(
       html,
@@ -89,7 +90,8 @@ export const TextNodeContent = defineComponent({
     return () =>
       h("div", {
         ref: nodeRef,
-        class: "h-full w-full overflow-auto break-words p-2 text-sm leading-relaxed outline-none",
+        "data-panel-user-text": "",
+        class: "h-full w-full overflow-auto break-words p-2 outline-none",
         style: textStyle.value,
         contentEditable: p.editable,
         onInput: (e: Event) => emit("change", (e.currentTarget as HTMLDivElement).innerHTML),
@@ -127,31 +129,10 @@ export const GridNodeContent = defineComponent({
       });
       return set;
     });
-    const occupiedBlocks = computed(() =>
-      p.allElements
-        .filter(
-          (el) =>
-            el.parentGridId === p.element.id &&
-            el.layerId === p.element.layerId &&
-            el.gridSlotIndex !== undefined
-        )
-        .map((el) => {
-          const start = Math.max(0, Math.floor(el.gridSlotIndex ?? 0));
-          const baseRow = Math.floor(start / cols.value);
-          const baseCol = start % cols.value;
-          const rowSpan = Math.max(1, Math.min(rows.value - baseRow, Math.floor(el.gridRowSpan ?? 1)));
-          const colSpan = Math.max(1, Math.min(cols.value - baseCol, Math.floor(el.gridColSpan ?? 1)));
-          return {
-            id: el.id,
-            rowStart: baseRow + 1,
-            rowEnd: baseRow + rowSpan + 1,
-            colStart: baseCol + 1,
-            colEnd: baseCol + colSpan + 1,
-          };
-        })
-    );
     return () => {
       if (p.previewMode) return h("div", { class: "relative h-full w-full" });
+      const total = rows.value * cols.value;
+      const emptyCount = total - occupied.value.size;
       const gridStyle = {
         display: "grid",
         gridTemplateColumns: `repeat(${cols.value}, minmax(0, 1fr))`,
@@ -160,40 +141,60 @@ export const GridNodeContent = defineComponent({
         padding: `${padding.value}px`,
         boxSizing: "border-box" as const,
       };
-      return h("div", { class: "relative h-full w-full" }, [
-        h(
-          "div",
-          { class: "h-full w-full", style: gridStyle },
-          Array.from({ length: rows.value * cols.value }).map((_, idx) =>
-            h("div", {
-              key: idx,
-              class: [
-                "rounded border border-dashed",
-                occupied.value.has(idx)
-                  ? "border-primary/70 bg-primary/10"
-                  : "border-border/60 bg-muted/20",
-              ].join(" "),
-              title: occupied.value.has(idx)
-                ? t("panel.config.slotOccupied", { n: idx + 1 })
-                : t("panel.config.slotEmpty", { n: idx + 1 }),
+      return h(
+        "div",
+        {
+          class: "pointer-events-none relative h-full w-full overflow-hidden rounded-md",
+          style:
+            emptyCount > 0
+              ? {
+                  border: "2px dashed rgba(14, 165, 233, 0.7)",
+                  background: "rgba(14, 165, 233, 0.08)",
+                }
+              : undefined,
+        },
+        [
+          h(
+            "div",
+            { class: "h-full w-full", style: gridStyle },
+            Array.from({ length: total }).map((_, idx) => {
+              const filled = occupied.value.has(idx);
+              return h(
+                "div",
+                {
+                  key: idx,
+                  class: filled
+                    ? "pointer-events-none"
+                    : "pointer-events-auto flex flex-col items-center justify-center gap-0.5 rounded-md text-[11px] font-semibold",
+                  style: filled
+                    ? undefined
+                    : {
+                        border: "2px dashed rgba(2, 132, 199, 0.85)",
+                        background: "rgba(186, 230, 253, 0.72)",
+                        color: "rgba(3, 105, 161, 0.95)",
+                      },
+                  title: filled
+                    ? t("panel.config.slotOccupied", { n: idx + 1 })
+                    : t("panel.config.slotEmpty", { n: idx + 1 }),
+                },
+                filled
+                  ? null
+                  : h("span", String(idx + 1))
+              );
             })
-          )
-        ),
-        h(
-          "div",
-          { class: "pointer-events-none absolute inset-0", style: gridStyle },
-          occupiedBlocks.value.map((block) =>
-            h("div", {
-              key: block.id,
-              class: "rounded border border-primary/70 bg-primary/20",
-              style: {
-                gridColumn: `${block.colStart} / ${block.colEnd}`,
-                gridRow: `${block.rowStart} / ${block.rowEnd}`,
-              },
-            })
-          )
-        ),
-      ]);
+          ),
+          occupied.value.size === 0
+            ? h(
+                "div",
+                {
+                  class:
+                    "pointer-events-none absolute bottom-1.5 left-0 right-0 text-center text-[11px] font-medium text-sky-800/90",
+                },
+                t("panel.config.gridDropHint")
+              )
+            : null,
+        ]
+      );
     };
   },
 });

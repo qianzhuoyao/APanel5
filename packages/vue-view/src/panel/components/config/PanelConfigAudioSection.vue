@@ -44,22 +44,30 @@ function patch(patch: Partial<PanelElement>) {
 }
 
 async function handleUploadAudioFile(file: File) {
-  const base64 = await readFileAsDataUrl(file, msgs().readAudioFailed);
-  patch({ audioSrc: base64 });
-  audioStatus.value = msgs().audioLocalSaved;
-  const url = await uploadFileToRemote(file);
-  if (url) {
-    patch({ audioRemoteUrl: url });
-    audioStatus.value = msgs().audioRemoteUploaded;
-  } else {
-    audioStatus.value = msgs().audioServerUploadFailed;
+  try {
+    const base64 = await readFileAsDataUrl(file, msgs().readAudioFailed, "audio");
+    patch({ audioSrc: base64 });
+    audioStatus.value = msgs().audioLocalSaved;
+    const url = await uploadFileToRemote(file);
+    if (url) {
+      patch({ audioRemoteUrl: url });
+      audioStatus.value = msgs().audioRemoteUploaded;
+    } else {
+      audioStatus.value = msgs().audioServerUploadFailed;
+    }
+  } catch (error) {
+    audioStatus.value = error instanceof Error ? error.message : msgs().readAudioFailed;
   }
 }
 
 async function handleUploadAudioPoster(file: File) {
-  const base64 = await readFileAsDataUrl(file, msgs().readImageFailed);
-  patch({ audioPosterImage: base64 });
-  audioStatus.value = msgs().audioPosterSet;
+  try {
+    const base64 = await readFileAsDataUrl(file, msgs().readImageFailed);
+    patch({ audioPosterImage: base64 });
+    audioStatus.value = msgs().audioPosterSet;
+  } catch (error) {
+    audioStatus.value = error instanceof Error ? error.message : msgs().readImageFailed;
+  }
 }
 
 function stopRecordingAudio() {
@@ -85,12 +93,18 @@ async function startRecordingAudio() {
       const blob = new Blob(audioChunksRef.value, {
         type: recorder.mimeType || "audio/webm",
       });
-      const dataUrl = await readFileAsDataUrl(
-        new File([blob], "recording.webm", { type: blob.type }),
-        msgs().readRecordAudioFailed
-      );
-      patch({ audioSrc: dataUrl });
-      audioStatus.value = msgs().audioRecordSaved;
+      try {
+        const dataUrl = await readFileAsDataUrl(
+          new File([blob], "recording.webm", { type: blob.type }),
+          msgs().readRecordAudioFailed,
+          "audio"
+        );
+        patch({ audioSrc: dataUrl });
+        audioStatus.value = msgs().audioRecordSaved;
+      } catch (error) {
+        audioStatus.value =
+          error instanceof Error ? error.message : msgs().readRecordAudioFailed;
+      }
       recordStreamRef.value?.getTracks().forEach((track) => track.stop());
       recordStreamRef.value = null;
       recorderRef.value = null;

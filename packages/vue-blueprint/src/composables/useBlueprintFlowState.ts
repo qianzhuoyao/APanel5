@@ -1,3 +1,4 @@
+import { useI18n } from "@arronqzy/i18n/vue";
 import {
   addEdge,
   applyEdgeChanges,
@@ -8,10 +9,14 @@ import {
   type Node,
   type NodeChange,
 } from "@vue-flow/core";
+import { message } from "ant-design-vue";
 import { onBeforeUnmount, ref, watch, type Ref } from "vue";
 
 import type { BlueprintGraph } from "../graph/blueprint-graph";
-import { sanitizeBlueprintDocument } from "../graph/document";
+import {
+  resolveBlueprintConnectionIssue,
+  sanitizeBlueprintDocument,
+} from "../graph/document";
 import {
   applyFlowNodePositions,
   BP_EDGE_STYLE,
@@ -424,6 +429,7 @@ export function useBlueprintFlowState({
   }
 
   function onConnect(connection: Connection) {
+    pendingConnectionIssue = null;
     const resolved = resolveConnection(
       connection,
       nodes.value as Node<BlueprintFlowNodeData>[]
@@ -456,6 +462,11 @@ export function useBlueprintFlowState({
     });
   }
 
+  const { t } = useI18n();
+  let pendingConnectionIssue: ReturnType<
+    typeof resolveBlueprintConnectionIssue
+  > = null;
+
   function isValidConnection(connection: Edge | Connection) {
     if (!connection.source || !connection.target) return false;
     if (connection.source === connection.target) return false;
@@ -467,11 +478,26 @@ export function useBlueprintFlowState({
     }
 
     const targetNode = rfNodes.find((n) => n.id === connection.target);
-    if (targetNode?.data?.role === "lifecycle") {
-      return false;
-    }
+    const sourceNode = rfNodes.find((n) => n.id === connection.source);
+    const issue = resolveBlueprintConnectionIssue(
+      sourceNode?.data,
+      targetNode?.data
+    );
+    pendingConnectionIssue = issue;
+    return !issue;
+  }
 
-    return true;
+  function onConnectEnd(event?: MouseEvent | TouchEvent) {
+    const issue = pendingConnectionIssue;
+    pendingConnectionIssue = null;
+    if (!issue || !isPointerOverFlowNode(event)) return;
+    if (issue === "event-requires-lifecycle") {
+      message.warning(t("blueprint.config.eventConnectNeedLifecycle"));
+      return;
+    }
+    if (issue === "lifecycle-no-input") {
+      message.warning(t("blueprint.config.lifecycleNoInput"));
+    }
   }
 
   return {
@@ -481,6 +507,26 @@ export function useBlueprintFlowState({
     onEdgesChange,
     onNodeDragStop,
     onConnect,
+    onConnectEnd,
     isValidConnection,
   };
+}
+
+function isPointerOverFlowNode(event?: MouseEvent | TouchEvent) {
+  if (!event) return false;
+  const point =
+    "changedTouches" in event
+      ? event.changedTouches[0]
+      : "clientX" in event
+        ? event
+        : undefined;
+  const el =
+    point && typeof document !== "undefined"
+      ? document.elementFromPoint(point.clientX, point.clientY)
+      : event.target instanceof Element
+        ? event.target
+        : null;
+  return Boolean(
+    el?.closest(".vue-flow__node") || el?.closest(".vue-flow__handle")
+  );
 }

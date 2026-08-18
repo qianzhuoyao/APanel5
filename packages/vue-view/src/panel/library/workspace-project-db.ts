@@ -77,17 +77,35 @@ export function createWorkspaceProjectId(): string {
 }
 
 export async function listWorkspaceProjects(): Promise<WorkspaceProjectListItem[]> {
-  const records = await runTransaction<WorkspaceProjectRecord[]>("readonly", (store) =>
-    store.getAll()
-  );
-  return records
-    .map((record) => ({
-      id: record.id,
-      name: record.name,
-      createdAt: record.createdAt,
-      updatedAt: record.updatedAt,
-    }))
-    .sort((a, b) => b.updatedAt - a.updatedAt);
+  const db = await openDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, "readonly");
+    const store = tx.objectStore(STORE_NAME);
+    const request = store.openCursor();
+    const items: WorkspaceProjectListItem[] = [];
+    request.onerror = () =>
+      reject(request.error ?? new Error("indexeddb-request-failed"));
+    request.onsuccess = () => {
+      const cursor = request.result;
+      if (!cursor) return;
+      const record = cursor.value as WorkspaceProjectRecord;
+      items.push({
+        id: record.id,
+        name: record.name,
+        createdAt: record.createdAt,
+        updatedAt: record.updatedAt,
+      });
+      cursor.continue();
+    };
+    tx.oncomplete = () => {
+      db.close();
+      resolve(items.sort((a, b) => b.updatedAt - a.updatedAt));
+    };
+    tx.onerror = () => {
+      db.close();
+      reject(tx.error ?? new Error("indexeddb-transaction-failed"));
+    };
+  });
 }
 
 export async function getWorkspaceProject(

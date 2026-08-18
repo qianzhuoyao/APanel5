@@ -24,8 +24,10 @@ import {
   type BlueprintGraphNode,
   type BlueprintLibraryListItem,
   type BlueprintMetaDraft,
+  resolveRunnableNodeType,
+  resolveViewElementIds,
 } from "@arronqzy/vue-blueprint";
-import type { LibraryBlueprintResolver } from "@arronqzy/blueprint-dsl";
+import { collectArmedViewEventBindings, EVENT_NODE_TYPE, LIFECYCLE_NODE_TYPE, type LibraryBlueprintResolver } from "@arronqzy/blueprint-dsl";
 import {
   Button,
   Checkbox,
@@ -65,6 +67,8 @@ import {
 import { useRafThrottledScroll } from "./hooks/useRafThrottledScroll";
 import { useI18n } from "@arronqzy/i18n/vue";
 import { getPanelMessages } from "./constants/messages";
+import BusyOverlay from "./components/BusyOverlay.vue";
+import { assertFileSize, parseJsonText, runBusyTask } from "./utils/async-work";
 import "../tailwind.css";
 
 const { t, locale, setLocale } = useI18n();
@@ -400,7 +404,7 @@ const workspaceProjects = useWorkspaceProjects({
   onProjectApplied: handleWorkspaceProjectApplied,
 });
 
-const { triggerBlueprintNode } = useBlueprintPageLifecycle({
+const { triggerBlueprintNode, emitViewEvent, firedLifecyclePhases } = useBlueprintPageLifecycle({
   graph: blueprintGraph,
   active: blueprintOpen,
   bootKey: computed(() => workspaceProjects.activeProjectId.value ?? undefined),
@@ -412,6 +416,22 @@ const { triggerBlueprintNode } = useBlueprintPageLifecycle({
   onViewScopeUpdate: handleViewScopeUpdate,
 });
 
+const boundViewEventTypes = computed(() =>
+  collectArmedViewEventBindings(
+    blueprintGraph.value.document.nodes.map((node) => ({
+      id: node.id,
+      nodeType: resolveRunnableNodeType(node),
+      lifecyclePhase: node.lifecyclePhase,
+      viewElementIds: resolveViewElementIds(node),
+      eventConfig: node.eventConfig,
+    })),
+    blueprintGraph.value.document.edges,
+    EVENT_NODE_TYPE,
+    LIFECYCLE_NODE_TYPE,
+    firedLifecyclePhases.value
+  )
+);
+
 const blueprintNodeOptions = computed(() =>
   blueprintGraph.value.document.nodes.map((node) => ({
     id: node.id,
@@ -419,19 +439,21 @@ const blueprintNodeOptions = computed(() =>
   }))
 );
 async function loadBlueprintFromLibrary(id: string) {
-  const record = await getBlueprintLibraryRecord(id);
-  if (!record) {
-    message.error(panelMessages().blueprintNotFound);
-    void refreshBlueprintLibrary();
-    return;
-  }
-  blueprintGraph.value = BlueprintGraph.fromDocument(record.document);
-  blueprintMeta.value = { name: record.name, remark: record.remark ?? "" };
-  activeBlueprintLibraryId.value = record.id;
-  blueprintSyncedDocument.value = record.document;
-  selectedBlueprintNodeId.value = null;
-  configFocus.value = "blueprint";
-  blueprintOpen.value = true;
+  await runBusyTask(t("common.loadingBlueprint"), async () => {
+    const record = await getBlueprintLibraryRecord(id);
+    if (!record) {
+      message.error(panelMessages().blueprintNotFound);
+      void refreshBlueprintLibrary();
+      return;
+    }
+    blueprintGraph.value = BlueprintGraph.fromDocument(record.document);
+    blueprintMeta.value = { name: record.name, remark: record.remark ?? "" };
+    activeBlueprintLibraryId.value = record.id;
+    blueprintSyncedDocument.value = record.document;
+    selectedBlueprintNodeId.value = null;
+    configFocus.value = "blueprint";
+    blueprintOpen.value = true;
+  });
 }
 
 function snapshotWorkspaceBlueprint() {
@@ -462,74 +484,97 @@ async function handleSelectBlueprintLibraryItem(id: string) {
 }
 
 async function syncBlueprintToLibrary() {
-  if (!activeBlueprintLibraryId.value) return;
-  const record = await getBlueprintLibraryRecord(activeBlueprintLibraryId.value);
-  if (!record) return;
-  await putBlueprintLibraryRecord({
-    ...record,
-    document: blueprintGraph.value.document,
-    name: blueprintMeta.value.name,
-    remark: blueprintMeta.value.remark,
+  const libraryId = activeBlueprintLibraryId.value;
+  if (!libraryId) return;
+  await runBusyTask(t("common.syncingBlueprint"), async () => {
+    const record = await getBlueprintLibraryRecord(libraryId);
+    if (!record) return;
+    await putBlueprintLibraryRecord({
+      ...record,
+      document: blueprintGraph.value.document,
+      name: blueprintMeta.value.name,
+      remark: blueprintMeta.value.remark,
+    });
+    blueprintSyncedDocument.value = blueprintGraph.value.document;
+    message.success(panelMessages().blueprintSyncedToLibrary);
+    await refreshBlueprintLibrary();
   });
-  blueprintSyncedDocument.value = blueprintGraph.value.document;
-  message.success(panelMessages().blueprintSyncedToLibrary);
-  await refreshBlueprintLibrary();
 }
 
 async function saveBlueprintToLibrary(meta: BlueprintMetaDraft) {
-  const id = activeBlueprintLibraryId.value ?? createLibraryBlueprintId();
-  const record = buildLibraryRecord({
-    id,
-    document: blueprintGraph.value.document,
-    meta,
-    source: "saved",
+  await runBusyTask(t("common.savingBlueprint"), async () => {
+    const id = activeBlueprintLibraryId.value ?? createLibraryBlueprintId();
+    const record = buildLibraryRecord({
+      id,
+      document: blueprintGraph.value.document,
+      meta,
+      source: "saved",
+    });
+    await putBlueprintLibraryRecord(record);
+    activeBlueprintLibraryId.value = id;
+    blueprintSyncedDocument.value = blueprintGraph.value.document;
+    blueprintMeta.value = meta;
+    await refreshBlueprintLibrary();
+    message.success(panelMessages().blueprintSavedToLibrary);
   });
-  await putBlueprintLibraryRecord(record);
-  activeBlueprintLibraryId.value = id;
-  blueprintSyncedDocument.value = blueprintGraph.value.document;
-  blueprintMeta.value = meta;
-  await refreshBlueprintLibrary();
-  message.success(panelMessages().blueprintSavedToLibrary);
 }
 
 function handleExport() {
-  const data = exportPanelData();
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  const safeName = (productName.value.trim() || "panel")
-    .replace(/[\\/:*?"<>|]/g, "-")
-    .replace(/\s+/g, "-");
-  a.download = `${safeName}-${Date.now()}.json`;
-  a.click();
-  URL.revokeObjectURL(url);
+  void runBusyTask(t("common.exportingPanel"), async () => {
+    const data = exportPanelData();
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    const safeName = (productName.value.trim() || "panel")
+      .replace(/[\\/:*?"<>|]/g, "-")
+      .replace(/\s+/g, "-");
+    a.download = `${safeName}-${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  });
 }
 
 async function handleImportFile(file: File) {
-  const text = await file.text();
-  const parsed = JSON.parse(text) as State;
-  const ok = importPanelData(parsed);
-  if (!ok) window.alert(panelMessages().importInvalidFormat);
-  else selectedIds.value = [];
+  try {
+    await runBusyTask(t("common.importingPanel"), async () => {
+      assertFileSize(file, "json");
+      const text = await file.text();
+      const parsed = await parseJsonText<State>(text);
+      const ok = importPanelData(parsed);
+      if (!ok) window.alert(panelMessages().importInvalidFormat);
+      else selectedIds.value = [];
+    });
+  } catch (error) {
+    message.error(error instanceof Error ? error.message : panelMessages().importInvalidFormat);
+  }
 }
 
 function openBlueprintExport() {
-  downloadBlueprintExport(
-    buildBlueprintExportPayload(blueprintGraph.value.document, blueprintMeta.value)
-  );
-  message.success(panelMessages().blueprintExported);
+  void runBusyTask(t("common.exportingPanel"), async () => {
+    downloadBlueprintExport(
+      buildBlueprintExportPayload(blueprintGraph.value.document, blueprintMeta.value)
+    );
+    message.success(panelMessages().blueprintExported);
+  });
 }
 
 async function handleBlueprintImportFile(file: File) {
-  const text = await file.text();
-  const payload = parseBlueprintImportFile(JSON.parse(text) as unknown);
-  const record = libraryRecordFromImport(payload);
-  await putBlueprintLibraryRecord(record);
-  await refreshBlueprintLibrary();
-  if (!activeBlueprintLibraryId.value) snapshotWorkspaceBlueprint();
-  await loadBlueprintFromLibrary(record.id);
-  message.success(panelMessages().blueprintImported);
+  try {
+    await runBusyTask(t("common.importingBlueprint"), async () => {
+      assertFileSize(file, "json");
+      const text = await file.text();
+      const payload = parseBlueprintImportFile(await parseJsonText(text));
+      const record = libraryRecordFromImport(payload);
+      await putBlueprintLibraryRecord(record);
+      await refreshBlueprintLibrary();
+      if (!activeBlueprintLibraryId.value) snapshotWorkspaceBlueprint();
+      await loadBlueprintFromLibrary(record.id);
+      message.success(panelMessages().blueprintImported);
+    });
+  } catch (error) {
+    message.error(error instanceof Error ? error.message : panelMessages().importInvalidFormat);
+  }
 }
 
 async function handleWorkspaceCreateProject() {
@@ -539,6 +584,7 @@ async function handleWorkspaceCreateProject() {
 
 async function handleWorkspaceOpenProject(id: string) {
   try {
+    stopAllClockSchedules();
     clearViewElementScopes();
     await workspaceProjects.handleOpenProject(id);
     selectedIds.value = [];
@@ -662,6 +708,7 @@ onUnmounted(() => window.removeEventListener("keydown", onKeyDown));
         :active-project-id="workspaceProjects.activeProjectId.value"
         :active-project-name="workspaceProjects.activeProjectName.value"
         :dirty="workspaceProjects.dirty.value"
+        :previewing-project-ids="workspaceProjects.previewingProjectIds.value"
         @create-project="handleWorkspaceCreateProject"
         @open-project="handleWorkspaceOpenProject"
         @sync-project="handleWorkspaceSyncProject"
@@ -761,6 +808,12 @@ onUnmounted(() => window.removeEventListener("keydown", onKeyDown));
                 :on-table-cell-action="
                   (payload) => {
                     void triggerBlueprintNode(payload.blueprintNodeId, payload);
+                  }
+                "
+                :bound-view-event-types="boundViewEventTypes"
+                :on-view-ui-event="
+                  (payload) => {
+                    void emitViewEvent(payload);
                   }
                 "
                 @select-ids="selectIds"
@@ -876,6 +929,7 @@ onUnmounted(() => window.removeEventListener("keydown", onKeyDown));
       </Layout.Sider>
     </Layout>
 
+    <BusyOverlay />
     <input ref="importInputRef" type="file" accept="application/json" class="hidden" @change="async (e) => { const f = (e.target as HTMLInputElement).files?.[0]; (e.target as HTMLInputElement).value = ''; if (f) await handleImportFile(f); }" />
     <input ref="blueprintImportInputRef" type="file" accept="application/json" class="hidden" @change="async (e) => { const f = (e.target as HTMLInputElement).files?.[0]; (e.target as HTMLInputElement).value = ''; if (f) await handleBlueprintImportFile(f); }" />
 

@@ -7,8 +7,11 @@ import {
   listBlueprintLibrary,
   useBlueprintPageLifecycle,
   type BlueprintLibraryListItem,
+  resolveRunnableNodeType,
+  resolveViewElementIds,
 } from "@arronqzy/react-blueprint";
 import type { LibraryBlueprintResolver, PageLifecyclePhase } from "@arronqzy/blueprint-dsl";
+import { collectArmedViewEventBindings, EVENT_NODE_TYPE, LIFECYCLE_NODE_TYPE } from "@arronqzy/blueprint-dsl";
 import type { State } from "@arronqzy/rx-store";
 import { ElementsLayer } from "./components/ElementsLayer";
 import type { TableCellActionHandler } from "./components/table/TableNodeContent";
@@ -248,7 +251,7 @@ export function ReactViewOnlinePreview({
   const lifecycleReady =
     !!panelState && layerElements.length > 0 && layoutReady;
 
-  const { triggerBlueprintNode } = useBlueprintPageLifecycle({
+  const { triggerBlueprintNode, emitViewEvent, firedLifecyclePhases } = useBlueprintPageLifecycle({
     graph: blueprintGraph,
     active: true,
     enabled: lifecycleReady,
@@ -275,6 +278,29 @@ export function ReactViewOnlinePreview({
     },
     [triggerBlueprintNode]
   );
+  const boundViewEventTypes = useMemo(
+    () =>
+      collectArmedViewEventBindings(
+        blueprintGraph.document.nodes.map((node) => ({
+          id: node.id,
+          nodeType: resolveRunnableNodeType(node),
+          lifecyclePhase: node.lifecyclePhase,
+          viewElementIds: resolveViewElementIds(node),
+          eventConfig: node.eventConfig,
+        })),
+        blueprintGraph.document.edges,
+        EVENT_NODE_TYPE,
+        LIFECYCLE_NODE_TYPE,
+        firedLifecyclePhases
+      ),
+    [blueprintGraph.document.nodes, blueprintGraph.document.edges, firedLifecyclePhases]
+  );
+  const onViewUiEvent = useCallback(
+    (payload: Parameters<typeof emitViewEvent>[0]) => {
+      void emitViewEvent(payload);
+    },
+    [emitViewEvent]
+  );
   if (loadError) {
     return (
       <div className="flex min-h-[100vh] w-full items-center justify-center bg-white px-6 text-center text-sm text-gray-600">
@@ -285,7 +311,8 @@ export function ReactViewOnlinePreview({
 
   if (!panelState) {
     return (
-      <div className="flex min-h-[100vh] w-full items-center justify-center bg-white text-sm text-gray-600">
+      <div className="flex min-h-[100vh] w-full flex-col items-center justify-center gap-3 bg-white text-sm text-gray-600">
+        <div className="h-9 w-9 animate-spin rounded-full border-2 border-gray-300 border-t-gray-700" />
         {t("panel.workspace.previewLoading")}
       </div>
     );
@@ -342,6 +369,8 @@ export function ReactViewOnlinePreview({
             previewMode
             previewLayoutKey={layoutRevision}
             onTableCellAction={onTableCellAction}
+            boundViewEventTypes={boundViewEventTypes}
+            onViewUiEvent={onViewUiEvent}
           />
         </div>
       </div>

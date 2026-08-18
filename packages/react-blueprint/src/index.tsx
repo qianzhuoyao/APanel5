@@ -84,6 +84,7 @@ function BlueprintCanvas({
     onEdgesChange,
     onNodeDragStop,
     onConnect,
+    onConnectEnd,
     isValidConnection,
   } = useBlueprintFlowState({
     graph,
@@ -198,6 +199,7 @@ function BlueprintCanvas({
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
+        onConnectEnd={onConnectEnd}
         isValidConnection={isValidConnection}
         onPaneContextMenu={onPaneContextMenu}
         onNodeContextMenu={onNodeContextMenu}
