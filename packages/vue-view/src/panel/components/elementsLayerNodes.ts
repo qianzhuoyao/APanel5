@@ -178,9 +178,7 @@ export const GridNodeContent = defineComponent({
                     ? t("panel.config.slotOccupied", { n: idx + 1 })
                     : t("panel.config.slotEmpty", { n: idx + 1 }),
                 },
-                filled
-                  ? null
-                  : h("span", String(idx + 1))
+                filled ? undefined : h("span", String(idx + 1))
               );
             })
           ),

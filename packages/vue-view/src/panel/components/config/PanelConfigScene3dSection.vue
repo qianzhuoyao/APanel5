@@ -289,6 +289,10 @@ function updateTagAnchor(modelId: string, objectName: string, value: string) {
   upsertObjectTag(modelId, objectName, { anchor: value as Scene3dPivot });
 }
 
+function updateTagHtml(modelId: string, objectName: string, value: string) {
+  upsertObjectTag(modelId, objectName, { html: value });
+}
+
 function onTagHtmlInput(modelId: string, objectName: string, event: Event) {
   const target = event.target;
   if (target instanceof HTMLTextAreaElement) updateTagHtml(modelId, objectName, target.value);
