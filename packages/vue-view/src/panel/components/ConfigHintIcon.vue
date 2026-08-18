@@ -1,16 +1,16 @@
 <script setup lang="ts">
+import { computed } from "vue";
 import { useI18n } from "@arronqzy/i18n/vue";
 import { Tooltip } from "ant-design-vue";
 
-const { t, locale } = useI18n();
-withDefaults(
-  defineProps<{
-    label?: string;
-    contentClass?: string;
-    buttonClass?: string;
-  }>(),
-  { label: t("common.hint") }
-);
+const { t } = useI18n();
+const props = defineProps<{
+  label?: string;
+  contentClass?: string;
+  buttonClass?: string;
+}>();
+
+const resolvedLabel = computed(() => props.label || t("common.hint"));
 </script>
 
 <template>
@@ -28,7 +28,7 @@ withDefaults(
         buttonClass ??
         'inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-border text-[10px] leading-none text-muted-foreground hover:bg-accent/50'
       "
-      :aria-label="t('common.hintAria', { label })"
+      :aria-label="t('common.hintAria', { label: resolvedLabel })"
     >
       ?
     </button>

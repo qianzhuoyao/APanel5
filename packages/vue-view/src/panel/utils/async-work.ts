@@ -1,13 +1,14 @@
 import { shallowRef } from "vue";
 import { resolveLocale, tForLocale } from "@arronqzy/i18n";
 
-export type MediaFileKind = "image" | "audio" | "video" | "json";
+export type MediaFileKind = "image" | "audio" | "video" | "json" | "model3d";
 
 export const FILE_SIZE_LIMITS: Record<MediaFileKind, number> = {
   image: 8 * 1024 * 1024,
   audio: 20 * 1024 * 1024,
   video: 40 * 1024 * 1024,
   json: 24 * 1024 * 1024,
+  model3d: 48 * 1024 * 1024,
 };
 
 const JSON_WORKER_THRESHOLD = 128 * 1024;

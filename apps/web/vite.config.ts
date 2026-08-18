@@ -3,15 +3,49 @@ import { fileURLToPath } from "node:url";
 
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
-import { webllmAssistant } from "@arronqzy/webllm-assistant/vite";
+import { webllmAssistant } from "../../packages/webllm-assistant/src/vite-plugin.ts";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const monorepoRoot = path.resolve(__dirname, "../..");
+const scene3dNodeModules = path.resolve(
+  monorepoRoot,
+  "packages/view-scene3d/node_modules"
+);
+
+/** 统一从 view-scene3d 包解析 R3F 生态依赖（pnpm 隔离下 apps/web 无法直接 hoist）。 */
+const scene3dRuntimePackages = [
+  "@react-three/fiber",
+  "@react-three/drei",
+  "@react-three/postprocessing",
+  "@react-three/a11y",
+  "@react-three/xr",
+  "@react-three/flex",
+  "@react-three/csg",
+  "@react-three/cannon",
+  "@react-three/rapier",
+  "@react-three/p2",
+  "@react-three/gpu-pathtracer",
+  "@react-spring/three",
+  "@use-gesture/react",
+  "postprocessing",
+  "valtio",
+  "leva",
+  "maath",
+  "miniplex",
+  "lamina",
+  "three-stdlib",
+];
+
+const scene3dPkgAliases = scene3dRuntimePackages.map((pkg) => ({
+  find: pkg,
+  replacement: path.resolve(scene3dNodeModules, pkg),
+}));
 
 export default defineConfig({
   cacheDir: path.resolve(__dirname, ".vite-cache"),
   plugins: [react(), webllmAssistant()],
   resolve: {
+    dedupe: ["react", "react-dom", "three"],
     alias: [
       {
         find: "@arronqzy/abuilder/styles.css",
@@ -65,6 +99,34 @@ export default defineConfig({
         replacement: path.resolve(monorepoRoot, "packages/rx-store/src/index.ts"),
       },
       {
+        find: "@arronqzy/view-scene3d/react/ecosystem",
+        replacement: path.resolve(
+          monorepoRoot,
+          "packages/view-scene3d/src/react/ecosystem.ts"
+        ),
+      },
+      {
+        find: "@arronqzy/view-scene3d/react",
+        replacement: path.resolve(
+          monorepoRoot,
+          "packages/view-scene3d/src/react/index.ts"
+        ),
+      },
+      {
+        find: "@arronqzy/view-scene3d/vue",
+        replacement: path.resolve(
+          monorepoRoot,
+          "packages/view-scene3d/src/vue/Scene3dNodeContent.vue"
+        ),
+      },
+      {
+        find: "@arronqzy/view-scene3d",
+        replacement: path.resolve(
+          monorepoRoot,
+          "packages/view-scene3d/src/index.ts"
+        ),
+      },
+      {
         find: "@arronqzy/view-table",
         replacement: path.resolve(
           monorepoRoot,
@@ -92,6 +154,20 @@ export default defineConfig({
           "packages/webllm-assistant/vendor/bundled/web-llm/lib/index.js"
         ),
       },
+      {
+        find: /^three$/,
+        replacement: path.resolve(
+          monorepoRoot,
+          "packages/view-scene3d/node_modules/three"
+        ),
+      },
+      {
+        find: /^three\//,
+        replacement:
+          path.resolve(monorepoRoot, "packages/view-scene3d/node_modules/three") +
+          "/",
+      },
+      ...scene3dPkgAliases,
     ],
   },
   server: {
@@ -108,6 +184,10 @@ export default defineConfig({
   },
   optimizeDeps: {
     exclude: ["@mlc-ai/web-llm"],
+    include: [
+      "three",
+      ...scene3dRuntimePackages,
+    ],
   },
   build: {
     commonjsOptions: {

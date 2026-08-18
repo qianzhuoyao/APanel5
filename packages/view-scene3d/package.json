@@ -1,0 +1,50 @@
+{
+  "name": "@arronqzy/view-scene3d",
+  "version": "0.1.0",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./react": "./src/react/index.ts",
+    "./react/ecosystem": "./src/react/ecosystem.ts",
+    "./vue": "./src/vue/Scene3dNodeContent.vue"
+  },
+  "files": ["src"],
+  "dependencies": {
+    "@arronqzy/i18n": "workspace:*",
+    "@react-spring/three": "^9.7.5",
+    "@react-three/a11y": "^3.0.0",
+    "@react-three/cannon": "^6.6.0",
+    "@react-three/csg": "^3.0.0",
+    "@react-three/drei": "^9.122.0",
+    "@react-three/fiber": "^8.17.14",
+    "@react-three/flex": "^1.0.1",
+    "@react-three/gpu-pathtracer": "^0.3.2",
+    "@react-three/p2": "^0.0.6",
+    "@react-three/postprocessing": "^2.19.1",
+    "@react-three/rapier": "^1.4.0",
+    "@react-three/xr": "^5.7.1",
+    "@use-gesture/react": "^10.3.1",
+    "lamina": "^1.1.1",
+    "leva": "^0.9.35",
+    "maath": "^0.10.8",
+    "miniplex": "^2.0.0",
+    "postprocessing": "^6.36.0",
+    "three": "^0.172.0",
+    "three-stdlib": "^2.35.0",
+    "valtio": "^2.3.2"
+  },
+  "peerDependencies": {
+    "react": ">=18",
+    "react-dom": ">=18",
+    "vue": "^3.4.0"
+  },
+  "devDependencies": {
+    "@arronqzy/typescript-config": "workspace:*",
+    "@react-three/gltfjsx": "^4.3.4",
+    "@react-three/test-renderer": "^8.2.1",
+    "@types/react": "^19.0.1",
+    "@types/three": "^0.172.0",
+    "typescript": "^5.5.4"
+  }
+}

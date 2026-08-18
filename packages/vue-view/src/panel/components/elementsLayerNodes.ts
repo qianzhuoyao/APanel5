@@ -17,6 +17,7 @@ import { buildChartOption, CHART_TYPES } from "../utils/chartOptionBuilder";
 import { PREVIEW_LAYOUT_EVENT } from "../utils/panelStateIO";
 import { cssTextLineHeight, cssTextAlignStyle } from "../utils/panelElementDefaults";
 import TableNodeContent from "./table/TableNodeContent.vue";
+import Scene3dNodeContent from "@arronqzy/view-scene3d/vue";
 
 export { CHART_TYPES };
 
@@ -789,6 +790,11 @@ export const ReferenceNodeContent = defineComponent({
                         })
                       : node.materialType === "geometry"
                         ? h(GeometryNodeContent, { element: node })
+                        : node.materialType === "scene3d"
+                          ? h(Scene3dNodeContent, {
+                              config: node.scene3d,
+                              previewMode: p.previewMode,
+                            })
                         : node.materialType === "table"
                           ? h(TableNodeContent, { element: node })
                           : h("div", { class: "h-full w-full" }),

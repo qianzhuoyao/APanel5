@@ -38,10 +38,8 @@ import { ScopeConfigProvider } from "./scope-config/ScopeConfigContext";
 import { ScopeTemplateWarningsPanel } from "./scope-config/ScopeTemplateWarningsPanel";
 import { PanelConfigTableSection } from "./table/PanelConfigTableSection";
 import { cssTextLineHeight, cssTextAlignStyle } from "../utils/panelElementDefaults";
-import {
-  highlightConfigField,
-  subscribeRevealPanelConfig,
-} from "../ai/revealConfigField";
+import { highlightConfigField, subscribeRevealPanelConfig } from "../ai/revealConfigField";
+import { PanelConfigScene3dSection } from "./config/PanelConfigScene3dSection";
 import { readFileAsDataUrl, runBusyTask } from "../utils/async-work";
 
 type UpdateElement = (
@@ -3491,6 +3489,24 @@ export function PanelConfigSidebar({
               </>,
               true,
               [t("panel.material.geometry"), "geometry", t("panel.config.shape"), "canvas", t("panel.config.searchKwScript"), t("panel.config.searchKwSketch")]
+            )
+          ) : selectedElement.materialType === "scene3d" ? (
+            renderSection(
+              "scene3dConfig",
+              t("panel.config.sectionScene3d"),
+              <PanelConfigScene3dSection
+                element={selectedElement}
+                updateElement={updateElement}
+              />,
+              true,
+              [
+                t("panel.material.scene3d"),
+                "3d",
+                "glb",
+                t("panel.config.scene3dUploadModels"),
+                t("panel.config.groupScene3dCamera"),
+                t("panel.config.groupScene3dModelAnim"),
+              ]
             )
           ) : selectedElement.materialType === "grid" ? (
             renderSection(

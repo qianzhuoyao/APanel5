@@ -31,6 +31,7 @@ const MATERIAL_LABEL_KEYS: Record<string, string> = {
   audio: "panel.material.audio",
   reference: "panel.material.reference",
   geometry: "panel.material.geometry",
+  scene3d: "panel.material.scene3d",
   table: "panel.material.table",
 };
 
@@ -65,6 +66,7 @@ export function getDefaultCategories(t: TranslateFn): MaterialCategory[] {
         { id: "text", title: t("panel.material.text") },
         { id: "table", title: t("panel.material.table") },
         { id: "geometry", title: t("panel.material.geometry") },
+        { id: "scene3d", title: t("panel.material.scene3d") },
         { id: "grid", title: t("panel.material.grid") },
         { id: "image", title: t("panel.material.image") },
         { id: "reference", title: t("panel.material.reference") },

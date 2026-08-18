@@ -1,5 +1,6 @@
 import type { TranslateFn } from "@arronqzy/i18n";
 import { tForLocale } from "@arronqzy/i18n";
+import { createDefaultScene3dConfig } from "@arronqzy/view-scene3d";
 import type { PanelChartConfig, PanelLayer, PanelElement } from "../types";
 import { createDefaultTableConfig, type PanelTableConfig } from "@arronqzy/view-table";
 
@@ -21,6 +22,7 @@ const DEFAULT_NODE_NAME_KEYS: Record<string, string> = {
   audio: "panel.defaults.audio",
   reference: "panel.defaults.reference",
   geometry: "panel.defaults.geometry",
+  scene3d: "panel.defaults.scene3d",
   table: "panel.defaults.table",
 };
 
@@ -80,6 +82,8 @@ export function getDefaultSizeByMaterial(materialType: string) {
       return { width: 280, height: 180 };
     case "geometry":
       return { width: 220, height: 220 };
+    case "scene3d":
+      return { width: 480, height: 320 };
     case "table":
       return { width: 480, height: 280 };
     default:
@@ -214,4 +218,9 @@ export function getDefaultTableConfig(
   if (cfg.columns?.[1]) cfg.columns[1].title = t("panel.config.tableColStatus");
   if (cfg.columns?.[2]) cfg.columns[2].title = t("panel.config.tableColScore");
   return cfg;
+}
+
+export function getDefaultScene3dConfigForMaterial(materialType: string) {
+  if (materialType !== "scene3d") return {};
+  return { scene3d: createDefaultScene3dConfig() };
 }

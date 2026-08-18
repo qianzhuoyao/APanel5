@@ -15,6 +15,8 @@ import {
   VideoNodeContent,
 } from "./elementsLayerNodes";
 import TableNodeContent from "./table/TableNodeContent.vue";
+import Scene3dNodeContent from "@arronqzy/view-scene3d/vue";
+import { mergeScene3dConfig } from "@arronqzy/view-scene3d";
 import type { TableCellActionHandler } from "./table/TableNodeContent.vue";
 import { comparePanelElementsPaintOrder } from "../utils/gridPlacement";
 import {
@@ -113,6 +115,17 @@ const NodeContent = defineComponent({
       }
       if (el.materialType === "geometry") {
         return h(GeometryNodeContent, { element: el });
+      }
+      if (el.materialType === "scene3d") {
+        return h(Scene3dNodeContent, {
+          config: el.scene3d,
+          previewMode: p.previewMode,
+          selected: p.selected,
+          onUpdateConfig: (patch) =>
+            p.updateElement(el.id, {
+              scene3d: mergeScene3dConfig({ ...el.scene3d, ...patch }),
+            }),
+        });
       }
       if (el.materialType === "image") {
         return h(ImageNodeContent, { element: el });

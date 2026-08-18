@@ -67,6 +67,7 @@ export function SelectLayer({
         // 只允许左键触发框选，右键不参与选区变更
         if (input && input.button !== 0) return false;
         const target = (input?.target as HTMLElement | null) ?? null;
+        if (target?.closest("[data-scene3d-orbit-active='true']")) return false;
         const isShift = !!input?.shiftKey;
         if (isShift) return true;
 
@@ -95,6 +96,10 @@ export function SelectLayer({
         }
         // 已有多选时，默认应该是拖动移动；只有按住 shift 才继续框选/追加
         const target = e.inputEvent.target as HTMLElement | null;
+        if (target?.closest("[data-scene3d-orbit-active='true']")) {
+          e.stop();
+          return;
+        }
         const selectable = target?.closest(".rv-selectable") as HTMLElement | null;
         const id = selectable?.dataset.elementId;
         const isShift = (e.inputEvent as MouseEvent | undefined)?.shiftKey ?? false;

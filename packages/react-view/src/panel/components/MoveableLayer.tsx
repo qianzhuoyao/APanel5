@@ -497,6 +497,10 @@ export function MoveableLayer({
       throttleResize={0}
       throttleRotate={0}
       onDragStart={(e: any) => {
+        if ((e.target as HTMLElement | null)?.closest("[data-scene3d-orbit-active='true']")) {
+          e.stop?.();
+          return;
+        }
         const id = resolveSingleEventId(e.target as HTMLElement | null);
         if (!id) return;
         const data = elementsById.get(id);
@@ -528,6 +532,10 @@ export function MoveableLayer({
         e.target.style.top = `${sy + ty}px`;
       }}
       onDragGroupStart={(e: any) => {
+        if ((e.target as HTMLElement | null)?.closest("[data-scene3d-orbit-active='true']")) {
+          e.stop?.();
+          return;
+        }
         e.events.forEach((ev: any) => {
           const id = ev.target ? getId(ev.target) : null;
           if (!id) return;

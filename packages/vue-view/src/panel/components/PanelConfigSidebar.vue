@@ -20,6 +20,7 @@ import PanelConfigTextSection from "./config/PanelConfigTextSection.vue";
 import PanelConfigAudioSection from "./config/PanelConfigAudioSection.vue";
 import PanelConfigVideoSection from "./config/PanelConfigVideoSection.vue";
 import PanelConfigGeometrySection from "./config/PanelConfigGeometrySection.vue";
+import PanelConfigScene3dSection from "./config/PanelConfigScene3dSection.vue";
 import PanelConfigGridSection from "./config/PanelConfigGridSection.vue";
 import PanelConfigGridChildSpan from "./config/PanelConfigGridChildSpan.vue";
 import PanelConfigReferenceSection from "./config/PanelConfigReferenceSection.vue";
@@ -331,6 +332,16 @@ watch(
               :force-open="forceOpenSections"
               :update-element="updateElement"
               @update:open="(v) => setSectionExpanded('geometryConfig', v)"
+            />
+
+            <PanelConfigScene3dSection
+              v-if="materialType === 'scene3d' && shouldShowSection('scene3dConfig', t('panel.config.sectionScene3d'), [t('panel.material.scene3d'), '3d', 'glb', t('panel.config.groupScene3dCamera')])"
+              :element="selectedElement"
+              :is-editable="isNodeEditable"
+              :open="isSectionExpanded('scene3dConfig')"
+              :force-open="forceOpenSections"
+              :update-element="updateElement"
+              @update:open="(v) => setSectionExpanded('scene3dConfig', v)"
             />
 
             <PanelConfigGridSection

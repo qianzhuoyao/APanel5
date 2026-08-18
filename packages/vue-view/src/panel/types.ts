@@ -56,6 +56,7 @@ export type ReferenceCopyMode = "shallow" | "deep";
 
 export type { PanelTableConfig } from "@arronqzy/view-table";
 import type { PanelTableConfig } from "@arronqzy/view-table";
+import type { Scene3dConfig } from "@arronqzy/view-scene3d";
 
 export type PanelElement = {
   id: string;
@@ -101,6 +102,7 @@ export type PanelElement = {
   geometryColor?: string;
   geometryScript?: string;
   geometrySketchDataUrl?: string;
+  scene3d?: Scene3dConfig;
   style?: PanelElementStyle;
   x: number;
   y: number;

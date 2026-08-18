@@ -27,10 +27,10 @@ import {
 } from "./chunk-KT4PABRH.js";
 import {
   require_react
-} from "./chunk-FYB3GGWZ.js";
+} from "./chunk-ECT2SSAV.js";
 import {
   __toESM
-} from "./chunk-DC5AMYBS.js";
+} from "./chunk-DLJ4GP37.js";
 
 // ../../node_modules/.pnpm/react-infinite-viewer@0.28.1/node_modules/react-infinite-viewer/dist/infinite-viewer.esm.js
 var import_react = __toESM(require_react());

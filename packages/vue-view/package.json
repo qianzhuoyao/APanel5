@@ -20,6 +20,7 @@
     "@arronqzy/blueprint-dsl": "workspace:*",
     "@arronqzy/i18n": "workspace:*",
     "@arronqzy/rx-store": "workspace:*",
+    "@arronqzy/view-scene3d": "workspace:*",
     "@arronqzy/view-table": "workspace:*",
     "@arronqzy/vue-blueprint": "workspace:*",
     "@arronqzy/vue-rx-store": "workspace:*",

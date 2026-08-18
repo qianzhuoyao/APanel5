@@ -20,7 +20,7 @@ import {
   setUseStrictIteration,
   setUseStrictShallowCopy
 } from "./chunk-6RQ63IDK.js";
-import "./chunk-DC5AMYBS.js";
+import "./chunk-DLJ4GP37.js";
 export {
   Immer2 as Immer,
   applyPatches,

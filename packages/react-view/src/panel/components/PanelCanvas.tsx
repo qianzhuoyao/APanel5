@@ -172,6 +172,7 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
       if (!viewer) return;
       const target = e.target as HTMLElement | null;
       if (
+        target?.closest("[data-scene3d-orbit-active='true']") ||
         target?.closest("input, textarea, select, [contenteditable='true']") ||
         target?.closest("[role='dialog']")
       ) {
@@ -448,6 +449,8 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
       }
     };
     const onMouseDown = (e: MouseEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target?.closest("[data-scene3d-orbit-active='true']")) return;
       // 右键 或 mac 上 ctrl+左键
       const isRightLike = e.button === 2 || (e.button === 0 && e.ctrlKey);
       if (!isRightLike) return;

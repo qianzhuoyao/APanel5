@@ -39,6 +39,33 @@ export default defineConfig({
         find: "@arronqzy/view-table",
         replacement: path.resolve(monorepoRoot, "packages/view-table/src/index.ts"),
       },
+      {
+        find: "@arronqzy/view-scene3d/vue",
+        replacement: path.resolve(
+          monorepoRoot,
+          "packages/view-scene3d/src/vue/Scene3dNodeContent.vue"
+        ),
+      },
+      {
+        find: "@arronqzy/view-scene3d",
+        replacement: path.resolve(
+          monorepoRoot,
+          "packages/view-scene3d/src/index.ts"
+        ),
+      },
+      {
+        find: /^three$/,
+        replacement: path.resolve(
+          monorepoRoot,
+          "packages/view-scene3d/node_modules/three"
+        ),
+      },
+      {
+        find: /^three\//,
+        replacement:
+          path.resolve(monorepoRoot, "packages/view-scene3d/node_modules/three") +
+          "/",
+      },
     ],
   },
   server: {

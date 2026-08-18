@@ -106,6 +106,14 @@ const common =
       <polygon points="50,36 54,42 50,48 42,48 38,42 42,36" class="fill-primary/70" />
     </svg>
   </div>
+  <div v-else-if="id === 'scene3d'" :class="common">
+    <svg viewBox="0 0 80 60" class="h-full w-full">
+      <polygon points="40,8 62,22 62,44 40,56 18,44 18,22" class="fill-primary/20 stroke-primary/80" stroke-width="1.5" />
+      <polygon points="40,8 62,22 40,32 18,22" class="fill-primary/45" />
+      <polygon points="40,32 62,22 62,44 40,56" class="fill-primary/30" />
+      <polygon points="40,32 18,22 18,44 40,56" class="fill-primary/55" />
+    </svg>
+  </div>
   <div v-else-if="id === 'reference'" :class="common">
     <div class="absolute inset-2 rounded-md border border-dashed border-primary/70 bg-primary/10" />
     <div class="absolute inset-0 flex items-center justify-center text-[10px] text-primary/80">

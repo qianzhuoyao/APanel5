@@ -16,7 +16,7 @@ import {
   tags
 } from "./chunk-JUSIWRDT.js";
 import "./chunk-XSOMZ73F.js";
-import "./chunk-DC5AMYBS.js";
+import "./chunk-DLJ4GP37.js";
 
 // ../../node_modules/.pnpm/@lezer+lr@1.4.10/node_modules/@lezer/lr/dist/index.js
 var Stack = class _Stack {

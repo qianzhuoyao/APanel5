@@ -7,6 +7,8 @@ import { PREVIEW_LAYOUT_EVENT } from "../utils/panelStateIO";
 import { TableNodeContent, type TableCellActionHandler } from "./table/TableNodeContent";
 import { comparePanelElementsPaintOrder } from "../utils/gridPlacement";
 import { cssTextLineHeight, cssTextAlignStyle } from "../utils/panelElementDefaults";
+import { mergeScene3dConfig } from "@arronqzy/view-scene3d";
+import { Scene3dNodeContent } from "@arronqzy/view-scene3d/react";
 import {
   createViewEventSignal,
   snapshotDomEvent,
@@ -790,6 +792,8 @@ function ReferenceNodeContent({
                 />
               ) : node.materialType === "geometry" ? (
                 <GeometryNodeContent element={node} />
+              ) : node.materialType === "scene3d" ? (
+                <Scene3dNodeContent config={node.scene3d} previewMode />
               ) : node.materialType === "table" ? (
                 <TableNodeContent element={node} interactive={false} />
               ) : (
@@ -853,6 +857,11 @@ export const ElementsLayer = React.memo(function ElementsLayer({
             data-element-id={el.id}
             onMouseDown={(e) => {
               if (previewMode) return;
+              const target = e.target as HTMLElement | null;
+              if (target?.closest("[data-scene3d-orbit-active='true']")) {
+                e.stopPropagation();
+                return;
+              }
               if (e.button !== 0) return;
               // 单击选中（与 Selecto 的框选互补）
               if (e.shiftKey) {
@@ -910,6 +919,17 @@ export const ElementsLayer = React.memo(function ElementsLayer({
               <VideoNodeContent element={el} selected={isSelected} />
             ) : el.materialType === "geometry" ? (
               <GeometryNodeContent element={el} />
+            ) : el.materialType === "scene3d" ? (
+              <Scene3dNodeContent
+                config={el.scene3d}
+                previewMode={previewMode}
+                selected={isSelected}
+                updateConfig={(patch) =>
+                  updateElement(el.id, {
+                    scene3d: mergeScene3dConfig({ ...el.scene3d, ...patch }),
+                  })
+                }
+              />
             ) : el.materialType === "image" ? (
               <ImageNodeContent element={el} />
             ) : el.materialType === "table" ? (

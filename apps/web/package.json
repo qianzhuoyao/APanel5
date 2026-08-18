@@ -18,6 +18,7 @@
     "@arronqzy/react-view": "workspace:*",
     "@arronqzy/rx-store": "workspace:*",
     "@arronqzy/ui": "workspace:*",
+    "@arronqzy/webllm-assistant": "workspace:*",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },

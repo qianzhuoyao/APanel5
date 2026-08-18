@@ -87,10 +87,10 @@ import {
 } from "./chunk-KT4PABRH.js";
 import {
   require_react
-} from "./chunk-FYB3GGWZ.js";
+} from "./chunk-ECT2SSAV.js";
 import {
   __toESM
-} from "./chunk-DC5AMYBS.js";
+} from "./chunk-DLJ4GP37.js";
 
 // ../../node_modules/.pnpm/react-moveable@0.56.0/node_modules/react-moveable/dist/moveable.esm.js
 var React = __toESM(require_react());

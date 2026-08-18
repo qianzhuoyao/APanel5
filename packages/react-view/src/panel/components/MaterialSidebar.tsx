@@ -68,6 +68,7 @@ const MATERIAL_LABEL_KEYS: Record<string, string> = {
   audio: "panel.material.audio",
   reference: "panel.material.reference",
   geometry: "panel.material.geometry",
+  scene3d: "panel.material.scene3d",
   table: "panel.material.table",
 };
 
@@ -298,6 +299,19 @@ function MaterialPreview({ id }: { id: string }) {
     );
   }
 
+  if (id === "scene3d") {
+    return (
+      <div className={common}>
+        <svg viewBox="0 0 80 60" className="h-full w-full">
+          <polygon points="40,8 62,22 62,44 40,56 18,44 18,22" className="fill-primary/20 stroke-primary/80" strokeWidth="1.5" />
+          <polygon points="40,8 62,22 40,32 18,22" className="fill-primary/45" />
+          <polygon points="40,32 62,22 62,44 40,56" className="fill-primary/30" />
+          <polygon points="40,32 18,22 18,44 40,56" className="fill-primary/55" />
+        </svg>
+      </div>
+    );
+  }
+
   if (id === "reference") {
     return (
       <div className={common}>
@@ -387,6 +401,7 @@ function getDefaultCategories(t: (key: string) => string): MaterialCategory[] {
         { id: "text", title: t("panel.material.text") },
         { id: "table", title: t("panel.material.table") },
         { id: "geometry", title: t("panel.material.geometry") },
+        { id: "scene3d", title: t("panel.material.scene3d") },
         { id: "grid", title: t("panel.material.grid") },
         { id: "image", title: t("panel.material.image") },
         { id: "reference", title: t("panel.material.reference") },
