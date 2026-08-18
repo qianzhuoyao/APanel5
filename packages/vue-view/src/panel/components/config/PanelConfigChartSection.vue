@@ -176,7 +176,7 @@ function onOptionJsonChange(v: string) {
           class="w-full"
           :min="1"
           :placeholder="t('panel.config.barWidthAuto')"
-          :value="element.chart?.barWidth ?? null"
+          :value="element.chart?.barWidth ?? undefined"
           :disabled="!isEditable"
           @update:value="(v) => {
             if (v == null || v === '') {
