@@ -629,7 +629,7 @@ function Scene3dScene({
       .normalize();
     const nextPos = center.clone().add(dir.multiplyScalar(distance));
 
-    const fittedCamera = {
+    const fittedCamera: Scene3dCameraState = {
       ...config.camera,
       position: [nextPos.x, nextPos.y, nextPos.z],
       target: [center.x, center.y, center.z],

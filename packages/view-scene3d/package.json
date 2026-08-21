@@ -1,17 +1,23 @@
 {
   "name": "@arronqzy/view-scene3d",
   "version": "0.1.1",
+  "description": "Shared 3D scene types and React/Vue renderers for Abuilder (R3F + Three.js)",
   "license": "MIT",
   "type": "module",
+  "files": [
+    "src"
+  ],
+  "main": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
     "./react": "./src/react/index.ts",
     "./react/ecosystem": "./src/react/ecosystem.ts",
     "./vue": "./src/vue/Scene3dNodeContent.vue"
   },
-  "files": [
-    "src"
-  ],
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.build.json --noEmit",
+    "build": "pnpm run typecheck"
+  },
   "dependencies": {
     "@arronqzy/i18n": "workspace:*",
     "@react-spring/three": "^9.7.5",
@@ -41,6 +47,17 @@
     "react-dom": ">=18",
     "vue": "^3.4.0"
   },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    },
+    "react-dom": {
+      "optional": true
+    },
+    "vue": {
+      "optional": true
+    }
+  },
   "devDependencies": {
     "@arronqzy/typescript-config": "workspace:*",
     "@react-three/gltfjsx": "^4.3.4",
@@ -48,5 +65,8 @@
     "@types/react": "^19.0.1",
     "@types/three": "^0.172.0",
     "typescript": "^5.5.4"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
