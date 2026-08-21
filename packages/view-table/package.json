@@ -1,6 +1,6 @@
 {
   "name": "@arronqzy/view-table",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "High-performance table transform / mapping / condition engine for Abuilder",
   "license": "MIT",
   "type": "module",

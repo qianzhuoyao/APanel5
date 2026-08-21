@@ -1,6 +1,6 @@
 {
   "name": "@arronqzy/rx-store",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "RxJS-based state store for Abuilder",
   "license": "MIT",
   "files": [
