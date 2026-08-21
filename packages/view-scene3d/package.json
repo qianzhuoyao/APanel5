@@ -1,6 +1,6 @@
 {
   "name": "@arronqzy/view-scene3d",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "license": "MIT",
   "type": "module",
   "exports": {
@@ -9,7 +9,9 @@
     "./react/ecosystem": "./src/react/ecosystem.ts",
     "./vue": "./src/vue/Scene3dNodeContent.vue"
   },
-  "files": ["src"],
+  "files": [
+    "src"
+  ],
   "dependencies": {
     "@arronqzy/i18n": "workspace:*",
     "@react-spring/three": "^9.7.5",
