@@ -30,7 +30,7 @@ import {
   Vector3,
   type MeshStandardMaterial,
 } from "three";
-import { useI18n } from "@arronqzy/i18n/react";
+import { useI18nOptional } from "@arronqzy/i18n/react";
 import { Scene3dA11y, Scene3dA11yAnnouncer } from "./Scene3dA11y";
 import { Scene3dEffects } from "./Scene3dEffects";
 import { Scene3dPhysics } from "./Scene3dPhysics";
@@ -809,7 +809,7 @@ export function Scene3dNodeContent({
   updateConfig,
   onObjectNamesDiscovered,
 }: Scene3dNodeContentProps) {
-  const { t } = useI18n();
+  const { t } = useI18nOptional();
   const merged = useMemo(() => mergeScene3dConfig(config), [config]);
   const [cKeyHeld, setCKeyHeld] = useState(false);
   const rootRef = useRef<HTMLDivElement | null>(null);

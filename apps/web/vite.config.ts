@@ -11,6 +11,10 @@ const scene3dNodeModules = path.resolve(
   monorepoRoot,
   "packages/view-scene3d/node_modules"
 );
+/** 强制与 apps/web 同源，避免 view-scene3d 内 React 19 与 web 的 React 18 双实例拆坏 Context。 */
+const webReact = path.resolve(__dirname, "node_modules/react");
+const webReactDom = path.resolve(__dirname, "node_modules/react-dom");
+const i18nSrc = path.resolve(monorepoRoot, "packages/i18n/src");
 
 /** 统一从 view-scene3d 包解析 R3F 生态依赖（pnpm 隔离下 apps/web 无法直接 hoist）。 */
 const scene3dRuntimePackages = [
@@ -45,8 +49,31 @@ export default defineConfig({
   cacheDir: path.resolve(__dirname, ".vite-cache"),
   plugins: [react(), webllmAssistant()],
   resolve: {
-    dedupe: ["react", "react-dom", "three"],
+    dedupe: ["react", "react-dom", "three", "@arronqzy/i18n"],
     alias: [
+      { find: /^react$/, replacement: webReact },
+      { find: /^react\/jsx-runtime$/, replacement: path.join(webReact, "jsx-runtime.js") },
+      {
+        find: /^react\/jsx-dev-runtime$/,
+        replacement: path.join(webReact, "jsx-dev-runtime.js"),
+      },
+      { find: /^react-dom$/, replacement: webReactDom },
+      {
+        find: /^react-dom\/client$/,
+        replacement: path.join(webReactDom, "client.js"),
+      },
+      {
+        find: "@arronqzy/i18n/react",
+        replacement: path.join(i18nSrc, "react/index.ts"),
+      },
+      {
+        find: "@arronqzy/i18n/vue",
+        replacement: path.join(i18nSrc, "vue/index.ts"),
+      },
+      {
+        find: "@arronqzy/i18n",
+        replacement: path.join(i18nSrc, "index.ts"),
+      },
       {
         find: "@arronqzy/abuilder/styles.css",
         replacement: path.resolve(
