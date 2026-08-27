@@ -1,8 +1,10 @@
+import { execSync } from "node:child_process";
+import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import react from "@vitejs/plugin-react";
-import { defineConfig } from "vite";
+import { defineConfig, type Plugin } from "vite";
 import { webllmAssistant } from "../../packages/webllm-assistant/src/vite-plugin.ts";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -45,9 +47,92 @@ const scene3dPkgAliases = scene3dRuntimePackages.map((pkg) => ({
   replacement: path.resolve(scene3dNodeModules, pkg),
 }));
 
+const abuilderStylesCss = path.resolve(
+  monorepoRoot,
+  "packages/abuilder/dist/styles.css"
+);
+const uiStylesCss = path.resolve(monorepoRoot, "packages/ui/dist/styles.css");
+const reactViewStylesCss = path.resolve(
+  monorepoRoot,
+  "packages/react-view/dist/styles.css"
+);
+
+/** dist CSS 被 gitignore；直接跑 vite 时若文件缺失则按依赖顺序补齐。 */
+const cssBuildTargets = [
+  {
+    file: uiStylesCss,
+    cwd: path.resolve(monorepoRoot, "packages/ui"),
+  },
+  {
+    file: path.resolve(
+      monorepoRoot,
+      "packages/react-blueprint/dist/blueprint.css"
+    ),
+    cwd: path.resolve(monorepoRoot, "packages/react-blueprint"),
+  },
+  {
+    file: reactViewStylesCss,
+    cwd: path.resolve(monorepoRoot, "packages/react-view"),
+  },
+  {
+    file: abuilderStylesCss,
+    cwd: path.resolve(monorepoRoot, "packages/abuilder"),
+  },
+] as const;
+
+function ensureWorkspaceCss() {
+  for (const { file, cwd } of cssBuildTargets) {
+    if (fs.existsSync(file)) continue;
+    execSync("pnpm run build:css", { cwd, stdio: "inherit" });
+  }
+}
+
+function ensureWorkspaceCssPlugin(): Plugin {
+  return {
+    name: "ensure-workspace-css",
+    enforce: "pre",
+    config() {
+      ensureWorkspaceCss();
+    },
+  };
+}
+
+/** 在 package exports 解析失败时，强制落到 monorepo dist 路径。 */
+function resolveWorkspaceStylesPlugin(): Plugin {
+  const styleImports = new Map<string, string>([
+    ["@arronqzy/abuilder/styles.css", abuilderStylesCss],
+    ["@arronqzy/ui/styles.css", uiStylesCss],
+    ["@arronqzy/react-view/styles.css", reactViewStylesCss],
+  ]);
+
+  return {
+    name: "resolve-workspace-styles",
+    enforce: "pre",
+    resolveId(id) {
+      const target = styleImports.get(id);
+      if (!target) return null;
+      if (!fs.existsSync(target)) {
+        const buildTarget = cssBuildTargets.find((item) => item.file === target);
+        if (buildTarget) {
+          execSync("pnpm run build:css", {
+            cwd: buildTarget.cwd,
+            stdio: "inherit",
+          });
+        }
+      }
+      return target;
+    },
+  };
+}
+
 export default defineConfig({
   cacheDir: path.resolve(__dirname, ".vite-cache"),
-  plugins: [react(), webllmAssistant()],
+  plugins: [
+    ensureWorkspaceCssPlugin(),
+    resolveWorkspaceStylesPlugin(),
+    react(),
+    webllmAssistant(),
+  ],
   resolve: {
     dedupe: ["react", "react-dom", "three", "@arronqzy/i18n"],
     alias: [
@@ -76,32 +161,26 @@ export default defineConfig({
       },
       {
         find: "@arronqzy/abuilder/styles.css",
-        replacement: path.resolve(
-          monorepoRoot,
-          "packages/abuilder/dist/styles.css"
-        ),
+        replacement: abuilderStylesCss,
       },
       {
-        find: "@arronqzy/abuilder",
+        find: /^@arronqzy\/abuilder$/,
         replacement: path.resolve(monorepoRoot, "packages/abuilder/src/index.ts"),
       },
       {
         find: "@arronqzy/ui/styles.css",
-        replacement: path.resolve(monorepoRoot, "packages/ui/dist/styles.css"),
+        replacement: uiStylesCss,
       },
       {
         find: "@arronqzy/react-view/styles.css",
-        replacement: path.resolve(
-          monorepoRoot,
-          "packages/react-view/dist/styles.css"
-        ),
+        replacement: reactViewStylesCss,
       },
       {
-        find: "@arronqzy/ui",
+        find: /^@arronqzy\/ui$/,
         replacement: path.resolve(monorepoRoot, "packages/ui/index.ts"),
       },
       {
-        find: "@arronqzy/react-view",
+        find: /^@arronqzy\/react-view$/,
         replacement: path.resolve(
           monorepoRoot,
           "packages/react-view/src/index.ts"
