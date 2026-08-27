@@ -1,6 +1,6 @@
 {
   "name": "@arronqzy/abuilder",
-  "version": "1.1.16",
+  "version": "1.1.17",
   "description": "Abuilder 可视化编辑器 — 安装后即可通过 <App /> 渲染完整应用",
   "license": "MIT",
   "type": "module",

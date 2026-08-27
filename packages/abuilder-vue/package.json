@@ -1,6 +1,6 @@
 {
   "name": "@arronqzy/abuilder-vue",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "Abuilder Vue 3 可视化编辑器入口包",
   "license": "MIT",
   "type": "module",

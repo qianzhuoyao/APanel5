@@ -1,6 +1,6 @@
 {
   "name": "@arronqzy/vue-view",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "description": "Vue 3 visual view editor for Abuilder (Ant Design Vue)",
   "license": "MIT",
   "type": "module",
