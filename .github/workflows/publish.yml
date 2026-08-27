@@ -46,6 +46,7 @@ jobs:
       - name: Build publish artifacts
         run: |
           # Shared
+          pnpm -C packages/blueprint-dsl build
           pnpm -C packages/i18n build
           pnpm -C packages/view-table build
           pnpm -C packages/view-scene3d build

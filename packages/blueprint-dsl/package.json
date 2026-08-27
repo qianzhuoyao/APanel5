@@ -1,20 +1,28 @@
 {
   "name": "@arronqzy/blueprint-dsl",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "description": "Abuilder blueprint DSL runtime",
   "license": "MIT",
+  "type": "module",
   "files": [
-    "src",
+    "dist",
     "readme.md"
   ],
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
-    ".": "./src/index.ts"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
   },
   "scripts": {
     "lint": "eslint \"src/**/*.{ts,tsx}\"",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "build": "pnpm run typecheck",
-    "dev": "pnpm run typecheck --watch"
+    "build": "pnpm run typecheck && tsup",
+    "dev": "tsup --watch"
   },
   "dependencies": {
     "rxjs": "^7.8.2"
@@ -23,6 +31,7 @@
     "@arronqzy/eslint-config": "workspace:*",
     "@arronqzy/typescript-config": "workspace:*",
     "eslint": "^8.57.0",
+    "tsup": "^8.4.0",
     "typescript": "^5.5.4"
   },
   "publishConfig": {
