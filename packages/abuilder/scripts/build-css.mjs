@@ -34,6 +34,11 @@ function resolvePackageCss(id) {
     return path.join(monorepoRoot, "packages/react-view/dist/styles.css");
   }
   if (id === "@arronqzy/react-blueprint/blueprint.css") {
+    const distCss = path.join(
+      monorepoRoot,
+      "packages/react-blueprint/dist/blueprint.css"
+    );
+    if (fs.existsSync(distCss)) return distCss;
     return path.join(monorepoRoot, "packages/react-blueprint/src/blueprint.css");
   }
   if (id === "@xyflow/react/dist/style.css") {

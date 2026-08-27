@@ -1,16 +1,23 @@
 {
   "name": "@arronqzy/react-blueprint",
-  "version": "1.0.10",
+  "version": "1.0.11",
   "description": "",
+  "files": [
+    "index.ts",
+    "src",
+    "dist",
+    "README.md"
+  ],
   "main": "index.ts",
   "exports": {
     ".": "./index.ts",
-    "./blueprint.css": "./src/blueprint.css"
+    "./blueprint.css": "./dist/blueprint.css"
   },
   "scripts": {
     "lint": "eslint \"src/**/*.{ts,tsx}\"",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "build": "pnpm run lint && pnpm run typecheck && vite build",
+    "build:css": "mkdir -p dist && cp src/blueprint.css dist/blueprint.css",
+    "build": "pnpm run lint && pnpm run typecheck && pnpm run build:css",
     "dev": "vite"
   },
   "dependencies": {

@@ -53,6 +53,7 @@ jobs:
           pnpm -C packages/webllm-assistant build
           # React 栈
           pnpm -C packages/ui run build:css
+          pnpm -C packages/react-blueprint run build:css
           pnpm -C packages/react-view run build:css
           pnpm -C packages/abuilder build
           # Vue 栈（typecheck 作为发布前校验）
