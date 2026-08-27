@@ -4,10 +4,12 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "predev": "pnpm -C ../../packages/ui run build:css && pnpm -C ../../packages/react-blueprint run build:css && pnpm -C ../../packages/react-view run build:css && pnpm -C ../../packages/abuilder run build:css",
+    "build:deps": "pnpm -C ../../packages/ui run build:css && pnpm -C ../../packages/react-blueprint run build:css && pnpm -C ../../packages/react-view run build:css && pnpm -C ../../packages/abuilder run build:css",
+    "predev": "pnpm run build:deps",
     "dev": "vite",
     "lint": "eslint \"src/**/*.{ts,tsx}\"",
     "typecheck": "tsc --noEmit",
+    "prebuild": "pnpm run build:deps",
     "build": "pnpm run lint && pnpm run typecheck && vite build",
     "preview": "vite preview",
     "lint:legacy": "eslint \"src/**/*.ts\""
