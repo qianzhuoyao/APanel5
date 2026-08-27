@@ -7,7 +7,8 @@ Abuilder **一站式可视化编辑器** npm 包。安装后在 React 应用中�
 - **视图编辑**：拖拽物料、图层、缩放平移、多选、图表与 Scope 配置
 - **蓝图编辑**：节点连线、调试执行、蓝图库与执行日志
 - **工作区**：多项目、IndexedDB 持久化、导入导出
-- **在线预览**：独立预览页，支持 URL 参数打开指定工作区
+- **在线预览**：独立预览页，支持 URL 参数或外部工作区数据
+- **宿主集成**：事件订阅、预览快照、外部工作区加载与预览/编辑模式切换
 
 ## 安装
 
@@ -27,26 +28,160 @@ import "@arronqzy/abuilder/styles.css";
 createRoot(document.getElementById("root")!).render(<App />);
 ```
 
-### 可选配置
+### App 参数
+
+| 参数 | 说明 | 默认值 |
+|------|------|--------|
+| `className` | 编辑面板根节点 class | — |
+| `initialZoom` | 初始画布缩放 | `1` |
+| `defaultTheme` | 编辑器主题 `"dark"` / `"light"` | `"dark"` |
+| `locale` | 界面语言 `"zh-CN"` / `"en-US"`；省略则按 localStorage / 浏览器语言 | — |
+| `previewSearch` | 在线预览 URL 查询串；含 `?preview=online&projectId=...` 时进入预览 | `window.location.search` |
+| `preview` | `true` 为预览页，`false` 为编辑面板 | `false` |
+| `initialWorkspace` | 完整工作区数据；编辑模式加载到面板，预览模式直接渲染 | — |
 
 ```tsx
 <App
   className="h-screen"
   defaultTheme="dark"
   initialZoom={1}
-  locale="zh-CN" // 或 "en-US"；省略则按 localStorage / 浏览器语言 / zh-CN
+  locale="zh-CN"
+  preview={false}
+  initialWorkspace={savedWorkspace}
 />
 ```
 
 编辑器顶栏「设置 → 语言」可运行时切换中文 / English（写入 `localStorage` key `abuilder.locale`）。
 
-### 在线预览
+### 编辑 / 预览模式
 
-URL 带 `?preview=online&projectId=<工作区ID>` 时自动进入预览模式：
+```tsx
+// 编辑模式（默认）：加载工作区到面板
+<App key={workspace.id} initialWorkspace={workspace} />
+
+// 预览模式：根据工作区数据直接渲染预览页
+<App key={workspace.id} preview initialWorkspace={workspace} />
+```
+
+切换工作区时建议配合 `key`，确保完整重新加载。
+
+### 在线预览（URL）
+
+URL 带 `?preview=online&projectId=<工作区ID>` 时自动进入预览模式（从 IndexedDB 加载）：
 
 ```tsx
 <App previewSearch="?preview=online&projectId=xxx" />
 ```
+
+### 外部持久化完整流程
+
+```tsx
+import { useEffect, useState } from "react";
+import {
+  App,
+  addEventSubscription,
+  AbuilderEvents,
+  type WorkspaceData,
+} from "@arronqzy/abuilder";
+import "@arronqzy/abuilder/styles.css";
+
+function HostApp() {
+  const [workspace, setWorkspace] = useState<WorkspaceData | null>(null);
+  const [isPreview, setIsPreview] = useState(false);
+
+  useEffect(() => {
+    const sub = addEventSubscription(AbuilderEvents.workspaceSync, async (data) => {
+      await saveToMyBackend(data);
+      setWorkspace(data);
+    });
+    return () => sub.unsubscribe();
+  }, []);
+
+  if (!workspace) return <App />;
+
+  return (
+    <>
+      <button onClick={() => setIsPreview(false)}>编辑</button>
+      <button onClick={() => setIsPreview(true)}>预览</button>
+      <App
+        key={`${workspace.id}-${workspace.updatedAt}-${isPreview}`}
+        preview={isPreview}
+        initialWorkspace={workspace}
+      />
+    </>
+  );
+}
+```
+
+### 工作区事件订阅
+
+```ts
+import {
+  addEventSubscription,
+  AbuilderEvents,
+  type WorkspaceData,
+} from "@arronqzy/abuilder";
+
+const addSub = addEventSubscription(
+  AbuilderEvents.workspaceAdd,
+  async (workspace: WorkspaceData) => {
+    await saveToServer(workspace);
+  }
+);
+
+const syncSub = addEventSubscription(
+  AbuilderEvents.workspaceSync,
+  async (workspace) => {
+    await saveToServer(workspace);
+  }
+);
+
+addSub.unsubscribe();
+syncSub.unsubscribe();
+```
+
+| 事件 | 常量 | 触发时机 | 回调参数 |
+|------|------|----------|----------|
+| `workspace:add` | `AbuilderEvents.workspaceAdd` | 创建工作区成功 | `WorkspaceData` |
+| `workspace:sync` | `AbuilderEvents.workspaceSync` | 同步工作区成功 | `WorkspaceData` |
+
+`WorkspaceData`（即 `WorkspaceProjectRecord`）字段：
+
+| 字段 | 说明 |
+|------|------|
+| `id` | 工作区 ID |
+| `name` | 工作区名称 |
+| `createdAt` / `updatedAt` | 时间戳 |
+| `panelState` | 面板完整状态（rx-store） |
+| `blueprintDocument` | 蓝图文档 |
+| `blueprintMeta` | 蓝图元信息（名称、备注） |
+| `productName` | 产品名称 |
+| `titleIconDataUrl` | 标题图标（可选） |
+
+也可使用事件名字符串订阅，例如 `addEventSubscription("workspace:add", callback)`。
+
+### 获取预览快照
+
+```ts
+import { getPreviewSnapshot } from "@arronqzy/abuilder";
+
+const thumbnail = await getPreviewSnapshot({
+  maxWidth: 320,
+  maxHeight: 180,
+  mimeType: "image/jpeg",
+  quality: 0.85,
+});
+// 返回 "data:image/jpeg;base64,..."
+```
+
+| 参数 | 说明 | 默认值 |
+|------|------|--------|
+| `maxWidth` / `maxHeight` | 等比缩放上限 | 不限制 |
+| `mimeType` | `"image/png"` 或 `"image/jpeg"` | `"image/png"` |
+| `quality` | JPEG 质量 0–1 | `0.92` |
+| `backgroundColor` | 背景色 | `"#ffffff"` |
+
+需在 `App` / `ReactViewPanel` 或在线预览页已渲染且画布有内容时调用。
 
 ### 高级导出
 
@@ -56,6 +191,16 @@ URL 带 `?preview=online&projectId=<工作区ID>` 时自动进入预览模式：
 import {
   ReactViewPanel,
   ReactViewOnlinePreview,
+  addEventSubscription,
+  AbuilderEvents,
+  getPreviewSnapshot,
+} from "@arronqzy/abuilder";
+
+import type {
+  WorkspaceData,
+  WorkspaceProjectRecord,
+  AbuilderEventName,
+  GetPreviewSnapshotOptions,
 } from "@arronqzy/abuilder";
 ```
 
@@ -76,6 +221,16 @@ import {
 - React 18+
 - 构建工具需支持 CSS 导入（Vite / Webpack 5 等）
 - 根节点容器建议 `height: 100%`（样式已包含 `#root` / `#app` 规则）
+
+本地开发时若样式缺失，需先构建 CSS：
+
+```bash
+pnpm -C packages/ui run build:css
+pnpm -C packages/react-view run build:css
+pnpm -C packages/abuilder run build:css
+```
+
+`apps/web` 的 `pnpm dev` 会通过 `predev` 自动执行上述步骤。
 
 ## 许可证
 

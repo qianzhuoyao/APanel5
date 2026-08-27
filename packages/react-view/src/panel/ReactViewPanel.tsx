@@ -17,6 +17,10 @@ import { MoveableLayer } from "./components/MoveableLayer";
 import { buildChartOption, CHART_TYPES } from "./utils/chartOptionBuilder";
 import { readOutputScale, writeOutputScale } from "./utils/outputScale";
 import {
+  captureEditorPreviewSnapshot,
+  registerPreviewSnapshotProvider,
+} from "./library/preview-snapshot";
+import {
   assertFileSize,
   parseJsonText,
   readFileAsDataUrl,
@@ -356,11 +360,14 @@ function shouldClearSelectionOnBlank(target: HTMLElement | null) {
 export type ReactViewPanelProps = {
   initialZoom?: number;
   className?: string;
+  /** 外部传入的完整工作区数据，挂载后自动渲染 */
+  initialWorkspace?: WorkspaceProjectRecord | null;
 };
 
 export function ReactViewPanel({
   initialZoom = 1,
   className,
+  initialWorkspace = null,
 }: ReactViewPanelProps) {
   const { t, locale, setLocale } = useI18n();
   const messages = useMemo(() => getPanelMessages(t), [t]);
@@ -1253,7 +1260,21 @@ export function ReactViewPanel({
     setTitleIconDataUrl,
     panelRevision: `${historyCursor}|${allElements.length}`,
     onProjectApplied: handleWorkspaceProjectApplied,
+    initialWorkspace,
   });
+
+  useEffect(() => {
+    registerPreviewSnapshotProvider(async () => {
+      return captureEditorPreviewSnapshot({
+        canvasRoot: canvasRef.current,
+        allElements,
+        layers,
+        activeLayerId,
+        outputScale: readOutputScale(),
+      });
+    });
+    return () => registerPreviewSnapshotProvider(null);
+  }, [activeLayerId, allElements, canvasEl, layers]);
 
   const { triggerBlueprintNode, emitViewEvent, firedLifecyclePhases } = useBlueprintPageLifecycle({
     graph: blueprintGraph,

@@ -1,8 +1,23 @@
 name: Publish to NPM
 
+# push 到主分支时自动检查各包 version，仅发布 npm 上尚不存在的新版本
 on:
+  push:
+    branches:
+      - v5
+      - main
+      - master
+    paths:
+      - "packages/**"
+      - ".github/workflows/publish.yml"
+      - ".github/scripts/**"
   release:
     types: [published]
+  workflow_dispatch:
+
+concurrency:
+  group: npm-publish
+  cancel-in-progress: false
 
 jobs:
   publish-npm:
@@ -45,23 +60,26 @@ jobs:
           pnpm -C packages/vue-view build
           pnpm -C packages/abuilder-vue build
 
-      - name: Publish packages (dependency order)
+      - name: Publish packages (skip unchanged versions)
         run: |
+          chmod +x .github/scripts/publish-if-new.sh
+          publish_if_new() { .github/scripts/publish-if-new.sh "$1"; }
+
           # 框架无关
-          pnpm --filter @arronqzy/i18n publish --access public --no-git-checks
-          pnpm --filter @arronqzy/view-table publish --access public --no-git-checks
-          pnpm --filter @arronqzy/view-scene3d publish --access public --no-git-checks
-          pnpm --filter @arronqzy/webllm-assistant publish --access public --no-git-checks
-          pnpm --filter @arronqzy/blueprint-dsl publish --access public --no-git-checks
-          pnpm --filter @arronqzy/rx-store publish --access public --no-git-checks
+          publish_if_new @arronqzy/i18n
+          publish_if_new @arronqzy/view-table
+          publish_if_new @arronqzy/view-scene3d
+          publish_if_new @arronqzy/webllm-assistant
+          publish_if_new @arronqzy/blueprint-dsl
+          publish_if_new @arronqzy/rx-store
           # React 绑定
-          pnpm --filter @arronqzy/react-rx-store publish --access public --no-git-checks
-          pnpm --filter @arronqzy/ui publish --access public --no-git-checks
-          pnpm --filter @arronqzy/react-blueprint publish --access public --no-git-checks
-          pnpm --filter @arronqzy/react-view publish --access public --no-git-checks
-          pnpm --filter @arronqzy/abuilder publish --access public --no-git-checks
+          publish_if_new @arronqzy/react-rx-store
+          publish_if_new @arronqzy/ui
+          publish_if_new @arronqzy/react-blueprint
+          publish_if_new @arronqzy/react-view
+          publish_if_new @arronqzy/abuilder
           # Vue 绑定
-          pnpm --filter @arronqzy/vue-rx-store publish --access public --no-git-checks
-          pnpm --filter @arronqzy/vue-blueprint publish --access public --no-git-checks
-          pnpm --filter @arronqzy/vue-view publish --access public --no-git-checks
-          pnpm --filter @arronqzy/abuilder-vue publish --access public --no-git-checks
+          publish_if_new @arronqzy/vue-rx-store
+          publish_if_new @arronqzy/vue-blueprint
+          publish_if_new @arronqzy/vue-view
+          publish_if_new @arronqzy/abuilder-vue

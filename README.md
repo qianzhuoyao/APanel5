@@ -11,8 +11,9 @@
 - **图层系统**：多图层、映射图层、主图层、锁定与合并
 - **蓝图逻辑**：节点连线编辑、调试执行、时钟/请求/逻辑等内置节点
 - **Scope 驱动**：蓝图执行结果通过 Scope 表达式驱动视图节点属性
-- **工作区**：IndexedDB 多项目、导入导出、跨标签页同步
-- **在线预览**：独立预览页，支持 URL 打开指定工作区
+- **工作区**：IndexedDB 多项目、导入导出、跨标签页同步；支持事件订阅与外部数据加载
+- **在线预览**：独立预览页，支持 URL 打开指定工作区，或通过 `App` 的 `preview` + `initialWorkspace` 直接预览
+- **宿主 API**：`addEventSubscription`（工作区创建/同步）、`getPreviewSnapshot`（预览缩略图）
 - **国际化**：内置中文 / English，支持运行时切换与 `locale` prop
 
 ## 快速开始
@@ -128,8 +129,8 @@ Abuilder26/
 
 | 包 | 说明 | 文档 |
 |----|------|------|
-| `@arronqzy/abuilder` | 一站式编辑器入口 `<App />` | [README](./packages/abuilder/README.md) |
-| `@arronqzy/react-view` | 视图面板、画布、预览、工作区 | [README](./packages/react-view/readme.md) |
+| `@arronqzy/abuilder` | 一站式编辑器入口 `<App />`（事件订阅、外部工作区、预览模式） | [README](./packages/abuilder/README.md) |
+| `@arronqzy/react-view` | 视图面板、画布、预览、工作区、宿主 API | [README](./packages/react-view/readme.md) |
 | `@arronqzy/react-blueprint` | 蓝图画布、调试、蓝图库 | [README](./packages/react-blueprint/README.md) |
 | `@arronqzy/blueprint-dsl` | 节点定义、行为注册、图执行 | [README](./packages/blueprint-dsl/readme.md) |
 | `@arronqzy/i18n` | 共享中英文本（React + Vue） | [README](./packages/i18n/README.md) |

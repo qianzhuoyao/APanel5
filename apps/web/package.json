@@ -4,6 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "predev": "pnpm -C ../../packages/ui run build:css && pnpm -C ../../packages/react-view run build:css && pnpm -C ../../packages/abuilder run build:css",
     "dev": "vite",
     "lint": "eslint \"src/**/*.{ts,tsx}\"",
     "typecheck": "tsc --noEmit",

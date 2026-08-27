@@ -20,6 +20,7 @@ import {
   type WorkspaceSnapshot,
 } from "../library/workspace-snapshot";
 import { runBusyTask } from "../utils/async-work";
+import { AbuilderEvents, emitAbuilderEvent } from "../library/event-subscription";
 
 export type UseWorkspaceProjectsOptions = {
   exportPanelData: () => State;
@@ -36,6 +37,8 @@ export type UseWorkspaceProjectsOptions = {
   panelRevision: unknown;
   /** 工作区记录应用到编辑器后的回调（用于恢复蓝图面板等 UI 状态） */
   onProjectApplied?: (record: WorkspaceProjectRecord) => void;
+  /** 外部传入的初始工作区，挂载后自动加载（不触发 onProjectApplied） */
+  initialWorkspace?: WorkspaceProjectRecord | null;
 };
 
 export function buildOnlinePreviewUrl(projectId: string): string {
@@ -64,6 +67,7 @@ export function useWorkspaceProjects({
   setTitleIconDataUrl,
   panelRevision,
   onProjectApplied,
+  initialWorkspace,
 }: UseWorkspaceProjectsOptions) {
   const { t } = useI18nOptional();
   const [projects, setProjects] = useState<WorkspaceProjectListItem[]>([]);
@@ -138,7 +142,7 @@ export function useWorkspaceProjects({
   ]);
 
   const applyProjectRecord = useCallback(
-    (record: WorkspaceProjectRecord) => {
+    (record: WorkspaceProjectRecord, options?: { notifyApplied?: boolean }) => {
       const blueprintDocument =
         record.blueprintDocument ?? BlueprintGraph.empty().document;
       const blueprintMeta: BlueprintMetaDraft = {
@@ -161,11 +165,13 @@ export function useWorkspaceProjects({
       });
       syncedPanelRevisionRef.current = panelRevision;
       pendingRevisionSyncRef.current = true;
-      onProjectApplied?.({
-        ...record,
-        blueprintDocument,
-        blueprintMeta,
-      });
+      if (options?.notifyApplied !== false) {
+        onProjectApplied?.({
+          ...record,
+          blueprintDocument,
+          blueprintMeta,
+        });
+      }
     },
     [
       importPanelData,
@@ -178,6 +184,15 @@ export function useWorkspaceProjects({
       t,
     ]
   );
+
+  const initialWorkspaceAppliedKeyRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!initialWorkspace?.id) return;
+    const key = `${initialWorkspace.id}:${initialWorkspace.updatedAt}`;
+    if (initialWorkspaceAppliedKeyRef.current === key) return;
+    initialWorkspaceAppliedKeyRef.current = key;
+    applyProjectRecord(initialWorkspace, { notifyApplied: false });
+  }, [applyProjectRecord, initialWorkspace]);
 
   const persistProject = useCallback(
     async (options: { id?: string; name: string; createdAt?: number }) => {
@@ -217,6 +232,7 @@ export function useWorkspaceProjects({
     return runBusyTask(t("common.savingWorkspace"), async () => {
       const name = resolveProjectName();
       const record = await persistProject({ name });
+      emitAbuilderEvent(AbuilderEvents.workspaceAdd, record);
       return { name, id: record.id };
     });
   }, [persistProject, resolveProjectName, t]);
@@ -265,11 +281,12 @@ export function useWorkspaceProjects({
         throw new Error(t("panel.messages.workspaceNotFound"));
       }
       const name = resolveProjectName() || existing.name;
-      await persistProject({
+      const record = await persistProject({
         id: activeProjectId,
         name,
         createdAt: existing.createdAt,
       });
+      emitAbuilderEvent(AbuilderEvents.workspaceSync, record);
       return name;
     });
   }, [activeProjectId, persistProject, refreshProjects, resolveProjectName, t]);

@@ -39,12 +39,17 @@ import {
   resolvePreviewLayerElements,
 } from "./utils/panelStateIO";
 import { applyPreviewSceneFill, readOutputScale } from "./utils/outputScale";
+import { capturePreviewSceneElement } from "./library/capture-preview-snapshot";
+import { registerPreviewSnapshotProvider } from "./library/preview-snapshot";
 
 const PREVIEW_BOOT_PHASES: PageLifecyclePhase[] = ["mounted"];
 
 export type ReactViewOnlinePreviewProps = {
-  projectId: string;
+  /** 从 IndexedDB / 缓存按 ID 加载工作区；与 `workspace` 二选一，优先使用 `workspace` */
+  projectId?: string;
   previewInstanceId?: string;
+  /** 直接传入完整工作区数据，用于外部持久化后预览 */
+  workspace?: WorkspaceProjectRecord | null;
 };
 
 function applyTitleIcon(titleIconDataUrl?: string) {
@@ -68,6 +73,7 @@ async function loadWorkspaceRecord(projectId: string): Promise<WorkspaceProjectR
 export function ReactViewOnlinePreview({
   projectId,
   previewInstanceId,
+  workspace = null,
 }: ReactViewOnlinePreviewProps) {
   const { t } = useI18n();
 
@@ -84,6 +90,61 @@ export function ReactViewOnlinePreview({
   const [fillScale, setFillScale] = useState({ scaleX: 1, scaleY: 1 });
 
   const sceneRef = useRef<HTMLDivElement | null>(null);
+  const resolvedProjectId = workspace?.id ?? projectId ?? "";
+
+  const applyWorkspaceRecord = useCallback(
+    (record: WorkspaceProjectRecord) => {
+      const normalized = normalizeImportedPanelState(record.panelState);
+      if (!normalized) {
+        setLoadError(t("panel.messages.workspaceDataInvalid"));
+        setPanelState(null);
+        return false;
+      }
+
+      setLoadError(null);
+      clearViewElementScopes();
+      setPanelState(normalized);
+      setBlueprintGraph(BlueprintGraph.fromDocument(record.blueprintDocument));
+      document.title =
+        record.productName.trim() || record.name || t("panel.workspace.previewDocTitle");
+      applyTitleIcon(record.titleIconDataUrl);
+      setProjectRevision((v) => v + 1);
+      return true;
+    },
+    [t]
+  );
+
+  const loadProject = useCallback(async () => {
+    if (workspace) {
+      applyWorkspaceRecord(workspace);
+      return;
+    }
+    if (!projectId) {
+      setLoadError(t("panel.messages.workspaceNotFound"));
+      setPanelState(null);
+      return;
+    }
+
+    const record = await loadWorkspaceRecord(projectId);
+    if (!record) {
+      setLoadError(t("panel.messages.workspaceNotFound"));
+      setPanelState(null);
+      return;
+    }
+
+    applyWorkspaceRecord(record);
+  }, [applyWorkspaceRecord, projectId, t, workspace]);
+
+  useEffect(() => {
+    void loadProject();
+  }, [loadProject]);
+
+  useEffect(() => {
+    if (workspace || !projectId) return;
+    return subscribeWorkspaceProjectUpdates(projectId, () => {
+      void loadProject();
+    });
+  }, [loadProject, projectId, workspace]);
 
   const layers = useMemo(
     () => (panelState ? parsePanelLayers(panelState) : []),
@@ -97,40 +158,6 @@ export function ReactViewOnlinePreview({
     () => (panelState ? parseAllPanelElements(panelState) : []),
     [panelState]
   );
-
-  const loadProject = useCallback(async () => {
-    const record = await loadWorkspaceRecord(projectId);
-    if (!record) {
-      setLoadError(t("panel.messages.workspaceNotFound"));
-      setPanelState(null);
-      return;
-    }
-
-    const normalized = normalizeImportedPanelState(record.panelState);
-    if (!normalized) {
-      setLoadError(t("panel.messages.workspaceDataInvalid"));
-      setPanelState(null);
-      return;
-    }
-
-    setLoadError(null);
-    clearViewElementScopes();
-    setPanelState(normalized);
-    setBlueprintGraph(BlueprintGraph.fromDocument(record.blueprintDocument));
-    document.title = record.productName.trim() || record.name || t("panel.workspace.previewDocTitle");
-    applyTitleIcon(record.titleIconDataUrl);
-    setProjectRevision((v) => v + 1);
-  }, [projectId]);
-
-  useEffect(() => {
-    void loadProject();
-  }, [loadProject]);
-
-  useEffect(() => {
-    return subscribeWorkspaceProjectUpdates(projectId, () => {
-      void loadProject();
-    });
-  }, [loadProject, projectId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -270,6 +297,33 @@ export function ReactViewOnlinePreview({
     return () => window.removeEventListener("resize", applySceneFit);
   }, [applySceneFit]);
 
+  useEffect(() => {
+    if (!layoutReady || !sceneRef.current) {
+      registerPreviewSnapshotProvider(null);
+      return;
+    }
+    registerPreviewSnapshotProvider(async () => {
+      const scene = sceneRef.current;
+      if (!scene) return null;
+      const width = outputScale
+        ? sceneBounds.width
+        : sceneBounds.width * fillScale.scaleX;
+      const height = outputScale
+        ? sceneBounds.height
+        : sceneBounds.height * fillScale.scaleY;
+      return capturePreviewSceneElement(scene, width, height);
+    });
+    return () => registerPreviewSnapshotProvider(null);
+  }, [
+    fillScale.scaleX,
+    fillScale.scaleY,
+    layoutReady,
+    layoutRevision,
+    outputScale,
+    sceneBounds.height,
+    sceneBounds.width,
+  ]);
+
   const noopUpdate = useCallback((_id: string, _patch: Partial<PanelElement>) => {}, []);
   const noopSelect = useCallback((_ids: string[]) => {}, []);
   const onTableCellAction = useCallback<TableCellActionHandler>(
@@ -333,7 +387,7 @@ export function ReactViewOnlinePreview({
     <div
       className="min-h-[100vh] w-full overflow-hidden bg-white text-gray-900"
       data-preview-mode="online"
-      data-project-id={projectId}
+      data-project-id={resolvedProjectId}
       data-preview-instance-id={previewInstanceId ?? ""}
       data-preview-node-count={String(displayElements.length)}
     >

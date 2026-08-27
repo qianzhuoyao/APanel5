@@ -6,6 +6,18 @@ export {
   ReactViewPanel,
   ReactViewOnlinePreview,
   parseOnlinePreviewSearchParams,
+  addEventSubscription,
+  AbuilderEvents,
+  getPreviewSnapshot,
 } from "@arronqzy/react-view";
 
-export type { ReactViewPanelProps } from "@arronqzy/react-view";
+export type {
+  ReactViewPanelProps,
+  AbuilderEventName,
+  AbuilderEventPayloadMap,
+  WorkspaceAddEventPayload,
+  WorkspaceSyncEventPayload,
+  WorkspaceData,
+  WorkspaceProjectRecord,
+  GetPreviewSnapshotOptions,
+} from "@arronqzy/react-view";
