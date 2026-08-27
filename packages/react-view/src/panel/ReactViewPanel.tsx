@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useI18n } from "@arronqzy/i18n/react";
+import type { Locale } from "@arronqzy/i18n";
 import type { State } from "@arronqzy/rx-store";
 import type { PanelElement } from "./types";
 
@@ -78,6 +79,7 @@ import {
   useViewScopeStoreVersion,
 } from "./scope/view-scope-store";
 import { resolvePanelElementScope } from "./utils/scope-template";
+import { I18nRoot } from "./I18nRoot";
 import { getPanelMessages } from "./constants/messages";
 import { PANEL_Z_INDEX } from "./constants/zIndex";
 import { useRafThrottledScroll } from "./hooks/useRafThrottledScroll";
@@ -362,9 +364,12 @@ export type ReactViewPanelProps = {
   className?: string;
   /** 外部传入的完整工作区数据，挂载后自动渲染 */
   initialWorkspace?: WorkspaceProjectRecord | null;
+  /** 界面语言；省略时按 localStorage / 浏览器语言解析 */
+  locale?: Locale | null;
+  onLocaleChange?: (locale: Locale) => void;
 };
 
-export function ReactViewPanel({
+function ReactViewPanelInner({
   initialZoom = 1,
   className,
   initialWorkspace = null,
@@ -3576,5 +3581,17 @@ export function ReactViewPanel({
       ) : null}
       <Toaster />
     </div>
+  );
+}
+
+export function ReactViewPanel({
+  locale,
+  onLocaleChange,
+  ...rest
+}: ReactViewPanelProps) {
+  return (
+    <I18nRoot locale={locale} onLocaleChange={onLocaleChange}>
+      <ReactViewPanelInner {...rest} />
+    </I18nRoot>
   );
 }

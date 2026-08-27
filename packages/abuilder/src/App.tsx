@@ -1,6 +1,5 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { ThemeProvider } from "@arronqzy/ui";
-import { I18nProvider } from "@arronqzy/i18n/react";
 import type { Locale } from "@arronqzy/i18n";
 import {
   ReactViewOnlinePreview,
@@ -35,15 +34,7 @@ export type AbuilderAppProps = {
   initialWorkspace?: WorkspaceProjectRecord | null;
 };
 
-function PreviewShell({
-  locale,
-  onLocaleChange,
-  children,
-}: {
-  locale: Locale | null;
-  onLocaleChange: (locale: Locale) => void;
-  children: ReactNode;
-}) {
+function PreviewShell({ children }: { children: ReactNode }) {
   if (typeof document !== "undefined") {
     document.documentElement.classList.remove("dark");
     document.documentElement.classList.add("light");
@@ -51,14 +42,12 @@ function PreviewShell({
   }
 
   return (
-    <I18nProvider locale={locale} onLocaleChange={onLocaleChange}>
-      <div
-        className="light min-h-[100vh] w-full bg-white text-gray-900"
-        data-theme="light"
-      >
-        {children}
-      </div>
-    </I18nProvider>
+    <div
+      className="light min-h-[100vh] w-full bg-white text-gray-900"
+      data-theme="light"
+    >
+      {children}
+    </div>
   );
 }
 
@@ -85,10 +74,12 @@ export function App({
 
   if (preview) {
     return (
-      <PreviewShell locale={effectiveLocale} onLocaleChange={setLocaleState}>
+      <PreviewShell>
         <ReactViewOnlinePreview
           workspace={initialWorkspace}
           projectId={initialWorkspace?.id}
+          locale={effectiveLocale}
+          onLocaleChange={setLocaleState}
         />
       </PreviewShell>
     );
@@ -96,24 +87,26 @@ export function App({
 
   if (previewParams) {
     return (
-      <PreviewShell locale={effectiveLocale} onLocaleChange={setLocaleState}>
+      <PreviewShell>
         <ReactViewOnlinePreview
           projectId={previewParams.projectId}
           previewInstanceId={previewParams.previewInstanceId}
+          locale={effectiveLocale}
+          onLocaleChange={setLocaleState}
         />
       </PreviewShell>
     );
   }
 
   return (
-    <I18nProvider locale={effectiveLocale} onLocaleChange={setLocaleState}>
-      <ThemeProvider defaultTheme={defaultTheme} enableSystem={false}>
-        <ReactViewPanel
-          className={className}
-          initialZoom={initialZoom}
-          initialWorkspace={initialWorkspace}
-        />
-      </ThemeProvider>
-    </I18nProvider>
+    <ThemeProvider defaultTheme={defaultTheme} enableSystem={false}>
+      <ReactViewPanel
+        className={className}
+        initialZoom={initialZoom}
+        initialWorkspace={initialWorkspace}
+        locale={effectiveLocale}
+        onLocaleChange={setLocaleState}
+      />
+    </ThemeProvider>
   );
 }

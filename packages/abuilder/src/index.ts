@@ -9,6 +9,7 @@ export {
   addEventSubscription,
   AbuilderEvents,
   getPreviewSnapshot,
+  I18nProvider,
 } from "@arronqzy/react-view";
 
 export type {

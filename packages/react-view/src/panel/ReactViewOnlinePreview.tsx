@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useI18n } from "@arronqzy/i18n/react";
+import type { Locale } from "@arronqzy/i18n";
 import {
   BlueprintGraph,
   documentToRunnableGraph,
@@ -41,6 +42,7 @@ import {
 import { applyPreviewSceneFill, readOutputScale } from "./utils/outputScale";
 import { capturePreviewSceneElement } from "./library/capture-preview-snapshot";
 import { registerPreviewSnapshotProvider } from "./library/preview-snapshot";
+import { I18nRoot } from "./I18nRoot";
 
 const PREVIEW_BOOT_PHASES: PageLifecyclePhase[] = ["mounted"];
 
@@ -50,6 +52,8 @@ export type ReactViewOnlinePreviewProps = {
   previewInstanceId?: string;
   /** 直接传入完整工作区数据，用于外部持久化后预览 */
   workspace?: WorkspaceProjectRecord | null;
+  locale?: Locale | null;
+  onLocaleChange?: (locale: Locale) => void;
 };
 
 function applyTitleIcon(titleIconDataUrl?: string) {
@@ -71,6 +75,18 @@ async function loadWorkspaceRecord(projectId: string): Promise<WorkspaceProjectR
 }
 
 export function ReactViewOnlinePreview({
+  locale,
+  onLocaleChange,
+  ...rest
+}: ReactViewOnlinePreviewProps) {
+  return (
+    <I18nRoot locale={locale} onLocaleChange={onLocaleChange}>
+      <ReactViewOnlinePreviewInner {...rest} />
+    </I18nRoot>
+  );
+}
+
+function ReactViewOnlinePreviewInner({
   projectId,
   previewInstanceId,
   workspace = null,
