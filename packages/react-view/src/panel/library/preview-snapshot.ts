@@ -5,6 +5,7 @@ import {
   resolvePreviewLayerElements,
 } from "../utils/panelStateIO";
 import {
+  capturePreviewLayerSnapshot,
   capturePreviewSceneElement,
   scaleDataUrl,
   type CapturePreviewSceneOptions,
@@ -223,16 +224,29 @@ export async function getPreviewSnapshot(
 export async function captureEditorPreviewSnapshot(
   options: BuildEditorPreviewSnapshotSceneOptions & GetPreviewSnapshotOptions
 ): Promise<string | null> {
-  const built = await buildEditorPreviewSnapshotScene(options);
-  if (!built) return null;
-  try {
-    return await capturePreviewSceneElement(
-      built.scene,
-      built.width,
-      built.height,
-      options
-    );
-  } finally {
-    disposePreviewSnapshotScene(built.scene);
+  const retryCount = options.retryCount ?? 0;
+  const layerElements = resolvePreviewLayerElements(
+    options.allElements,
+    options.layers,
+    options.activeLayerId
+  );
+  if (!layerElements.length) return null;
+
+  const mountedCount = layerElements.filter((el) =>
+    Boolean(options.canvasRoot?.querySelector(`[data-element-id="${el.id}"]`))
+  ).length;
+  if (mountedCount < layerElements.length && retryCount < 20) {
+    await new Promise((resolve) => window.setTimeout(resolve, 80));
+    return captureEditorPreviewSnapshot({ ...options, retryCount: retryCount + 1 });
   }
+
+  return capturePreviewLayerSnapshot({
+    canvasRoot: options.canvasRoot,
+    elements: layerElements,
+    backgroundColor: options.backgroundColor,
+    maxWidth: options.maxWidth,
+    maxHeight: options.maxHeight,
+    mimeType: options.mimeType,
+    quality: options.quality,
+  });
 }
