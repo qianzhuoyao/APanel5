@@ -1,12 +1,13 @@
+import { appStorageKey } from "@arronqzy/blueprint-dsl";
 import type { ExecutionRunRecord } from "@arronqzy/blueprint-dsl";
 
 const DB_NAME = "arronqzy-blueprint-execution-log";
 const DB_VERSION = 1;
 const STORE_NAME = "runs";
 
-function openDb(): Promise<IDBDatabase> {
+function openDb(nameSpace?: string | null): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
+    const request = indexedDB.open(appStorageKey(DB_NAME, nameSpace), DB_VERSION);
     request.onerror = () => reject(request.error ?? new Error("indexeddb-open-failed"));
     request.onupgradeneeded = () => {
       const db = request.result;
@@ -22,9 +23,10 @@ function openDb(): Promise<IDBDatabase> {
 
 function runTransaction<T>(
   mode: IDBTransactionMode,
-  runner: (store: IDBObjectStore) => IDBRequest<T>
+  runner: (store: IDBObjectStore) => IDBRequest<T>,
+  nameSpace?: string | null
 ): Promise<T> {
-  return openDb().then(
+  return openDb(nameSpace).then(
     (db) =>
       new Promise<T>((resolve, reject) => {
         const tx = db.transaction(STORE_NAME, mode);
@@ -50,28 +52,55 @@ function runTransaction<T>(
   );
 }
 
+function deleteMany(ids: string[], nameSpace?: string | null): Promise<void> {
+  return openDb(nameSpace).then(
+    (db) =>
+      new Promise<void>((resolve, reject) => {
+        const tx = db.transaction(STORE_NAME, "readwrite");
+        const store = tx.objectStore(STORE_NAME);
+        for (const id of ids) {
+          store.delete(id);
+        }
+        tx.oncomplete = () => {
+          db.close();
+          resolve();
+        };
+        tx.onerror = () => {
+          db.close();
+          reject(tx.error ?? new Error("indexeddb-transaction-failed"));
+        };
+      })
+  );
+}
+
 export async function putExecutionRunRecord(
-  record: ExecutionRunRecord
+  record: ExecutionRunRecord,
+  nameSpace?: string | null
 ): Promise<ExecutionRunRecord> {
-  await runTransaction<IDBValidKey>("readwrite", (store) => store.put(record));
+  await runTransaction<IDBValidKey>("readwrite", (store) => store.put(record), nameSpace);
   return record;
 }
 
 export async function getExecutionRunRecord(
-  runId: string
+  runId: string,
+  nameSpace?: string | null
 ): Promise<ExecutionRunRecord | null> {
   const record = await runTransaction<ExecutionRunRecord | undefined>(
     "readonly",
-    (store) => store.get(runId)
+    (store) => store.get(runId),
+    nameSpace
   );
   return record ?? null;
 }
 
 export async function listExecutionRunRecords(
-  blueprintId?: string | null
+  blueprintId?: string | null,
+  nameSpace?: string | null
 ): Promise<ExecutionRunRecord[]> {
-  const records = await runTransaction<ExecutionRunRecord[]>("readonly", (store) =>
-    store.getAll()
+  const records = await runTransaction<ExecutionRunRecord[]>(
+    "readonly",
+    (store) => store.getAll(),
+    nameSpace
   );
   const filtered = blueprintId
     ? records.filter((item) => item.blueprintId === blueprintId)
@@ -79,27 +108,37 @@ export async function listExecutionRunRecords(
   return filtered.sort((a, b) => b.startedAt - a.startedAt);
 }
 
-export async function deleteExecutionRunRecord(runId: string): Promise<void> {
-  await runTransaction<undefined>("readwrite", (store) => store.delete(runId));
+export async function deleteExecutionRunRecord(
+  runId: string,
+  nameSpace?: string | null
+): Promise<void> {
+  await runTransaction<undefined>("readwrite", (store) => store.delete(runId), nameSpace);
 }
 
-export async function clearAllExecutionRunRecords(): Promise<number> {
-  const records = await runTransaction<ExecutionRunRecord[]>("readonly", (store) =>
-    store.getAll()
+export async function clearAllExecutionRunRecords(
+  nameSpace?: string | null
+): Promise<number> {
+  const records = await runTransaction<ExecutionRunRecord[]>(
+    "readonly",
+    (store) => store.getAll(),
+    nameSpace
   );
   if (records.length === 0) return 0;
 
-  await runTransaction<undefined>("readwrite", (store) => store.clear());
+  await runTransaction<undefined>("readwrite", (store) => store.clear(), nameSpace);
   return records.length;
 }
 
 export async function trimExecutionRunRecordsToMax(
-  maxCount: number
+  maxCount: number,
+  nameSpace?: string | null
 ): Promise<number> {
   if (!Number.isFinite(maxCount) || maxCount < 1) return 0;
 
-  const records = await runTransaction<ExecutionRunRecord[]>("readonly", (store) =>
-    store.getAll()
+  const records = await runTransaction<ExecutionRunRecord[]>(
+    "readonly",
+    (store) => store.getAll(),
+    nameSpace
   );
   if (records.length <= maxCount) return 0;
 
@@ -107,52 +146,29 @@ export async function trimExecutionRunRecordsToMax(
   const overflow = sorted.slice(maxCount);
   if (overflow.length === 0) return 0;
 
-  await openDb().then(
-    (db) =>
-      new Promise<void>((resolve, reject) => {
-        const tx = db.transaction(STORE_NAME, "readwrite");
-        const store = tx.objectStore(STORE_NAME);
-        for (const item of overflow) {
-          store.delete(item.runId);
-        }
-        tx.oncomplete = () => {
-          db.close();
-          resolve();
-        };
-        tx.onerror = () => {
-          db.close();
-          reject(tx.error ?? new Error("indexeddb-transaction-failed"));
-        };
-      })
+  await deleteMany(
+    overflow.map((item) => item.runId),
+    nameSpace
   );
 
   return overflow.length;
 }
 
-export async function purgeExecutionRunsOlderThan(cutoffMs: number): Promise<number> {
-  const records = await runTransaction<ExecutionRunRecord[]>("readonly", (store) =>
-    store.getAll()
+export async function purgeExecutionRunsOlderThan(
+  cutoffMs: number,
+  nameSpace?: string | null
+): Promise<number> {
+  const records = await runTransaction<ExecutionRunRecord[]>(
+    "readonly",
+    (store) => store.getAll(),
+    nameSpace
   );
   const stale = records.filter((item) => item.startedAt < cutoffMs);
   if (stale.length === 0) return 0;
 
-  await openDb().then(
-    (db) =>
-      new Promise<void>((resolve, reject) => {
-        const tx = db.transaction(STORE_NAME, "readwrite");
-        const store = tx.objectStore(STORE_NAME);
-        for (const item of stale) {
-          store.delete(item.runId);
-        }
-        tx.oncomplete = () => {
-          db.close();
-          resolve();
-        };
-        tx.onerror = () => {
-          db.close();
-          reject(tx.error ?? new Error("indexeddb-transaction-failed"));
-        };
-      })
+  await deleteMany(
+    stale.map((item) => item.runId),
+    nameSpace
   );
 
   return stale.length;

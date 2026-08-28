@@ -54,6 +54,7 @@ export type ReactViewOnlinePreviewProps = {
   workspace?: WorkspaceProjectRecord | null;
   locale?: Locale | null;
   onLocaleChange?: (locale: Locale) => void;
+  nameSpace?: string | null;
 };
 
 function applyTitleIcon(titleIconDataUrl?: string) {
@@ -68,20 +69,24 @@ function applyTitleIcon(titleIconDataUrl?: string) {
   }
 }
 
-async function loadWorkspaceRecord(projectId: string): Promise<WorkspaceProjectRecord | null> {
-  const fromDb = await getWorkspaceProject(projectId);
+async function loadWorkspaceRecord(
+  projectId: string,
+  nameSpace?: string | null
+): Promise<WorkspaceProjectRecord | null> {
+  const fromDb = await getWorkspaceProject(projectId, nameSpace);
   if (fromDb) return fromDb;
-  return readWorkspacePreviewCache(projectId);
+  return readWorkspacePreviewCache(projectId, nameSpace);
 }
 
 export function ReactViewOnlinePreview({
   locale,
   onLocaleChange,
+  nameSpace,
   ...rest
 }: ReactViewOnlinePreviewProps) {
   return (
-    <I18nRoot locale={locale} onLocaleChange={onLocaleChange}>
-      <ReactViewOnlinePreviewInner {...rest} />
+    <I18nRoot locale={locale} onLocaleChange={onLocaleChange} nameSpace={nameSpace}>
+      <ReactViewOnlinePreviewInner nameSpace={nameSpace} {...rest} />
     </I18nRoot>
   );
 }
@@ -90,6 +95,7 @@ function ReactViewOnlinePreviewInner({
   projectId,
   previewInstanceId,
   workspace = null,
+  nameSpace = null,
 }: ReactViewOnlinePreviewProps) {
   const { t } = useI18n();
 
@@ -102,7 +108,7 @@ function ReactViewOnlinePreviewInner({
   >([]);
   const [layoutRevision, setLayoutRevision] = useState(0);
   const [layoutReady, setLayoutReady] = useState(false);
-  const [outputScale, setOutputScale] = useState(() => readOutputScale());
+  const [outputScale, setOutputScale] = useState(() => readOutputScale(nameSpace));
   const [fillScale, setFillScale] = useState({ scaleX: 1, scaleY: 1 });
 
   const sceneRef = useRef<HTMLDivElement | null>(null);
@@ -122,7 +128,9 @@ function ReactViewOnlinePreviewInner({
       setPanelState(normalized);
       setBlueprintGraph(BlueprintGraph.fromDocument(record.blueprintDocument));
       document.title =
-        record.productName.trim() || record.name || t("panel.workspace.previewDocTitle");
+        (typeof record.productName === "string" ? record.productName : "").trim() ||
+        record.name ||
+        t("panel.workspace.previewDocTitle");
       applyTitleIcon(record.titleIconDataUrl);
       setProjectRevision((v) => v + 1);
       return true;
@@ -141,7 +149,7 @@ function ReactViewOnlinePreviewInner({
       return;
     }
 
-    const record = await loadWorkspaceRecord(projectId);
+    const record = await loadWorkspaceRecord(projectId, nameSpace);
     if (!record) {
       setLoadError(t("panel.messages.workspaceNotFound"));
       setPanelState(null);
@@ -149,7 +157,7 @@ function ReactViewOnlinePreviewInner({
     }
 
     applyWorkspaceRecord(record);
-  }, [applyWorkspaceRecord, projectId, t, workspace]);
+  }, [applyWorkspaceRecord, nameSpace, projectId, t, workspace]);
 
   useEffect(() => {
     void loadProject();
@@ -159,8 +167,8 @@ function ReactViewOnlinePreviewInner({
     if (workspace || !projectId) return;
     return subscribeWorkspaceProjectUpdates(projectId, () => {
       void loadProject();
-    });
-  }, [loadProject, projectId, workspace]);
+    }, nameSpace);
+  }, [loadProject, nameSpace, projectId, workspace]);
 
   const layers = useMemo(
     () => (panelState ? parsePanelLayers(panelState) : []),
@@ -177,13 +185,13 @@ function ReactViewOnlinePreviewInner({
 
   useEffect(() => {
     let cancelled = false;
-    void listBlueprintLibrary().then((items) => {
+    void listBlueprintLibrary(nameSpace).then((items) => {
       if (!cancelled) setBlueprintLibraryItems(items);
     });
     return () => {
       cancelled = true;
     };
-  }, [projectRevision]);
+  }, [nameSpace, projectRevision]);
 
   const blueprintLibraryNameById = useMemo(
     () => new Map(blueprintLibraryItems.map((item) => [item.id, item.name])),
@@ -192,13 +200,13 @@ function ReactViewOnlinePreviewInner({
 
   const resolveLibraryBlueprint = useCallback<LibraryBlueprintResolver>(
     async (libraryBlueprintId) => {
-      const record = await getBlueprintLibraryRecord(libraryBlueprintId);
+      const record = await getBlueprintLibraryRecord(libraryBlueprintId, nameSpace);
       if (!record) return null;
-      const items = await listBlueprintLibrary();
+      const items = await listBlueprintLibrary(nameSpace);
       const nameById = new Map(items.map((item) => [item.id, item.name]));
       return documentToRunnableGraph(record.document, { libraryNameById: nameById });
     },
-    []
+    [nameSpace]
   );
 
   const handleViewScopeUpdate = useCallback(
@@ -251,7 +259,7 @@ function ReactViewOnlinePreviewInner({
   );
 
   const applySceneFit = useCallback(() => {
-    const enabled = readOutputScale();
+    const enabled = readOutputScale(nameSpace);
     setOutputScale(enabled);
     const fill = applyPreviewSceneFill(
       sceneRef.current,
@@ -262,7 +270,7 @@ function ReactViewOnlinePreviewInner({
     setFillScale({ scaleX: fill.scaleX, scaleY: fill.scaleY });
     setLayoutRevision((v) => v + 1);
     notifyPreviewLayoutChanged();
-  }, [sceneBounds.height, sceneBounds.width]);
+  }, [nameSpace, sceneBounds.height, sceneBounds.width]);
 
   useLayoutEffect(() => {
     if (!panelState || layerElements.length === 0) return;
@@ -451,13 +459,16 @@ function ReactViewOnlinePreviewInner({
 export function parseOnlinePreviewSearchParams(search: string): {
   projectId: string;
   previewInstanceId?: string;
+  nameSpace?: string;
 } | null {
   const params = new URLSearchParams(search);
   if (params.get("preview") !== "online") return null;
   const projectId = params.get("projectId") ?? params.get("id");
   if (!projectId) return null;
+  const nameSpace = (params.get("ns") ?? params.get("nameSpace") ?? "").trim();
   return {
     projectId,
     previewInstanceId: params.get("pid") ?? undefined,
+    nameSpace: nameSpace || undefined,
   };
 }

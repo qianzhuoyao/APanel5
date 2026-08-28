@@ -65,7 +65,7 @@ import {
   type BlueprintMetaDraft,
 } from "@arronqzy/react-blueprint";
 import type { LibraryBlueprintResolver } from "@arronqzy/blueprint-dsl";
-import { abortClockNode, collectArmedViewEventBindings, EVENT_NODE_TYPE, LIFECYCLE_NODE_TYPE } from "@arronqzy/blueprint-dsl";
+import { abortClockNode, appStorageKey, collectArmedViewEventBindings, EVENT_NODE_TYPE, LIFECYCLE_NODE_TYPE } from "@arronqzy/blueprint-dsl";
 import { WorkspaceStageSplit } from "./components/WorkspaceStageSplit";
 import {
   WorkspaceConfigSidebar,
@@ -362,22 +362,30 @@ function shouldClearSelectionOnBlank(target: HTMLElement | null) {
 export type ReactViewPanelProps = {
   initialZoom?: number;
   className?: string;
-  /** 外部传入的完整工作区数据，挂载后自动渲染 */
+  /** 外部传入的完整工作区数据，挂载后按这份数据完整渲染；空则显示空白，不自动打开 IndexedDB 记录 */
   initialWorkspace?: WorkspaceProjectRecord | null;
   /** 界面语言；省略时按 localStorage / 浏览器语言解析 */
   locale?: Locale | null;
   onLocaleChange?: (locale: Locale) => void;
+  /**
+   * 隔离本实例的 IndexedDB / localStorage / BroadcastChannel。
+   * 同一页面挂多个 App 时传入不同值，避免工作区、蓝图库、预览缓存互相覆盖。
+   * 省略或空字符串保持历史全局库名。
+   */
+  nameSpace?: string | null;
 };
 
 function ReactViewPanelInner({
   initialZoom = 1,
   className,
   initialWorkspace = null,
+  nameSpace = null,
 }: ReactViewPanelProps) {
   const { t, locale, setLocale } = useI18n();
   const messages = useMemo(() => getPanelMessages(t), [t]);
-  const THEME_STORAGE_KEY = "panel:theme";
-  const TITLE_ICON_STORAGE_KEY = "panel:titleIconDataUrl";
+  const THEME_STORAGE_KEY = appStorageKey("panel:theme", nameSpace);
+  const TITLE_ICON_STORAGE_KEY = appStorageKey("panel:titleIconDataUrl", nameSpace);
+  const FONT_SIZE_STORAGE_KEY = appStorageKey("panel:fontSize", nameSpace);
   const { setTheme } = useTheme();
   const themedScrollbarClass =
     "scrollbar-thin [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-muted/40 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border/80 [&::-webkit-scrollbar-thumb]:hover:bg-border";
@@ -483,7 +491,7 @@ function ReactViewPanelInner({
   const [titleIconZoom, setTitleIconZoom] = useState(1.6);
   const [pendingPreviewLayerId, setPendingPreviewLayerId] = useState<string | null>(null);
   const [panelFontSize, setPanelFontSize] = useState<"sm" | "md" | "lg">("md");
-  const [outputScale, setOutputScale] = useState(() => readOutputScale());
+  const [outputScale, setOutputScale] = useState(() => readOutputScale(nameSpace));
   const [blueprintOpen, setBlueprintOpen] = useState(false);
   const [assistantOpen, setAssistantOpen] = useState(false);
   const [blueprintGraph, setBlueprintGraph] = useState(() => BlueprintGraph.empty());
@@ -577,35 +585,26 @@ function ReactViewPanelInner({
 
   useEffect(() => {
     try {
-      const stored = localStorage.getItem("panel:fontSize");
+      const stored = localStorage.getItem(FONT_SIZE_STORAGE_KEY);
       if (stored === "sm" || stored === "md" || stored === "lg") {
         setPanelFontSize(stored);
       }
     } catch {
       // ignore storage errors
     }
-  }, []);
+  }, [FONT_SIZE_STORAGE_KEY]);
 
   useEffect(() => {
     try {
-      localStorage.setItem("panel:fontSize", panelFontSize);
+      localStorage.setItem(FONT_SIZE_STORAGE_KEY, panelFontSize);
     } catch {
       // ignore storage errors
     }
-  }, [panelFontSize]);
+  }, [FONT_SIZE_STORAGE_KEY, panelFontSize]);
 
   useEffect(() => {
-    writeOutputScale(outputScale);
-  }, [outputScale]);
-
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem(TITLE_ICON_STORAGE_KEY) ?? "";
-      if (stored) setTitleIconDataUrl(stored);
-    } catch {
-      // ignore storage errors
-    }
-  }, [TITLE_ICON_STORAGE_KEY]);
+    writeOutputScale(outputScale, nameSpace);
+  }, [nameSpace, outputScale]);
 
   useEffect(() => {
     try {
@@ -865,13 +864,13 @@ function ReactViewPanelInner({
 
   const resolveLibraryBlueprint = useCallback<LibraryBlueprintResolver>(
     async (libraryBlueprintId) => {
-      const record = await getBlueprintLibraryRecord(libraryBlueprintId);
+      const record = await getBlueprintLibraryRecord(libraryBlueprintId, nameSpace);
       if (!record) return null;
-      const items = await listBlueprintLibrary();
+      const items = await listBlueprintLibrary(nameSpace);
       const nameById = new Map(items.map((item) => [item.id, item.name]));
       return documentToRunnableGraph(record.document, { libraryNameById: nameById });
     },
-    []
+    [nameSpace]
   );
 
   const handleBlueprintExecutionBlocked = useCallback((message: string) => {
@@ -893,6 +892,7 @@ function ReactViewPanelInner({
     libraryNameById: blueprintLibraryNameById,
     onExecutionBlocked: handleBlueprintExecutionBlocked,
     onViewScopeUpdate: handleViewScopeUpdate,
+    nameSpace,
   });
 
   const { selectLifecycleNode, selectedLifecycleNodeId: debugLifecycleNodeId } =
@@ -994,9 +994,9 @@ function ReactViewPanelInner({
   );
 
   const refreshBlueprintLibrary = useCallback(async () => {
-    const items = await listBlueprintLibrary();
+    const items = await listBlueprintLibrary(nameSpace);
     setBlueprintLibraryItems(items);
-  }, []);
+  }, [nameSpace]);
 
   useEffect(() => {
     void refreshBlueprintLibrary();
@@ -1004,7 +1004,7 @@ function ReactViewPanelInner({
 
   const loadBlueprintFromLibrary = useCallback(
     async (id: string) => {
-      const record = await getBlueprintLibraryRecord(id);
+      const record = await getBlueprintLibraryRecord(id, nameSpace);
       if (!record) {
         toast({ title: t("panel.messages.blueprintNotFound") });
         void refreshBlueprintLibrary();
@@ -1023,7 +1023,7 @@ function ReactViewPanelInner({
         setBlueprintOpen(true);
       });
     },
-    [refreshBlueprintLibrary, t]
+    [nameSpace, refreshBlueprintLibrary, t]
   );
 
   const snapshotWorkspaceBlueprint = useCallback(() => {
@@ -1078,7 +1078,7 @@ function ReactViewPanelInner({
   const syncBlueprintToLibrary = useCallback(async () => {
     if (!activeBlueprintLibraryId) return;
     await runBusyTask(t("common.syncingBlueprint"), async () => {
-      const existing = await getBlueprintLibraryRecord(activeBlueprintLibraryId);
+      const existing = await getBlueprintLibraryRecord(activeBlueprintLibraryId, nameSpace);
       if (!existing) {
         toast({ title: t("panel.messages.blueprintNotFound") });
         void refreshBlueprintLibrary();
@@ -1094,7 +1094,7 @@ function ReactViewPanelInner({
         meta: blueprintMeta,
         source: existing.source,
       });
-      await putBlueprintLibraryRecord(record);
+      await putBlueprintLibraryRecord(record, nameSpace);
       setBlueprintSyncedDocument(blueprintGraph.document);
       await refreshBlueprintLibrary();
       toast({ title: messages.blueprintSynced(record.name) });
@@ -1105,6 +1105,7 @@ function ReactViewPanelInner({
     blueprintMeta,
     refreshBlueprintLibrary,
     t,
+    nameSpace,
   ]);
 
   const saveBlueprintToLibrary = useCallback(
@@ -1115,7 +1116,7 @@ function ReactViewPanelInner({
         let recordId = activeBlueprintLibraryId ?? undefined;
         let createdAt: number | undefined;
         if (activeBlueprintLibraryId) {
-          const existing = await getBlueprintLibraryRecord(activeBlueprintLibraryId);
+          const existing = await getBlueprintLibraryRecord(activeBlueprintLibraryId, nameSpace);
           if (existing?.source === "saved") {
             recordId = existing.id;
             createdAt = existing.createdAt;
@@ -1133,14 +1134,14 @@ function ReactViewPanelInner({
           meta,
           source: "saved",
         });
-        await putBlueprintLibraryRecord(record);
+        await putBlueprintLibraryRecord(record, nameSpace);
         setActiveBlueprintLibraryId(record.id);
         setBlueprintSyncedDocument(blueprintGraph.document);
         await refreshBlueprintLibrary();
         toast({ title: t("panel.messages.blueprintSavedLocal") });
       });
     },
-    [activeBlueprintLibraryId, blueprintGraph.document, refreshBlueprintLibrary, t]
+    [activeBlueprintLibraryId, blueprintGraph.document, nameSpace, refreshBlueprintLibrary, t]
   );
 
   const openBlueprintMetaDialog = useCallback((mode: "export" | "save") => {
@@ -1167,7 +1168,7 @@ function ReactViewPanelInner({
 
   const handleRenameBlueprintLibraryItem = useCallback(
     async (id: string, name: string) => {
-      const updated = await updateBlueprintLibraryMeta(id, { name });
+      const updated = await updateBlueprintLibraryMeta(id, { name }, nameSpace);
       if (!updated) {
         toast({ title: t("panel.messages.renameFailed") });
         void refreshBlueprintLibrary();
@@ -1179,12 +1180,12 @@ function ReactViewPanelInner({
       }
       toast({ title: t("panel.messages.blueprintRenamed") });
     },
-    [activeBlueprintLibraryId, refreshBlueprintLibrary]
+    [activeBlueprintLibraryId, nameSpace, refreshBlueprintLibrary]
   );
 
   const handleDeleteBlueprintLibraryItem = useCallback(
     async (id: string) => {
-      await deleteBlueprintLibraryRecord(id);
+      await deleteBlueprintLibraryRecord(id, nameSpace);
       await refreshBlueprintLibrary();
       if (activeBlueprintLibraryId === id) {
         setActiveBlueprintLibraryId(null);
@@ -1192,7 +1193,7 @@ function ReactViewPanelInner({
       }
       toast({ title: t("panel.messages.blueprintDeletedFromLibrary") });
     },
-    [activeBlueprintLibraryId, refreshBlueprintLibrary]
+    [activeBlueprintLibraryId, nameSpace, refreshBlueprintLibrary]
   );
 
   const openBlueprintExportDialog = useCallback(() => {
@@ -1207,7 +1208,7 @@ function ReactViewPanelInner({
           const text = await file.text();
           const payload = parseBlueprintImportFile(await parseJsonText(text));
           const record = libraryRecordFromImport(payload);
-          await putBlueprintLibraryRecord(record);
+          await putBlueprintLibraryRecord(record, nameSpace);
           await refreshBlueprintLibrary();
           if (!activeBlueprintLibraryId) {
             snapshotWorkspaceBlueprint();
@@ -1224,6 +1225,7 @@ function ReactViewPanelInner({
     [
       activeBlueprintLibraryId,
       loadBlueprintFromLibrary,
+      nameSpace,
       refreshBlueprintLibrary,
       snapshotWorkspaceBlueprint,
       t,
@@ -1267,6 +1269,7 @@ function ReactViewPanelInner({
     panelRevision: `${historyCursor}|${allElements.length}`,
     onProjectApplied: handleWorkspaceProjectApplied,
     initialWorkspace,
+    nameSpace,
   });
 
   useEffect(() => {
@@ -1276,11 +1279,11 @@ function ReactViewPanelInner({
         allElements,
         layers,
         activeLayerId,
-        outputScale: readOutputScale(),
+        outputScale: readOutputScale(nameSpace),
       });
     });
     return () => registerPreviewSnapshotProvider(null);
-  }, [activeLayerId, allElements, canvasEl, layers]);
+  }, [activeLayerId, allElements, canvasEl, layers, nameSpace]);
 
   const { triggerBlueprintNode, emitViewEvent, firedLifecyclePhases } = useBlueprintPageLifecycle({
     graph: blueprintGraph,
@@ -3589,11 +3592,12 @@ function ReactViewPanelInner({
 export function ReactViewPanel({
   locale,
   onLocaleChange,
+  nameSpace,
   ...rest
 }: ReactViewPanelProps) {
   return (
-    <I18nRoot locale={locale} onLocaleChange={onLocaleChange}>
-      <ReactViewPanelInner {...rest} />
+    <I18nRoot locale={locale} onLocaleChange={onLocaleChange} nameSpace={nameSpace}>
+      <ReactViewPanelInner nameSpace={nameSpace} {...rest} />
     </I18nRoot>
   );
 }

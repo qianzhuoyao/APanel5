@@ -41,6 +41,7 @@ export type UseBlueprintDebugSessionOptions = {
   libraryNameById?: MaybeRefOrGetter<ReadonlyMap<string, string> | undefined>;
   onExecutionBlocked?: (message: string) => void;
   onViewScopeUpdate?: (viewElementIds: string[], scope: unknown) => void;
+  nameSpace?: MaybeRefOrGetter<string | null | undefined>;
 };
 
 function buildNodeLabelMap(graph: BlueprintGraph): Record<string, string> {
@@ -63,13 +64,20 @@ export function useBlueprintDebugSession(options: UseBlueprintDebugSessionOption
   const chainComplete = ref(false);
   const logPanelOpen = ref(false);
   const running = ref(false);
-  const settings = ref<ExecutionLogSettings>(readExecutionLogSettings());
+  const settings = ref<ExecutionLogSettings>(
+    readExecutionLogSettings(toValue(options.nameSpace))
+  );
   const savedRuns = ref<ExecutionRunRecord[]>([]);
   const totalSavedRunCount = ref(0);
 
   const graph = computed(() => toValue(options.graph));
   const blueprintId = computed(() => toValue(options.blueprintId));
   const blueprintName = computed(() => toValue(options.blueprintName));
+  const nameSpace = computed(() => toValue(options.nameSpace) ?? null);
+
+  watch(nameSpace, (ns) => {
+    settings.value = readExecutionLogSettings(ns);
+  });
 
   const lifecycleNodes = computed<LifecycleNodeOption[]>(() =>
     graph.value.document.nodes
@@ -145,7 +153,7 @@ export function useBlueprintDebugSession(options: UseBlueprintDebugSessionOption
   }
 
   async function refreshSavedRuns() {
-    const all = await listExecutionRunRecords();
+    const all = await listExecutionRunRecords(undefined, nameSpace.value);
     totalSavedRunCount.value = all.length;
     savedRuns.value = blueprintId.value
       ? all.filter((item) => item.blueprintId === blueprintId.value)
@@ -158,13 +166,13 @@ export function useBlueprintDebugSession(options: UseBlueprintDebugSessionOption
 
   async function enforceSavedRunLimits() {
     const cutoff = retentionCutoffMs(settings.value.retentionDays);
-    await purgeExecutionRunsOlderThan(cutoff);
-    await trimExecutionRunRecordsToMax(settings.value.maxSavedRuns);
+    await purgeExecutionRunsOlderThan(cutoff, nameSpace.value);
+    await trimExecutionRunRecordsToMax(settings.value.maxSavedRuns, nameSpace.value);
     await refreshSavedRuns();
   }
 
   async function clearAllSavedRuns() {
-    const removed = await clearAllExecutionRunRecords();
+    const removed = await clearAllExecutionRunRecords(nameSpace.value);
     savedRuns.value = [];
     totalSavedRunCount.value = 0;
     return removed;
@@ -194,7 +202,7 @@ export function useBlueprintDebugSession(options: UseBlueprintDebugSessionOption
 
   async function persistRunIfNeeded(record: ExecutionRunRecord) {
     if (!settings.value.autoSave) return;
-    await putExecutionRunRecord(record);
+    await putExecutionRunRecord(record, nameSpace.value);
     await enforceSavedRunLimits();
   }
 
@@ -356,7 +364,7 @@ export function useBlueprintDebugSession(options: UseBlueprintDebugSessionOption
       runnerRef.value?.isDebugQueueEmpty() ? "completed" : "paused",
       entries.value
     );
-    await putExecutionRunRecord(record);
+    await putExecutionRunRecord(record, nameSpace.value);
     await enforceSavedRunLimits();
   }
 
@@ -373,10 +381,10 @@ export function useBlueprintDebugSession(options: UseBlueprintDebugSessionOption
   function updateSettings(patch: Partial<ExecutionLogSettings>) {
     const next = { ...settings.value, ...patch };
     settings.value = next;
-    writeExecutionLogSettings(next);
+    writeExecutionLogSettings(next, nameSpace.value);
     if (patch.maxSavedRuns !== undefined) {
       const maxSavedRuns = Math.max(1, Math.floor(patch.maxSavedRuns));
-      void trimExecutionRunRecordsToMax(maxSavedRuns).then(() => refreshSavedRuns());
+      void trimExecutionRunRecordsToMax(maxSavedRuns, nameSpace.value).then(() => refreshSavedRuns());
     }
   }
 

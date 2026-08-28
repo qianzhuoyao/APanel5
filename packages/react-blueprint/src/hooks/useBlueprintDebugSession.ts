@@ -46,6 +46,8 @@ export type UseBlueprintDebugSessionOptions = {
     viewElementIds: string[],
     scope: unknown
   ) => void;
+  /** 隔离 IndexedDB / localStorage；空则用全局库 */
+  nameSpace?: string | null;
 };
 
 function buildNodeLabelMap(graph: BlueprintGraph): Record<string, string> {
@@ -66,6 +68,7 @@ export function useBlueprintDebugSession({
   libraryNameById,
   onExecutionBlocked,
   onViewScopeUpdate,
+  nameSpace = null,
 }: UseBlueprintDebugSessionOptions) {
   const runnerRef = useRef<BlueprintGraphRunner | null>(null);
   const runIdRef = useRef<string | null>(null);
@@ -79,8 +82,12 @@ export function useBlueprintDebugSession({
   const [logPanelOpen, setLogPanelOpen] = useState(false);
   const [running, setRunning] = useState(false);
   const [settings, setSettings] = useState<ExecutionLogSettings>(() =>
-    readExecutionLogSettings()
+    readExecutionLogSettings(nameSpace)
   );
+
+  useEffect(() => {
+    setSettings(readExecutionLogSettings(nameSpace));
+  }, [nameSpace]);
   const [savedRuns, setSavedRuns] = useState<ExecutionRunRecord[]>([]);
   const [totalSavedRunCount, setTotalSavedRunCount] = useState(0);
 
@@ -172,13 +179,13 @@ export function useBlueprintDebugSession({
   ]);
 
   const refreshSavedRuns = useCallback(async () => {
-    const all = await listExecutionRunRecords();
+    const all = await listExecutionRunRecords(undefined, nameSpace);
     setTotalSavedRunCount(all.length);
     const items = blueprintId
       ? all.filter((item) => item.blueprintId === blueprintId)
       : all;
     setSavedRuns(items);
-  }, [blueprintId]);
+  }, [blueprintId, nameSpace]);
 
   useEffect(() => {
     if (!logPanelOpen) return;
@@ -187,19 +194,19 @@ export function useBlueprintDebugSession({
 
   const enforceSavedRunLimits = useCallback(async () => {
     const cutoff = retentionCutoffMs(settings.retentionDays);
-    await purgeExecutionRunsOlderThan(cutoff);
-    await trimExecutionRunRecordsToMax(settings.maxSavedRuns);
+    await purgeExecutionRunsOlderThan(cutoff, nameSpace);
+    await trimExecutionRunRecordsToMax(settings.maxSavedRuns, nameSpace);
     await refreshSavedRuns();
-  }, [refreshSavedRuns, settings.maxSavedRuns, settings.retentionDays]);
+  }, [nameSpace, refreshSavedRuns, settings.maxSavedRuns, settings.retentionDays]);
 
   const applyRetention = enforceSavedRunLimits;
 
   const clearAllSavedRuns = useCallback(async () => {
-    const removed = await clearAllExecutionRunRecords();
+    const removed = await clearAllExecutionRunRecords(nameSpace);
     setSavedRuns([]);
     setTotalSavedRunCount(0);
     return removed;
-  }, []);
+  }, [nameSpace]);
 
   const buildRunRecord = useCallback(
     (
@@ -229,10 +236,10 @@ export function useBlueprintDebugSession({
   const persistRunIfNeeded = useCallback(
     async (record: ExecutionRunRecord) => {
       if (!settings.autoSave) return;
-      await putExecutionRunRecord(record);
+      await putExecutionRunRecord(record, nameSpace);
       await enforceSavedRunLimits();
     },
-    [enforceSavedRunLimits, settings.autoSave]
+    [enforceSavedRunLimits, nameSpace, settings.autoSave]
   );
 
   const beginRun = useCallback(() => {
@@ -420,9 +427,9 @@ export function useBlueprintDebugSession({
       runnerRef.current?.isDebugQueueEmpty() ? "completed" : "paused",
       entries
     );
-    await putExecutionRunRecord(record);
+    await putExecutionRunRecord(record, nameSpace);
     await enforceSavedRunLimits();
-  }, [buildRunRecord, enforceSavedRunLimits, entries]);
+  }, [buildRunRecord, enforceSavedRunLimits, entries, nameSpace]);
 
   const exportCurrentRun = useCallback(() => {
     if (entries.length === 0) return;
@@ -437,17 +444,17 @@ export function useBlueprintDebugSession({
     (patch: Partial<ExecutionLogSettings>) => {
       setSettings((prev) => {
         const next = { ...prev, ...patch };
-        writeExecutionLogSettings(next);
+        writeExecutionLogSettings(next, nameSpace);
         return next;
       });
       if (patch.maxSavedRuns !== undefined) {
         const maxSavedRuns = Math.max(1, Math.floor(patch.maxSavedRuns));
-        void trimExecutionRunRecordsToMax(maxSavedRuns).then(() =>
+        void trimExecutionRunRecordsToMax(maxSavedRuns, nameSpace).then(() =>
           refreshSavedRuns()
         );
       }
     },
-    [refreshSavedRuns]
+    [nameSpace, refreshSavedRuns]
   );
 
   const resetSession = useCallback(() => {

@@ -10,6 +10,14 @@ export {
   AbuilderEvents,
   getPreviewSnapshot,
   I18nProvider,
+  parseViewData,
+  validateViewData,
+  parseBlueprintData,
+  validateBlueprintData,
+  validateWorkspaceData,
+  parseWorkspaceData,
+  createEmptyWorkspace,
+  createWorkspaceProjectId,
 } from "@arronqzy/react-view";
 
 export type {
@@ -21,4 +29,6 @@ export type {
   WorkspaceData,
   WorkspaceProjectRecord,
   GetPreviewSnapshotOptions,
+  ParseCheckResult,
+  WorkspaceParseCheckResult,
 } from "@arronqzy/react-view";

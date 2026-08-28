@@ -29,7 +29,21 @@ createApp(VueViewPanel).use(Antd).mount("#app");
 import { VueViewOnlinePreview, parseOnlinePreviewSearchParams } from "@arronqzy/vue-view";
 ```
 
-URL 参数：`?preview=online&projectId=<id>&pid=<instanceId>`
+URL 参数：`?preview=online&projectId=<id>&pid=<instanceId>`。也可传入 `workspace` 直接预览宿主数据（优先于 `projectId`）。
+
+### 宿主集成
+
+```ts
+import {
+  addEventSubscription,
+  AbuilderEvents,
+  parseWorkspaceData,
+  createEmptyWorkspace,
+  createWorkspaceProjectId,
+} from "@arronqzy/vue-view";
+```
+
+创建 / 同步工作区会发出 `workspace:add` / `workspace:sync`。`parseWorkspaceData` 的 `value` 可作 `initialWorkspace`。IndexedDB CRUD 与 `getPreviewSnapshot` **不导出**（后者仅 React 实现）。
 
 ## 依赖
 

@@ -36,9 +36,10 @@ createRoot(document.getElementById("root")!).render(<App />);
 | `initialZoom` | 初始画布缩放 | `1` |
 | `defaultTheme` | 编辑器主题 `"dark"` / `"light"` | `"dark"` |
 | `locale` | 界面语言 `"zh-CN"` / `"en-US"`；省略则按 localStorage / 浏览器语言 | — |
+| `nameSpace` | 隔离 IndexedDB / 缓存；同一页面多个 App 传入不同值 | — |
 | `previewSearch` | 在线预览 URL 查询串；含 `?preview=online&projectId=...` 时进入预览 | `window.location.search` |
 | `preview` | `true` 为预览页，`false` 为编辑面板 | `false` |
-| `initialWorkspace` | 完整工作区数据；编辑模式加载到面板，预览模式直接渲染 | — |
+| `initialWorkspace` | 完整工作区数据；空则首次渲染空白，不会自动打开 IndexedDB 记录 | — |
 
 ```tsx
 <App
@@ -67,11 +68,13 @@ createRoot(document.getElementById("root")!).render(<App />);
 
 ### 在线预览（URL）
 
-URL 带 `?preview=online&projectId=<工作区ID>` 时自动进入预览模式（从 IndexedDB 加载）：
+URL 带 `?preview=online&projectId=<工作区ID>` 时自动进入预览模式（从 IndexedDB 加载）。若编辑器传了 `nameSpace`，预览 URL 会带 `ns=`，预览页用同一命名空间读库：
 
 ```tsx
-<App previewSearch="?preview=online&projectId=xxx" />
+<App previewSearch="?preview=online&projectId=xxx&ns=my-app" />
 ```
+
+同一页面挂多个编辑器时，给每个 App 不同的 `nameSpace`，工作区 / 蓝图库 / 预览缓存不会互相覆盖。不传或空字符串保持原来的全局库名。
 
 ### 外部持久化完整流程
 
@@ -160,6 +163,42 @@ syncSub.unsubscribe();
 
 也可使用事件名字符串订阅，例如 `addEventSubscription("workspace:add", callback)`。
 
+### 校验 / 解析工作区数据
+
+把后端或文件里的 JSON 交给 `App` 之前：
+
+- `validate*`：只回答能不能用，不改数据。
+- `parseWorkspaceData`：校验通过后补齐 `id` / 时间戳 / 空字段，返回的 `value` 可直接作为 `initialWorkspace`。
+- `createEmptyWorkspace`：构造一份形状正确的空工作区，不必自己猜字段。
+
+```ts
+import {
+  validateViewData,
+  validateBlueprintData,
+  validateWorkspaceData,
+  parseWorkspaceData,
+  createEmptyWorkspace,
+  createWorkspaceProjectId,
+} from "@arronqzy/abuilder";
+
+validateViewData(workspace.panelState); // { ok: true } 或 { ok: false, error: "invalid-view-data" }
+validateBlueprintData(workspace.blueprintDocument);
+validateWorkspaceData(workspace); // 同时检查视图 + 蓝图，结果里带 `view` / `blueprint`
+
+const parsed = parseWorkspaceData(jsonFromBackend);
+if (parsed.ok && parsed.value) {
+  // <App initialWorkspace={parsed.value} />
+}
+
+const blank = createEmptyWorkspace({ name: "未命名", id: createWorkspaceProjectId() });
+```
+
+也可把完整工作区对象传给 `validateViewData` / `parseViewData`（读 `panelState`）和 `validateBlueprintData` / `parseBlueprintData`（读 `blueprintDocument`）。只校验视图或只校验蓝图时用这两套，不要用 `parseWorkspaceData`（它要求两边都合法）。
+
+`initialWorkspace` 为空（不传 / `null`）时，编辑器首次渲染空画布和空蓝图，**不会**自动选中 IndexedDB 里的第一条工作区。侧栏仍可列出已保存项目，需用户手动打开。传入的工作区会按这份数据完整显示。
+
+IndexedDB 的 list / get / put / delete **不对外导出**。那是编辑器自己的浏览器缓存，和宿主后端双写会打架。宿主应订阅 `workspace:add` / `workspace:sync` 写入自己的存储，再用 `parseWorkspaceData` + `initialWorkspace` 灌回来。同一页多个编辑器用 `nameSpace` 隔离这份缓存。
+
 ### 获取预览快照
 
 ```ts
@@ -181,7 +220,7 @@ const thumbnail = await getPreviewSnapshot({
 | `quality` | JPEG 质量 0–1 | `0.92` |
 | `backgroundColor` | 背景色 | `"#ffffff"` |
 
-需在 `App` / `ReactViewPanel` 或在线预览页已渲染且画布有内容时调用。
+需在 `App` / `ReactViewPanel` 或在线预览页已渲染且画布有内容时调用。Vue 包 `@arronqzy/abuilder-vue` **没有**对等实现，不要从那边找同名导出。
 
 ### 高级导出
 
@@ -194,6 +233,9 @@ import {
   addEventSubscription,
   AbuilderEvents,
   getPreviewSnapshot,
+  parseWorkspaceData,
+  createEmptyWorkspace,
+  createWorkspaceProjectId,
 } from "@arronqzy/abuilder";
 
 import type {
@@ -201,6 +243,8 @@ import type {
   WorkspaceProjectRecord,
   AbuilderEventName,
   GetPreviewSnapshotOptions,
+  ParseCheckResult,
+  WorkspaceParseCheckResult,
 } from "@arronqzy/abuilder";
 ```
 

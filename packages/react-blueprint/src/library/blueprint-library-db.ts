@@ -1,3 +1,4 @@
+import { appStorageKey } from "@arronqzy/blueprint-dsl";
 import type {
   BlueprintLibraryListItem,
   BlueprintLibraryRecord,
@@ -7,9 +8,9 @@ const DB_NAME = "arronqzy-blueprint-library";
 const DB_VERSION = 1;
 const STORE_NAME = "blueprints";
 
-function openDb(): Promise<IDBDatabase> {
+function openDb(nameSpace?: string | null): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
+    const request = indexedDB.open(appStorageKey(DB_NAME, nameSpace), DB_VERSION);
     request.onerror = () => reject(request.error ?? new Error("indexeddb-open-failed"));
     request.onupgradeneeded = () => {
       const db = request.result;
@@ -25,9 +26,10 @@ function openDb(): Promise<IDBDatabase> {
 
 function runTransaction<T>(
   mode: IDBTransactionMode,
-  runner: (store: IDBObjectStore) => IDBRequest<T>
+  runner: (store: IDBObjectStore) => IDBRequest<T>,
+  nameSpace?: string | null
 ): Promise<T> {
-  return openDb().then(
+  return openDb(nameSpace).then(
     (db) =>
       new Promise<T>((resolve, reject) => {
         const tx = db.transaction(STORE_NAME, mode);
@@ -53,9 +55,13 @@ function runTransaction<T>(
   );
 }
 
-export async function listBlueprintLibrary(): Promise<BlueprintLibraryListItem[]> {
-  const records = await runTransaction<BlueprintLibraryRecord[]>("readonly", (store) =>
-    store.getAll()
+export async function listBlueprintLibrary(
+  nameSpace?: string | null
+): Promise<BlueprintLibraryListItem[]> {
+  const records = await runTransaction<BlueprintLibraryRecord[]>(
+    "readonly",
+    (store) => store.getAll(),
+    nameSpace
   );
   return records
     .map((record) => ({
@@ -69,26 +75,31 @@ export async function listBlueprintLibrary(): Promise<BlueprintLibraryListItem[]
 }
 
 export async function getBlueprintLibraryRecord(
-  id: string
+  id: string,
+  nameSpace?: string | null
 ): Promise<BlueprintLibraryRecord | null> {
-  const record = await runTransaction<BlueprintLibraryRecord | undefined>("readonly", (store) =>
-    store.get(id)
+  const record = await runTransaction<BlueprintLibraryRecord | undefined>(
+    "readonly",
+    (store) => store.get(id),
+    nameSpace
   );
   return record ?? null;
 }
 
 export async function putBlueprintLibraryRecord(
-  record: BlueprintLibraryRecord
+  record: BlueprintLibraryRecord,
+  nameSpace?: string | null
 ): Promise<BlueprintLibraryRecord> {
-  await runTransaction<IDBValidKey>("readwrite", (store) => store.put(record));
+  await runTransaction<IDBValidKey>("readwrite", (store) => store.put(record), nameSpace);
   return record;
 }
 
 export async function updateBlueprintLibraryMeta(
   id: string,
-  patch: { name?: string; remark?: string }
+  patch: { name?: string; remark?: string },
+  nameSpace?: string | null
 ): Promise<BlueprintLibraryRecord | null> {
-  const existing = await getBlueprintLibraryRecord(id);
+  const existing = await getBlueprintLibraryRecord(id, nameSpace);
   if (!existing) return null;
 
   const name = patch.name?.trim() || existing.name;
@@ -103,10 +114,13 @@ export async function updateBlueprintLibraryMeta(
     },
   };
 
-  await putBlueprintLibraryRecord(record);
+  await putBlueprintLibraryRecord(record, nameSpace);
   return record;
 }
 
-export async function deleteBlueprintLibraryRecord(id: string): Promise<void> {
-  await runTransaction<undefined>("readwrite", (store) => store.delete(id));
+export async function deleteBlueprintLibraryRecord(
+  id: string,
+  nameSpace?: string | null
+): Promise<void> {
+  await runTransaction<undefined>("readwrite", (store) => store.delete(id), nameSpace);
 }

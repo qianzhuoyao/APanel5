@@ -147,7 +147,12 @@ const dataUrl = await getPreviewSnapshot({
 | `parseOnlinePreviewSearchParams` | 解析预览 URL 参数 |
 | `addEventSubscription` | 订阅工作区事件，返回 `{ unsubscribe }` |
 | `AbuilderEvents` | 工作区事件名常量 |
-| `getPreviewSnapshot` | 获取预览画面 base64 缩略图 |
+| `getPreviewSnapshot` | 获取预览画面 base64 缩略图（仅本包 / `@arronqzy/abuilder`） |
+| `parseWorkspaceData` / `validateWorkspaceData` | 解析或校验完整工作区；`parse` 的 `value` 可作 `initialWorkspace` |
+| `parseViewData` / `validateViewData` | 解析或校验视图 `panelState` |
+| `parseBlueprintData` / `validateBlueprintData` | 解析或校验蓝图文档 |
+| `createEmptyWorkspace` | 构造空工作区记录 |
+| `createWorkspaceProjectId` | 生成工作区 ID |
 | `WorkspaceData` / `WorkspaceProjectRecord` | 完整工作区数据类型 |
 | `createView` / `createAction` 等 | 视图 DSL 与指令扩展（`src/core`） |
 

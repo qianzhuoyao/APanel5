@@ -26,6 +26,24 @@ export function normalizeImportedPanelState(state: unknown): State | null {
   return next;
 }
 
+export function createEmptyPanelState(): State {
+  return {
+    root: {
+      id: "root",
+      type: "root",
+      props: {},
+      children: [],
+    },
+    selectedIds: [],
+    variables: {
+      counter: 0,
+      isOpen: false,
+      layers: [DEFAULT_LAYER],
+      activeLayerId: DEFAULT_LAYER_ID,
+    },
+  };
+}
+
 export function parseAllPanelElements(state: State): PanelElement[] {
   return (state.root.children ?? [])
     .filter((node) => {

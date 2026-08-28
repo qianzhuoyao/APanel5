@@ -29,9 +29,16 @@ export type AbuilderAppProps = {
   preview?: boolean;
   /**
    * 外部传入的完整工作区数据（面板 + 蓝图）。
-   * 编辑模式：挂载后加载到面板；预览模式：直接渲染预览页。
+   * 编辑模式：挂载后按这份数据完整渲染；预览模式：直接渲染预览页。
+   * 省略或空：首次显示空画布 / 空蓝图，不会自动选中 IndexedDB 中的工作区。
    */
   initialWorkspace?: WorkspaceProjectRecord | null;
+  /**
+   * 隔离 IndexedDB / localStorage / BroadcastChannel。
+   * 同一页面挂多个 App 时传入不同值，避免工作区、蓝图库、预览缓存互相覆盖。
+   * 省略或空字符串保持历史全局库名。
+   */
+  nameSpace?: string | null;
 };
 
 function PreviewShell({ children }: { children: ReactNode }) {
@@ -59,6 +66,7 @@ export function App({
   previewSearch,
   preview = false,
   initialWorkspace = null,
+  nameSpace = null,
 }: AbuilderAppProps) {
   const [localeState, setLocaleState] = useState<Locale | null>(locale);
   const effectiveLocale = locale ?? localeState;
@@ -80,6 +88,7 @@ export function App({
           projectId={initialWorkspace?.id}
           locale={effectiveLocale}
           onLocaleChange={setLocaleState}
+          nameSpace={nameSpace}
         />
       </PreviewShell>
     );
@@ -93,6 +102,7 @@ export function App({
           previewInstanceId={previewParams.previewInstanceId}
           locale={effectiveLocale}
           onLocaleChange={setLocaleState}
+          nameSpace={previewParams.nameSpace ?? nameSpace}
         />
       </PreviewShell>
     );
@@ -106,6 +116,7 @@ export function App({
         initialWorkspace={initialWorkspace}
         locale={effectiveLocale}
         onLocaleChange={setLocaleState}
+        nameSpace={nameSpace}
       />
     </ThemeProvider>
   );

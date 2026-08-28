@@ -1,3 +1,5 @@
+import { appStorageKey } from "@arronqzy/blueprint-dsl";
+
 export type ExecutionLogSettings = {
   retentionDays: number;
   autoSave: boolean;
@@ -13,9 +15,11 @@ export const DEFAULT_EXECUTION_LOG_SETTINGS: ExecutionLogSettings = {
   maxSavedRuns: 80,
 };
 
-export function readExecutionLogSettings(): ExecutionLogSettings {
+export function readExecutionLogSettings(
+  nameSpace?: string | null
+): ExecutionLogSettings {
   try {
-    const raw = localStorage.getItem(SETTINGS_KEY);
+    const raw = localStorage.getItem(appStorageKey(SETTINGS_KEY, nameSpace));
     if (!raw) return { ...DEFAULT_EXECUTION_LOG_SETTINGS };
     const parsed = JSON.parse(raw) as Partial<ExecutionLogSettings>;
     return {
@@ -37,9 +41,15 @@ export function readExecutionLogSettings(): ExecutionLogSettings {
   }
 }
 
-export function writeExecutionLogSettings(settings: ExecutionLogSettings) {
+export function writeExecutionLogSettings(
+  settings: ExecutionLogSettings,
+  nameSpace?: string | null
+) {
   try {
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    localStorage.setItem(
+      appStorageKey(SETTINGS_KEY, nameSpace),
+      JSON.stringify(settings)
+    );
   } catch {
     // ignore storage errors
   }

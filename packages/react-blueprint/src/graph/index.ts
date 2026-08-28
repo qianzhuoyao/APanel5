@@ -1,4 +1,5 @@
 export * from "./document";
+export * from "./parse-blueprint-data";
 export * from "./node-types";
 export * from "./blueprint-graph";
 export * from "./react-flow-adapter";

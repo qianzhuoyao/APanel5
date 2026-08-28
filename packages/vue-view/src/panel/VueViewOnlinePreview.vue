@@ -22,7 +22,10 @@ import {
   useViewScopeStoreVersion,
 } from "./scope/view-scope-store";
 import { resolvePanelElementScope } from "./utils/scope-template";
-import { getWorkspaceProject } from "./library/workspace-project-db";
+import {
+  getWorkspaceProject,
+  type WorkspaceProjectRecord,
+} from "./library/workspace-project-db";
 import { readWorkspacePreviewCache } from "./library/workspace-project-cache";
 import { subscribeWorkspaceProjectUpdates } from "./library/workspace-project-sync";
 import {
@@ -41,8 +44,12 @@ const { t, locale } = useI18n();
 const PREVIEW_BOOT_PHASES: PageLifecyclePhase[] = ["mounted"];
 
 const props = defineProps<{
-  projectId: string;
+  /** 从 IndexedDB / 缓存按 ID 加载；与 `workspace` 二选一，优先 `workspace` */
+  projectId?: string;
   previewInstanceId?: string;
+  nameSpace?: string | null;
+  /** 直接传入完整工作区，用于宿主后端加载后预览 */
+  workspace?: WorkspaceProjectRecord | null;
 }>();
 
 const loadError = ref<string | null>(null);
@@ -53,7 +60,7 @@ const blueprintLibraryItems = ref<BlueprintLibraryListItem[]>([]);
 const layoutRevision = ref(0);
 const layoutReady = ref(false);
 const sceneRef = ref<HTMLDivElement | null>(null);
-const outputScale = ref(readOutputScale());
+const outputScale = ref(readOutputScale(props.nameSpace));
 const fillScale = ref({ scaleX: 1, scaleY: 1 });
 
 const layers = computed(() => (panelState.value ? parsePanelLayers(panelState.value) : []));
@@ -64,10 +71,19 @@ const allElements = computed(() =>
   panelState.value ? parseAllPanelElements(panelState.value) : []
 );
 
+const resolvedProjectId = computed(
+  () => props.workspace?.id ?? props.projectId ?? ""
+);
+
+function workspaceTitle(record: WorkspaceProjectRecord) {
+  const product = typeof record.productName === "string" ? record.productName : "";
+  return product.trim() || record.name || t("panel.workspace.previewDocTitle");
+}
+
 async function loadWorkspaceRecord(projectId: string) {
-  const fromDb = await getWorkspaceProject(projectId);
+  const fromDb = await getWorkspaceProject(projectId, props.nameSpace);
   if (fromDb) return fromDb;
-  return readWorkspacePreviewCache(projectId);
+  return readWorkspacePreviewCache(projectId, props.nameSpace);
 }
 
 function applyTitleIcon(titleIconDataUrl?: string) {
@@ -82,13 +98,7 @@ function applyTitleIcon(titleIconDataUrl?: string) {
   }
 }
 
-async function loadProject() {
-  const record = await loadWorkspaceRecord(props.projectId);
-  if (!record) {
-    loadError.value = t("panel.messages.workspaceNotFound");
-    panelState.value = null;
-    return;
-  }
+function applyWorkspaceRecord(record: WorkspaceProjectRecord) {
   const normalized = normalizeImportedPanelState(record.panelState);
   if (!normalized) {
     loadError.value = t("panel.messages.workspaceDataInvalid");
@@ -99,24 +109,56 @@ async function loadProject() {
   clearViewElementScopes();
   panelState.value = normalized;
   blueprintGraph.value = BlueprintGraph.fromDocument(record.blueprintDocument);
-  document.title = record.productName.trim() || record.name || t("panel.workspace.previewDocTitle");
+  document.title = workspaceTitle(record);
   applyTitleIcon(record.titleIconDataUrl);
   projectRevision.value += 1;
 }
 
-onMounted(() => {
-  void loadProject();
-});
+async function loadProject() {
+  if (props.workspace) {
+    applyWorkspaceRecord(props.workspace);
+    return;
+  }
+  if (!props.projectId) {
+    loadError.value = t("panel.messages.workspaceNotFound");
+    panelState.value = null;
+    return;
+  }
+  const record = await loadWorkspaceRecord(props.projectId);
+  if (!record) {
+    loadError.value = t("panel.messages.workspaceNotFound");
+    panelState.value = null;
+    return;
+  }
+  applyWorkspaceRecord(record);
+}
 
-onMounted(() => {
-  const unsub = subscribeWorkspaceProjectUpdates(props.projectId, () => {
+watch(
+  () => [props.workspace, props.projectId, props.nameSpace] as const,
+  () => {
     void loadProject();
-  });
-  onUnmounted(unsub);
-});
+  },
+  { immediate: true }
+);
+
+watch(
+  () => [props.workspace, props.projectId, props.nameSpace] as const,
+  ([workspace, projectId, nameSpace], _prev, onCleanup) => {
+    if (workspace || !projectId) return;
+    const unsub = subscribeWorkspaceProjectUpdates(
+      projectId,
+      () => {
+        void loadProject();
+      },
+      nameSpace
+    );
+    onCleanup(unsub);
+  },
+  { immediate: true }
+);
 
 watch(projectRevision, () => {
-  void listBlueprintLibrary().then((items) => {
+  void listBlueprintLibrary(props.nameSpace).then((items) => {
     blueprintLibraryItems.value = items;
   });
 });
@@ -126,9 +168,9 @@ const blueprintLibraryNameById = computed(
 );
 
 const resolveLibraryBlueprint: LibraryBlueprintResolver = async (libraryBlueprintId) => {
-  const record = await getBlueprintLibraryRecord(libraryBlueprintId);
+  const record = await getBlueprintLibraryRecord(libraryBlueprintId, props.nameSpace);
   if (!record) return null;
-  const items = await listBlueprintLibrary();
+  const items = await listBlueprintLibrary(props.nameSpace);
   const nameById = new Map(items.map((item) => [item.id, item.name]));
   return documentToRunnableGraph(record.document, { libraryNameById: nameById });
 };
@@ -167,7 +209,7 @@ const displayElements = computed(() =>
 );
 
 function applySceneFit() {
-  const enabled = readOutputScale();
+  const enabled = readOutputScale(props.nameSpace);
   outputScale.value = enabled;
   const fill = applyPreviewSceneFill(
     sceneRef.value,
@@ -277,7 +319,7 @@ function noopSelect() {}
     v-else
     class="min-h-screen w-full overflow-hidden bg-white text-gray-900"
     data-preview-mode="online"
-    :data-project-id="projectId"
+    :data-project-id="resolvedProjectId"
     :data-preview-instance-id="previewInstanceId ?? ''"
     :data-preview-node-count="String(displayElements.length)"
   >

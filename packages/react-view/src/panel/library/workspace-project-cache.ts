@@ -1,12 +1,20 @@
+import { appStorageKey } from "@arronqzy/blueprint-dsl";
 import type { WorkspaceProjectRecord } from "./workspace-project-db";
 
 const CACHE_PREFIX = "arronqzy-workspace-preview:";
 
-export function writeWorkspacePreviewCache(record: WorkspaceProjectRecord): void {
+function previewCacheKey(projectId: string, nameSpace?: string | null): string {
+  return appStorageKey(CACHE_PREFIX + projectId, nameSpace);
+}
+
+export function writeWorkspacePreviewCache(
+  record: WorkspaceProjectRecord,
+  nameSpace?: string | null
+): void {
   try {
     // 只写轻量标记，避免把含 data URL 的整包再塞进 localStorage（配额小、内存翻倍）
     localStorage.setItem(
-      CACHE_PREFIX + record.id,
+      previewCacheKey(record.id, nameSpace),
       JSON.stringify({ id: record.id, updatedAt: record.updatedAt })
     );
   } catch {
@@ -15,10 +23,11 @@ export function writeWorkspacePreviewCache(record: WorkspaceProjectRecord): void
 }
 
 export function readWorkspacePreviewCache(
-  projectId: string
+  projectId: string,
+  nameSpace?: string | null
 ): WorkspaceProjectRecord | null {
   try {
-    const raw = localStorage.getItem(CACHE_PREFIX + projectId);
+    const raw = localStorage.getItem(previewCacheKey(projectId, nameSpace));
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<WorkspaceProjectRecord> | null;
     if (!parsed || typeof parsed !== "object" || !parsed.panelState) return null;

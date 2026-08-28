@@ -1,17 +1,22 @@
 /** 产物预览是否缩放内部内容（字体等）。默认 false：块仍按视口撑满，内容保持原尺寸以免失真。 */
+import { appStorageKey } from "@arronqzy/blueprint-dsl";
+
 export const OUTPUT_SCALE_STORAGE_KEY = "panel:outputScale";
 
-export function readOutputScale(): boolean {
+export function readOutputScale(nameSpace?: string | null): boolean {
   try {
-    return localStorage.getItem(OUTPUT_SCALE_STORAGE_KEY) === "1";
+    return localStorage.getItem(appStorageKey(OUTPUT_SCALE_STORAGE_KEY, nameSpace)) === "1";
   } catch {
     return false;
   }
 }
 
-export function writeOutputScale(enabled: boolean) {
+export function writeOutputScale(enabled: boolean, nameSpace?: string | null) {
   try {
-    localStorage.setItem(OUTPUT_SCALE_STORAGE_KEY, enabled ? "1" : "0");
+    localStorage.setItem(
+      appStorageKey(OUTPUT_SCALE_STORAGE_KEY, nameSpace),
+      enabled ? "1" : "0"
+    );
   } catch {
     // ignore storage errors
   }

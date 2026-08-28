@@ -1,5 +1,6 @@
 import type { BlueprintDocument, BlueprintMetaDraft } from "@arronqzy/vue-blueprint";
 import type { State } from "@arronqzy/rx-store";
+import { appStorageKey } from "@arronqzy/blueprint-dsl";
 
 const DB_NAME = "arronqzy-workspace-projects";
 const DB_VERSION = 1;
@@ -24,9 +25,9 @@ export type WorkspaceProjectRecord = {
   titleIconDataUrl?: string;
 };
 
-function openDb(): Promise<IDBDatabase> {
+function openDb(nameSpace?: string | null): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
+    const request = indexedDB.open(appStorageKey(DB_NAME, nameSpace), DB_VERSION);
     request.onerror = () => reject(request.error ?? new Error("indexeddb-open-failed"));
     request.onupgradeneeded = () => {
       const db = request.result;
@@ -41,9 +42,10 @@ function openDb(): Promise<IDBDatabase> {
 
 function runTransaction<T>(
   mode: IDBTransactionMode,
-  runner: (store: IDBObjectStore) => IDBRequest<T>
+  runner: (store: IDBObjectStore) => IDBRequest<T>,
+  nameSpace?: string | null
 ): Promise<T> {
-  return openDb().then(
+  return openDb(nameSpace).then(
     (db) =>
       new Promise<T>((resolve, reject) => {
         const tx = db.transaction(STORE_NAME, mode);
@@ -76,8 +78,10 @@ export function createWorkspaceProjectId(): string {
   return `ws-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
-export async function listWorkspaceProjects(): Promise<WorkspaceProjectListItem[]> {
-  const db = await openDb();
+export async function listWorkspaceProjects(
+  nameSpace?: string | null
+): Promise<WorkspaceProjectListItem[]> {
+  const db = await openDb(nameSpace);
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE_NAME, "readonly");
     const store = tx.objectStore(STORE_NAME);
@@ -109,21 +113,28 @@ export async function listWorkspaceProjects(): Promise<WorkspaceProjectListItem[
 }
 
 export async function getWorkspaceProject(
-  id: string
+  id: string,
+  nameSpace?: string | null
 ): Promise<WorkspaceProjectRecord | null> {
-  const record = await runTransaction<WorkspaceProjectRecord | undefined>("readonly", (store) =>
-    store.get(id)
+  const record = await runTransaction<WorkspaceProjectRecord | undefined>(
+    "readonly",
+    (store) => store.get(id),
+    nameSpace
   );
   return record ?? null;
 }
 
 export async function putWorkspaceProject(
-  record: WorkspaceProjectRecord
+  record: WorkspaceProjectRecord,
+  nameSpace?: string | null
 ): Promise<WorkspaceProjectRecord> {
-  await runTransaction<IDBValidKey>("readwrite", (store) => store.put(record));
+  await runTransaction<IDBValidKey>("readwrite", (store) => store.put(record), nameSpace);
   return record;
 }
 
-export async function deleteWorkspaceProject(id: string): Promise<void> {
-  await runTransaction<undefined>("readwrite", (store) => store.delete(id));
+export async function deleteWorkspaceProject(
+  id: string,
+  nameSpace?: string | null
+): Promise<void> {
+  await runTransaction<undefined>("readwrite", (store) => store.delete(id), nameSpace);
 }

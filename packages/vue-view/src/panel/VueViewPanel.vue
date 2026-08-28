@@ -78,8 +78,10 @@ const props = withDefaults(
   defineProps<{
     class?: string;
     initialZoom?: number;
+    nameSpace?: string | null;
+    initialWorkspace?: WorkspaceProjectRecord | null;
   }>(),
-  { initialZoom: 1 }
+  { initialZoom: 1, nameSpace: null, initialWorkspace: null }
 );
 
 const {
@@ -296,9 +298,9 @@ const {
 } = useBlueprintNodeSelectionGuard(selectedBlueprintNodeId, applyBlueprintNodeSelection);
 
 const resolveLibraryBlueprint: LibraryBlueprintResolver = async (libraryBlueprintId) => {
-  const record = await getBlueprintLibraryRecord(libraryBlueprintId);
+  const record = await getBlueprintLibraryRecord(libraryBlueprintId, props.nameSpace);
   if (!record) return null;
-  const items = await listBlueprintLibrary();
+  const items = await listBlueprintLibrary(props.nameSpace);
   const nameById = new Map(items.map((item) => [item.id, item.name]));
   return documentToRunnableGraph(record.document, { libraryNameById: nameById });
 };
@@ -319,6 +321,7 @@ const blueprintDebugSession = useBlueprintDebugSession({
   libraryNameById: blueprintLibraryNameById,
   onExecutionBlocked: handleBlueprintExecutionBlocked,
   onViewScopeUpdate: handleViewScopeUpdate,
+  nameSpace: () => props.nameSpace,
 });
 
 const blueprintDebugToolbar = computed(() => ({
@@ -359,7 +362,7 @@ function handleUpdateAllowFalseSignalPropagation(value: boolean) {
 }
 
 async function refreshBlueprintLibrary() {
-  blueprintLibraryItems.value = await listBlueprintLibrary();
+  blueprintLibraryItems.value = await listBlueprintLibrary(props.nameSpace);
 }
 
 onMounted(() => {
@@ -402,6 +405,8 @@ const workspaceProjects = useWorkspaceProjects({
   },
   panelRevision: computed(() => `${historyCursor.value}|${allElements.value.length}`),
   onProjectApplied: handleWorkspaceProjectApplied,
+  initialWorkspace: () => props.initialWorkspace,
+  nameSpace: () => props.nameSpace,
 });
 
 const { triggerBlueprintNode, emitViewEvent, firedLifecyclePhases } = useBlueprintPageLifecycle({
@@ -440,7 +445,7 @@ const blueprintNodeOptions = computed(() =>
 );
 async function loadBlueprintFromLibrary(id: string) {
   await runBusyTask(t("common.loadingBlueprint"), async () => {
-    const record = await getBlueprintLibraryRecord(id);
+    const record = await getBlueprintLibraryRecord(id, props.nameSpace);
     if (!record) {
       message.error(panelMessages().blueprintNotFound);
       void refreshBlueprintLibrary();
@@ -487,14 +492,14 @@ async function syncBlueprintToLibrary() {
   const libraryId = activeBlueprintLibraryId.value;
   if (!libraryId) return;
   await runBusyTask(t("common.syncingBlueprint"), async () => {
-    const record = await getBlueprintLibraryRecord(libraryId);
+    const record = await getBlueprintLibraryRecord(libraryId, props.nameSpace);
     if (!record) return;
     await putBlueprintLibraryRecord({
       ...record,
       document: blueprintGraph.value.document,
       name: blueprintMeta.value.name,
       remark: blueprintMeta.value.remark,
-    });
+    }, props.nameSpace);
     blueprintSyncedDocument.value = blueprintGraph.value.document;
     message.success(panelMessages().blueprintSyncedToLibrary);
     await refreshBlueprintLibrary();
@@ -510,7 +515,7 @@ async function saveBlueprintToLibrary(meta: BlueprintMetaDraft) {
       meta,
       source: "saved",
     });
-    await putBlueprintLibraryRecord(record);
+    await putBlueprintLibraryRecord(record, props.nameSpace);
     activeBlueprintLibraryId.value = id;
     blueprintSyncedDocument.value = blueprintGraph.value.document;
     blueprintMeta.value = meta;
@@ -526,7 +531,7 @@ function handleExport() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    const safeName = (productName.value.trim() || "panel")
+    const safeName = ((productName.value ?? "").trim() || "panel")
       .replace(/[\\/:*?"<>|]/g, "-")
       .replace(/\s+/g, "-");
     a.download = `${safeName}-${Date.now()}.json`;
@@ -566,7 +571,7 @@ async function handleBlueprintImportFile(file: File) {
       const text = await file.text();
       const payload = parseBlueprintImportFile(await parseJsonText(text));
       const record = libraryRecordFromImport(payload);
-      await putBlueprintLibraryRecord(record);
+      await putBlueprintLibraryRecord(record, props.nameSpace);
       await refreshBlueprintLibrary();
       if (!activeBlueprintLibraryId.value) snapshotWorkspaceBlueprint();
       await loadBlueprintFromLibrary(record.id);
