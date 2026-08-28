@@ -1,4 +1,9 @@
-import React, { useCallback, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useI18n } from "@arronqzy/i18n/react";
 import {
   Button,
@@ -31,7 +36,6 @@ import type { PanelElement } from "../../types";
 import { readFileAsDataUrl } from "../../utils/async-work";
 import { randomId } from "../../utils/panelElementDefaults";
 import { ConfigHintIcon } from "../ConfigHintIcon";
-
 type UpdateElement = (
   id: string,
   patch: Partial<PanelElement>,

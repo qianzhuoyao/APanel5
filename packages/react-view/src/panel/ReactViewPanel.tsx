@@ -84,55 +84,35 @@ import { getPanelMessages } from "./constants/messages";
 import { PANEL_Z_INDEX } from "./constants/zIndex";
 import { useRafThrottledScroll } from "./hooks/useRafThrottledScroll";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
+  IconBackward,
+  IconBringFront,
+  IconClose,
+  IconForward,
+  IconImage,
+  IconLayers,
+  IconRedo,
+  IconSendBack,
+  IconUndo,
+} from "./icons";
+import {
+  getSelectedTargetsFromIds,
+  shouldClearSelectionOnBlank,
+} from "./utils/panelSelection";
+import { PanelMenubar } from "./components/PanelMenubar";
+import { PanelHistoryPopover } from "./components/PanelHistoryPopover";
+import { PanelLayerDock } from "./components/PanelLayerDock";
+import { PanelWorkspaceDialogs } from "./components/PanelWorkspaceDialogs";
+import {
   Button,
-  Checkbox,
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  Empty,
-  EmptyDescription,
-  EmptyIcon,
-  EmptyTitle,
   Input,
-  Menubar,
-  MenubarCheckboxItem,
-  MenubarContent,
-  MenubarItem,
-  MenubarMenu,
-  MenubarRadioGroup,
-  MenubarRadioItem,
-  MenubarSeparator,
-  MenubarTrigger,
-  RadioGroup,
-  RadioGroupItem,
   ResizableHandle,
   ResizablePanel,
   ResizablePanelGroup,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
   Switch,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
   Toaster,
   Tooltip,
   TooltipContent,
@@ -141,223 +121,6 @@ import {
   toast,
   useTheme,
 } from "@arronqzy/ui";
-
-function IconPlus() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M12 5v14M5 12h14" />
-    </svg>
-  );
-}
-
-function IconMerge() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M7 7h4a4 4 0 0 1 4 4v6" />
-      <path d="m12 14 3 3 3-3" />
-      <path d="M7 17h2" />
-    </svg>
-  );
-}
-
-function IconLock({ locked }: { locked: boolean }) {
-  return locked ? (
-    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
-      <rect x="4" y="11" width="16" height="9" rx="2" />
-      <path d="M8 11V8a4 4 0 0 1 8 0v3" />
-    </svg>
-  ) : (
-    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
-      <rect x="4" y="11" width="16" height="9" rx="2" />
-      <path d="M16 11V8a4 4 0 0 0-7-2.5" />
-    </svg>
-  );
-}
-
-function IconEdit() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M12 20h9" />
-      <path d="m16.5 3.5 4 4L8 20l-5 1 1-5Z" />
-    </svg>
-  );
-}
-
-function IconTrash() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M3 6h18" />
-      <path d="M8 6V4h8v2" />
-      <path d="M19 6l-1 14H6L5 6" />
-    </svg>
-  );
-}
-
-function IconCheck() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="m5 12 5 5L20 7" />
-    </svg>
-  );
-}
-
-function IconClose() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M6 6l12 12M18 6 6 18" />
-    </svg>
-  );
-}
-
-function IconChevron({ expanded }: { expanded: boolean }) {
-  return (
-    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
-      {expanded ? <path d="m6 14 6-6 6 6" /> : <path d="m6 10 6 6 6-6" />}
-    </svg>
-  );
-}
-
-function IconUndo() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M9 14 4 9l5-5" />
-      <path d="M20 20a9 9 0 0 0-9-9H4" />
-    </svg>
-  );
-}
-
-function IconRedo() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="m15 14 5-5-5-5" />
-      <path d="M4 20a9 9 0 0 1 9-9h7" />
-    </svg>
-  );
-}
-
-function IconHistory() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M3 12a9 9 0 1 0 3-6.7" />
-      <path d="M3 4v4h4" />
-      <path d="M12 7v5l3 2" />
-    </svg>
-  );
-}
-
-function IconBringFront() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M7 17h10M12 17V7" />
-      <path d="m8.5 9 3.5-3.5L15.5 9" />
-    </svg>
-  );
-}
-
-function IconSendBack() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M7 7h10M12 17V7" />
-      <path d="m15.5 15-3.5 3.5L8.5 15" />
-    </svg>
-  );
-}
-
-function IconForward() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M12 18V6" />
-      <path d="m8.5 9 3.5-3.5L15.5 9" />
-    </svg>
-  );
-}
-
-function IconBackward() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M12 6v12" />
-      <path d="m15.5 15-3.5 3.5L8.5 15" />
-    </svg>
-  );
-}
-
-function IconLayers() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="m12 4 8 4-8 4-8-4 8-4Z" />
-      <path d="m4 12 8 4 8-4" />
-      <path d="m4 16 8 4 8-4" />
-    </svg>
-  );
-}
-
-function IconImage() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
-      <rect x="3" y="5" width="18" height="14" rx="2" />
-      <circle cx="9" cy="10" r="1.5" />
-      <path d="m21 16-5.5-5.5L7 19" />
-    </svg>
-  );
-}
-
-function formatRelativeTime(
-  timestamp: number,
-  now: number,
-  t: (key: string, params?: Record<string, string | number>) => string
-): string {
-  const diff = Math.max(0, now - timestamp);
-  const sec = Math.floor(diff / 1000);
-  if (sec < 60) return t("common.secondsAgo", { sec });
-  const min = Math.floor(sec / 60);
-  if (min < 60) return t("common.minutesAgo", { min });
-  const hour = Math.floor(min / 60);
-  if (hour < 24) return t("common.hoursAgo", { hour });
-  const day = Math.floor(hour / 24);
-  return t("common.daysAgo", { day });
-}
-
-function getSelectedTargetsFromIds(
-  container: HTMLElement | null,
-  ids: string[],
-) {
-  if (!container) return [];
-  const targets: HTMLElement[] = [];
-  for (const id of ids) {
-    const el = container.querySelector<HTMLElement>(
-      `[data-element-id="${id}"]`,
-    );
-    if (el) targets.push(el);
-  }
-  return targets;
-}
-
-function shouldClearSelectionOnBlank(target: HTMLElement | null) {
-  if (!target) return false;
-  if (
-    target.closest(".rv-selectable") ||
-    target.closest(".moveable-control-box") ||
-    target.closest(".moveable-group") ||
-    target.closest(".moveable-line") ||
-    target.closest(".moveable-control") ||
-    target.closest(".moveable-direction")
-  ) {
-    return false;
-  }
-  if (
-    target.closest("button") ||
-    target.closest("input") ||
-    target.closest("select") ||
-    target.closest("textarea") ||
-    target.closest("label") ||
-    target.closest("a") ||
-    target.closest("[role='menuitem']") ||
-    target.closest("[data-radix-popper-content-wrapper]")
-  ) {
-    return false;
-  }
-  return true;
-}
 
 export type ReactViewPanelProps = {
   initialZoom?: number;
@@ -2072,84 +1835,32 @@ function ReactViewPanelInner({
         }
       `}</style>
       <nav className="panel-font-root relative z-30 flex items-center gap-2 border-b border-border bg-background/95 px-2 text-foreground">
-        <Menubar className="h-8 border-0 bg-transparent p-0 shadow-none">
-          <MenubarMenu>
-            <MenubarTrigger className="px-2 py-1 text-xs font-normal">{t("panel.menubar.file")}</MenubarTrigger>
-            <MenubarContent className="z-[10100]">
-              {/* <MenubarItem onClick={handlePreviewLayer}>{t("panel.workspace.previewDocTitle")}</MenubarItem> */}
-              <MenubarItem onClick={handleExport}>{t("panel.menubar.export")}</MenubarItem>
-              <MenubarItem onClick={() => importInputRef.current?.click()}>{t("panel.menubar.import")}</MenubarItem>
-            </MenubarContent>
-          </MenubarMenu>
-          <MenubarMenu>
-            <MenubarTrigger className="px-2 py-1 text-xs font-normal">{t("panel.menubar.edit")}</MenubarTrigger>
-            <MenubarContent className="z-[10100]">
-              <MenubarItem disabled={!canUndo} onClick={undo}>{t("panel.menubar.undo")}</MenubarItem>
-              <MenubarItem disabled={!canRedo} onClick={redo}>{t("panel.menubar.redo")}</MenubarItem>
-              <MenubarSeparator />
-              <MenubarItem disabled={!hasUnlockedSelection} onClick={() => bringElementsForward(selectedIds)}>{t("panel.menubar.bringForward")}</MenubarItem>
-              <MenubarItem disabled={!hasUnlockedSelection} onClick={() => sendElementsBackward(selectedIds)}>{t("panel.menubar.sendBackward")}</MenubarItem>
-              <MenubarItem disabled={!hasUnlockedSelection} onClick={() => bringElementsToFront(selectedIds)}>{t("panel.menubar.bringToFront")}</MenubarItem>
-              <MenubarItem disabled={!hasUnlockedSelection} onClick={() => sendElementsToBack(selectedIds)}>{t("panel.menubar.sendToBack")}</MenubarItem>
-            </MenubarContent>
-          </MenubarMenu>
-          <MenubarMenu>
-            <MenubarTrigger className="px-2 py-1 text-xs font-normal">{t("panel.menubar.view")}</MenubarTrigger>
-            <MenubarContent className="z-[10100]">
-              <MenubarItem onClick={() => adjustUniformZoom((z) => z - 0.1)}>{t("panel.menubar.zoomOut")}</MenubarItem>
-              <MenubarItem onClick={() => adjustUniformZoom((z) => z + 0.1)}>{t("panel.menubar.zoomIn")}</MenubarItem>
-              <MenubarSeparator />
-              <MenubarItem
-                onClick={() => {
-                  applyTheme(!isDark);
-                }}
-              >
-                {isDark ? t("panel.menubar.switchToLight") : t("panel.menubar.switchToDark")}
-              </MenubarItem>
-            </MenubarContent>
-          </MenubarMenu>
-          <MenubarMenu>
-            <MenubarTrigger className="px-2 py-1 text-xs font-normal">{t("panel.menubar.blueprint")}</MenubarTrigger>
-            <MenubarContent className="z-[10100]">
-              <MenubarItem onClick={openBlueprintExportDialog}>{t("panel.menubar.export")}</MenubarItem>
-              <MenubarItem onClick={() => blueprintImportInputRef.current?.click()}>
-                {t("panel.menubar.import")}
-              </MenubarItem>
-            </MenubarContent>
-          </MenubarMenu>
-          <MenubarMenu>
-            <MenubarTrigger className="px-2 py-1 text-xs font-normal">{t("panel.menubar.settings")}</MenubarTrigger>
-            <MenubarContent className="z-[10100]">
-              <MenubarRadioGroup
-                value={panelFontSize}
-                onValueChange={(value) => setPanelFontSize(value as "sm" | "md" | "lg")}
-              >
-                <MenubarRadioItem value="sm">{t("panel.menubar.fontSmall")}</MenubarRadioItem>
-                <MenubarRadioItem value="md">{t("panel.menubar.fontMedium")}</MenubarRadioItem>
-                <MenubarRadioItem value="lg">{t("panel.menubar.fontLarge")}</MenubarRadioItem>
-              </MenubarRadioGroup>
-              <MenubarSeparator />
-              <div className="px-2 py-1.5 text-[11px] text-muted-foreground">
-                {t("panel.theme.language")}
-              </div>
-              <MenubarRadioGroup
-                value={locale}
-                onValueChange={(value) => setLocale(value as "zh-CN" | "en-US")}
-              >
-                <MenubarRadioItem value="zh-CN">{t("panel.theme.zhCN")}</MenubarRadioItem>
-                <MenubarRadioItem value="en-US">{t("panel.theme.enUS")}</MenubarRadioItem>
-              </MenubarRadioGroup>
-              <MenubarSeparator />
-              <MenubarCheckboxItem
-                checked={outputScale}
-                onCheckedChange={(checked) => setOutputScale(checked === true)}
-                title={t("panel.menubar.outputScaleHint")}
-              >
-                {t("panel.menubar.outputScale")}
-              </MenubarCheckboxItem>
-            </MenubarContent>
-          </MenubarMenu>
-        </Menubar>
+        <PanelMenubar
+          t={t}
+          handleExport={handleExport}
+          importInputRef={importInputRef}
+          blueprintImportInputRef={blueprintImportInputRef}
+          canUndo={canUndo}
+          canRedo={canRedo}
+          undo={undo}
+          redo={redo}
+          hasUnlockedSelection={hasUnlockedSelection}
+          selectedIds={selectedIds}
+          bringElementsForward={bringElementsForward}
+          sendElementsBackward={sendElementsBackward}
+          bringElementsToFront={bringElementsToFront}
+          sendElementsToBack={sendElementsToBack}
+          adjustUniformZoom={adjustUniformZoom}
+          applyTheme={applyTheme}
+          isDark={isDark}
+          openBlueprintExportDialog={openBlueprintExportDialog}
+          panelFontSize={panelFontSize}
+          setPanelFontSize={setPanelFontSize}
+          locale={locale}
+          setLocale={setLocale}
+          outputScale={outputScale}
+          setOutputScale={setOutputScale}
+        />
         <WorkspaceProjectNav
           projects={workspaceProjects.projects}
           activeProjectId={workspaceProjects.activeProjectId}
@@ -2354,122 +2065,19 @@ function ReactViewPanelInner({
                     </TooltipTrigger>
                     <TooltipContent className="z-[10000]">{t("panel.menubar.redoShortcut")}</TooltipContent>
                   </Tooltip>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div className="relative">
-                        <button
-                          type="button"
-                          onClick={() => setIsHistoryPanelExpanded((prev) => !prev)}
-                          className={[
-                            "rounded border border-border p-1 hover:bg-accent",
-                            isHistoryPanelExpanded ? "bg-accent/60" : "",
-                          ].join(" ")}
-                          aria-label={isHistoryPanelExpanded ? t("panel.history.collapse") : t("panel.history.expand")}
-                        >
-                          <IconHistory />
-                        </button>
-                        {isHistoryPanelExpanded ? (
-                          <div
-                            className="absolute left-1/2 top-[calc(100%+6px)] w-[280px] -translate-x-1/2 rounded-lg border border-border bg-card/95 p-2 shadow-lg backdrop-blur"
-                            style={{ zIndex: PANEL_Z_INDEX.historyPopover }}
-                          >
-                            <div className="mb-1 flex items-center justify-between">
-                              <span className="text-[11px] font-semibold text-muted-foreground">{t("panel.history.title")}</span>
-                              <span className="text-[11px] text-muted-foreground">
-                                {history.length > 0 ? `${historyCursor + 1}/${history.length}` : "0/0"}
-                              </span>
-                            </div>
-                            <Input
-                              value={historyKeyword}
-                              onChange={(e) => setHistoryKeyword(e.target.value)}
-                              placeholder={t("panel.history.searchPlaceholder")}
-                              className="mb-2 h-7 text-xs"
-                            />
-                            <div
-                              className={`max-h-52 space-y-1 overflow-auto pr-1 text-[11px] ${themedScrollbarClass}`}
-                            >
-                              {history.length === 0 ? (
-                                <Empty className="py-4">
-                                  <EmptyIcon className="h-8 w-8">
-                                    <IconHistory />
-                                  </EmptyIcon>
-                                  <EmptyTitle className="text-xs">{t("panel.history.emptyTitle")}</EmptyTitle>
-                                  <EmptyDescription className="text-[11px]">
-                                    {t("panel.history.emptyDesc")}
-                                  </EmptyDescription>
-                                </Empty>
-                              ) : (
-                                history
-                                  .slice(Math.max(0, history.length - 20))
-                                  .reverse()
-                                  .filter((item) =>
-                                    !normalizedHistoryKeyword
-                                      ? true
-                                      : item.label.toLowerCase().includes(normalizedHistoryKeyword)
-                                  )
-                                  .map((item) => (
-                                    <button
-                                      key={`${item.index}-${item.timestamp}`}
-                                      type="button"
-                                      className={[
-                                        "w-full rounded border px-2 py-1 text-left transition-colors",
-                                        item.active
-                                          ? "border-primary/50 bg-primary/10 text-foreground"
-                                          : "border-border/60 bg-background/70 text-muted-foreground hover:bg-accent/50",
-                                      ].join(" ")}
-                                      title={new Date(item.timestamp).toLocaleString()}
-                                      onClick={() => {
-                                        if (item.active) return;
-                                        goToHistory(item.index);
-                                      }}
-                                    >
-                                      <div className="flex items-center justify-between gap-2">
-                                        <span className="truncate">{item.label}</span>
-                                        <span className="shrink-0 text-[10px] text-muted-foreground">
-                                          {formatRelativeTime(item.timestamp, historyNow, t)}
-                                        </span>
-                                      </div>
-                                    </button>
-                                  ))
-                              )}
-                              {history.length > 0 &&
-                              history
-                                .slice(Math.max(0, history.length - 20))
-                                .reverse()
-                                .filter((item) =>
-                                  !normalizedHistoryKeyword
-                                    ? true
-                                    : item.label.toLowerCase().includes(normalizedHistoryKeyword)
-                                ).length === 0 ? (
-                                <Empty className="py-4">
-                                  <EmptyIcon className="h-8 w-8">
-                                    <svg
-                                      viewBox="0 0 24 24"
-                                      className="h-4 w-4"
-                                      fill="none"
-                                      stroke="currentColor"
-                                      strokeWidth="1.8"
-                                      aria-hidden="true"
-                                    >
-                                      <circle cx="11" cy="11" r="7" />
-                                      <path d="m20 20-3.5-3.5" />
-                                    </svg>
-                                  </EmptyIcon>
-                                  <EmptyTitle className="text-xs">{t("panel.history.noMatchTitle")}</EmptyTitle>
-                                  <EmptyDescription className="text-[11px]">
-                                    {t("panel.history.noMatchDesc")}
-                                  </EmptyDescription>
-                                </Empty>
-                              ) : null}
-                            </div>
-                          </div>
-                        ) : null}
-                      </div>
-                    </TooltipTrigger>
-                    <TooltipContent className="z-[10000]">
-                      {isHistoryPanelExpanded ? t("panel.history.collapse") : t("panel.history.expand")}
-                    </TooltipContent>
-                  </Tooltip>
+                  <PanelHistoryPopover
+                    t={t}
+                    isHistoryPanelExpanded={isHistoryPanelExpanded}
+                    setIsHistoryPanelExpanded={setIsHistoryPanelExpanded}
+                    history={history}
+                    historyCursor={historyCursor}
+                    historyKeyword={historyKeyword}
+                    setHistoryKeyword={setHistoryKeyword}
+                    normalizedHistoryKeyword={normalizedHistoryKeyword}
+                    goToHistory={goToHistory}
+                    historyNow={historyNow}
+                    themedScrollbarClass={themedScrollbarClass}
+                  />
                 </TooltipProvider>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -2985,328 +2593,36 @@ function ReactViewPanelInner({
                 }
               />
 
-              <div className="border-t border-border bg-background/95 px-2 py-1.5">
-                <TooltipProvider delayDuration={120}>
-                  <Tabs value={activeLayerId} onValueChange={setActiveLayer}>
-                    <div className="mb-1 flex items-center gap-2">
-                      <div className="text-[11px] font-semibold text-muted-foreground">{t("panel.layers.title")}</div>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <button
-                            type="button"
-                            onClick={() => setIsLayerPanelExpanded((v) => !v)}
-                            aria-label={isLayerPanelExpanded ? t("panel.layers.collapseInputAria") : t("panel.layers.expandInputAria")}
-                            className="rounded border border-border p-1 hover:bg-accent"
-                          >
-                            <IconChevron expanded={isLayerPanelExpanded} />
-                          </button>
-                        </TooltipTrigger>
-                        <TooltipContent className="z-[10000]">
-                          {isLayerPanelExpanded ? t("panel.layers.collapseInput") : t("panel.layers.expandInput")}
-                        </TooltipContent>
-                      </Tooltip>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <button
-                            type="button"
-                            onClick={addLayer}
-                            aria-label={t("panel.layers.add")}
-                            className="rounded border border-border p-1 hover:bg-accent"
-                          >
-                            <IconPlus />
-                          </button>
-                        </TooltipTrigger>
-                        <TooltipContent className="z-[10000]">{t("panel.layers.add")}</TooltipContent>
-                      </Tooltip>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <button
-                            type="button"
-                            onClick={() => {
-                            if (!canMergeLayers) return;
-                              setIsMergingLayers(true);
-                            }}
-                            aria-label={t("panel.layers.merge")}
-                          disabled={!canMergeLayers}
-                          className="rounded border border-border p-1 hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40"
-                          >
-                            <IconMerge />
-                          </button>
-                        </TooltipTrigger>
-                      <TooltipContent className="z-[10000]">
-                        {canMergeLayers ? t("panel.layers.merge") : t("panel.layers.mergeNeedTwo")}
-                      </TooltipContent>
-                      </Tooltip>
-                    </div>
-
-                    <TabsList
-                      className={`h-auto w-full justify-start gap-1 overflow-x-auto bg-muted/40 p-1 ${themedScrollbarClass}`}
-                    >
-                      {layers.map((layer) => (
-                        <TabsTrigger
-                          key={layer.id}
-                          value={layer.id}
-                          className="flex min-w-[120px] items-center gap-1 px-2 py-1 text-xs"
-                        >
-                          <span className="truncate">{layer.name}</span>
-                          {layer.isMapping ? (
-                            <span className="rounded border border-primary/40 bg-primary/10 px-1 text-[10px] text-primary">
-                              {t("panel.layers.mapping")}
-                            </span>
-                          ) : null}
-                          {layer.isPrimary ? (
-                            <span className="rounded border border-emerald-500/40 bg-emerald-500/10 px-1 text-[10px] text-emerald-600">
-                              {t("panel.layers.primary")}
-                            </span>
-                          ) : null}
-                          {layer.locked ? <IconLock locked /> : null}
-                        </TabsTrigger>
-                      ))}
-                    </TabsList>
-
-                    <TabsContent value={activeLayerId} className="mt-2 space-y-2">
-                      {activeLayer ? (
-                        <div className="flex items-center gap-2 rounded border border-border bg-card px-2 py-1.5 text-xs">
-                          {editingLayerId === activeLayer.id ? (
-                            <Input
-                              value={editingLayerName}
-                              onChange={(e) => setEditingLayerName(e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter") {
-                                  e.preventDefault();
-                                  renameLayer(editingLayerId, editingLayerName);
-                                  setEditingLayerId(null);
-                                  setEditingLayerName("");
-                                  return;
-                                }
-                                if (e.key === "Escape") {
-                                  e.preventDefault();
-                                  setEditingLayerId(null);
-                                  setEditingLayerName("");
-                                }
-                              }}
-                              className="h-7 min-w-0 flex-1"
-                              placeholder={t("panel.layers.namePlaceholder")}
-                              autoFocus
-                            />
-                          ) : (
-                            <span className="truncate font-medium">{activeLayer.name}</span>
-                          )}
-                          {activeLayer.isMapping ? (
-                            <span className="rounded border border-primary/40 bg-primary/10 px-1 text-[10px] text-primary">
-                              {t("panel.layers.mappingLayer")}
-                            </span>
-                          ) : null}
-                          {activeLayer.isPrimary ? (
-                            <span className="rounded border border-emerald-500/40 bg-emerald-500/10 px-1 text-[10px] text-emerald-600">
-                              {t("panel.layers.primaryLayer")}
-                            </span>
-                          ) : null}
-                          <div className="flex-1" />
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <button
-                                type="button"
-                                onClick={() => setPrimaryLayer(activeLayer.id)}
-                                disabled={activeLayer.isPrimary}
-                                aria-label={activeLayer.isPrimary ? t("panel.layers.isPrimary") : t("panel.layers.setPrimary")}
-                                className={[
-                                  "rounded border px-2 py-1 text-[11px] disabled:cursor-not-allowed disabled:opacity-60",
-                                  activeLayer.isPrimary
-                                    ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-600"
-                                    : "border-border hover:bg-accent",
-                                ].join(" ")}
-                              >
-                                {activeLayer.isPrimary ? t("panel.layers.isPrimary") : t("panel.layers.setPrimary")}
-                              </button>
-                            </TooltipTrigger>
-                            <TooltipContent className="z-[10000]">
-                              {activeLayer.isPrimary ? t("panel.layers.isPrimaryHint") : t("panel.layers.setPrimaryHint")}
-                            </TooltipContent>
-                          </Tooltip>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <button
-                                type="button"
-                                onClick={() => toggleLayerLock(activeLayer.id)}
-                                disabled={!activeLayer.editable}
-                                aria-label={activeLayer.locked ? t("panel.layers.unlock") : t("panel.layers.lock")}
-                                className="rounded border border-border p-1 disabled:opacity-40"
-                              >
-                                <IconLock locked={activeLayer.locked} />
-                              </button>
-                            </TooltipTrigger>
-                            <TooltipContent className="z-[10000]">
-                              {activeLayer.locked ? t("panel.layers.unlock") : t("panel.layers.lock")}
-                            </TooltipContent>
-                          </Tooltip>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              {editingLayerId === activeLayer.id ? (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    renameLayer(editingLayerId, editingLayerName);
-                                    setEditingLayerId(null);
-                                    setEditingLayerName("");
-                                  }}
-                                  aria-label={t("panel.layers.saveName")}
-                                  className="rounded border border-border p-1 hover:bg-accent"
-                                >
-                                  <IconCheck />
-                                </button>
-                              ) : (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setEditingLayerId(activeLayer.id);
-                                    setEditingLayerName(activeLayer.name);
-                                  }}
-                                  disabled={!activeLayer.editable}
-                                  aria-label={t("panel.layers.rename")}
-                                  className="rounded border border-border p-1 disabled:opacity-40"
-                                >
-                                  <IconEdit />
-                                </button>
-                              )}
-                            </TooltipTrigger>
-                            <TooltipContent className="z-[10000]">
-                              {editingLayerId === activeLayer.id ? t("panel.layers.saveName") : t("panel.layers.rename")}
-                            </TooltipContent>
-                          </Tooltip>
-                          {editingLayerId === activeLayer.id ? (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setEditingLayerId(null);
-                                    setEditingLayerName("");
-                                  }}
-                                  aria-label={t("panel.layers.cancelEditName")}
-                                  className="rounded border border-border p-1 hover:bg-accent"
-                                >
-                                  <IconClose />
-                                </button>
-                              </TooltipTrigger>
-                              <TooltipContent className="z-[10000]">{t("panel.layers.cancelEdit")}</TooltipContent>
-                            </Tooltip>
-                          ) : null}
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const blockReason = getLayerDeleteBlockReason(activeLayer.id);
-                                  if (blockReason) {
-                                    showActionHint(blockReason);
-                                    return;
-                                  }
-                                  setConfirmDeleteLayerId(activeLayer.id);
-                                  const firstTarget = layers.find((l) => l.id !== activeLayer.id);
-                                  setDeleteTargetLayerId(firstTarget?.id ?? "");
-                                  setDeleteMode(activeLayer.isMapping ? "remove" : "move");
-                                }}
-                                disabled={!activeLayer.editable || activeLayer.locked}
-                                aria-label={
-                                  !activeLayer.editable
-                                    ? t("panel.layers.cannotDeleteDefault")
-                                    : activeLayer.locked
-                                      ? t("panel.layers.cannotDeleteLocked")
-                                      : t("panel.layers.delete")
-                                }
-                                className="rounded border border-border p-1 disabled:opacity-40"
-                              >
-                                <IconTrash />
-                              </button>
-                            </TooltipTrigger>
-                            <TooltipContent className="z-[10000]">
-                              {!activeLayer.editable
-                                ? t("panel.layers.cannotDeleteDefault")
-                                : activeLayer.locked
-                                  ? t("panel.layers.cannotDeleteLocked")
-                                  : t("panel.layers.delete")}
-                            </TooltipContent>
-                          </Tooltip>
-                        </div>
-                      ) : null}
-
-                      {isLayerPanelExpanded ? (
-                        <div className="rounded border border-border bg-card px-2 py-1.5 text-xs">
-                          <div className="mb-1 text-muted-foreground">{t("panel.layers.selectMergeLayers")}</div>
-                          <div className="flex flex-wrap gap-2">
-                            {layers.map((layer) => (
-                              <label key={layer.id} className="flex items-center gap-1.5">
-                                <Checkbox
-                                  checked={Boolean(layer.mergeSelected)}
-                                  disabled={layer.isMapping}
-                                  className="h-4 w-4 border-2 border-foreground/80 bg-background ring-1 ring-foreground/40 data-[state=checked]:border-primary data-[state=checked]:ring-primary/40"
-                                  onCheckedChange={() => toggleLayerMergeSelected(layer.id)}
-                                />
-                                <span
-                                  className="max-w-[140px] truncate"
-                                  title={layer.isMapping ? t("panel.layers.mappingCannotMerge") : layer.name}
-                                >
-                                  {layer.name}
-                                  {layer.isMapping ? t("panel.layers.cannotMergeSuffix") : ""}
-                                </span>
-                              </label>
-                            ))}
-                          </div>
-                        </div>
-                      ) : null}
-                    </TabsContent>
-                  </Tabs>
-
-                {isLayerPanelExpanded && isMergingLayers ? (
-                  <div className="mt-2 flex items-center gap-2 rounded border border-border bg-card px-2 py-1.5 text-xs">
-                    <span className="text-muted-foreground">{t("panel.layers.mergedName")}</span>
-                    <Input
-                      value={mergeLayerName}
-                      onChange={(e) => setMergeLayerName(e.target.value)}
-                      className="h-7 min-w-0 flex-1"
-                      placeholder={t("panel.layers.mergedNamePlaceholder")}
-                      autoFocus
-                    />
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (!canMergeLayers) return;
-                            mergeSelectedLayers(mergeLayerName || undefined);
-                            setIsMergingLayers(false);
-                            setMergeLayerName("");
-                          }}
-                          aria-label={t("panel.layers.confirmMergeAria")}
-                          disabled={!canMergeLayers}
-                          className="rounded border border-border p-1 hover:bg-accent"
-                        >
-                          <IconCheck />
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent className="z-[10000]">{t("panel.layers.confirmMerge")}</TooltipContent>
-                    </Tooltip>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setIsMergingLayers(false);
-                            setMergeLayerName("");
-                          }}
-                          aria-label={t("panel.layers.cancelMergeAria")}
-                          className="rounded border border-border p-1 hover:bg-accent"
-                        >
-                          <IconClose />
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent className="z-[10000]">{t("panel.layers.cancelMerge")}</TooltipContent>
-                    </Tooltip>
-                  </div>
-                ) : null}
-                </TooltipProvider>
-              </div>
+              <PanelLayerDock
+                t={t}
+                isLayerPanelExpanded={isLayerPanelExpanded}
+                setIsLayerPanelExpanded={setIsLayerPanelExpanded}
+                addLayer={addLayer}
+                canMergeLayers={canMergeLayers}
+                setIsMergingLayers={setIsMergingLayers}
+                isMergingLayers={isMergingLayers}
+                layers={layers}
+                activeLayerId={activeLayerId}
+                setActiveLayer={setActiveLayer}
+                themedScrollbarClass={themedScrollbarClass}
+                activeLayer={activeLayer}
+                editingLayerId={editingLayerId}
+                setEditingLayerId={setEditingLayerId}
+                editingLayerName={editingLayerName}
+                setEditingLayerName={setEditingLayerName}
+                renameLayer={renameLayer}
+                setPrimaryLayer={setPrimaryLayer}
+                toggleLayerLock={toggleLayerLock}
+                getLayerDeleteBlockReason={getLayerDeleteBlockReason}
+                showActionHint={showActionHint}
+                setConfirmDeleteLayerId={setConfirmDeleteLayerId}
+                setDeleteTargetLayerId={setDeleteTargetLayerId}
+                setDeleteMode={setDeleteMode}
+                toggleLayerMergeSelected={toggleLayerMergeSelected}
+                mergeLayerName={mergeLayerName}
+                setMergeLayerName={setMergeLayerName}
+                mergeSelectedLayers={mergeSelectedLayers}
+              />
             </div>
           </div>
         </ResizablePanel>
@@ -3370,199 +2686,27 @@ function ReactViewPanelInner({
         open={assistantOpen}
         onOpenChange={setAssistantOpen}
       />
-      <AlertDialog
-        open={mappingDeleteConfirmOpen}
-        onOpenChange={(open) => {
-          setMappingDeleteConfirmOpen(open);
-          if (!open) mappingDeleteProceedRef.current = null;
-        }}
-      >
-        <AlertDialogContent overlayClassName="bg-transparent pointer-events-none">
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t("panel.layers.confirmDeleteTitle")}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {t("panel.layers.confirmDeleteMappingBody", {
-                count: mappingDeleteImpactCount,
-              })}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                const fn = mappingDeleteProceedRef.current;
-                mappingDeleteProceedRef.current = null;
-                setMappingDeleteConfirmOpen(false);
-                fn?.();
-              }}
-            >
-              {t("panel.layers.continueDelete")}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-      <Dialog
-        open={Boolean(deletingLayer)}
-        onOpenChange={(open) => {
-          if (open) return;
-          setConfirmDeleteLayerId(null);
-          setDeleteMode("move");
-          setDeleteTargetLayerId("");
-        }}
-      >
-        <DialogContent
-          className="sm:max-w-[520px]"
-          overlayClassName="bg-transparent pointer-events-none"
-        >
-          <DialogHeader>
-            <DialogTitle>{t("panel.layers.confirmDeleteLayerTitle")}</DialogTitle>
-            <DialogDescription>
-              {t("panel.layers.aboutToDeleteLayer", {
-                name: deletingLayer?.name ?? "-",
-              })}
-            </DialogDescription>
-          </DialogHeader>
-          {deletingLayer ? (
-            <RadioGroup
-              value={deletingLayerMode}
-              onValueChange={(value) => setDeleteMode(value as "move" | "remove")}
-              className="space-y-2 text-sm"
-            >
-              {!deletingLayer.isMapping ? (
-                <div className="flex items-center gap-3">
-                  <label className="flex items-center gap-1.5">
-                    <RadioGroupItem value="move" />
-                    {t("panel.layers.migrateNodesTo")}
-                  </label>
-                  <Select
-                    value={deleteTargetLayerId || "__none__"}
-                    onValueChange={(value) =>
-                      setDeleteTargetLayerId(value === "__none__" ? "" : value)
-                    }
-                    disabled={deletingLayerMode !== "move" || deleteTargetCandidates.length === 0}
-                  >
-                    <SelectTrigger className="h-8 w-[220px]">
-                      <SelectValue placeholder={t("panel.layers.selectTargetLayer")} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__">{t("panel.layers.pleaseSelectLayer")}</SelectItem>
-                      {deleteTargetCandidates.map((l) => (
-                        <SelectItem key={l.id} value={l.id}>
-                          {l.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              ) : null}
-              <label className="flex items-center gap-1.5">
-                <RadioGroupItem value="remove" />
-                {deletingLayer.isMapping ? t("panel.layers.deleteMappingWithNodes") : t("panel.layers.deleteAllNodesToo")}
-              </label>
-            </RadioGroup>
-          ) : null}
-          <DialogFooter>
-            <button
-              type="button"
-              onClick={() => {
-                setConfirmDeleteLayerId(null);
-                setDeleteMode("move");
-                setDeleteTargetLayerId("");
-              }}
-              className="rounded border border-border px-3 py-1.5 text-sm hover:bg-accent"
-            >
-              {t("common.cancel")}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                if (!deletingLayer) return;
-                const result = deleteLayer(deletingLayer.id, {
-                  mode: deletingLayerMode,
-                  targetLayerId: deleteTargetLayerId || undefined,
-                });
-                if (!result.ok) {
-                  showActionHint(result.reason);
-                  return;
-                }
-                setConfirmDeleteLayerId(null);
-                setDeleteMode("move");
-                setDeleteTargetLayerId("");
-              }}
-              className="rounded bg-primary px-3 py-1.5 text-sm text-primary-foreground hover:bg-primary/90"
-            >
-              {t("panel.layers.confirmDeleteTitle")}
-            </button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      <Dialog
-        open={titleIconPreviewOpen}
-        onOpenChange={setTitleIconPreviewOpen}
-      >
-        <DialogContent
-          className="sm:max-w-[860px]"
-          overlayClassName="bg-transparent pointer-events-none"
-        >
-          <DialogHeader>
-            <DialogTitle>{t("panel.menubar.titleIconPreviewTitle")}</DialogTitle>
-            <DialogDescription>{t("panel.menubar.titleIconPreviewDesc")}</DialogDescription>
-          </DialogHeader>
-          <div className="flex items-center justify-end gap-2">
-            <button
-              type="button"
-              onClick={() => setTitleIconZoom((z) => Math.max(0.5, Number((z - 0.1).toFixed(2))))}
-              className="rounded border border-border px-2 py-1 text-xs hover:bg-accent"
-            >
-              -
-            </button>
-            <span className="w-14 text-center text-xs text-muted-foreground">
-              {(titleIconZoom * 100).toFixed(0)}%
-            </span>
-            <button
-              type="button"
-              onClick={() => setTitleIconZoom((z) => Math.min(8, Number((z + 0.1).toFixed(2))))}
-              className="rounded border border-border px-2 py-1 text-xs hover:bg-accent"
-            >
-              +
-            </button>
-            <button
-              type="button"
-              onClick={() => setTitleIconZoom(1.6)}
-              className="rounded border border-border px-2 py-1 text-xs text-muted-foreground hover:bg-accent"
-            >
-              {t("common.reset")}
-            </button>
-          </div>
-          {titleIconDataUrl ? (
-            <div
-              className="max-h-[78vh] overflow-auto rounded border border-border bg-muted/20 p-4"
-              onWheel={(e) => {
-                e.preventDefault();
-                const delta = e.deltaY > 0 ? -0.1 : 0.1;
-                setTitleIconZoom((z) => {
-                  const next = Number((z + delta).toFixed(2));
-                  return Math.min(8, Math.max(0.5, next));
-                });
-              }}
-            >
-              <img
-                src={titleIconDataUrl}
-                alt={t("panel.menubar.titleIconPreviewAlt")}
-                className="mx-auto rounded border border-border/70 object-contain"
-                style={{
-                  width: 200,
-                  height: 200,
-                  maxWidth: "none",
-                  maxHeight: "none",
-                  transform: `scale(${titleIconZoom})`,
-                  transformOrigin: "center center",
-                }}
-              />
-            </div>
-          ) : null}
-        </DialogContent>
-      </Dialog>
+      <PanelWorkspaceDialogs
+        t={t}
+        mappingDeleteConfirmOpen={mappingDeleteConfirmOpen}
+        setMappingDeleteConfirmOpen={setMappingDeleteConfirmOpen}
+        mappingDeleteProceedRef={mappingDeleteProceedRef}
+        mappingDeleteImpactCount={mappingDeleteImpactCount}
+        deletingLayer={deletingLayer}
+        deletingLayerMode={deletingLayerMode}
+        setConfirmDeleteLayerId={setConfirmDeleteLayerId}
+        setDeleteMode={setDeleteMode}
+        setDeleteTargetLayerId={setDeleteTargetLayerId}
+        deleteTargetLayerId={deleteTargetLayerId}
+        deleteTargetCandidates={deleteTargetCandidates}
+        deleteLayer={deleteLayer}
+        showActionHint={showActionHint}
+        titleIconPreviewOpen={titleIconPreviewOpen}
+        setTitleIconPreviewOpen={setTitleIconPreviewOpen}
+        titleIconZoom={titleIconZoom}
+        setTitleIconZoom={setTitleIconZoom}
+        titleIconDataUrl={titleIconDataUrl}
+      />
       <BlueprintMetaDialog
         open={blueprintMetaDialogOpen}
         mode={blueprintMetaDialogMode}
