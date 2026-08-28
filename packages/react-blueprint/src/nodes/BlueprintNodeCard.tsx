@@ -9,7 +9,7 @@ export type BlueprintNodeCardProps = {
   subtitle?: string;
   /** 调试执行进度（如时钟 2/3） */
   progressLabel?: string;
-  variant?: "blueprint" | "logic" | "and" | "lifecycle" | "event" | "fetch" | "json" | "clock";
+  variant?: "blueprint" | "logic" | "and" | "lifecycle" | "event" | "fetch" | "json" | "storage" | "clock";
   selected?: boolean;
   hideLeadingDot?: boolean;
   onSelect?: (nodeId: string) => void;
@@ -50,6 +50,11 @@ const variantStyle = {
     accent: "border-l-teal-500 dark:border-l-teal-400",
     badge: "bg-teal-500/10 text-teal-700 dark:text-teal-300",
     dot: "bg-teal-500",
+  },
+  storage: {
+    accent: "border-l-emerald-500 dark:border-l-emerald-400",
+    badge: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+    dot: "bg-emerald-500",
   },
   clock: {
     accent: "border-l-rose-500 dark:border-l-rose-400",

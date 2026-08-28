@@ -5,6 +5,7 @@ export const DEFAULT_LOGIC_NODE_TYPE = "Logic";
 export const LIFECYCLE_NODE_TYPE = "Lifecycle";
 export const FETCH_NODE_TYPE = "DataFetch";
 export const JSON_NODE_TYPE = "JsonNode";
+export const STORAGE_NODE_TYPE = "StorageNode";
 export const CLOCK_NODE_TYPE = "Clock";
 export const AND_NODE_TYPE = "AndLogic";
 export const VIEW_NODE_TYPE = "ViewBind";
@@ -49,6 +50,14 @@ export const jsonNodeDefinition: NodeDefinition = {
   behavior: { kind: "js", ref: "json-parse-run" },
 };
 
+/** 存储节点：收到真信号后先写入再读取 sessionStorage / localStorage */
+export const storageNodeDefinition: NodeDefinition = {
+  type: STORAGE_NODE_TYPE,
+  inputs: [{ name: "in", kind: "data" }],
+  outputs: [{ name: "out", kind: "data" }],
+  behavior: { kind: "js", ref: "storage-run" },
+};
+
 /** 时钟节点：收到真信号后按间隔输出含当前时间的真信号 */
 export const clockNodeDefinition: NodeDefinition = {
   type: CLOCK_NODE_TYPE,
@@ -90,6 +99,7 @@ export const nodeDefinitionRegistry: Record<string, NodeDefinition> = {
   [LIFECYCLE_NODE_TYPE]: lifecycleNodeDefinition,
   [FETCH_NODE_TYPE]: fetchNodeDefinition,
   [JSON_NODE_TYPE]: jsonNodeDefinition,
+  [STORAGE_NODE_TYPE]: storageNodeDefinition,
   [CLOCK_NODE_TYPE]: clockNodeDefinition,
   [AND_NODE_TYPE]: andLogicNodeDefinition,
   [VIEW_NODE_TYPE]: viewBindNodeDefinition,

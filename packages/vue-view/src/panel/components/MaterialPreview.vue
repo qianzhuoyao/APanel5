@@ -157,5 +157,13 @@ const common =
       />
     </div>
   </div>
+  <div v-else-if="id === 'viewport'" :class="common">
+    <div class="absolute inset-1.5 overflow-hidden rounded-sm border border-primary/70 bg-primary/10">
+      <div class="absolute left-1 top-1 h-6 w-8 rounded-[2px] bg-primary/45" />
+      <div class="absolute left-6 top-4 h-7 w-10 rounded-[2px] bg-primary/30" />
+      <div class="absolute bottom-0 right-0 h-1.5 w-6 rounded-tl bg-primary/55" />
+      <div class="absolute bottom-0 right-0 top-2 w-1.5 rounded-l bg-primary/40" />
+    </div>
+  </div>
   <div v-else :class="common" />
 </template>

@@ -85,7 +85,7 @@ const NodeContent = defineComponent({
           previewMode: p.previewMode,
         });
       }
-      if (el.materialType === "reference") {
+      if (el.materialType === "reference" || el.materialType === "viewport") {
         return h(ReferenceNodeContent, {
           element: el,
           allElements: p.allElements,
@@ -145,7 +145,8 @@ const NodeContent = defineComponent({
 const sortedElements = computed(() => {
   const byId = new Map<string, PanelElement>();
   for (const el of props.allElements) byId.set(el.id, el);
-  return [...props.elements].sort((a, b) => comparePanelElementsPaintOrder(a, b, byId));
+  return [...props.elements]
+    .sort((a, b) => comparePanelElementsPaintOrder(a, b, byId));
 });
 
 function onSelect(id: string, event: MouseEvent) {
@@ -200,6 +201,7 @@ function hasViewEvent(el: PanelElement) {
       transform: `rotate(${el.rotate ?? 0}deg)`,
       transformOrigin: 'center center',
       boxSizing: 'border-box',
+      overflow: el.materialType === 'viewport' ? 'hidden' : undefined,
       ...getNodeVisualStyle(el),
     }"
     @mousedown="onSelect(el.id, $event)"

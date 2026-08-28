@@ -54,6 +54,8 @@ export type PanelElementStyle = {
 
 export type ReferenceCopyMode = "shallow" | "deep";
 
+export type ViewportOverflowMode = "scroll-x" | "scroll-y" | "scroll" | "clip";
+
 export type { PanelTableConfig } from "@arronqzy/view-table";
 import type { PanelTableConfig } from "@arronqzy/view-table";
 import type { Scene3dConfig } from "@arronqzy/view-scene3d";
@@ -84,6 +86,8 @@ export type PanelElement = {
   gridPadding?: number;
   gridSnapThreshold?: number;
   parentGridId?: string;
+  /** 视窗节点：只显示自身尺寸内的引用图层内容，超出部分滚动或裁剪 */
+  viewportOverflow?: ViewportOverflowMode;
   gridSlotIndex?: number;
   gridColSpan?: number;
   gridRowSpan?: number;

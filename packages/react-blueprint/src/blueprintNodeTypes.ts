@@ -5,6 +5,7 @@ import { AndFlowNode } from "./nodes/AndFlowNode";
 import { ClockFlowNode } from "./nodes/ClockFlowNode";
 import { FetchFlowNode } from "./nodes/FetchFlowNode";
 import { JsonFlowNode } from "./nodes/JsonFlowNode";
+import { StorageFlowNode } from "./nodes/StorageFlowNode";
 import { LifecycleFlowNode } from "./nodes/LifecycleFlowNode";
 import { EventFlowNode } from "./nodes/EventFlowNode";
 import { LogicFlowNode } from "./nodes/LogicFlowNode";
@@ -16,6 +17,7 @@ export const blueprintNodeTypes = {
   clock: ClockFlowNode,
   fetch: FetchFlowNode,
   json: JsonFlowNode,
+  storage: StorageFlowNode,
   logic: LogicFlowNode,
   lifecycle: LifecycleFlowNode,
   event: EventFlowNode,

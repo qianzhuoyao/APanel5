@@ -62,6 +62,7 @@ export type WorkspaceConfigSidebarProps = Omit<
         | "lifecyclePhase"
         | "fetchConfig"
         | "jsonConfig"
+        | "storageConfig"
         | "logicConfig"
         | "clockConfig"
         | "eventConfig"

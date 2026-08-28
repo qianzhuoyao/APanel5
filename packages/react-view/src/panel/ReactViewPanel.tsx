@@ -755,6 +755,7 @@ function ReactViewPanelInner({
           | "lifecyclePhase"
           | "fetchConfig"
           | "jsonConfig"
+          | "storageConfig"
           | "logicConfig"
           | "clockConfig"
           | "eventConfig"
@@ -1602,7 +1603,7 @@ function ReactViewPanelInner({
       if (targetLayer.isMapping) return null;
       const hasBlockingRef = allElements.some((el) => {
         if (el.layerId === layerId) return false;
-        if (el.materialType !== "reference") return false;
+        if (el.materialType !== "reference" && el.materialType !== "viewport") return false;
         if (el.refLayerId !== layerId) return false;
         return (el.refCopyMode ?? "shallow") !== "deep";
       });
@@ -1875,6 +1876,13 @@ function ReactViewPanelInner({
           node.dataset.origWidth = String(parseFloat(node.style.width) || node.offsetWidth || 0);
           node.dataset.origHeight = String(parseFloat(node.style.height) || node.offsetHeight || 0);
         }
+        function applyBoxScale(node, sx, sy) {
+          rememberBox(node);
+          node.style.left = (Number(node.dataset.origLeft) * sx) + "px";
+          node.style.top = (Number(node.dataset.origTop) * sy) + "px";
+          node.style.width = (Number(node.dataset.origWidth) * sx) + "px";
+          node.style.height = (Number(node.dataset.origHeight) * sy) + "px";
+        }
         function fitScene() {
           if (!scene) return;
           var vw = window.innerWidth || 1;
@@ -1885,29 +1893,23 @@ function ReactViewPanelInner({
           var scaleY = vh / sh;
           if (root) root.style.overflow = "hidden";
           var nodes = scene.querySelectorAll("[data-element-id]");
+          var sx = outputScale ? 1 : scaleX;
+          var sy = outputScale ? 1 : scaleY;
           if (outputScale) {
             scene.style.width = sw + "px";
             scene.style.height = sh + "px";
             scene.style.transform = "translate(0px,0px) scale(" + scaleX + "," + scaleY + ")";
-            nodes.forEach(function (node) {
-              rememberBox(node);
-              node.style.left = node.dataset.origLeft + "px";
-              node.style.top = node.dataset.origTop + "px";
-              node.style.width = node.dataset.origWidth + "px";
-              node.style.height = node.dataset.origHeight + "px";
-            });
-            return;
+          } else {
+            scene.style.width = vw + "px";
+            scene.style.height = vh + "px";
+            scene.style.transform = "none";
           }
-          // 块仍按视口撑满，但不对整棵内容做 transform，字体保持原尺寸
-          scene.style.width = vw + "px";
-          scene.style.height = vh + "px";
-          scene.style.transform = "none";
           nodes.forEach(function (node) {
-            rememberBox(node);
-            node.style.left = (Number(node.dataset.origLeft) * scaleX) + "px";
-            node.style.top = (Number(node.dataset.origTop) * scaleY) + "px";
-            node.style.width = (Number(node.dataset.origWidth) * scaleX) + "px";
-            node.style.height = (Number(node.dataset.origHeight) * scaleY) + "px";
+            applyBoxScale(node, sx, sy);
+            var inner = node.querySelectorAll("[data-viewport-sizer], [data-viewport-item]");
+            inner.forEach(function (el) {
+              applyBoxScale(el, sx, sy);
+            });
           });
         }
         fitScene();

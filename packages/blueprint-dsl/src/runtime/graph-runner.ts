@@ -15,6 +15,12 @@ import {
   DEFAULT_JSON_NODE_CONFIG,
   parseJsonConfig,
 } from "../json-config.js";
+import type { StorageNodeConfig } from "../storage-config.js";
+import {
+  DEFAULT_STORAGE_NODE_CONFIG,
+  executeStorageConfig,
+  normalizeStorageConfig,
+} from "../storage-config.js";
 import type { LogicNodeConfig } from "../logic-config.js";
 import {
   DEFAULT_LOGIC_NODE_CONFIG,
@@ -98,6 +104,7 @@ export type RunnableGraphNode = {
   viewElementIds?: string[];
   fetchConfig?: FetchRequestConfig;
   jsonConfig?: JsonNodeConfig;
+  storageConfig?: StorageNodeConfig;
   logicConfig?: LogicNodeConfig;
   clockConfig?: ClockNodeConfig;
   eventConfig?: ViewEventNodeConfig;
@@ -202,6 +209,7 @@ export class BlueprintGraphRunner {
     this.registerBlueprintRefBehavior();
     this.registerFetchBehavior();
     this.registerJsonBehavior();
+    this.registerStorageBehavior();
     this.registerLogicBehavior();
     this.registerClockBehavior();
     this.registerAndBehavior();
@@ -1199,6 +1207,51 @@ export class BlueprintGraphRunner {
           ...node.jsonConfig,
         };
         const value = parseJsonConfig(config);
+        io.setOutput("out", createTrueSignal(value));
+      } catch (error) {
+        io.setOutput(
+          "out",
+          createFalseSignal(
+            error instanceof Error ? error.message : String(error)
+          )
+        );
+      }
+      io.emitFlow("out");
+    });
+  }
+
+  private registerStorageBehavior() {
+    const runner = this;
+    this.behaviors.registerJS("storage-run", async ({ token, io }) => {
+      const node = runner.requireNode(token.nodeId);
+
+      try {
+        const inputPort = token.inPort || "in";
+        const input = await io.getInput(inputPort);
+        if (isFalseSignal(input)) {
+          io.setOutput("out", input);
+          io.emitFlow("out");
+          return;
+        }
+        if (!isTrueSignal(input)) {
+          io.setOutput(
+            "out",
+            createFalseSignal("存储节点需要收到真信号后才会读写缓存")
+          );
+          io.emitFlow("out");
+          return;
+        }
+
+        const incomingScope = runner.buildFetchIncomingScope(
+          token.nodeId,
+          inputPort,
+          input
+        );
+        const config = normalizeStorageConfig({
+          ...DEFAULT_STORAGE_NODE_CONFIG,
+          ...node.storageConfig,
+        });
+        const value = executeStorageConfig(config, incomingScope);
         io.setOutput("out", createTrueSignal(value));
       } catch (error) {
         io.setOutput(

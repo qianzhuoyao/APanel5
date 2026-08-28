@@ -13,6 +13,7 @@ export const PANEL_MATERIAL_TYPES = [
   "geometry",
   "scene3d",
   "grid",
+  "viewport",
   "image",
   "reference",
   "video",
@@ -29,6 +30,7 @@ export const BLUEPRINT_NODE_ALIASES = [
   "timer",
   "fetch",
   "json",
+  "storage",
   "and",
   "event",
 ] as const;
@@ -524,6 +526,7 @@ export function inferPanelAddFromUserText(text: string): Extract<
 export function normalizeBlueprintNodeAlias(nodeType: string): BlueprintNodeAlias | null {
   const t = nodeType.trim().toLowerCase();
   if (t === "timer" || t === "clock") return "clock";
+  if (t === "cache" || t === "localstorage" || t === "sessionstorage") return "storage";
   if ((BLUEPRINT_NODE_ALIASES as readonly string[]).includes(t)) {
     return t as BlueprintNodeAlias;
   }

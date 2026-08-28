@@ -4,6 +4,11 @@ import { computed, ref } from "vue";
 import { Card, Checkbox, Input, InputNumber, Select } from "ant-design-vue";
 import type { PanelElement, PanelLayer, ReferenceCopyMode } from "../../types";
 import { CHART_TYPES } from "../../utils/chartOptionBuilder";
+import {
+  VIEWPORT_OVERFLOW_MODES,
+  normalizeViewportOverflow,
+  type ViewportOverflowMode,
+} from "../../utils/viewportPlacement";
 
 const { t, locale } = useI18n();
 const props = defineProps<{
@@ -357,7 +362,7 @@ function setNodeCardExpanded(id: string, open: boolean) {
               </div>
             </template>
 
-            <template v-if="el.materialType === 'reference'">
+            <template v-if="el.materialType === 'reference' || el.materialType === 'viewport'">
               <div class="grid grid-cols-2 gap-2">
                 <label class="block space-y-1">
                   <div>{{ t("panel.config.refLayer") }}</div>
@@ -390,6 +395,30 @@ function setNodeCardExpanded(id: string, open: boolean) {
                   </Select>
                 </label>
               </div>
+            </template>
+
+            <template v-if="el.materialType === 'viewport'">
+              <label class="block space-y-1">
+                <div>{{ t("panel.config.viewportOverflow") }}</div>
+                <Select
+                  size="small"
+                  class="w-full"
+                  :value="normalizeViewportOverflow(el.viewportOverflow)"
+                  @update:value="(v) => updateElement(el.id, { viewportOverflow: v as ViewportOverflowMode })"
+                >
+                  <Select.Option v-for="mode in VIEWPORT_OVERFLOW_MODES" :key="mode" :value="mode">
+                    {{
+                      mode === "scroll-x"
+                        ? t("panel.config.viewportOverflowScrollX")
+                        : mode === "scroll-y"
+                          ? t("panel.config.viewportOverflowScrollY")
+                          : mode === "scroll"
+                            ? t("panel.config.viewportOverflowScroll")
+                            : t("panel.config.viewportOverflowClip")
+                    }}
+                  </Select.Option>
+                </Select>
+              </label>
             </template>
 
             <template v-if="el.materialType === 'image'">

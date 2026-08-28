@@ -9,6 +9,7 @@ import {
   resolveNodeFetchConfig,
   resolveNodeJsonConfig,
   resolveNodeLogicConfig,
+  resolveNodeStorageConfig,
   resolveViewElementIds,
   resolveNodeEventConfig,
   getViewEventTypeLabel,
@@ -64,6 +65,29 @@ export function resolveBlueprintNodeSummary(
       const json = resolveNodeJsonConfig(data).jsonString?.trim();
       if (!json) return t("blueprint.node.summaryEmptyJson");
       return truncate(json.replace(/\s+/g, " "), 44);
+    }
+    case "storage": {
+      const storage = resolveNodeStorageConfig(data);
+      const setKey = storage.set.key.trim();
+      const readKey = storage.read.key.trim();
+      const hasSet = Boolean(setKey) && storage.set.storages.length > 0;
+      const hasRead = Boolean(readKey);
+      if (hasSet && hasRead) {
+        return truncate(
+          t("blueprint.node.summaryStorageSetRead", {
+            setKey,
+            readKey,
+          }),
+          44
+        );
+      }
+      if (hasSet) {
+        return truncate(t("blueprint.node.summaryStorageSet", { key: setKey }), 44);
+      }
+      if (hasRead) {
+        return truncate(t("blueprint.node.summaryStorageRead", { key: readKey }), 44);
+      }
+      return t("blueprint.node.summaryStorageUnset");
     }
     case "logic": {
       const code = resolveNodeLogicConfig(data).sourceCode?.trim();

@@ -201,6 +201,7 @@ function applyBlueprintAddNode(
     clock: "clock",
     fetch: "fetch",
     json: "json",
+    storage: "storage",
     and: "and",
     event: "event",
   };

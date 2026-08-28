@@ -16,6 +16,12 @@ import type { PanelElement } from "../types";
 import { buildChartOption, CHART_TYPES } from "../utils/chartOptionBuilder";
 import { PREVIEW_LAYOUT_EVENT } from "../utils/panelStateIO";
 import { cssTextLineHeight, cssTextAlignStyle } from "../utils/panelElementDefaults";
+import {
+  isViewportNode,
+  normalizeViewportOverflow,
+  viewportOverflowStyle,
+  viewportWindowContentScale,
+} from "../utils/viewportPlacement";
 import TableNodeContent from "./table/TableNodeContent.vue";
 import Scene3dNodeContent from "@arronqzy/view-scene3d/vue";
 
@@ -712,15 +718,25 @@ export const ReferenceNodeContent = defineComponent({
       const sourceHeight = Math.max(1, maxY - minY);
       const innerW = Math.max(1, p.element.width);
       const innerH = Math.max(1, p.element.height);
-      const scale = Math.max(0.05, Math.min(innerW / sourceWidth, innerH / sourceHeight));
-      const mappedW = sourceWidth * scale;
-      const mappedH = sourceHeight * scale;
+      const windowFit = isViewportNode(p.element);
+      const windowScale = windowFit
+        ? viewportWindowContentScale(p.element, p.allElements)
+        : { scaleX: 1, scaleY: 1 };
+      const scaleX = windowFit
+        ? windowScale.scaleX
+        : Math.max(0.05, Math.min(innerW / sourceWidth, innerH / sourceHeight));
+      const scaleY = windowFit ? windowScale.scaleY : scaleX;
+      const mappedW = sourceWidth * scaleX;
+      const mappedH = sourceHeight * scaleY;
       return {
         minX,
         minY,
-        scale,
-        offsetX: (innerW - mappedW) / 2,
-        offsetY: (innerH - mappedH) / 2,
+        scaleX,
+        scaleY,
+        sourceWidth: mappedW,
+        sourceHeight: mappedH,
+        offsetX: windowFit ? 0 : (innerW - mappedW) / 2,
+        offsetY: windowFit ? 0 : (innerH - mappedH) / 2,
       };
     });
 
@@ -739,20 +755,27 @@ export const ReferenceNodeContent = defineComponent({
         ]);
       }
 
-      return h("div", { class: "pointer-events-none relative h-full w-full overflow-hidden" }, [
-        ...sourceNodes.value.map((node) => {
+      const overflowCss = isViewportNode(p.element)
+        ? viewportOverflowStyle(normalizeViewportOverflow(p.element.viewportOverflow))
+        : { overflowX: "hidden" as const, overflowY: "hidden" as const };
+      const canScroll =
+        isViewportNode(p.element) &&
+        (overflowCss.overflowX === "auto" || overflowCss.overflowY === "auto");
+
+      const innerNodes = sourceNodes.value.map((node) => {
           const box = getNodeAABB(node);
-          const left = layout.value!.offsetX + (box.left - layout.value!.minX) * layout.value!.scale;
-          const top = layout.value!.offsetY + (box.top - layout.value!.minY) * layout.value!.scale;
-          const width = Math.max(12, node.width * layout.value!.scale);
-          const height = Math.max(10, node.height * layout.value!.scale);
-          const boxWidth = Math.max(12, (box.right - box.left) * layout.value!.scale);
-          const boxHeight = Math.max(10, (box.bottom - box.top) * layout.value!.scale);
+          const left = layout.value!.offsetX + (box.left - layout.value!.minX) * layout.value!.scaleX;
+          const top = layout.value!.offsetY + (box.top - layout.value!.minY) * layout.value!.scaleY;
+          const width = Math.max(12, node.width * layout.value!.scaleX);
+          const height = Math.max(10, node.height * layout.value!.scaleY);
+          const boxWidth = Math.max(12, (box.right - box.left) * layout.value!.scaleX);
+          const boxHeight = Math.max(10, (box.bottom - box.top) * layout.value!.scaleY);
           return h(
             "div",
             {
               key: node.id,
               class: "absolute overflow-visible",
+              "data-viewport-item": isViewportNode(p.element) ? "true" : undefined,
               style: { left, top, width: boxWidth, height: boxHeight },
             },
             [
@@ -760,6 +783,7 @@ export const ReferenceNodeContent = defineComponent({
                 "div",
                 {
                   class: "absolute",
+                  "data-viewport-item": isViewportNode(p.element) ? "true" : undefined,
                   style: {
                     left: (boxWidth - width) / 2,
                     top: (boxHeight - height) / 2,
@@ -777,7 +801,7 @@ export const ReferenceNodeContent = defineComponent({
                         previewLayoutKey: p.previewLayoutKey,
                         previewMode: p.previewMode,
                       })
-                    : node.materialType === "reference"
+                    : node.materialType === "reference" || node.materialType === "viewport"
                       ? h(ReferenceNodeContent as Component, {
                           element: node,
                           allElements: p.allElements,
@@ -800,8 +824,42 @@ export const ReferenceNodeContent = defineComponent({
               ),
             ]
           );
-        }),
-      ]);
+        });
+
+      return h(
+        "div",
+        {
+          class: "relative h-full w-full",
+          style: {
+            overflowX: overflowCss.overflowX,
+            overflowY: overflowCss.overflowY,
+            pointerEvents: isViewportNode(p.element) ? "auto" : "none",
+          },
+          onWheel: canScroll
+            ? (e: WheelEvent) => {
+                e.stopPropagation();
+              }
+            : undefined,
+        },
+        [
+          h(
+            "div",
+            {
+              class: "pointer-events-none relative",
+              "data-viewport-sizer": isViewportNode(p.element) ? "true" : undefined,
+              style: isViewportNode(p.element)
+                ? {
+                    width: layout.value.sourceWidth,
+                    height: layout.value.sourceHeight,
+                    minWidth: "100%",
+                    minHeight: "100%",
+                  }
+                : { width: "100%", height: "100%" },
+            },
+            innerNodes
+          ),
+        ]
+      );
     };
   },
 }) as Component;

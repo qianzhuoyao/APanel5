@@ -50,6 +50,10 @@ export function nodeStructureSignature(
     viewElementIds?: string[];
     fetchConfig?: { url?: string; method?: string; apiBaseUrl?: string; swaggerDocsUrl?: string };
     jsonConfig?: { jsonString?: string };
+    storageConfig?: {
+      read?: { storage?: string; key?: string };
+      set?: { storages?: string[]; key?: string; value?: string };
+    };
     logicConfig?: { sourceCode?: string };
     clockConfig?: { intervalSeconds?: number; timeFormat?: string; outputCount?: number; emitImmediately?: boolean };
     eventConfig?: { eventTypes?: string[] };
@@ -58,7 +62,7 @@ export function nodeStructureSignature(
   return nodes
     .map(
       (n) =>
-        `${n.id}:${n.role}:${n.label}:${n.configSource ?? ""}:${n.lifecyclePhase ?? ""}:${n.libraryBlueprintId ?? ""}:${n.nodeType ?? ""}:${(n.viewElementIds ?? (n.viewElementId ? [n.viewElementId] : [])).join(",")}:${n.fetchConfig?.url ?? ""}:${n.fetchConfig?.method ?? ""}:${n.fetchConfig?.apiBaseUrl ?? ""}:${n.fetchConfig?.swaggerDocsUrl ?? ""}:${n.jsonConfig?.jsonString ?? ""}:${n.logicConfig?.sourceCode ?? ""}:${n.clockConfig?.intervalSeconds ?? ""}:${n.clockConfig?.timeFormat ?? ""}:${n.clockConfig?.outputCount ?? ""}:${n.clockConfig?.emitImmediately ?? ""}:${(n.eventConfig?.eventTypes ?? []).join(",")}`
+        `${n.id}:${n.role}:${n.label}:${n.configSource ?? ""}:${n.lifecyclePhase ?? ""}:${n.libraryBlueprintId ?? ""}:${n.nodeType ?? ""}:${(n.viewElementIds ?? (n.viewElementId ? [n.viewElementId] : [])).join(",")}:${n.fetchConfig?.url ?? ""}:${n.fetchConfig?.method ?? ""}:${n.fetchConfig?.apiBaseUrl ?? ""}:${n.fetchConfig?.swaggerDocsUrl ?? ""}:${n.jsonConfig?.jsonString ?? ""}:${n.storageConfig?.read?.storage ?? ""}:${n.storageConfig?.read?.key ?? ""}:${(n.storageConfig?.set?.storages ?? []).join(",")}:${n.storageConfig?.set?.key ?? ""}:${n.storageConfig?.set?.value ?? ""}:${n.logicConfig?.sourceCode ?? ""}:${n.clockConfig?.intervalSeconds ?? ""}:${n.clockConfig?.timeFormat ?? ""}:${n.clockConfig?.outputCount ?? ""}:${n.clockConfig?.emitImmediately ?? ""}:${(n.eventConfig?.eventTypes ?? []).join(",")}`
     )
     .sort()
     .join("|");

@@ -6,6 +6,12 @@ import { buildChartOption, CHART_TYPES } from "../utils/chartOptionBuilder";
 import { PREVIEW_LAYOUT_EVENT } from "../utils/panelStateIO";
 import { TableNodeContent, type TableCellActionHandler } from "./table/TableNodeContent";
 import { comparePanelElementsPaintOrder } from "../utils/gridPlacement";
+import {
+  isViewportNode,
+  normalizeViewportOverflow,
+  viewportOverflowStyle,
+  viewportWindowContentScale,
+} from "../utils/viewportPlacement";
 import { cssTextLineHeight, cssTextAlignStyle } from "../utils/panelElementDefaults";
 import { mergeScene3dConfig } from "@arronqzy/view-scene3d";
 import { Scene3dNodeContent } from "@arronqzy/view-scene3d/react";
@@ -724,18 +730,30 @@ function ReferenceNodeContent({
 
     const innerW = Math.max(1, element.width);
     const innerH = Math.max(1, element.height);
-    const scale = Math.max(0.05, Math.min(innerW / sourceWidth, innerH / sourceHeight));
-    const mappedW = sourceWidth * scale;
-    const mappedH = sourceHeight * scale;
+    const windowFit = isViewportNode(element);
+    const windowScale = windowFit
+      ? viewportWindowContentScale(element, allElements)
+      : { scaleX: 1, scaleY: 1 };
+    const scaleX = windowFit
+      ? windowScale.scaleX
+      : Math.max(0.05, Math.min(innerW / sourceWidth, innerH / sourceHeight));
+    const scaleY = windowFit
+      ? windowScale.scaleY
+      : scaleX;
+    const mappedW = sourceWidth * scaleX;
+    const mappedH = sourceHeight * scaleY;
 
     return {
       minX,
       minY,
-      scale,
-      offsetX: (innerW - mappedW) / 2,
-      offsetY: (innerH - mappedH) / 2,
+      scaleX,
+      scaleY,
+      sourceWidth: mappedW,
+      sourceHeight: mappedH,
+      offsetX: windowFit ? 0 : (innerW - mappedW) / 2,
+      offsetY: windowFit ? 0 : (innerH - mappedH) / 2,
     };
-  }, [element.height, element.width, sourceNodes]);
+  }, [allElements, element, sourceNodes]);
 
   if (!layout || sourceNodes.length === 0) {
     const hintText = element.refLayerId ? t("panel.config.refLayerEmpty") : t("panel.config.selectRefLayer");
@@ -748,20 +766,50 @@ function ReferenceNodeContent({
     );
   }
 
+  const overflowCss = isViewportNode(element)
+    ? viewportOverflowStyle(normalizeViewportOverflow(element.viewportOverflow))
+    : { overflowX: "hidden" as const, overflowY: "hidden" as const };
+  const canScroll =
+    isViewportNode(element) &&
+    (overflowCss.overflowX === "auto" || overflowCss.overflowY === "auto");
+
   return (
-    <div className="pointer-events-none relative h-full w-full overflow-hidden">
+    <div
+      className="relative h-full w-full"
+      style={{
+        overflowX: overflowCss.overflowX,
+        overflowY: overflowCss.overflowY,
+        pointerEvents: isViewportNode(element) ? "auto" : "none",
+      }}
+      onWheel={canScroll ? (e) => e.stopPropagation() : undefined}
+    >
+      <div
+        className="pointer-events-none relative"
+        data-viewport-sizer={isViewportNode(element) ? "true" : undefined}
+        style={
+          isViewportNode(element)
+            ? {
+                width: layout.sourceWidth,
+                height: layout.sourceHeight,
+                minWidth: "100%",
+                minHeight: "100%",
+              }
+            : { width: "100%", height: "100%" }
+        }
+      >
       {sourceNodes.map((node) => {
         const box = getNodeAABB(node);
-        const left = layout.offsetX + (box.left - layout.minX) * layout.scale;
-        const top = layout.offsetY + (box.top - layout.minY) * layout.scale;
-        const width = Math.max(12, node.width * layout.scale);
-        const height = Math.max(10, node.height * layout.scale);
-        const boxWidth = Math.max(12, (box.right - box.left) * layout.scale);
-        const boxHeight = Math.max(10, (box.bottom - box.top) * layout.scale);
+        const left = layout.offsetX + (box.left - layout.minX) * layout.scaleX;
+        const top = layout.offsetY + (box.top - layout.minY) * layout.scaleY;
+        const width = Math.max(12, node.width * layout.scaleX);
+        const height = Math.max(10, node.height * layout.scaleY);
+        const boxWidth = Math.max(12, (box.right - box.left) * layout.scaleX);
+        const boxHeight = Math.max(10, (box.bottom - box.top) * layout.scaleY);
         return (
           <div
             key={node.id}
             className="absolute overflow-visible"
+            data-viewport-item={isViewportNode(element) ? "true" : undefined}
             style={{
               left,
               top,
@@ -771,6 +819,7 @@ function ReferenceNodeContent({
           >
             <div
               className="absolute"
+              data-viewport-item={isViewportNode(element) ? "true" : undefined}
               style={{
                 left: (boxWidth - width) / 2,
                 top: (boxHeight - height) / 2,
@@ -783,7 +832,7 @@ function ReferenceNodeContent({
             >
               {CHART_TYPES.has(node.materialType ?? "") ? (
                 <ChartNodeContent element={node} />
-              ) : node.materialType === "reference" ? (
+              ) : node.materialType === "reference" || node.materialType === "viewport" ? (
                 <ReferenceNodeContent
                   element={node}
                   allElements={allElements}
@@ -803,6 +852,7 @@ function ReferenceNodeContent({
           </div>
         );
       })}
+      </div>
     </div>
   );
 }
@@ -887,6 +937,7 @@ export const ElementsLayer = React.memo(function ElementsLayer({
               zIndex: el.zIndex ?? 1,
               transform: `rotate(${el.rotate ?? 0}deg)`,
               transformOrigin: "center center",
+              overflow: el.materialType === "viewport" ? "hidden" : undefined,
               boxSizing: "border-box",
               ...getNodeVisualStyle(el),
             }}
@@ -897,7 +948,7 @@ export const ElementsLayer = React.memo(function ElementsLayer({
                 previewLayoutKey={previewLayoutKey}
                 previewMode={previewMode}
               />
-            ) : el.materialType === "reference" ? (
+            ) : el.materialType === "reference" || el.materialType === "viewport" ? (
               <ReferenceNodeContent element={el} allElements={allElements} />
             ) : el.materialType === "grid" ? (
               <GridNodeContent

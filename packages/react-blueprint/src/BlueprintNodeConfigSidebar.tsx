@@ -21,6 +21,7 @@ import { useI18n } from "@arronqzy/i18n/react";
 import { FetchNodeConfigPanel } from "./components/FetchNodeConfigPanel";
 import { ClockNodeConfigPanel } from "./components/ClockNodeConfigPanel";
 import { JsonNodeConfigPanel } from "./components/JsonNodeConfigPanel";
+import { StorageNodeConfigPanel } from "./components/StorageNodeConfigPanel";
 import { LogicNodeConfigPanel } from "./components/LogicNodeConfigPanel";
 import { ViewElementMultiSelect } from "./components/ViewElementMultiSelect";
 import { ConfigFieldLabel, ConfigHintIcon, ConfigSectionTitle } from "./components/ConfigHintIcon";
@@ -74,6 +75,7 @@ export type BlueprintNodeConfigSidebarProps = {
         | "lifecyclePhase"
         | "fetchConfig"
         | "jsonConfig"
+        | "storageConfig"
         | "logicConfig"
         | "clockConfig"
         | "eventConfig"
@@ -88,6 +90,7 @@ const ROLE_LABEL_KEYS: Record<BlueprintNodeRole, string> = {
   and: "blueprint.config.roleAnd",
   fetch: "blueprint.config.roleFetch",
   json: "blueprint.config.roleJson",
+  storage: "blueprint.config.roleStorage",
   logic: "blueprint.config.roleLogic",
   clock: "blueprint.config.roleClock",
   event: "blueprint.config.roleEvent",
@@ -195,6 +198,7 @@ export function BlueprintNodeConfigSidebar({
               <SelectItem value="lifecycle">{t("blueprint.config.configLifecycle")}</SelectItem>
               <SelectItem value="fetch">{t("blueprint.config.configFetch")}</SelectItem>
               <SelectItem value="json">{t("blueprint.config.configJson")}</SelectItem>
+              <SelectItem value="storage">{t("blueprint.config.configStorage")}</SelectItem>
               <SelectItem value="clock">{t("blueprint.config.configClock")}</SelectItem>
               <SelectItem value="event">{t("blueprint.config.configEvent")}</SelectItem>
               <SelectItem value="view">{t("blueprint.config.configView")}</SelectItem>
@@ -397,6 +401,16 @@ export function BlueprintNodeConfigSidebar({
 
         {configSource === "json" ? (
           <JsonNodeConfigPanel node={node} onUpdateNode={onUpdateNode} />
+        ) : null}
+
+        {configSource === "storage" ? (
+          <StorageNodeConfigPanel
+            node={node}
+            graphNodes={graphNodes}
+            graphEdges={graphEdges}
+            traceEntries={traceEntries}
+            onUpdateNode={onUpdateNode}
+          />
         ) : null}
 
         {configSource === "clock" ? (

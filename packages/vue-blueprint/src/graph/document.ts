@@ -4,6 +4,7 @@ import type {
   JsonNodeConfig,
   LogicNodeConfig,
   PageLifecyclePhase,
+  StorageNodeConfig,
   ViewEventNodeConfig,
   ViewEventType,
 } from "@arronqzy/blueprint-dsl";
@@ -16,13 +17,16 @@ import {
   DEFAULT_JSON_NODE_CONFIG,
   DEFAULT_LOGIC_NODE_CONFIG,
   DEFAULT_LOGIC_NODE_TYPE,
+  DEFAULT_STORAGE_NODE_CONFIG,
   DEFAULT_VIEW_EVENT_NODE_CONFIG,
   EVENT_NODE_TYPE,
   FETCH_NODE_TYPE,
   JSON_NODE_TYPE,
   LIFECYCLE_NODE_TYPE,
   normalizeClockConfig,
+  normalizeStorageConfig,
   normalizeViewEventConfig,
+  STORAGE_NODE_TYPE,
   VIEW_NODE_TYPE,
 } from "@arronqzy/blueprint-dsl";
 
@@ -31,8 +35,9 @@ export type { JsonNodeConfig as BlueprintJsonConfig } from "@arronqzy/blueprint-
 export type { LogicNodeConfig as BlueprintLogicConfig } from "@arronqzy/blueprint-dsl";
 export type { ClockNodeConfig as BlueprintClockConfig } from "@arronqzy/blueprint-dsl";
 export type { ViewEventNodeConfig as BlueprintEventConfig } from "@arronqzy/blueprint-dsl";
+export type { StorageNodeConfig as BlueprintStorageConfig } from "@arronqzy/blueprint-dsl";
 
-export type BlueprintNodeRole = "blueprint" | "logic" | "and" | "lifecycle" | "fetch" | "json" | "clock" | "event";
+export type BlueprintNodeRole = "blueprint" | "logic" | "and" | "lifecycle" | "fetch" | "json" | "storage" | "clock" | "event";
 
 /** 决定右侧配置面板展示哪类配置 */
 export type BlueprintConfigSource =
@@ -43,6 +48,7 @@ export type BlueprintConfigSource =
   | "view"
   | "fetch"
   | "json"
+  | "storage"
   | "clock"
   | "event";
 
@@ -71,6 +77,8 @@ export type BlueprintGraphNode = {
   fetchConfig?: FetchRequestConfig;
   /** JSON 节点的 JSON 字符串配置 */
   jsonConfig?: JsonNodeConfig;
+  /** 存储节点的读写配置 */
+  storageConfig?: StorageNodeConfig;
   /** 逻辑节点的 JavaScript 脚本配置 */
   logicConfig?: LogicNodeConfig;
   /** 时钟节点的间隔与时间格式配置 */
@@ -108,8 +116,10 @@ export function resolveBlueprintConfigSource(
   if (node.role === "and") return "and";
   if (node.role === "fetch") return "fetch";
   if (node.role === "json") return "json";
+  if (node.role === "storage") return "storage";
   if (node.nodeType === FETCH_NODE_TYPE) return "fetch";
   if (node.nodeType === JSON_NODE_TYPE) return "json";
+  if (node.nodeType === STORAGE_NODE_TYPE) return "storage";
   if (node.nodeType === CLOCK_NODE_TYPE) return "clock";
   if (node.nodeType === EVENT_NODE_TYPE) return "event";
   if (node.nodeType === VIEW_NODE_TYPE) return "view";
@@ -187,6 +197,8 @@ export function resolveRunnableNodeType(
       return FETCH_NODE_TYPE;
     case "json":
       return JSON_NODE_TYPE;
+    case "storage":
+      return STORAGE_NODE_TYPE;
     case "logic":
       return DEFAULT_LOGIC_NODE_TYPE;
     default:
@@ -210,6 +222,7 @@ export const BLUEPRINT_CONFIG_TYPE_LABEL_KEYS: Record<
   event: "blueprint.node.typeEvent",
   fetch: "blueprint.node.typeFetch",
   json: "blueprint.node.typeJson",
+  storage: "blueprint.node.typeStorage",
   clock: "blueprint.node.typeClock",
 };
 
@@ -298,6 +311,15 @@ export function resolveNodeJsonConfig(
     ...DEFAULT_JSON_NODE_CONFIG,
     ...node.jsonConfig,
   };
+}
+
+export function resolveNodeStorageConfig(
+  node: Pick<BlueprintGraphNode, "storageConfig">
+): StorageNodeConfig {
+  return normalizeStorageConfig({
+    ...DEFAULT_STORAGE_NODE_CONFIG,
+    ...node.storageConfig,
+  });
 }
 
 export function resolveNodeLogicConfig(
@@ -399,6 +421,9 @@ export function sanitizeBlueprintDocument(
     if (next.role === "json") {
       return { ...next, configSource: "json" as const };
     }
+    if (next.role === "storage") {
+      return { ...next, configSource: "storage" as const };
+    }
     if (next.role === "and") {
       return { ...next, configSource: "and" as const };
     }
@@ -452,6 +477,7 @@ export function patchNodeConfigSource(
       logicConfig: undefined,
       clockConfig: undefined,
       eventConfig: undefined,
+      storageConfig: undefined,
     };
   }
 
@@ -469,6 +495,7 @@ export function patchNodeConfigSource(
       jsonConfig: undefined,
       logicConfig: undefined,
       eventConfig: undefined,
+      storageConfig: undefined,
     };
   }
 
@@ -486,6 +513,7 @@ export function patchNodeConfigSource(
       logicConfig: undefined,
       clockConfig: undefined,
       eventConfig: undefined,
+      storageConfig: undefined,
     };
   }
 
@@ -500,6 +528,25 @@ export function patchNodeConfigSource(
       libraryBlueprintId: undefined,
       fetchConfig: undefined,
       jsonConfig: resolveNodeJsonConfig(node),
+      logicConfig: undefined,
+      clockConfig: undefined,
+      eventConfig: undefined,
+      storageConfig: undefined,
+    };
+  }
+
+  if (configSource === "storage") {
+    return {
+      role: "storage",
+      nodeType: STORAGE_NODE_TYPE,
+      configSource: "storage",
+      storageConfig: resolveNodeStorageConfig(node),
+      lifecyclePhase: undefined,
+      viewElementId: undefined,
+      viewElementIds: undefined,
+      libraryBlueprintId: undefined,
+      fetchConfig: undefined,
+      jsonConfig: undefined,
       logicConfig: undefined,
       clockConfig: undefined,
       eventConfig: undefined,
@@ -520,6 +567,7 @@ export function patchNodeConfigSource(
       logicConfig: undefined,
       clockConfig: undefined,
       eventConfig: undefined,
+      storageConfig: undefined,
     };
   }
 
@@ -537,6 +585,7 @@ export function patchNodeConfigSource(
       logicConfig: resolveNodeLogicConfig(node),
       clockConfig: undefined,
       eventConfig: undefined,
+      storageConfig: undefined,
     };
   }
 
@@ -554,6 +603,7 @@ export function patchNodeConfigSource(
       logicConfig: undefined,
       clockConfig: undefined,
       eventConfig: undefined,
+      storageConfig: undefined,
     };
   }
 
@@ -569,6 +619,7 @@ export function patchNodeConfigSource(
       jsonConfig: undefined,
       logicConfig: undefined,
       clockConfig: undefined,
+      storageConfig: undefined,
     };
   }
 
@@ -583,5 +634,6 @@ export function patchNodeConfigSource(
     logicConfig: undefined,
     clockConfig: undefined,
     eventConfig: undefined,
+    storageConfig: undefined,
   };
 }

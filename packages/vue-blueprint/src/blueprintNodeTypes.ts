@@ -5,6 +5,7 @@ import BlueprintFlowNode from "./nodes/BlueprintFlowNode.vue";
 import ClockFlowNode from "./nodes/ClockFlowNode.vue";
 import FetchFlowNode from "./nodes/FetchFlowNode.vue";
 import JsonFlowNode from "./nodes/JsonFlowNode.vue";
+import StorageFlowNode from "./nodes/StorageFlowNode.vue";
 import LifecycleFlowNode from "./nodes/LifecycleFlowNode.vue";
 import EventFlowNode from "./nodes/EventFlowNode.vue";
 import LogicFlowNode from "./nodes/LogicFlowNode.vue";
@@ -16,6 +17,7 @@ export const blueprintNodeTypes: Record<string, Component> = {
   clock: markRaw(ClockFlowNode),
   fetch: markRaw(FetchFlowNode),
   json: markRaw(JsonFlowNode),
+  storage: markRaw(StorageFlowNode),
   logic: markRaw(LogicFlowNode),
   lifecycle: markRaw(LifecycleFlowNode),
   event: markRaw(EventFlowNode),

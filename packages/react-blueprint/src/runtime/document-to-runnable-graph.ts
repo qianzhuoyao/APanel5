@@ -1,10 +1,12 @@
 import {
   FETCH_NODE_TYPE,
+  STORAGE_NODE_TYPE,
   type RunnableGraph,
 } from "@arronqzy/blueprint-dsl";
 
 import {
   resolveNodeFetchConfig,
+  resolveNodeStorageConfig,
   resolveRunnableNodeType,
   resolveViewElementIds,
   type BlueprintDocument,
@@ -34,6 +36,10 @@ export function documentToRunnableGraph(
             ? resolveNodeFetchConfig(node)
             : node.fetchConfig,
         jsonConfig: node.jsonConfig,
+        storageConfig:
+          nodeType === STORAGE_NODE_TYPE
+            ? resolveNodeStorageConfig(node)
+            : node.storageConfig,
         logicConfig: node.logicConfig,
         clockConfig: node.clockConfig,
         eventConfig: node.eventConfig,

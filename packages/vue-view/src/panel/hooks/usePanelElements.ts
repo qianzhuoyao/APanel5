@@ -16,6 +16,7 @@ import {
   DEFAULT_LAYER_ID,
   getDefaultChartConfig,
   getDefaultGridConfig,
+  getDefaultViewportConfig,
   getDefaultNodeName,
   getDefaultScene3dConfigForMaterial,
   getDefaultSizeByMaterial,
@@ -569,7 +570,10 @@ export function usePanelElements() {
       .filter((n) => isPanelElementNode(n) && n.props)
       .map((n) => n.props as PanelElement);
     const desiredMode = options?.referenceCopyMode;
-    if (nextProps.materialType === "reference" && desiredMode) {
+    if (
+      (nextProps.materialType === "reference" || nextProps.materialType === "viewport") &&
+      desiredMode
+    ) {
       if (desiredMode === "deep" && nextProps.refLayerId) {
         nextProps.refCopyMode = "deep";
         nextProps.refSnapshot = buildDeepReferenceSnapshot(all, nextProps.refLayerId);
@@ -611,7 +615,9 @@ export function usePanelElements() {
       name: getDefaultNodeName(materialType, t),
       ...getDefaultTextContent(materialType, t),
       ...getDefaultGridConfig(materialType),
-      refCopyMode: materialType === "reference" ? "shallow" : undefined,
+      ...getDefaultViewportConfig(materialType),
+      refCopyMode:
+        materialType === "reference" || materialType === "viewport" ? "shallow" : undefined,
       chart: getDefaultChartConfig(materialType, t),
       table: getDefaultTableConfig(materialType, t),
       geometryShape: materialType === "geometry" ? "rect" : undefined,
@@ -712,7 +718,7 @@ export function usePanelElements() {
       .filter((n) => isPanelElementNode(n) && n.props)
       .map((n) => n.props as PanelElement);
     const target = all.find((el) => el.id === id);
-    if (!target || target.materialType !== "reference") return;
+    if (!target || (target.materialType !== "reference" && target.materialType !== "viewport")) return;
     const currentLayers =
       (current.variables?.layers as PanelLayer[] | undefined) ?? [DEFAULT_LAYER];
     const layer = currentLayers.find((l) => l.id === target.layerId);
@@ -904,7 +910,7 @@ export function usePanelElements() {
       if (target.isMapping) return false;
       const willBeDeleted = mode === "remove" && el.layerId === layerId;
       if (willBeDeleted) return false;
-      if (el.materialType !== "reference") return false;
+      if (el.materialType !== "reference" && el.materialType !== "viewport") return false;
       if (el.refLayerId !== layerId) return false;
       return (el.refCopyMode ?? "shallow") !== "deep";
     });

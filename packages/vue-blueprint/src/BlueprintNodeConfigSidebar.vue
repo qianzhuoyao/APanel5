@@ -14,6 +14,7 @@ import {
 import FetchNodeConfigPanel from "./components/FetchNodeConfigPanel.vue";
 import ClockNodeConfigPanel from "./components/ClockNodeConfigPanel.vue";
 import JsonNodeConfigPanel from "./components/JsonNodeConfigPanel.vue";
+import StorageNodeConfigPanel from "./components/StorageNodeConfigPanel.vue";
 import LogicNodeConfigPanel from "./components/LogicNodeConfigPanel.vue";
 import ViewElementMultiSelect from "./components/ViewElementMultiSelect.vue";
 import ConfigHintIcon from "./components/ConfigHintIcon.vue";
@@ -69,6 +70,7 @@ export type BlueprintNodeConfigSidebarProps = {
         | "lifecyclePhase"
         | "fetchConfig"
         | "jsonConfig"
+        | "storageConfig"
         | "logicConfig"
         | "clockConfig"
         | "eventConfig"
@@ -102,6 +104,7 @@ const ROLE_LABEL_KEYS: Record<BlueprintNodeRole, string> = {
   and: "blueprint.config.roleAnd",
   fetch: "blueprint.config.roleFetch",
   json: "blueprint.config.roleJson",
+  storage: "blueprint.config.roleStorage",
   logic: "blueprint.config.roleLogic",
   clock: "blueprint.config.roleClock",
   event: "blueprint.config.roleEvent",
@@ -201,6 +204,7 @@ function toggleEventType(eventType: ViewEventType, checked: boolean) {
           <Select.Option value="lifecycle">{{ t("blueprint.config.configLifecycle") }}</Select.Option>
           <Select.Option value="fetch">{{ t("blueprint.config.configFetch") }}</Select.Option>
           <Select.Option value="json">{{ t("blueprint.config.configJson") }}</Select.Option>
+          <Select.Option value="storage">{{ t("blueprint.config.configStorage") }}</Select.Option>
           <Select.Option value="clock">{{ t("blueprint.config.configClock") }}</Select.Option>
           <Select.Option value="event">{{ t("blueprint.config.configEvent") }}</Select.Option>
           <Select.Option value="view">{{ t("blueprint.config.configView") }}</Select.Option>
@@ -379,6 +383,14 @@ function toggleEventType(eventType: ViewEventType, checked: boolean) {
       <JsonNodeConfigPanel
         v-if="configSource === 'json'"
         :node="node"
+        :on-update-node="onUpdateNode"
+      />
+      <StorageNodeConfigPanel
+        v-if="configSource === 'storage'"
+        :node="node"
+        :graph-nodes="graphNodes"
+        :graph-edges="graphEdges"
+        :trace-entries="traceEntries"
         :on-update-node="onUpdateNode"
       />
       <ClockNodeConfigPanel

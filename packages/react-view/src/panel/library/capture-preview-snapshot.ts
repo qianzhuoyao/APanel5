@@ -620,7 +620,8 @@ async function paintPanelElementOntoCanvas(
     liveNode &&
     (el.materialType === "reference" ||
       el.materialType === "table" ||
-      el.materialType === "grid")
+      el.materialType === "grid" ||
+      el.materialType === "viewport")
   ) {
     try {
       await drawNodeOntoCanvas(ctx, liveNode, 0, 0, w, h, 0);
@@ -681,7 +682,8 @@ export async function capturePreviewLayerSnapshot(
   ctx.fillStyle = options.backgroundColor ?? "#ffffff";
   ctx.fillRect(0, 0, width, height);
 
-  const sorted = [...elements].sort((a, b) => (a.zIndex ?? 1) - (b.zIndex ?? 1));
+  const sorted = [...elements]
+    .sort((a, b) => (a.zIndex ?? 1) - (b.zIndex ?? 1));
   for (const el of sorted) {
     const liveNode =
       options.canvasRoot?.querySelector<HTMLElement>(

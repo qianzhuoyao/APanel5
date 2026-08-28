@@ -38,7 +38,9 @@ const emit = defineEmits<{
 
 const nodeKey = computed(() => `node:${props.path}`);
 const selected = computed(() => props.selectedIds.includes(props.node.id));
-const isRef = computed(() => props.node.materialType === "reference");
+const isRef = computed(
+  () => props.node.materialType === "reference" || props.node.materialType === "viewport"
+);
 const refMode = computed(() => props.node.refCopyMode ?? "shallow");
 const isDeepRef = computed(() => isRef.value && refMode.value === "deep");
 const nodeHomeLayer = computed(() => props.layerById.get(props.node.layerId));
@@ -82,7 +84,7 @@ function nodeMatchesTreeSearch(
   const next = new Set(visited);
   next.add(node.id);
   const childList =
-    node.materialType === "reference"
+    node.materialType === "reference" || node.materialType === "viewport"
       ? node.refCopyMode === "deep"
         ? node.refSnapshot ?? sourceOverride ?? []
         : node.refLayerId

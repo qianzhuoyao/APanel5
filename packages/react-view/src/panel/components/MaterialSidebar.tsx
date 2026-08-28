@@ -63,6 +63,7 @@ const MATERIAL_LABEL_KEYS: Record<string, string> = {
   text: "panel.material.text",
   rect: "panel.material.rect",
   grid: "panel.material.grid",
+  viewport: "panel.material.viewport",
   image: "panel.material.image",
   video: "panel.material.video",
   audio: "panel.material.audio",
@@ -374,6 +375,18 @@ function MaterialPreview({ id }: { id: string }) {
       </div>
     );
   }
+  if (id === "viewport") {
+    return (
+      <div className={common}>
+        <div className="absolute inset-1.5 overflow-hidden rounded-sm border border-primary/70 bg-primary/10">
+          <div className="absolute left-1 top-1 h-6 w-8 rounded-[2px] bg-primary/45" />
+          <div className="absolute left-6 top-4 h-7 w-10 rounded-[2px] bg-primary/30" />
+          <div className="absolute bottom-0 right-0 h-1.5 w-6 rounded-tl bg-primary/55" />
+          <div className="absolute bottom-0 right-0 top-2 w-1.5 rounded-l bg-primary/40" />
+        </div>
+      </div>
+    );
+  }
 
   return <div className={common} />;
 }
@@ -403,6 +416,7 @@ function getDefaultCategories(t: (key: string) => string): MaterialCategory[] {
         { id: "geometry", title: t("panel.material.geometry") },
         { id: "scene3d", title: t("panel.material.scene3d") },
         { id: "grid", title: t("panel.material.grid") },
+        { id: "viewport", title: t("panel.material.viewport") },
         { id: "image", title: t("panel.material.image") },
         { id: "reference", title: t("panel.material.reference") },
       ],
@@ -568,9 +582,8 @@ export function MaterialSidebar({
   };
 
   const getNodeChildren = (node: PanelElement, sourceOverride?: PanelElement[]) => {
-    const isRef = node.materialType === "reference";
+    const isRef = node.materialType === "reference" || node.materialType === "viewport";
     const isGrid = node.materialType === "grid";
-    // 必须用节点自身所在图层查找子节点；外层传入的 layerId 在深嵌套/引用子树中会错位，导致子节点不显示在对应网格下
     const gridChildren = isGrid
       ? [...(childrenByGridByLayer.get(node.layerId)?.get(node.id) ?? [])].sort(
           compareGridTreeChildOrder
@@ -611,7 +624,7 @@ export function MaterialSidebar({
   ) => {
     const selected = selectedIds.includes(node.id);
     if (!nodeMatchesTreeSearch(node, visited, sourceOverride)) return null;
-    const isRef = node.materialType === "reference";
+    const isRef = node.materialType === "reference" || node.materialType === "viewport";
     const refMode = node.refCopyMode ?? "shallow";
     const isDeepRef = isRef && refMode === "deep";
     const children = getNodeChildren(node, sourceOverride);
@@ -829,17 +842,11 @@ export function MaterialSidebar({
   };
 
   const hasRefInSubtree = (node: PanelElement, visited: Set<string>): boolean => {
-    if (node.materialType === "reference") return true;
-    if (node.materialType !== "reference") return false;
+    if (node.materialType === "reference" || node.materialType === "viewport") return true;
     if (visited.has(node.id)) return false;
     const nextVisited = new Set(visited);
     nextVisited.add(node.id);
-    const children =
-      node.refCopyMode === "deep"
-        ? node.refSnapshot ?? []
-        : node.refLayerId
-          ? elementsByLayer.get(node.refLayerId) ?? []
-          : [];
+    const children = getNodeChildren(node);
     return children.some((child) => hasRefInSubtree(child, nextVisited));
   };
 

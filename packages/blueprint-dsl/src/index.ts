@@ -11,6 +11,7 @@ export * from "./scope-template.js";
 export * from "./scope-autocomplete.js";
 export * from "./incoming-node-scope.js";
 export * from "./json-config.js";
+export * from "./storage-config.js";
 export * from "./logic-config.js";
 export * from "./clock-config.js";
 export * from "./event-config.js";

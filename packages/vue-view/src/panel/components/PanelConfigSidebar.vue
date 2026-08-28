@@ -22,6 +22,7 @@ import PanelConfigVideoSection from "./config/PanelConfigVideoSection.vue";
 import PanelConfigGeometrySection from "./config/PanelConfigGeometrySection.vue";
 import PanelConfigScene3dSection from "./config/PanelConfigScene3dSection.vue";
 import PanelConfigGridSection from "./config/PanelConfigGridSection.vue";
+import PanelConfigViewportSection from "./config/PanelConfigViewportSection.vue";
 import PanelConfigGridChildSpan from "./config/PanelConfigGridChildSpan.vue";
 import PanelConfigReferenceSection from "./config/PanelConfigReferenceSection.vue";
 import PanelConfigTableSection from "./table/PanelConfigTableSection.vue";
@@ -156,6 +157,9 @@ const visibleSectionCount = computed(() => {
   if (materialType.value === "image") checks.push(["imageConfig", t("panel.config.sectionImage"), [t("panel.defaults.image")]]);
   if (materialType.value === "geometry") checks.push(["geometryConfig", t("panel.config.sectionGeometry"), [t("panel.defaults.geometry")]]);
   if (materialType.value === "grid") checks.push(["gridConfig", t("panel.config.sectionGrid"), [t("panel.config.searchKwGrid")]]);
+  if (materialType.value === "viewport") {
+    checks.push(["viewportConfig", t("panel.config.sectionViewport"), [t("panel.config.searchKwViewport"), t("panel.config.refLayer")]]);
+  }
   if (props.selectedElement?.parentGridId) {
     checks.push(["gridChildSpan", t("panel.config.sectionGridChildSpan"), [t("panel.config.searchKwCrossCol")]]);
   }
@@ -354,6 +358,18 @@ watch(
               @update:open="(v) => setSectionExpanded('gridConfig', v)"
             />
 
+            <PanelConfigViewportSection
+              v-if="materialType === 'viewport' && shouldShowSection('viewportConfig', t('panel.config.sectionViewport'), [t('panel.config.searchKwViewport'), t('panel.config.viewportOverflow'), t('panel.config.refLayer')])"
+              :element="selectedElement"
+              :layers="layers"
+              :is-editable="isNodeEditable"
+              :open="isSectionExpanded('viewportConfig')"
+              :force-open="forceOpenSections"
+              :set-reference-copy-mode="setReferenceCopyMode"
+              :update-element="updateElement"
+              @update:open="(v) => setSectionExpanded('viewportConfig', v)"
+            />
+
             <PanelConfigGridChildSpan
               v-if="selectedElement.parentGridId && shouldShowSection('gridChildSpan', t('panel.config.sectionGridChildSpan'), [t('panel.config.searchKwCrossCol'), t('panel.config.searchKwCrossRow')])"
               :element="selectedElement"
@@ -394,7 +410,7 @@ watch(
             />
 
             <div
-              v-if="!isChartElement && materialType && !['text', 'table', 'audio', 'video', 'image', 'geometry', 'grid', 'reference'].includes(materialType)"
+              v-if="!isChartElement && materialType && !['text', 'table', 'audio', 'video', 'image', 'geometry', 'grid', 'viewport', 'reference'].includes(materialType)"
               class="text-xs leading-6 text-gray-500"
             >
               {{ t("panel.config.notChartType") }}

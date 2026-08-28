@@ -157,17 +157,26 @@ function setExpanded(key: string, next: boolean) {
 }
 
 function hasRefInSubtree(node: PanelElement, visited: Set<string>): boolean {
-  if (node.materialType === "reference") return true;
+  if (node.materialType === "reference" || node.materialType === "viewport") return true;
   if (visited.has(node.id)) return false;
   const nextVisited = new Set(visited);
   nextVisited.add(node.id);
-  const children =
-    node.refCopyMode === "deep"
-      ? node.refSnapshot ?? []
+  const children = getTreeChildren(node);
+  return children.some((child) => hasRefInSubtree(child, nextVisited));
+}
+
+function getTreeChildren(node: PanelElement, sourceOverride?: PanelElement[]) {
+  if (node.materialType === "reference" || node.materialType === "viewport") {
+    return node.refCopyMode === "deep"
+      ? node.refSnapshot ?? sourceOverride ?? []
       : node.refLayerId
         ? elementsByLayer.value.get(node.refLayerId) ?? []
         : [];
-  return children.some((child) => hasRefInSubtree(child, nextVisited));
+  }
+  if (node.materialType === "grid") {
+    return [...(childrenByGridByLayer.value.get(node.layerId)?.get(node.id) ?? [])];
+  }
+  return [];
 }
 
 function nodeMatchesTreeSearch(node: PanelElement, visited: Set<string>): boolean {
@@ -177,19 +186,7 @@ function nodeMatchesTreeSearch(node: PanelElement, visited: Set<string>): boolea
   if (visited.has(node.id)) return false;
   const nextVisited = new Set(visited);
   nextVisited.add(node.id);
-  const isRef = node.materialType === "reference";
-  const isGrid = node.materialType === "grid";
-  const gridChildren = isGrid
-    ? [...(childrenByGridByLayer.value.get(node.layerId)?.get(node.id) ?? [])]
-    : [];
-  const children = isRef
-    ? node.refCopyMode === "deep"
-      ? node.refSnapshot ?? []
-      : node.refLayerId
-        ? elementsByLayer.value.get(node.refLayerId) ?? []
-        : []
-    : gridChildren;
-  return children.some((child) => nodeMatchesTreeSearch(child, nextVisited));
+  return getTreeChildren(node).some((child) => nodeMatchesTreeSearch(child, nextVisited));
 }
 
 function getRootNodes(layerId: string) {

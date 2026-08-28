@@ -8,6 +8,7 @@ import {
   resolveNodeEventConfig,
   resolveNodeFetchConfig,
   resolveNodeJsonConfig,
+  resolveNodeStorageConfig,
   resolveNodeLogicConfig,
   resolveRunnableNodeType,
   sanitizeBlueprintDocument,
@@ -197,6 +198,7 @@ export class BlueprintGraph {
         | "lifecyclePhase"
         | "fetchConfig"
         | "jsonConfig"
+        | "storageConfig"
         | "logicConfig"
         | "clockConfig"
         | "eventConfig"
@@ -239,6 +241,20 @@ export class BlueprintGraph {
           nextNode.jsonConfig = {
             ...resolveNodeJsonConfig(n),
             ...patch.jsonConfig,
+          };
+        }
+        if (patch.storageConfig) {
+          nextNode.storageConfig = {
+            ...resolveNodeStorageConfig(n),
+            ...patch.storageConfig,
+            read: {
+              ...resolveNodeStorageConfig(n).read,
+              ...patch.storageConfig.read,
+            },
+            set: {
+              ...resolveNodeStorageConfig(n).set,
+              ...patch.storageConfig.set,
+            },
           };
         }
         if (patch.logicConfig) {

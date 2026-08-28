@@ -17,6 +17,7 @@ const DEFAULT_NODE_NAME_KEYS: Record<string, string> = {
   funnel: "panel.defaults.funnel",
   text: "panel.defaults.text",
   grid: "panel.defaults.grid",
+  viewport: "panel.defaults.viewport",
   image: "panel.defaults.image",
   video: "panel.defaults.video",
   audio: "panel.defaults.audio",
@@ -70,6 +71,8 @@ export function getDefaultSizeByMaterial(materialType: string) {
       return { width: 180, height: 120 };
     case "grid":
       return { width: 320, height: 220 };
+    case "viewport":
+      return { width: 360, height: 240 };
     case "image":
       return { width: 220, height: 140 };
     case "video":
@@ -139,6 +142,13 @@ export function getDefaultGridConfig(materialType: string) {
     gridPadding: 10,
     gridSnapThreshold: 36,
   } as const;
+}
+
+export function getDefaultViewportConfig(materialType: string) {
+  if (materialType !== "viewport") return {};
+  return {
+    viewportOverflow: "clip" as const,
+  };
 }
 
 export function getDefaultChartConfig(

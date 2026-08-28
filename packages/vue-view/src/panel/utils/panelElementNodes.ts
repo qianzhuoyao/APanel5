@@ -26,9 +26,11 @@ export function buildDeepReferenceSnapshot(
   const layerNodes = allElements.filter((el) => el.layerId === layerId);
   return layerNodes.map((el) => {
     const cloned = clonePanelElement(el);
-    if (cloned.materialType === "reference" && cloned.refLayerId) {
-      cloned.refCopyMode = "deep";
-      cloned.refSnapshot = buildDeepReferenceSnapshot(allElements, cloned.refLayerId, nextVisited);
+    if (cloned.materialType === "reference" || cloned.materialType === "viewport") {
+      if (cloned.refLayerId) {
+        cloned.refCopyMode = "deep";
+        cloned.refSnapshot = buildDeepReferenceSnapshot(allElements, cloned.refLayerId, nextVisited);
+      }
     }
     return cloned;
   });

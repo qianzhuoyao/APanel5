@@ -14,7 +14,7 @@ export type BlueprintContextMenuState =
       clientX: number;
       clientY: number;
       nodeId: string;
-      role: "blueprint" | "logic" | "and" | "lifecycle" | "event" | "fetch" | "json" | "clock";
+      role: "blueprint" | "logic" | "and" | "lifecycle" | "event" | "fetch" | "json" | "storage" | "clock";
     }
   | {
       kind: "edge";

@@ -19,6 +19,7 @@ export type BlueprintFlowNodeData = {
   lifecyclePhase?: BlueprintGraphNode["lifecyclePhase"];
   fetchConfig?: BlueprintGraphNode["fetchConfig"];
   jsonConfig?: BlueprintGraphNode["jsonConfig"];
+  storageConfig?: BlueprintGraphNode["storageConfig"];
   clockConfig?: BlueprintGraphNode["clockConfig"];
   eventConfig?: BlueprintGraphNode["eventConfig"];
   logicConfig?: BlueprintGraphNode["logicConfig"];
@@ -71,6 +72,8 @@ export function toReactFlowNodes(document: BlueprintDocument): ReactFlowNodeView
           ? "fetch"
           : n.role === "json"
             ? "json"
+            : n.role === "storage"
+              ? "storage"
             : n.role === "event"
               ? "event"
             : "logic",
@@ -93,6 +96,7 @@ export function toReactFlowNodes(document: BlueprintDocument): ReactFlowNodeView
       lifecyclePhase: n.lifecyclePhase,
       fetchConfig: n.fetchConfig,
       jsonConfig: n.jsonConfig,
+      storageConfig: n.storageConfig,
       clockConfig: n.clockConfig,
       eventConfig: n.eventConfig,
       logicConfig: n.logicConfig,
