@@ -24,3 +24,5 @@ export default defineConfig({
   plugins: [webllmAssistant()],
 });
 ```
+
+Do not add a source-level `import("@mlc-ai/web-llm?url")`. Webpack/Umi treats `?url` as part of the chunk name (`@mlc-ai-web-llm?url-lib.async.js`) and the gzip size reporter fails with ENOENT. Vite hosts should use the plugin above instead.

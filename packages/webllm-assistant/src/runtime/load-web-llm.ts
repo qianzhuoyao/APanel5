@@ -40,12 +40,22 @@ function moduleFromUnknown(value: unknown): WebLLMModule | null {
 }
 
 /**
- * Load `@mlc-ai/web-llm` without letting Vite/Rollup parse the huge bundle.
- * Vite 5's stripLiteral tokenizes that file and overflows the call stack.
- * Importing `?url` copies it as a static asset, then we import the URL.
+ * Load `@mlc-ai/web-llm` without letting Vite parse the huge bundle, and
+ * without letting Webpack/Umi emit a chunk whose filename contains `?url`.
+ *
+ * Vite 5's stripLiteral overflows on that file. The companion Vite plugin
+ * rewrites a bare `@mlc-ai/web-llm` import to `...?url` (static asset).
+ * Webpack has no `?url` loader: a literal `import("pkg?url")` becomes
+ * `dist/@mlc-ai-web-llm?url-lib.async.js`, and Umi's fileSizeReporter
+ * then ENOENTs because `?` is treated as a query, not part of the path.
+ *
+ * Do not write `import("@mlc-ai/web-llm?url")` in this file.
  */
 export async function loadWebLlmModule(): Promise<WebLLMModule> {
-  const loaded: unknown = await import("@mlc-ai/web-llm?url");
+  const loaded: unknown = await import(
+    /* webpackChunkName: "mlc-web-llm" */
+    "@mlc-ai/web-llm"
+  );
   const asModule = moduleFromUnknown(loaded);
   if (asModule) return asModule;
 

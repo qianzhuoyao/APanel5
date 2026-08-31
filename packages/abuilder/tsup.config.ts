@@ -13,7 +13,6 @@ export default defineConfig({
     "react-dom",
     "react/jsx-runtime",
     "@mlc-ai/web-llm",
-    "@mlc-ai/web-llm?url",
   ],
   esbuildOptions(options) {
     options.jsx = "automatic";
