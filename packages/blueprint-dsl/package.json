@@ -1,6 +1,6 @@
 {
   "name": "@arronqzy/blueprint-dsl",
-  "version": "1.0.12",
+  "version": "1.0.13",
   "description": "Abuilder blueprint DSL runtime",
   "license": "MIT",
   "type": "module",
