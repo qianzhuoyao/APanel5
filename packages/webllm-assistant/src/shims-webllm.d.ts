@@ -14,8 +14,3 @@ declare module "@mlc-ai/web-llm" {
     };
   }
 }
-
-declare module "@mlc-ai/web-llm?url" {
-  const url: string;
-  export default url;
-}

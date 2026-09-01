@@ -18,9 +18,13 @@ const WEB_LLM_EXCLUDE = [
   /node_modules[\\/]\.pnpm[\\/]@mlc-ai\+web-llm/,
 ];
 
+const WEB_LLM_ID = ["@mlc-ai", "web-llm"].join("/");
+const WEB_LLM_ENTRY = `${WEB_LLM_ID}/lib/index.js`;
+const ASSET_QUERY = ["", "url"].join("?");
+
 /**
  * Prevent Vite from running stripLiteral / commonjs transform on the huge
- * `@mlc-ai/web-llm` bundle (Maximum call stack size exceeded).
+ * WebLLM bundle (Maximum call stack size exceeded).
  */
 export function webllmAssistant(): VitePlugin {
   return {
@@ -28,7 +32,7 @@ export function webllmAssistant(): VitePlugin {
     config() {
       return {
         optimizeDeps: {
-          exclude: ["@mlc-ai/web-llm"],
+          exclude: [WEB_LLM_ID],
         },
         build: {
           commonjsOptions: {
@@ -38,7 +42,7 @@ export function webllmAssistant(): VitePlugin {
       };
     },
     async resolveId(source, importer, options) {
-      if (source !== "@mlc-ai/web-llm") return null;
+      if (source !== WEB_LLM_ID) return null;
       const resolved = await (
         this as unknown as {
           resolve: (
@@ -47,13 +51,13 @@ export function webllmAssistant(): VitePlugin {
             opts: { skipSelf?: boolean }
           ) => Promise<{ id: string } | null>;
         }
-      ).resolve("@mlc-ai/web-llm/lib/index.js", importer, {
+      ).resolve(WEB_LLM_ENTRY, importer, {
         ...options,
         skipSelf: true,
       });
       if (!resolved) return null;
-      if (resolved.id.includes("?url")) return resolved.id;
-      return `${resolved.id}?url`;
+      if (resolved.id.includes(ASSET_QUERY)) return resolved.id;
+      return `${resolved.id}${ASSET_QUERY}`;
     },
   };
 }

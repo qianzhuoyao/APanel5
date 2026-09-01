@@ -39,40 +39,53 @@ function moduleFromUnknown(value: unknown): WebLLMModule | null {
   return null;
 }
 
+function runtimeSpecifier(): string {
+  return ["@mlc-ai", "web-llm"].join("/");
+}
+
+function urlFromUnknown(value: unknown): string | null {
+  if (typeof value === "string") return value;
+  if (value && typeof value === "object" && "default" in (value as object)) {
+    const nested = (value as { default: unknown }).default;
+    return typeof nested === "string" ? nested : null;
+  }
+  return null;
+}
+
 /**
- * Load `@mlc-ai/web-llm` without letting Vite parse the huge bundle, and
- * without letting Webpack/Umi emit a chunk whose filename contains `?url`.
+ * Load the WebLLM runtime.
  *
- * Vite 5's stripLiteral overflows on that file. The companion Vite plugin
- * rewrites a bare `@mlc-ai/web-llm` import to `...?url` (static asset).
- * Webpack has no `?url` loader: a literal `import("pkg?url")` becomes
- * `dist/@mlc-ai-web-llm?url-lib.async.js`, and Umi's fileSizeReporter
- * then ENOENTs because `?` is treated as a query, not part of the path.
- *
- * Do not write `import("@mlc-ai/web-llm?url")` in this file.
+ * Vite: a sibling module holds a static package import so the Vite plugin can
+ * copy the huge file as an asset and skip stripLiteral.
+ * Webpack/Umi: that sibling is webpackIgnore'd, so no async chunk is emitted
+ * and the gzip size reporter cannot trip over a query-string filename.
  */
 export async function loadWebLlmModule(): Promise<WebLLMModule> {
+  try {
+    const viteLoader = await import(
+      /* webpackIgnore: true */
+      "./load-web-llm.vite"
+    );
+    const loaded = await viteLoader.importWebLlm();
+    const asModule = moduleFromUnknown(loaded);
+    if (asModule) return asModule;
+    const assetHref = urlFromUnknown(loaded);
+    if (assetHref) {
+      const fromUrl = moduleFromUnknown(
+        await import(/* @vite-ignore */ assetHref)
+      );
+      if (fromUrl) return fromUrl;
+    }
+  } catch {
+    // Webpack/Umi (or missing Vite plugin): fall through to a runtime specifier.
+  }
+
   const loaded: unknown = await import(
-    /* webpackChunkName: "mlc-web-llm" */
-    "@mlc-ai/web-llm"
+    /* webpackIgnore: true */
+    /* @vite-ignore */
+    runtimeSpecifier()
   );
   const asModule = moduleFromUnknown(loaded);
   if (asModule) return asModule;
-
-  const url =
-    typeof loaded === "string"
-      ? loaded
-      : loaded && typeof loaded === "object" && "default" in (loaded as object)
-        ? (loaded as { default: unknown }).default
-        : null;
-
-  if (typeof url === "string") {
-    const fromUrl = moduleFromUnknown(
-      await import(/* @vite-ignore */ url)
-    );
-    if (fromUrl) return fromUrl;
-  }
-
-  const specifier = ["@mlc-ai", "web-llm"].join("/");
-  return (await import(/* @vite-ignore */ specifier)) as unknown as WebLLMModule;
+  throw new Error("Failed to load WebLLM runtime");
 }
