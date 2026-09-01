@@ -30,3 +30,7 @@ Use `@arronqzy/abuilder/vite` (not `@arronqzy/webllm-assistant/vite`) so pnpm ca
 **Required for any Vite build** that bundles `@arronqzy/react-view` / `@arronqzy/webllm-assistant`. Without this plugin, Vite 5 runs `stripLiteral` on `@mlc-ai/web-llm/lib/index.js` and fails with `Maximum call stack size exceeded`.
 
 Do not put a Vite asset-query import of WebLLM in shared source. Webpack/Umi will bake the query into the async chunk filename, and the gzip size reporter then fails with ENOENT.
+
+## Webpack / Umi
+
+Umi apps must **not** import `@arronqzy/webllm-assistant/vite` or use `@mlc-ai/web-llm?url` anywhere. Upgrade to `@arronqzy/webllm-assistant@0.1.16+` (or `@arronqzy/abuilder@1.1.28+`); the loader emits a normal `mlc-web-llm` async chunk instead of `@mlc-ai-web-llm?url-lib.async.js`.

@@ -22,6 +22,8 @@ export type WebLLMModule = {
   };
 };
 
+declare const __WEBLLM_VITE_LOADER__: boolean | undefined;
+
 function isWebLLMModule(value: unknown): value is WebLLMModule {
   return Boolean(
     value &&
@@ -52,55 +54,54 @@ function urlFromUnknown(value: unknown): string | null {
   return null;
 }
 
-function isViteBundler(): boolean {
-  return typeof import.meta !== "undefined" && "env" in import.meta;
+function usesViteLoader(): boolean {
+  return typeof __WEBLLM_VITE_LOADER__ !== "undefined" && __WEBLLM_VITE_LOADER__;
 }
 
 const VITE_PLUGIN_HINT =
   "Add webllmAssistant() from @arronqzy/abuilder/vite to your Vite plugins.";
 
-/**
- * Load the WebLLM runtime.
- *
- * Vite: virtual entry + plugin copies the huge file as an asset (no stripLiteral).
- * Webpack/Umi: vite sibling is webpackIgnore'd; runtime import is also ignored.
- */
-export async function loadWebLlmModule(): Promise<WebLLMModule> {
-  try {
-    const viteLoader = await import(
-      /* webpackIgnore: true */
-      "./load-web-llm.vite"
+async function loadViaVite(): Promise<WebLLMModule> {
+  const viteLoader = await import("./load-web-llm.vite");
+  const loaded = await viteLoader.importWebLlm();
+  const asModule = moduleFromUnknown(loaded);
+  if (asModule) return asModule;
+
+  const assetHref = urlFromUnknown(loaded);
+  if (assetHref) {
+    const fromUrl = moduleFromUnknown(
+      await import(/* @vite-ignore */ assetHref)
     );
-    const loaded = await viteLoader.importWebLlm();
-    const asModule = moduleFromUnknown(loaded);
-    if (asModule) return asModule;
-    const assetHref = urlFromUnknown(loaded);
-    if (assetHref) {
-      const fromUrl = moduleFromUnknown(
-        await import(/* @vite-ignore */ assetHref)
-      );
-      if (fromUrl) return fromUrl;
-    }
-    if (isViteBundler()) {
-      throw new Error(`WebLLM asset URL was not produced. ${VITE_PLUGIN_HINT}`);
-    }
-  } catch (error) {
-    if (isViteBundler()) {
-      const message =
-        error instanceof Error ? error.message : "WebLLM Vite loader failed";
-      throw new Error(`${message}. ${VITE_PLUGIN_HINT}`, {
-        cause: error instanceof Error ? error : undefined,
-      });
-    }
-    // Webpack/Umi: fall through to a runtime specifier import.
+    if (fromUrl) return fromUrl;
   }
 
+  throw new Error(`WebLLM asset URL was not produced. ${VITE_PLUGIN_HINT}`);
+}
+
+/**
+ * Webpack/Umi async chunk. Never use `?url` here — Umi's fileSizeReporter treats
+ * `?` as a query string and ENOENTs on `@mlc-ai-web-llm?url-lib.async.js`.
+ */
+async function loadViaWebpack(): Promise<WebLLMModule> {
   const loaded: unknown = await import(
-    /* webpackIgnore: true */
+    /* webpackChunkName: "mlc-web-llm" */
     /* @vite-ignore */
     runtimeSpecifier()
   );
   const asModule = moduleFromUnknown(loaded);
   if (asModule) return asModule;
   throw new Error("Failed to load WebLLM runtime");
+}
+
+/**
+ * Load the WebLLM runtime.
+ *
+ * Vite (webllmAssistant plugin sets __WEBLLM_VITE_LOADER__): virtual entry → asset copy.
+ * Webpack/Umi: bare `@mlc-ai/web-llm` async chunk with a safe filename.
+ */
+export async function loadWebLlmModule(): Promise<WebLLMModule> {
+  if (usesViteLoader()) {
+    return loadViaVite();
+  }
+  return loadViaWebpack();
 }

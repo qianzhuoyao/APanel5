@@ -52,6 +52,9 @@ export function webllmAssistant(): WebllmVitePlugin {
     enforce: "pre",
     config() {
       return {
+        define: {
+          __WEBLLM_VITE_LOADER__: JSON.stringify(true),
+        },
         optimizeDeps: {
           exclude: [WEB_LLM_ID],
         },
