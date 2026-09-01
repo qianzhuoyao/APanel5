@@ -1,4 +1,4 @@
-type VitePlugin = {
+interface WebllmVitePlugin {
   name: string;
   enforce?: "pre" | "post";
   config: () => {
@@ -13,7 +13,7 @@ type VitePlugin = {
     options: { skipSelf?: boolean }
   ) => Promise<{ id: string; external?: boolean } | string | null>;
   load?: (id: string) => string | null;
-};
+}
 
 /** Import this from `load-web-llm.vite.ts` so consumer graphs never mention `@mlc-ai/web-llm`. */
 export const WEBLLM_VITE_ENTRY = "virtual:arronqzy-webllm-entry";
@@ -46,7 +46,7 @@ function withAssetQuery(resolvedId: string): string {
  * Prevent Vite from running stripLiteral / commonjs transform on the huge
  * WebLLM bundle (Maximum call stack size exceeded).
  */
-export function webllmAssistant(): VitePlugin {
+export function webllmAssistant(): WebllmVitePlugin {
   return {
     name: "arronqzy-webllm-assistant",
     enforce: "pre",

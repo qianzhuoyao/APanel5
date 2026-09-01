@@ -18,12 +18,14 @@ Requires WebGPU (Chrome/Edge). First run downloads model weights into the browse
 Vite 5 can crash while transforming `@mlc-ai/web-llm` (`Maximum call stack size exceeded` in `stripLiteral`). Add the helper plugin so the huge bundle is excluded from commonjs / dep optimization:
 
 ```ts
-import { webllmAssistant } from "@arronqzy/webllm-assistant/vite";
+import { webllmAssistant } from "@arronqzy/abuilder/vite";
 
 export default defineConfig({
   plugins: [webllmAssistant()],
 });
 ```
+
+Use `@arronqzy/abuilder/vite` (not `@arronqzy/webllm-assistant/vite`) so pnpm can resolve the plugin from your existing `@arronqzy/abuilder` dependency.
 
 **Required for any Vite build** that bundles `@arronqzy/react-view` / `@arronqzy/webllm-assistant`. Without this plugin, Vite 5 runs `stripLiteral` on `@mlc-ai/web-llm/lib/index.js` and fails with `Maximum call stack size exceeded`.
 

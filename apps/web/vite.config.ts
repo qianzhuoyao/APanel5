@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 
 import react from "@vitejs/plugin-react";
 import { defineConfig, type Plugin } from "vite";
-import { webllmAssistant } from "../../packages/webllm-assistant/src/vite-plugin.ts";
+import { webllmAssistant } from "@arronqzy/abuilder/vite";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const monorepoRoot = path.resolve(__dirname, "../..");
@@ -166,6 +166,10 @@ export default defineConfig({
       {
         find: /^@arronqzy\/abuilder$/,
         replacement: path.resolve(monorepoRoot, "packages/abuilder/src/index.ts"),
+      },
+      {
+        find: "@arronqzy/abuilder/vite",
+        replacement: path.resolve(monorepoRoot, "packages/abuilder/src/vite.ts"),
       },
       {
         find: "@arronqzy/ui/styles.css",

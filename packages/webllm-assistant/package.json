@@ -1,27 +1,35 @@
 {
   "name": "@arronqzy/webllm-assistant",
-  "version": "0.1.14",
+  "version": "0.1.15",
   "description": "Offline WebLLM assistant runtime and action protocol for Abuilder",
   "license": "MIT",
   "type": "module",
   "files": [
     "src",
-    "src/vite-plugin.ts"
+    "dist"
   ],
   "main": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
-    "./vite": "./src/vite-plugin.ts"
+    "./vite": {
+      "types": "./dist/vite-plugin.d.ts",
+      "import": "./dist/vite-plugin.js",
+      "require": "./dist/vite-plugin.cjs",
+      "default": "./dist/vite-plugin.js"
+    }
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "build": "pnpm run typecheck"
+    "build:vite": "tsup",
+    "build": "pnpm run typecheck && pnpm run build:vite",
+    "prepublishOnly": "pnpm run build"
+  },
+  "devDependencies": {
+    "tsup": "^8.4.0",
+    "typescript": "^5.5.4"
   },
   "dependencies": {
     "@mlc-ai/web-llm": "0.2.79"
-  },
-  "devDependencies": {
-    "typescript": "^5.5.4"
   },
   "publishConfig": {
     "access": "public"

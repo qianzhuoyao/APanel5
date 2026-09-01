@@ -18,6 +18,20 @@ npm install @arronqzy/abuilder react react-dom
 pnpm add @arronqzy/abuilder react react-dom
 ```
 
+### Vite 宿主项目
+
+若你用 Vite 打包集成了 `<App />` 的应用，请在 `vite.config.ts` 注册 WebLLM 插件（避免 `@mlc-ai/web-llm` 触发 `stripLiteral` 栈溢出）：
+
+```ts
+import { webllmAssistant } from "@arronqzy/abuilder/vite";
+
+export default defineConfig({
+  plugins: [webllmAssistant()],
+});
+```
+
+请从 `@arronqzy/abuilder/vite` 导入，不要从 `@arronqzy/webllm-assistant/vite` 导入——pnpm 下后者不是 easycode 的直接依赖，配置加载阶段会 `ERR_MODULE_NOT_FOUND`。
+
 ## 使用
 
 ```tsx

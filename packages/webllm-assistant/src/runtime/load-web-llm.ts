@@ -57,7 +57,7 @@ function isViteBundler(): boolean {
 }
 
 const VITE_PLUGIN_HINT =
-  "Add webllmAssistant() from @arronqzy/webllm-assistant/vite to your Vite plugins.";
+  "Add webllmAssistant() from @arronqzy/abuilder/vite to your Vite plugins.";
 
 /**
  * Load the WebLLM runtime.
