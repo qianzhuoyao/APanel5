@@ -213,30 +213,30 @@ export function PanelConfigSidebar({
     if (!hit) return null;
     matchCountRef.current += 1;
     return (
-      <Collapsible
-        open={hasSearch ? true : isSectionExpanded(key, defaultOpen)}
-        onOpenChange={(open) => setSectionExpanded(key, open)}
-        className="rounded-xl border border-border/70 bg-card/95 shadow-sm"
-        data-config-section={key}
-      >
-        <div className="flex items-center gap-1.5 px-3 py-2">
-          <CollapsibleTrigger asChild>
-            <button
-              type="button"
-              className="flex h-6 w-6 items-center justify-center rounded-md text-xs hover:bg-accent"
-            >
-              {isSectionExpanded(key, defaultOpen) ? "▾" : "▸"}
-            </button>
-          </CollapsibleTrigger>
-          <div className="flex min-w-0 flex-1 items-center gap-1">
-            <div className="text-[11px] font-semibold tracking-wide text-muted-foreground">{title}</div>
-            {hint ? <ConfigHintIcon label={title}>{hint}</ConfigHintIcon> : null}
-          </div>
+    <Collapsible
+      open={hasSearch ? true : isSectionExpanded(key, defaultOpen)}
+      onOpenChange={(open) => setSectionExpanded(key, open)}
+      className="rounded-xl border border-border/70 bg-card/95 shadow-sm"
+      data-config-section={key}
+    >
+      <div className="flex items-center gap-1.5 px-3 py-2">
+        <CollapsibleTrigger asChild>
+          <button
+            type="button"
+            className="flex h-6 w-6 items-center justify-center rounded-md text-xs hover:bg-accent"
+          >
+            {isSectionExpanded(key, defaultOpen) ? "▾" : "▸"}
+          </button>
+        </CollapsibleTrigger>
+        <div className="flex min-w-0 flex-1 items-center gap-1">
+          <div className="text-[11px] font-semibold tracking-wide text-muted-foreground">{title}</div>
+          {hint ? <ConfigHintIcon label={title}>{hint}</ConfigHintIcon> : null}
         </div>
-        <CollapsibleContent className="space-y-3 border-t border-border/60 bg-muted/[0.1] px-3 pb-3 pt-2.5">
-          {children}
-        </CollapsibleContent>
-      </Collapsible>
+      </div>
+      <CollapsibleContent className="space-y-3 border-t border-border/60 bg-muted/[0.1] px-3 pb-3 pt-2.5">
+        {children}
+      </CollapsibleContent>
+    </Collapsible>
     );
   };
 
@@ -360,51 +360,51 @@ export function PanelConfigSidebar({
       warnings={scopeWarnings}
       scrollContainerRef={sidebarScrollRef}
     >
-      <aside
-        ref={sidebarScrollRef}
-        className={`scope-config-sidebar h-full overflow-auto border-l border-border bg-muted/[0.14] px-3 py-3 text-foreground [&_.config-field--highlight]:rounded-md [&_.config-field--highlight]:ring-2 [&_.config-field--highlight]:ring-sky-400/80 [&_.scope-field--highlight]:rounded-md [&_.scope-field--highlight]:ring-2 [&_.scope-field--highlight]:ring-amber-400/80 [&_button[role=checkbox]]:border-2 [&_button[role=checkbox]]:border-foreground/80 [&_button[role=checkbox]]:bg-background [&_button[role=checkbox]]:ring-1 [&_button[role=checkbox]]:ring-foreground/40 [&_button[role=checkbox][data-state=checked]]:border-primary [&_button[role=checkbox][data-state=checked]]:ring-primary/40 ${themedScrollbarClass}`}
-      >
-        <div className="sticky top-0 z-20 mb-3 rounded-lg border border-border/70 bg-card/95 px-2.5 py-2 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/80">
-          <div className="flex items-center justify-between gap-2">
-            <div className="text-xs font-semibold tracking-wide">{t("panel.config.panelTitle")}</div>
-          </div>
-          {showScopePanel ? <ViewElementScopePanel scope={viewElementScope} /> : null}
-          <ScopeTemplateWarningsPanel />
-          <div
-            className={
-              showScopePanel || scopeWarnings.length > 0
-                ? "mt-2 border-t border-border/50 pt-2"
-                : "mt-0"
-            }
-          >
-            <div className="flex items-center justify-end gap-2">
-              <button
-                type="button"
-                className="rounded border border-border px-1.5 py-0.5 text-[11px] text-muted-foreground hover:bg-accent"
-                onClick={() => setIsSearchCollapsed((prev) => !prev)}
-              >
-                {isSearchCollapsed ? t("panel.config.expandSearch") : t("panel.config.collapseSearch")}
-              </button>
-            </div>
-            {!isSearchCollapsed ? (
-              <div className="mt-2">
-                <Input
-                  value={configSearch}
-                  onChange={(e) => setConfigSearch(e.target.value)}
-                  placeholder={t("panel.config.searchPlaceholder")}
-                  className="h-7"
-                  data-scope-autocomplete="off"
-                />
-                {hasSearch ? (
-                  <div className="mt-1 text-[11px] text-muted-foreground">
-                    {t("panel.config.searching", { query: configSearch })}
-                  </div>
-                ) : null}
-              </div>
-            ) : null}
-          </div>
+    <aside
+      ref={sidebarScrollRef}
+      className={`scope-config-sidebar h-full overflow-auto border-l border-border bg-muted/[0.14] px-3 py-3 text-foreground [&_.config-field--highlight]:rounded-md [&_.config-field--highlight]:ring-2 [&_.config-field--highlight]:ring-sky-400/80 [&_.scope-field--highlight]:rounded-md [&_.scope-field--highlight]:ring-2 [&_.scope-field--highlight]:ring-amber-400/80 [&_button[role=checkbox]]:border-2 [&_button[role=checkbox]]:border-foreground/80 [&_button[role=checkbox]]:bg-background [&_button[role=checkbox]]:ring-1 [&_button[role=checkbox]]:ring-foreground/40 [&_button[role=checkbox][data-state=checked]]:border-primary [&_button[role=checkbox][data-state=checked]]:ring-primary/40 ${themedScrollbarClass}`}
+    >
+      <div className="sticky top-0 z-20 mb-3 rounded-lg border border-border/70 bg-card/95 px-2.5 py-2 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/80">
+        <div className="flex items-center justify-between gap-2">
+          <div className="text-xs font-semibold tracking-wide">{t("panel.config.panelTitle")}</div>
         </div>
-        {isMultiSelectMode ? (
+          {showScopePanel ? <ViewElementScopePanel scope={viewElementScope} /> : null}
+        <ScopeTemplateWarningsPanel />
+        <div
+          className={
+            showScopePanel || scopeWarnings.length > 0
+              ? "mt-2 border-t border-border/50 pt-2"
+              : "mt-0"
+          }
+        >
+          <div className="flex items-center justify-end gap-2">
+            <button
+              type="button"
+              className="rounded border border-border px-1.5 py-0.5 text-[11px] text-muted-foreground hover:bg-accent"
+              onClick={() => setIsSearchCollapsed((prev) => !prev)}
+            >
+              {isSearchCollapsed ? t("panel.config.expandSearch") : t("panel.config.collapseSearch")}
+            </button>
+          </div>
+          {!isSearchCollapsed ? (
+            <div className="mt-2">
+              <Input
+                value={configSearch}
+                onChange={(e) => setConfigSearch(e.target.value)}
+                placeholder={t("panel.config.searchPlaceholder")}
+                className="h-7"
+                data-scope-autocomplete="off"
+              />
+              {hasSearch ? (
+                <div className="mt-1 text-[11px] text-muted-foreground">
+                  {t("panel.config.searching", { query: configSearch })}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+      </div>
+      {isMultiSelectMode ? (
           <PanelConfigMultiSelect
             elements={effectiveSelectedElements}
             helpers={helpers}
@@ -414,34 +414,34 @@ export function PanelConfigSidebar({
             onExcludeSelectedNode={onExcludeSelectedNode}
             onAdjustNodeZOrder={onAdjustNodeZOrder}
           />
-        ) : null}
-        {!isMultiSelectMode && !selectedElement ? (
-          <Empty className="py-7">
-            <EmptyIcon>
-              <svg
-                viewBox="0 0 24 24"
-                className="h-4 w-4"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                aria-hidden="true"
-              >
-                <rect x="4" y="4" width="16" height="16" rx="2.5" />
-                <path d="M8 9h8M8 12h8M8 15h5" />
-              </svg>
-            </EmptyIcon>
-            <EmptyTitle>{t("panel.config.emptyNoNodeTitle")}</EmptyTitle>
-            <EmptyDescription>{t("panel.config.emptyNoNodeDesc")}</EmptyDescription>
-          </Empty>
-        ) : !isMultiSelectMode && selectedElement ? (
-          <div className="space-y-3">
-            {!isNodeEditable ? (
-              <div className="rounded border border-amber-500/40 bg-amber-500/10 px-2 py-1.5 text-[11px] text-amber-700 dark:text-amber-300">
-                {readonlyReason}
-              </div>
-            ) : null}
-            <fieldset disabled={!isNodeEditable} className={!isNodeEditable ? "opacity-60" : ""}>
-              <div className="space-y-3.5 text-xs">
+      ) : null}
+      {!isMultiSelectMode && !selectedElement ? (
+        <Empty className="py-7">
+          <EmptyIcon>
+            <svg
+              viewBox="0 0 24 24"
+              className="h-4 w-4"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              aria-hidden="true"
+            >
+              <rect x="4" y="4" width="16" height="16" rx="2.5" />
+              <path d="M8 9h8M8 12h8M8 15h5" />
+            </svg>
+          </EmptyIcon>
+          <EmptyTitle>{t("panel.config.emptyNoNodeTitle")}</EmptyTitle>
+          <EmptyDescription>{t("panel.config.emptyNoNodeDesc")}</EmptyDescription>
+        </Empty>
+      ) : !isMultiSelectMode && selectedElement ? (
+        <div className="space-y-3">
+          {!isNodeEditable ? (
+            <div className="rounded border border-amber-500/40 bg-amber-500/10 px-2 py-1.5 text-[11px] text-amber-700 dark:text-amber-300">
+              {readonlyReason}
+            </div>
+          ) : null}
+          <fieldset disabled={!isNodeEditable} className={!isNodeEditable ? "opacity-60" : ""}>
+            <div className="space-y-3.5 text-xs">
                 <PanelConfigNodeInfo
                   element={selectedElement}
                   helpers={helpers}
@@ -449,26 +449,26 @@ export function PanelConfigSidebar({
                   nodeZOrderLabel={nodeZOrderLabel}
                   onAdjustNodeZOrder={onAdjustNodeZOrder}
                 />
-              </div>
-            </fieldset>
-            <div className="rounded-lg border border-border/60 bg-card/80 px-2.5 py-2 text-xs">
-              <label className="flex items-center gap-2">
-                <Checkbox
-                  checked={selectedElement.locked === true}
-                  disabled={!canToggleNodeLock}
-                  className="h-4 w-4 border-2 border-foreground/80 bg-background ring-1 ring-foreground/40 data-[state=checked]:border-primary data-[state=checked]:ring-primary/40"
-                  onCheckedChange={(checked) =>
-                    updateElement(selectedElement.id, {
-                      locked: checked === true,
-                    })
-                  }
-                />
-                <span>{t("panel.config.lockNode")}</span>
-              </label>
             </div>
-            <fieldset disabled={!isNodeEditable} className={!isNodeEditable ? "opacity-60" : ""}>
-              <div className="space-y-3.5 text-xs">
-                {isChartElement ? (
+          </fieldset>
+          <div className="rounded-lg border border-border/60 bg-card/80 px-2.5 py-2 text-xs">
+            <label className="flex items-center gap-2">
+              <Checkbox
+                checked={selectedElement.locked === true}
+                disabled={!canToggleNodeLock}
+                className="h-4 w-4 border-2 border-foreground/80 bg-background ring-1 ring-foreground/40 data-[state=checked]:border-primary data-[state=checked]:ring-primary/40"
+                onCheckedChange={(checked) =>
+                  updateElement(selectedElement.id, {
+                    locked: checked === true,
+                  })
+                }
+              />
+              <span>{t("panel.config.lockNode")}</span>
+            </label>
+          </div>
+          <fieldset disabled={!isNodeEditable} className={!isNodeEditable ? "opacity-60" : ""}>
+            <div className="space-y-3.5 text-xs">
+          {isChartElement ? (
                   <PanelConfigChartSection
                     element={selectedElement}
                     helpers={helpers}
@@ -476,23 +476,23 @@ export function PanelConfigSidebar({
                   />
                 ) : materialType === "table" ? (
                   helpers.renderSection(
-                    "tableConfig",
-                    t("panel.config.sectionTable"),
-                    <PanelConfigTableSection
-                      element={selectedElement}
-                      disabled={!isNodeEditable}
-                      updateElement={updateElement}
-                      blueprintNodeOptions={blueprintNodeOptions}
-                    />,
-                    true,
-                    [
-                      t("panel.material.table"),
-                      "table",
-                      t("panel.config.tableSource"),
-                      t("panel.config.tableColumns"),
-                      t("panel.config.tableRowsText"),
-                    ]
-                  )
+              "tableConfig",
+              t("panel.config.sectionTable"),
+              <PanelConfigTableSection
+                element={selectedElement}
+                disabled={!isNodeEditable}
+                updateElement={updateElement}
+                blueprintNodeOptions={blueprintNodeOptions}
+              />,
+              true,
+              [
+                t("panel.material.table"),
+                "table",
+                t("panel.config.tableSource"),
+                t("panel.config.tableColumns"),
+                t("panel.config.tableRowsText"),
+              ]
+            )
                 ) : materialType === "text" ? (
                   <PanelConfigTextSection
                     element={selectedElement}
@@ -511,7 +511,7 @@ export function PanelConfigSidebar({
                     helpers={helpers}
                     updateElement={updateElement}
                   />
-                ) : null}
+                    ) : null}
                 <PanelConfigGridChildSpan
                   element={selectedElement}
                   helpers={helpers}
@@ -525,22 +525,22 @@ export function PanelConfigSidebar({
                   />
                 ) : materialType === "scene3d" ? (
                   helpers.renderSection(
-                    "scene3dConfig",
-                    t("panel.config.sectionScene3d"),
-                    <PanelConfigScene3dSection
-                      element={selectedElement}
-                      updateElement={updateElement}
-                    />,
-                    true,
-                    [
-                      t("panel.material.scene3d"),
-                      "3d",
-                      "glb",
-                      t("panel.config.scene3dUploadModels"),
-                      t("panel.config.groupScene3dCamera"),
-                      t("panel.config.groupScene3dModelAnim"),
-                    ]
-                  )
+              "scene3dConfig",
+              t("panel.config.sectionScene3d"),
+              <PanelConfigScene3dSection
+                element={selectedElement}
+                updateElement={updateElement}
+              />,
+              true,
+              [
+                t("panel.material.scene3d"),
+                "3d",
+                "glb",
+                t("panel.config.scene3dUploadModels"),
+                t("panel.config.groupScene3dCamera"),
+                t("panel.config.groupScene3dModelAnim"),
+              ]
+            )
                 ) : materialType === "grid" ? (
                   <PanelConfigGridSection
                     element={selectedElement}
@@ -564,10 +564,10 @@ export function PanelConfigSidebar({
                     setReferenceCopyMode={setReferenceCopyMode}
                   />
                 ) : materialType === "image" ? null : (
-                  <div className="text-xs leading-6 text-muted-foreground">
-                    {t("panel.config.notChartType")}
-                  </div>
-                )}
+            <div className="text-xs leading-6 text-muted-foreground">
+              {t("panel.config.notChartType")}
+            </div>
+          )}
                 <PanelConfigStyleSections
                   element={selectedElement}
                   helpers={helpers}
@@ -578,11 +578,11 @@ export function PanelConfigSidebar({
                   matchCountRef={matchCountRef}
                   label={t("panel.config.noMatch")}
                 />
-              </div>
-            </fieldset>
-          </div>
-        ) : null}
-      </aside>
+            </div>
+          </fieldset>
+        </div>
+      ) : null}
+    </aside>
     </ScopeConfigProvider>
   );
 }
