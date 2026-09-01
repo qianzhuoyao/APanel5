@@ -1,6 +1,6 @@
 {
   "name": "@arronqzy/vue-rx-store",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "Vue 3 composables for @arronqzy/rx-store",
   "license": "MIT",
   "type": "module",

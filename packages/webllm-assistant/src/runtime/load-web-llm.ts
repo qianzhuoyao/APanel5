@@ -52,13 +52,18 @@ function urlFromUnknown(value: unknown): string | null {
   return null;
 }
 
+function isViteBundler(): boolean {
+  return typeof import.meta !== "undefined" && "env" in import.meta;
+}
+
+const VITE_PLUGIN_HINT =
+  "Add webllmAssistant() from @arronqzy/webllm-assistant/vite to your Vite plugins.";
+
 /**
  * Load the WebLLM runtime.
  *
- * Vite: a sibling module holds a static package import so the Vite plugin can
- * copy the huge file as an asset and skip stripLiteral.
- * Webpack/Umi: that sibling is webpackIgnore'd, so no async chunk is emitted
- * and the gzip size reporter cannot trip over a query-string filename.
+ * Vite: virtual entry + plugin copies the huge file as an asset (no stripLiteral).
+ * Webpack/Umi: vite sibling is webpackIgnore'd; runtime import is also ignored.
  */
 export async function loadWebLlmModule(): Promise<WebLLMModule> {
   try {
@@ -76,8 +81,18 @@ export async function loadWebLlmModule(): Promise<WebLLMModule> {
       );
       if (fromUrl) return fromUrl;
     }
-  } catch {
-    // Webpack/Umi (or missing Vite plugin): fall through to a runtime specifier.
+    if (isViteBundler()) {
+      throw new Error(`WebLLM asset URL was not produced. ${VITE_PLUGIN_HINT}`);
+    }
+  } catch (error) {
+    if (isViteBundler()) {
+      const message =
+        error instanceof Error ? error.message : "WebLLM Vite loader failed";
+      throw new Error(`${message}. ${VITE_PLUGIN_HINT}`, {
+        cause: error instanceof Error ? error : undefined,
+      });
+    }
+    // Webpack/Umi: fall through to a runtime specifier import.
   }
 
   const loaded: unknown = await import(

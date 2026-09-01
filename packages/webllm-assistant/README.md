@@ -25,4 +25,6 @@ export default defineConfig({
 });
 ```
 
-Do not put a Vite asset-query import of WebLLM in shared source. Webpack/Umi will bake the query into the async chunk filename, and the gzip size reporter then fails with ENOENT. Vite hosts should use the plugin above instead.
+**Required for any Vite build** that bundles `@arronqzy/react-view` / `@arronqzy/webllm-assistant`. Without this plugin, Vite 5 runs `stripLiteral` on `@mlc-ai/web-llm/lib/index.js` and fails with `Maximum call stack size exceeded`.
+
+Do not put a Vite asset-query import of WebLLM in shared source. Webpack/Umi will bake the query into the async chunk filename, and the gzip size reporter then fails with ENOENT.
