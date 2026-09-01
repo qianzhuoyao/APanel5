@@ -124,6 +124,9 @@ importers:
       '@arronqzy/ui':
         specifier: workspace:*
         version: link:../ui
+      '@arronqzy/webllm-assistant':
+        specifier: workspace:*
+        version: link:../webllm-assistant
       react:
         specifier: '>=18'
         version: 19.2.0
@@ -954,6 +957,9 @@ importers:
         specifier: 0.2.79
         version: 0.2.79
     devDependencies:
+      tsup:
+        specifier: ^8.4.0
+        version: 8.5.1(postcss@8.5.3)(typescript@5.5.4)
       typescript:
         specifier: ^5.5.4
         version: 5.5.4
