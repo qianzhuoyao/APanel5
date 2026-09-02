@@ -2,6 +2,7 @@ import type { EChartsOption } from "echarts";
 import type { PanelChartConfig, PanelElement } from "../types";
 
 const DEFAULT_CHART_VALUES = [12, 18, 9, 24];
+const DEFAULT_CHART_LABELS = ["A", "B", "C", "D"];
 
 export function getChartValuesDisplayText(chart?: PanelChartConfig): string {
   if (chart?.valuesText !== undefined) return chart.valuesText;
@@ -13,10 +14,26 @@ export function getChartLabelsDisplayText(chart?: PanelChartConfig): string {
   return (chart?.labels ?? []).join(",");
 }
 
+export function parseChartLabelsFromText(
+  text: string | undefined,
+  fallback: string[] = DEFAULT_CHART_LABELS
+): string[] {
+  if (text === undefined) return fallback;
+  const trimmed = text.trim();
+  if (!trimmed) return fallback;
+  const parts = trimmed.split(",").map((s) => s.trim()).filter(Boolean);
+  if (!parts.length) return fallback;
+  return parts;
+}
+
 export function resolveChartLabels(element: PanelElement): string[] {
   const chart = element.chart;
+  if (chart?.labelsText !== undefined) {
+    const parsed = parseChartLabelsFromText(chart.labelsText, []);
+    return parsed.length ? parsed : DEFAULT_CHART_LABELS;
+  }
   if (chart?.labels?.length) return chart.labels;
-  return ["A", "B", "C", "D"];
+  return DEFAULT_CHART_LABELS;
 }
 
 export function parseChartValuesFromText(
