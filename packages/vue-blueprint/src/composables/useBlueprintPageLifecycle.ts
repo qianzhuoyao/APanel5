@@ -162,6 +162,7 @@ export function useBlueprintPageLifecycle(options: UseBlueprintPageLifecycleOpti
   const hadBoot = ref(false);
   const prevActive = ref<boolean | undefined>(undefined);
   let bootCancelled = false;
+  let updatedTimer = 0;
 
   const resetFiredPhases = () => {
     firedLifecyclePhases.value = new Set();
@@ -291,16 +292,21 @@ export function useBlueprintPageLifecycle(options: UseBlueprintPageLifecycleOpti
     () => [bootCompleted.value, resolveValue(options.enabled ?? true), resolveValue(options.onUpdated)],
     ([completed, enabled]) => {
       if (!enabled || !completed) return;
-      void emitPhases(
-        graphRef.value,
-        ["updated"],
-        runnerOptionsRef.value,
-        markPhaseFired
-      );
+      if (updatedTimer) window.clearTimeout(updatedTimer);
+      updatedTimer = window.setTimeout(() => {
+        updatedTimer = 0;
+        void emitPhases(
+          graphRef.value,
+          ["updated"],
+          runnerOptionsRef.value,
+          markPhaseFired
+        );
+      }, 160);
     }
   );
 
   onUnmounted(() => {
+    if (updatedTimer) window.clearTimeout(updatedTimer);
     teardownBoot();
   });
 

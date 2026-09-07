@@ -1,4 +1,4 @@
-import { computed, onMounted } from "vue";
+import { computed, onMounted, shallowRef } from "vue";
 import { store, type Node, type State } from "@arronqzy/rx-store";
 import { useStoreRef } from "@arronqzy/vue-rx-store";
 import { useI18nOptional } from "@arronqzy/i18n/vue";
@@ -47,6 +47,10 @@ import {
   applyGridLayoutPatchAcrossMappingFamily,
   applyMappingFamilySyncPatch,
 } from "../utils/updateElementDraft";
+import {
+  materializePanelElements,
+  stabilizeElementList,
+} from "../utils/materializePanelElements";
 
 export type { PanelActionResult, PanelHistoryItem, PanelLayer } from "../types";
 
@@ -126,19 +130,24 @@ export function usePanelElements() {
       (stateRef.value.variables?.activeLayerId as string | undefined) ?? DEFAULT_LAYER_ID
   );
 
+  const allElementsCache = shallowRef<PanelElement[]>([]);
+  const elementsCache = shallowRef<PanelElement[]>([]);
+
   const allElements = computed(() => {
-    const nodes = stateRef.value.root.children ?? [];
-    return nodes
-      .filter((n) => isPanelElementNode(n) && n.props)
-      .map((n) => {
-        const props = n.props as PanelElement;
-        return { ...props, zIndex: typeof props.zIndex === "number" ? props.zIndex : 1 };
-      });
+    const next = materializePanelElements(
+      stateRef.value.root.children,
+      allElementsCache.value
+    );
+    allElementsCache.value = next;
+    return next;
   });
 
-  const elements = computed(() =>
-    allElements.value.filter((el) => el.layerId === activeLayerId.value)
-  );
+  const elements = computed(() => {
+    const next = allElements.value.filter((el) => el.layerId === activeLayerId.value);
+    const stable = stabilizeElementList(next, elementsCache.value);
+    elementsCache.value = stable;
+    return stable;
+  });
 
   const byId = computed(() => {
     const map = new Map<string, PanelElement>();

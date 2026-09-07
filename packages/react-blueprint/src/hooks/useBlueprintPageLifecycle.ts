@@ -302,12 +302,15 @@ export function useBlueprintPageLifecycle({
 
   useEffect(() => {
     if (!enabled || !bootCompleted) return;
-    void emitPhases(
-      graphRef.current,
-      ["updated"],
-      runnerOptionsRef.current,
-      markPhaseFired
-    );
+    const timer = window.setTimeout(() => {
+      void emitPhases(
+        graphRef.current,
+        ["updated"],
+        runnerOptionsRef.current,
+        markPhaseFired
+      );
+    }, 160);
+    return () => window.clearTimeout(timer);
   }, [bootCompleted, enabled, onUpdated, markPhaseFired]);
 
   const triggerBlueprintNode = useCallback(

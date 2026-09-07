@@ -5,7 +5,7 @@ import Moveable from "react-moveable";
 
 import type { PanelElement } from "../types";
 import { uniformViewportZoom } from "../viewportZoom";
-import { notifyPreviewLayoutChanged } from "../utils/panelStateIO";
+import { setCanvasInteractionBusy } from "../utils/canvas-interaction-busy";
 
 function LockGlyph({ className = "h-3.5 w-3.5" }: { className?: string }) {
   return (
@@ -511,6 +511,7 @@ export function MoveableLayer({
         const point = readClientPoint(e);
         e.datas.__startClientX = point?.x ?? null;
         e.datas.__startClientY = point?.y ?? null;
+        setCanvasInteractionBusy(true);
       }}
       onDrag={(e: any) => {
         if (!e?.target?.style) return;
@@ -548,6 +549,7 @@ export function MoveableLayer({
           ev.datas.__startClientX = point?.x ?? null;
           ev.datas.__startClientY = point?.y ?? null;
         });
+        setCanvasInteractionBusy(true);
       }}
       onDragGroup={(e: any) => {
         e.events.forEach((ev: any) => {
@@ -580,6 +582,7 @@ export function MoveableLayer({
         e.datas.__startY = data.y;
         e.datas.__startClientX = e.inputEvent?.clientX ?? null;
         e.datas.__startClientY = e.inputEvent?.clientY ?? null;
+        setCanvasInteractionBusy(true);
       }}
       onResize={(e: any) => {
         if (!e?.target?.style) return;
@@ -593,7 +596,6 @@ export function MoveableLayer({
         const ty = toCanvasDeltaY(e.drag.beforeTranslate?.[1] ?? 0);
         e.target.style.left = `${sx + tx}px`;
         e.target.style.top = `${sy + ty}px`;
-        notifyPreviewLayoutChanged();
       }}
       onResizeGroupStart={(e: any) => {
         e.events.forEach((ev: any) => {
@@ -609,6 +611,7 @@ export function MoveableLayer({
           ev.datas.__startClientX = input?.clientX ?? null;
           ev.datas.__startClientY = input?.clientY ?? null;
         });
+        setCanvasInteractionBusy(true);
       }}
       onResizeGroup={(e: any) => {
         e.events.forEach((ev: any) => {
@@ -622,7 +625,6 @@ export function MoveableLayer({
           ev.target.style.left = `${sx + tx}px`;
           ev.target.style.top = `${sy + ty}px`;
         });
-        notifyPreviewLayoutChanged();
       }}
       onRotateStart={(e: any) => {
         const id = resolveSingleEventId(e.target as HTMLElement | null);
@@ -630,10 +632,21 @@ export function MoveableLayer({
         const data = elementsById.get(id);
         if (!data) return;
         e.set(data.rotate ?? 0);
+        setCanvasInteractionBusy(true);
       }}
       onRotate={(e: any) => {
         if (!e?.target?.style) return;
         e.target.style.transform = `rotate(${e.beforeRotate}deg)`;
+      }}
+      onRotateGroupStart={(e: any) => {
+        e.events.forEach((ev: any) => {
+          const id = ev.target ? getId(ev.target) : null;
+          if (!id) return;
+          const data = elementsById.get(id);
+          if (!data) return;
+          ev.set(data.rotate ?? 0);
+        });
+        setCanvasInteractionBusy(true);
       }}
       onRotateGroup={(e: any) => {
         e.events.forEach((ev: any) => {
@@ -642,6 +655,7 @@ export function MoveableLayer({
         });
       }}
       onDragEnd={(e: any) => {
+        try {
         const id = resolveSingleEventId(e.target as HTMLElement | null);
         if (!id) return;
         const data = elementsById.get(id);
@@ -683,8 +697,12 @@ export function MoveableLayer({
           }
         }
         updateRectNextFrame();
+        } finally {
+          setCanvasInteractionBusy(false);
+        }
       }}
       onDragGroupEnd={(e: any) => {
+        try {
         const batchId = `move-group-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
         const selectedSet = new Set(
           e.events
@@ -742,8 +760,12 @@ export function MoveableLayer({
           });
         }
         updateRectNextFrame();
+        } finally {
+          setCanvasInteractionBusy(false);
+        }
       }}
       onResizeEnd={(e: any) => {
+        try {
         const id = resolveSingleEventId(e.target as HTMLElement | null);
         if (!id) return;
         const data = elementsById.get(id);
@@ -760,8 +782,12 @@ export function MoveableLayer({
         const snapPatch = getSnapPatch(id, nextX, nextY, size.width, size.height);
         updateElement(id, { width, height, x: nextX, y: nextY, ...snapPatch });
         updateRectNextFrame();
+        } finally {
+          setCanvasInteractionBusy(false);
+        }
       }}
       onResizeGroupEnd={(e: any) => {
+        try {
         const batchId = `resize-group-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
         e.events.forEach((ev: any) => {
           const id = ev.target ? getId(ev.target) : null;
@@ -785,8 +811,12 @@ export function MoveableLayer({
           );
         });
         updateRectNextFrame();
+        } finally {
+          setCanvasInteractionBusy(false);
+        }
       }}
       onRotateEnd={(e: any) => {
+        try {
         const id = resolveSingleEventId(e.target as HTMLElement | null);
         if (!id) return;
         const data = elementsById.get(id);
@@ -794,8 +824,12 @@ export function MoveableLayer({
         const rotate = e.lastEvent?.beforeRotate ?? data.rotate ?? 0;
         updateElement(id, { rotate });
         updateRectNextFrame();
+        } finally {
+          setCanvasInteractionBusy(false);
+        }
       }}
       onRotateGroupEnd={(e: any) => {
+        try {
         const batchId = `rotate-group-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
         e.events.forEach((ev: any) => {
           const id = ev.target ? getId(ev.target) : null;
@@ -806,6 +840,9 @@ export function MoveableLayer({
           updateElement(id, { rotate }, { batchId, meta: { type: "node.group-rotate" } });
         });
         updateRectNextFrame();
+        } finally {
+          setCanvasInteractionBusy(false);
+        }
       }}
       />
       {hasLockedSelected && lockBadgeScreen ? (

@@ -409,11 +409,25 @@ const workspaceProjects = useWorkspaceProjects({
   nameSpace: () => props.nameSpace,
 });
 
+const blueprintLifecycleToken = computed(() => {
+  const doc = blueprintGraph.value.document;
+  const nodes = doc.nodes;
+  const edges = doc.edges;
+  let sig = `${nodes.length}:${edges.length}`;
+  for (const node of nodes) {
+    sig += `|${node.id}:${resolveRunnableNodeType(node)}:${node.lifecyclePhase ?? ""}`;
+  }
+  for (const edge of edges) {
+    sig += `>${edge.id}:${edge.source}:${edge.target}`;
+  }
+  return sig;
+});
+
 const { triggerBlueprintNode, emitViewEvent, firedLifecyclePhases } = useBlueprintPageLifecycle({
   graph: blueprintGraph,
   active: blueprintOpen,
   bootKey: computed(() => workspaceProjects.activeProjectId.value ?? undefined),
-  onUpdated: computed(() => `${activeLayerId.value}|${historyCursor.value}`),
+  onUpdated: computed(() => `${activeLayerId.value}|${blueprintLifecycleToken.value}`),
   resolveLibraryBlueprint,
   libraryNameById: blueprintLibraryNameById,
   rootLibraryBlueprintId: activeBlueprintLibraryId,

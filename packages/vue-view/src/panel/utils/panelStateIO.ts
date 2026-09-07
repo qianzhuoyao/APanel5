@@ -137,6 +137,26 @@ export function computePanelSceneBounds(elements: PanelElement[]): PanelSceneBou
 
 export const PREVIEW_LAYOUT_EVENT = "arronqzy-preview-layout";
 
-export function notifyPreviewLayoutChanged() {
-  window.dispatchEvent(new Event(PREVIEW_LAYOUT_EVENT));
+let previewLayoutRaf = 0;
+
+/**
+ * Notify chart/preview hosts that layout changed.
+ * Default path is rAF-coalesced (safe during Moveable resize).
+ * Pass `{ flush: true }` after resize ends so charts catch the final size.
+ */
+export function notifyPreviewLayoutChanged(options?: { flush?: boolean }) {
+  if (typeof window === "undefined") return;
+  if (options?.flush) {
+    if (previewLayoutRaf) {
+      window.cancelAnimationFrame(previewLayoutRaf);
+      previewLayoutRaf = 0;
+    }
+    window.dispatchEvent(new Event(PREVIEW_LAYOUT_EVENT));
+    return;
+  }
+  if (previewLayoutRaf) return;
+  previewLayoutRaf = window.requestAnimationFrame(() => {
+    previewLayoutRaf = 0;
+    window.dispatchEvent(new Event(PREVIEW_LAYOUT_EVENT));
+  });
 }

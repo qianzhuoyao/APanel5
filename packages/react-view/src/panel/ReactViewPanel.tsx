@@ -15,7 +15,14 @@ import { type ViewportZoom } from "./viewportZoom";
 import { ElementsLayer } from "./components/ElementsLayer";
 import { SelectLayer } from "./components/SelectLayer";
 import { MoveableLayer } from "./components/MoveableLayer";
-import { buildChartOption, CHART_TYPES } from "./utils/chartOptionBuilder";
+import {
+  isCanvasInteractionBusy,
+  subscribeCanvasInteractionBusy,
+} from "./utils/canvas-interaction-busy";
+import {
+  buildChartOption,
+  CHART_TYPES,
+} from "./utils/chartOptionBuilder";
 import { readOutputScale, writeOutputScale } from "./utils/outputScale";
 import {
   captureEditorPreviewSnapshot,
@@ -391,9 +398,11 @@ function ReactViewPanelInner({
     if (!root) return;
     let rafId = 0;
     const schedule = () => {
+      if (isCanvasInteractionBusy()) return;
       if (rafId) return;
       rafId = window.requestAnimationFrame(() => {
         rafId = 0;
+        if (isCanvasInteractionBusy()) return;
         const candidates = root.querySelectorAll<HTMLElement>(
           ".truncate, .line-clamp-1, .line-clamp-2, .line-clamp-3"
         );
@@ -429,11 +438,15 @@ function ReactViewPanelInner({
     const resizeObserver = new ResizeObserver(schedule);
     resizeObserver.observe(root);
     window.addEventListener("resize", schedule);
+    const unsubscribeBusy = subscribeCanvasInteractionBusy(() => {
+      if (!isCanvasInteractionBusy()) schedule();
+    });
     return () => {
       if (rafId) window.cancelAnimationFrame(rafId);
       mutationObserver.disconnect();
       resizeObserver.disconnect();
       window.removeEventListener("resize", schedule);
+      unsubscribeBusy();
     };
   }, []);
 
@@ -1048,11 +1061,27 @@ function ReactViewPanelInner({
     return () => registerPreviewSnapshotProvider(null);
   }, [activeLayerId, allElements, canvasEl, layers, nameSpace]);
 
+  const blueprintDocument = blueprintGraph.document;
+  const blueprintLifecycleToken = useMemo(() => {
+    // Only blueprint / layer changes — panel history (drag/resize) must not re-run
+    // the full `updated` lifecycle (cycle detect + runner).
+    const nodes = blueprintDocument.nodes;
+    const edges = blueprintDocument.edges;
+    let sig = `${nodes.length}:${edges.length}`;
+    for (const node of nodes) {
+      sig += `|${node.id}:${resolveRunnableNodeType(node)}:${node.lifecyclePhase ?? ""}`;
+    }
+    for (const edge of edges) {
+      sig += `>${edge.id}:${edge.source}:${edge.target}`;
+    }
+    return sig;
+  }, [blueprintDocument]);
+
   const { triggerBlueprintNode, emitViewEvent, firedLifecyclePhases } = useBlueprintPageLifecycle({
     graph: blueprintGraph,
     active: blueprintOpen,
     bootKey: workspaceProjects.activeProjectId ?? undefined,
-    onUpdated: `${activeLayerId}|${historyCursor}`,
+    onUpdated: `${activeLayerId}|${blueprintLifecycleToken}`,
     resolveLibraryBlueprint,
     libraryNameById: blueprintLibraryNameById,
     rootLibraryBlueprintId: activeBlueprintLibraryId,

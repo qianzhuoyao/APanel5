@@ -185,6 +185,7 @@ function hasViewEvent(el: PanelElement) {
   <div
     v-for="el in sortedElements"
     :key="el.id"
+    v-memo="[el, selectedIds.includes(el.id), previewMode, layerLocked, hasViewEvent(el), previewLayoutKey]"
     :class="[
       'absolute select-none',
       previewMode ? '' : 'rv-selectable',
@@ -202,6 +203,8 @@ function hasViewEvent(el: PanelElement) {
       transformOrigin: 'center center',
       boxSizing: 'border-box',
       overflow: el.materialType === 'viewport' ? 'hidden' : undefined,
+      contentVisibility: 'auto',
+      containIntrinsicSize: `${Math.max(1, el.width)}px ${Math.max(1, el.height)}px`,
       ...getNodeVisualStyle(el),
     }"
     @mousedown="onSelect(el.id, $event)"

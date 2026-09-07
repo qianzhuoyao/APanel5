@@ -11,7 +11,7 @@ import {
 import Moveable from "moveable";
 import type { PanelElement } from "../types";
 import { uniformViewportZoom } from "../viewportZoom";
-import { notifyPreviewLayoutChanged } from "../utils/panelStateIO";
+import { setCanvasInteractionBusy } from "../utils/canvas-interaction-busy";
 
 const { t, locale } = useI18n();
 
@@ -444,6 +444,7 @@ function createMoveable() {
     const point = readClientPoint(e);
     e.datas.__startClientX = point?.x ?? null;
     e.datas.__startClientY = point?.y ?? null;
+    setCanvasInteractionBusy(true);
   });
 
   moveable.on("drag", (e: any) => {
@@ -479,6 +480,7 @@ function createMoveable() {
       ev.datas.__startClientX = point?.x ?? null;
       ev.datas.__startClientY = point?.y ?? null;
     });
+    setCanvasInteractionBusy(true);
   });
 
   moveable.on("dragGroup", (e: any) => {
@@ -513,6 +515,7 @@ function createMoveable() {
     e.datas.__startY = data.y;
     e.datas.__startClientX = e.inputEvent?.clientX ?? null;
     e.datas.__startClientY = e.inputEvent?.clientY ?? null;
+    setCanvasInteractionBusy(true);
   });
 
   moveable.on("resize", (e: any) => {
@@ -526,7 +529,6 @@ function createMoveable() {
     const ty = toCanvasDeltaY(e.drag.beforeTranslate?.[1] ?? 0);
     e.target.style.left = `${sx + tx}px`;
     e.target.style.top = `${sy + ty}px`;
-    notifyPreviewLayoutChanged();
   });
 
   moveable.on("resizeGroupStart", (e: any) => {
@@ -543,6 +545,7 @@ function createMoveable() {
       ev.datas.__startClientX = input?.clientX ?? null;
       ev.datas.__startClientY = input?.clientY ?? null;
     });
+    setCanvasInteractionBusy(true);
   });
 
   moveable.on("resizeGroup", (e: any) => {
@@ -557,7 +560,6 @@ function createMoveable() {
       ev.target.style.left = `${sx + tx}px`;
       ev.target.style.top = `${sy + ty}px`;
     });
-    notifyPreviewLayoutChanged();
   });
 
   moveable.on("rotateStart", (e: any) => {
@@ -566,11 +568,23 @@ function createMoveable() {
     const data = props.elementsById.get(id);
     if (!data) return;
     e.set(data.rotate ?? 0);
+    setCanvasInteractionBusy(true);
   });
 
   moveable.on("rotate", (e: any) => {
     if (!e?.target?.style) return;
     e.target.style.transform = `rotate(${e.beforeRotate}deg)`;
+  });
+
+  moveable.on("rotateGroupStart", (e: any) => {
+    e.events.forEach((ev: any) => {
+      const id = ev.target ? getId(ev.target) : null;
+      if (!id) return;
+      const data = props.elementsById.get(id);
+      if (!data) return;
+      ev.set(data.rotate ?? 0);
+    });
+    setCanvasInteractionBusy(true);
   });
 
   moveable.on("rotateGroup", (e: any) => {
@@ -581,175 +595,199 @@ function createMoveable() {
   });
 
   moveable.on("dragEnd", (e: any) => {
-    const id = resolveSingleEventId(e.target as HTMLElement | null);
-    if (!id) return;
-    const data = props.elementsById.get(id);
-    if (!data) return;
-    const sx = e.datas.__startX ?? data.x;
-    const sy = e.datas.__startY ?? data.y;
-    const point = readClientPoint(e);
-    const hasClient =
-      typeof e.datas.__startClientX === "number" &&
-      typeof e.datas.__startClientY === "number" &&
-      !!point;
-    const tx = hasClient
-      ? toCanvasDeltaX(point.x - e.datas.__startClientX)
-      : toCanvasDeltaX(e.lastEvent?.beforeTranslate?.[0] ?? 0);
-    const ty = hasClient
-      ? toCanvasDeltaY(point.y - e.datas.__startClientY)
-      : toCanvasDeltaY(e.lastEvent?.beforeTranslate?.[1] ?? 0);
-    const nextX = sx + tx;
-    const nextY = sy + ty;
-    const size = readTargetCanvasSize(e.target as HTMLElement | null, {
-      width: data.width,
-      height: data.height,
-    });
-    const patch = getSnapPatch(id, nextX, nextY, size.width, size.height);
-    props.updateElement(id, { x: nextX, y: nextY, ...patch });
-    if (data.materialType === "grid") {
-      const dx = nextX - data.x;
-      const dy = nextY - data.y;
-      if (Math.abs(dx) > 0.001 || Math.abs(dy) > 0.001) {
-        const children = getGridDirectChildren(id);
-        const batchId = `move-grid-children-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-        children.forEach((child) => {
-          props.updateElement(
-            child.id,
-            { x: child.x + dx, y: child.y + dy },
-            { batchId, meta: { type: "node.group-drag" } }
-          );
-        });
-      }
-    }
-    scheduleViewportSync();
-  });
-
-  moveable.on("dragGroupEnd", (e: any) => {
-    const batchId = `move-group-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    const selectedSet = new Set(
-      e.events
-        .map((ev: any) => (ev.target ? getId(ev.target) : null))
-        .filter((id: string | null): id is string => !!id)
-    );
-    const gridDeltaMap = new Map<string, { dx: number; dy: number }>();
-    e.events.forEach((ev: any) => {
-      const id = ev.target ? getId(ev.target) : null;
+    try {
+      const id = resolveSingleEventId(e.target as HTMLElement | null);
       if (!id) return;
       const data = props.elementsById.get(id);
       if (!data) return;
-      const sx = ev.datas.__startX ?? data.x;
-      const sy = ev.datas.__startY ?? data.y;
-      const point = readClientPoint(ev) ?? readClientPoint(e);
+      const sx = e.datas.__startX ?? data.x;
+      const sy = e.datas.__startY ?? data.y;
+      const point = readClientPoint(e);
       const hasClient =
-        typeof ev.datas.__startClientX === "number" &&
-        typeof ev.datas.__startClientY === "number" &&
+        typeof e.datas.__startClientX === "number" &&
+        typeof e.datas.__startClientY === "number" &&
         !!point;
       const tx = hasClient
-        ? toCanvasDeltaX(point.x - ev.datas.__startClientX)
-        : toCanvasDeltaX(ev.lastEvent?.beforeTranslate?.[0] ?? 0);
+        ? toCanvasDeltaX(point.x - e.datas.__startClientX)
+        : toCanvasDeltaX(e.lastEvent?.beforeTranslate?.[0] ?? 0);
       const ty = hasClient
-        ? toCanvasDeltaY(point.y - ev.datas.__startClientY)
-        : toCanvasDeltaY(ev.lastEvent?.beforeTranslate?.[1] ?? 0);
+        ? toCanvasDeltaY(point.y - e.datas.__startClientY)
+        : toCanvasDeltaY(e.lastEvent?.beforeTranslate?.[1] ?? 0);
       const nextX = sx + tx;
       const nextY = sy + ty;
-      const size = readTargetCanvasSize(ev.target as HTMLElement | null, {
+      const size = readTargetCanvasSize(e.target as HTMLElement | null, {
         width: data.width,
         height: data.height,
       });
       const patch = getSnapPatch(id, nextX, nextY, size.width, size.height);
-      props.updateElement(
-        id,
-        { x: nextX, y: nextY, ...patch },
-        { batchId, meta: { type: "node.group-drag" } }
-      );
+      props.updateElement(id, { x: nextX, y: nextY, ...patch });
       if (data.materialType === "grid") {
         const dx = nextX - data.x;
         const dy = nextY - data.y;
         if (Math.abs(dx) > 0.001 || Math.abs(dy) > 0.001) {
-          gridDeltaMap.set(id, { dx, dy });
+          const children = getGridDirectChildren(id);
+          const batchId = `move-grid-children-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+          children.forEach((child) => {
+            props.updateElement(
+              child.id,
+              { x: child.x + dx, y: child.y + dy },
+              { batchId, meta: { type: "node.group-drag" } }
+            );
+          });
         }
       }
-    });
-    for (const [gridId, delta] of gridDeltaMap.entries()) {
-      const children = getGridDirectChildren(gridId);
-      children.forEach((child) => {
-        if (selectedSet.has(child.id)) return;
+      scheduleViewportSync();
+    } finally {
+      setCanvasInteractionBusy(false);
+    }
+  });
+
+  moveable.on("dragGroupEnd", (e: any) => {
+    try {
+      const batchId = `move-group-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      const selectedSet = new Set(
+        e.events
+          .map((ev: any) => (ev.target ? getId(ev.target) : null))
+          .filter((id: string | null): id is string => !!id)
+      );
+      const gridDeltaMap = new Map<string, { dx: number; dy: number }>();
+      e.events.forEach((ev: any) => {
+        const id = ev.target ? getId(ev.target) : null;
+        if (!id) return;
+        const data = props.elementsById.get(id);
+        if (!data) return;
+        const sx = ev.datas.__startX ?? data.x;
+        const sy = ev.datas.__startY ?? data.y;
+        const point = readClientPoint(ev) ?? readClientPoint(e);
+        const hasClient =
+          typeof ev.datas.__startClientX === "number" &&
+          typeof ev.datas.__startClientY === "number" &&
+          !!point;
+        const tx = hasClient
+          ? toCanvasDeltaX(point.x - ev.datas.__startClientX)
+          : toCanvasDeltaX(ev.lastEvent?.beforeTranslate?.[0] ?? 0);
+        const ty = hasClient
+          ? toCanvasDeltaY(point.y - ev.datas.__startClientY)
+          : toCanvasDeltaY(ev.lastEvent?.beforeTranslate?.[1] ?? 0);
+        const nextX = sx + tx;
+        const nextY = sy + ty;
+        const size = readTargetCanvasSize(ev.target as HTMLElement | null, {
+          width: data.width,
+          height: data.height,
+        });
+        const patch = getSnapPatch(id, nextX, nextY, size.width, size.height);
         props.updateElement(
-          child.id,
-          { x: child.x + delta.dx, y: child.y + delta.dy },
+          id,
+          { x: nextX, y: nextY, ...patch },
           { batchId, meta: { type: "node.group-drag" } }
         );
+        if (data.materialType === "grid") {
+          const dx = nextX - data.x;
+          const dy = nextY - data.y;
+          if (Math.abs(dx) > 0.001 || Math.abs(dy) > 0.001) {
+            gridDeltaMap.set(id, { dx, dy });
+          }
+        }
       });
+      for (const [gridId, delta] of gridDeltaMap.entries()) {
+        const children = getGridDirectChildren(gridId);
+        children.forEach((child) => {
+          if (selectedSet.has(child.id)) return;
+          props.updateElement(
+            child.id,
+            { x: child.x + delta.dx, y: child.y + delta.dy },
+            { batchId, meta: { type: "node.group-drag" } }
+          );
+        });
+      }
+      scheduleViewportSync();
+    } finally {
+      setCanvasInteractionBusy(false);
     }
-    scheduleViewportSync();
   });
 
   moveable.on("resizeEnd", (e: any) => {
-    const id = resolveSingleEventId(e.target as HTMLElement | null);
-    if (!id) return;
-    const data = props.elementsById.get(id);
-    if (!data) return;
-    const width = e.lastEvent?.width ?? data.width;
-    const height = e.lastEvent?.height ?? data.height;
-    const tx = toCanvasDeltaX(e.lastEvent?.drag?.beforeTranslate?.[0] ?? 0);
-    const ty = toCanvasDeltaY(e.lastEvent?.drag?.beforeTranslate?.[1] ?? 0);
-    const sx = e.datas.__startX ?? data.x;
-    const sy = e.datas.__startY ?? data.y;
-    const nextX = sx + tx;
-    const nextY = sy + ty;
-    const size = readTargetCanvasSize(e.target as HTMLElement | null, { width, height });
-    const snapPatch = getSnapPatch(id, nextX, nextY, size.width, size.height);
-    props.updateElement(id, { width, height, x: nextX, y: nextY, ...snapPatch });
-    scheduleViewportSync();
+    try {
+      const id = resolveSingleEventId(e.target as HTMLElement | null);
+      if (!id) return;
+      const data = props.elementsById.get(id);
+      if (!data) return;
+      const width = e.lastEvent?.width ?? data.width;
+      const height = e.lastEvent?.height ?? data.height;
+      const tx = toCanvasDeltaX(e.lastEvent?.drag?.beforeTranslate?.[0] ?? 0);
+      const ty = toCanvasDeltaY(e.lastEvent?.drag?.beforeTranslate?.[1] ?? 0);
+      const sx = e.datas.__startX ?? data.x;
+      const sy = e.datas.__startY ?? data.y;
+      const nextX = sx + tx;
+      const nextY = sy + ty;
+      const size = readTargetCanvasSize(e.target as HTMLElement | null, { width, height });
+      const snapPatch = getSnapPatch(id, nextX, nextY, size.width, size.height);
+      props.updateElement(id, { width, height, x: nextX, y: nextY, ...snapPatch });
+      scheduleViewportSync();
+    } finally {
+      setCanvasInteractionBusy(false);
+    }
   });
 
   moveable.on("resizeGroupEnd", (e: any) => {
-    const batchId = `resize-group-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    e.events.forEach((ev: any) => {
-      const id = ev.target ? getId(ev.target) : null;
-      if (!id) return;
-      const data = props.elementsById.get(id);
-      if (!data) return;
-      const width = ev.lastEvent?.width ?? data.width;
-      const height = ev.lastEvent?.height ?? data.height;
-      const tx = toCanvasDeltaX(ev.lastEvent?.drag?.beforeTranslate?.[0] ?? 0);
-      const ty = toCanvasDeltaY(ev.lastEvent?.drag?.beforeTranslate?.[1] ?? 0);
-      const sx = ev.datas.__startX ?? data.x;
-      const sy = ev.datas.__startY ?? data.y;
-      const nextX = sx + tx;
-      const nextY = sy + ty;
-      const size = readTargetCanvasSize(ev.target as HTMLElement | null, { width, height });
-      const snapPatch = getSnapPatch(id, nextX, nextY, size.width, size.height);
-      props.updateElement(
-        id,
-        { width, height, x: nextX, y: nextY, ...snapPatch },
-        { batchId, meta: { type: "node.group-resize" } }
-      );
-    });
-    scheduleViewportSync();
+    try {
+      const batchId = `resize-group-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      e.events.forEach((ev: any) => {
+        const id = ev.target ? getId(ev.target) : null;
+        if (!id) return;
+        const data = props.elementsById.get(id);
+        if (!data) return;
+        const width = ev.lastEvent?.width ?? data.width;
+        const height = ev.lastEvent?.height ?? data.height;
+        const tx = toCanvasDeltaX(ev.lastEvent?.drag?.beforeTranslate?.[0] ?? 0);
+        const ty = toCanvasDeltaY(ev.lastEvent?.drag?.beforeTranslate?.[1] ?? 0);
+        const sx = ev.datas.__startX ?? data.x;
+        const sy = ev.datas.__startY ?? data.y;
+        const nextX = sx + tx;
+        const nextY = sy + ty;
+        const size = readTargetCanvasSize(ev.target as HTMLElement | null, { width, height });
+        const snapPatch = getSnapPatch(id, nextX, nextY, size.width, size.height);
+        props.updateElement(
+          id,
+          { width, height, x: nextX, y: nextY, ...snapPatch },
+          { batchId, meta: { type: "node.group-resize" } }
+        );
+      });
+      scheduleViewportSync();
+    } finally {
+      setCanvasInteractionBusy(false);
+    }
   });
 
   moveable.on("rotateEnd", (e: any) => {
-    const id = resolveSingleEventId(e.target as HTMLElement | null);
-    if (!id) return;
-    const data = props.elementsById.get(id);
-    if (!data) return;
-    const rotate = e.lastEvent?.beforeRotate ?? data.rotate ?? 0;
-    props.updateElement(id, { rotate });
-    scheduleViewportSync();
-  });
-
-  moveable.on("rotateGroupEnd", (e: any) => {
-    const batchId = `rotate-group-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    e.events.forEach((ev: any) => {
-      const id = ev.target ? getId(ev.target) : null;
+    try {
+      const id = resolveSingleEventId(e.target as HTMLElement | null);
       if (!id) return;
       const data = props.elementsById.get(id);
       if (!data) return;
-      const rotate = ev.lastEvent?.beforeRotate ?? data.rotate ?? 0;
-      props.updateElement(id, { rotate }, { batchId, meta: { type: "node.group-rotate" } });
-    });
-    scheduleViewportSync();
+      const rotate = e.lastEvent?.beforeRotate ?? data.rotate ?? 0;
+      props.updateElement(id, { rotate });
+      scheduleViewportSync();
+    } finally {
+      setCanvasInteractionBusy(false);
+    }
+  });
+
+  moveable.on("rotateGroupEnd", (e: any) => {
+    try {
+      const batchId = `rotate-group-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      e.events.forEach((ev: any) => {
+        const id = ev.target ? getId(ev.target) : null;
+        if (!id) return;
+        const data = props.elementsById.get(id);
+        if (!data) return;
+        const rotate = ev.lastEvent?.beforeRotate ?? data.rotate ?? 0;
+        props.updateElement(id, { rotate }, { batchId, meta: { type: "node.group-rotate" } });
+      });
+      scheduleViewportSync();
+    } finally {
+      setCanvasInteractionBusy(false);
+    }
   });
 
   moveableRef.value = moveable;

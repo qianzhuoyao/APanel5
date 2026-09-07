@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from "react";
 import { store, type Node, type State } from "@arronqzy/rx-store";
 import { useI18nOptional } from "@arronqzy/i18n/react";
 import type {
@@ -47,6 +47,7 @@ import {
   applyGridLayoutPatchAcrossMappingFamily,
   applyMappingFamilySyncPatch,
 } from "../utils/updateElementDraft";
+import { materializePanelElements, stabilizeElementList } from "../utils/materializePanelElements";
 
 export type { PanelActionResult, PanelHistoryItem, PanelLayer } from "../types";
 
@@ -54,6 +55,8 @@ export function usePanelElements() {
   const { t } = useI18nOptional();
   const messages = useMemo(() => getPanelMessages(t), [t]);
   const defaultLayer = useMemo(() => getDefaultLayer(t), [t]);
+  const allElementsCacheRef = useRef<PanelElement[]>([]);
+  const elementsCacheRef = useRef<PanelElement[]>([]);
 
   const state = useSyncExternalStore(
     (cb) => {
@@ -135,19 +138,20 @@ export function usePanelElements() {
   }, []);
 
   const allElements = useMemo(() => {
-    const nodes = state.root.children ?? [];
-    return nodes
-      .filter((n) => isPanelElementNode(n) && n.props)
-      .map((n) => {
-        const props = n.props as PanelElement;
-        return { ...props, zIndex: typeof props.zIndex === "number" ? props.zIndex : 1 };
-      });
+    const next = materializePanelElements(
+      state.root.children,
+      allElementsCacheRef.current
+    );
+    allElementsCacheRef.current = next;
+    return next;
   }, [state.root.children]);
 
-  const elements = useMemo(
-    () => allElements.filter((el) => el.layerId === activeLayerId),
-    [activeLayerId, allElements]
-  );
+  const elements = useMemo(() => {
+    const next = allElements.filter((el) => el.layerId === activeLayerId);
+    const stable = stabilizeElementList(next, elementsCacheRef.current);
+    elementsCacheRef.current = stable;
+    return stable;
+  }, [activeLayerId, allElements]);
 
   const byId = useMemo(() => {
     const map = new Map<string, PanelElement>();

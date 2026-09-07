@@ -587,7 +587,7 @@ function GeometryNodeContent({ element }: { element: PanelElement }) {
   return <canvas ref={canvasRef} className="h-full w-full" />;
 }
 
-function ChartNodeContent({
+const ChartNodeContent = React.memo(function ChartNodeContent({
   element,
   previewLayoutKey,
   previewMode = false,
@@ -654,7 +654,7 @@ function ChartNodeContent({
       }
     />
   );
-}
+});
 
 function getNodeVisualStyle(element: PanelElement): React.CSSProperties {
   const style = element.style ?? {};
@@ -884,6 +884,7 @@ export const ElementsLayer = React.memo(function ElementsLayer({
     },
     [boundViewEventTypes, onViewUiEvent]
   );
+  const selectedIdSet = useMemo(() => new Set(selectedIds), [selectedIds]);
   const sortedElements = useMemo(() => {
     const byId = new Map<string, PanelElement>();
     for (const el of allElements) byId.set(el.id, el);
@@ -891,111 +892,182 @@ export const ElementsLayer = React.memo(function ElementsLayer({
   }, [allElements, elements]);
   return (
     <>
-      {sortedElements.map((el) => {
-        const isSelected = selectedIds.includes(el.id);
-        const boundTypes = boundViewEventTypes?.get(el.id);
-        const hasViewEvent = Boolean(boundTypes && boundTypes.size > 0 && onViewUiEvent);
-        return (
-          <div
-            key={el.id}
-            className={[
-              "absolute select-none",
-              previewMode ? "" : "rv-selectable",
-              !previewMode && isSelected ? "ring-2 ring-blue-500/90 ring-offset-0" : "",
-              hasViewEvent ? "cursor-pointer" : "",
-            ].join(" ")}
-            data-element-id={el.id}
-            onMouseDown={(e) => {
-              if (previewMode) return;
-              const target = e.target as HTMLElement | null;
-              if (target?.closest("[data-scene3d-orbit-active='true']")) {
-                e.stopPropagation();
-                return;
-              }
-              if (e.button !== 0) return;
-              // 单击选中（与 Selecto 的框选互补）
-              if (e.shiftKey) {
-                onSelectIds(
-                  isSelected
-                    ? selectedIds.filter((id) => id !== el.id)
-                    : [...selectedIds, el.id]
-                );
-              } else {
-                onSelectIds([el.id]);
-              }
-            }}
-            onClick={(e) => emitViewUiEvent(el, "click", e)}
-            onDoubleClick={(e) => emitViewUiEvent(el, "dblclick", e)}
-            onContextMenu={(e) => emitViewUiEvent(el, "contextmenu", e)}
-            onMouseEnter={(e) => emitViewUiEvent(el, "mouseenter", e)}
-            onMouseLeave={(e) => emitViewUiEvent(el, "mouseleave", e)}
-            style={{
-              left: el.x,
-              top: el.y,
-              width: Math.max(1, el.width),
-              height: Math.max(1, el.height),
-              zIndex: el.zIndex ?? 1,
-              transform: `rotate(${el.rotate ?? 0}deg)`,
-              transformOrigin: "center center",
-              overflow: el.materialType === "viewport" ? "hidden" : undefined,
-              boxSizing: "border-box",
-              ...getNodeVisualStyle(el),
-            }}
-          >
-            {CHART_TYPES.has(el.materialType ?? "") ? (
-              <ChartNodeContent
-                element={el}
-                previewLayoutKey={previewLayoutKey}
-                previewMode={previewMode}
-              />
-            ) : el.materialType === "reference" || el.materialType === "viewport" ? (
-              <ReferenceNodeContent element={el} allElements={allElements} />
-            ) : el.materialType === "grid" ? (
-              <GridNodeContent
-                element={el}
-                allElements={allElements}
-                previewMode={previewMode}
-              />
-            ) : el.materialType === "text" ? (
-              <TextNodeContent
-                element={el}
-                editable={(el.textAllowInput ?? true) && !el.locked && !layerLocked}
-                onChange={(nextHtml) => {
-                  updateElement(el.id, { textHtml: nextHtml });
-                }}
-              />
-            ) : el.materialType === "audio" ? (
-              <AudioNodeContent element={el} selected={isSelected} />
-            ) : el.materialType === "video" ? (
-              <VideoNodeContent element={el} selected={isSelected} />
-            ) : el.materialType === "geometry" ? (
-              <GeometryNodeContent element={el} />
-            ) : el.materialType === "scene3d" ? (
-              <Scene3dNodeContent
-                config={el.scene3d}
-                previewMode={previewMode}
-                selected={isSelected}
-                updateConfig={(patch) =>
-                  updateElement(el.id, {
-                    scene3d: mergeScene3dConfig({ ...el.scene3d, ...patch }),
-                  })
-                }
-              />
-            ) : el.materialType === "image" ? (
-              <ImageNodeContent element={el} />
-            ) : el.materialType === "table" ? (
-              <TableNodeContent
-                element={el}
-                interactive={previewMode || Boolean(onTableCellAction)}
-                onCellAction={onTableCellAction}
-              />
-            ) : (
-              <EmptyNodePlaceholder element={el} />
-            )}
-          </div>
-        );
-      })}
+      {sortedElements.map((el) => (
+        <PanelElementNode
+          key={el.id}
+          el={el}
+          allElements={allElements}
+          isSelected={selectedIdSet.has(el.id)}
+          selectedIds={selectedIds}
+          onSelectIds={onSelectIds}
+          updateElement={updateElement}
+          layerLocked={layerLocked}
+          previewMode={previewMode}
+          previewLayoutKey={previewLayoutKey}
+          onTableCellAction={onTableCellAction}
+          hasViewEvent={Boolean(boundViewEventTypes?.get(el.id)?.size && onViewUiEvent)}
+          emitViewUiEvent={emitViewUiEvent}
+        />
+      ))}
     </>
   );
+});
+
+function needsSharedElementIndex(el: PanelElement): boolean {
+  const type = el.materialType ?? "";
+  return type === "reference" || type === "viewport" || type === "grid";
+}
+
+type PanelElementNodeProps = {
+  el: PanelElement;
+  allElements: PanelElement[];
+  isSelected: boolean;
+  selectedIds: string[];
+  onSelectIds: (ids: string[]) => void;
+  updateElement: ElementsLayerProps["updateElement"];
+  layerLocked: boolean;
+  previewMode: boolean;
+  previewLayoutKey?: number;
+  onTableCellAction?: TableCellActionHandler;
+  hasViewEvent: boolean;
+  emitViewUiEvent: (
+    el: PanelElement,
+    eventType: ViewEventType,
+    domEvent: React.MouseEvent | MouseEvent
+  ) => void;
+};
+
+const PanelElementNode = React.memo(function PanelElementNode({
+  el,
+  allElements,
+  isSelected,
+  selectedIds,
+  onSelectIds,
+  updateElement,
+  layerLocked,
+  previewMode,
+  previewLayoutKey,
+  onTableCellAction,
+  hasViewEvent,
+  emitViewUiEvent,
+}: PanelElementNodeProps) {
+  return (
+    <div
+      className={[
+        "absolute select-none",
+        previewMode ? "" : "rv-selectable",
+        !previewMode && isSelected ? "ring-2 ring-blue-500/90 ring-offset-0" : "",
+        hasViewEvent ? "cursor-pointer" : "",
+      ].join(" ")}
+      data-element-id={el.id}
+      onMouseDown={(e) => {
+        if (previewMode) return;
+        const target = e.target as HTMLElement | null;
+        if (target?.closest("[data-scene3d-orbit-active='true']")) {
+          e.stopPropagation();
+          return;
+        }
+        if (e.button !== 0) return;
+        if (e.shiftKey) {
+          onSelectIds(
+            isSelected
+              ? selectedIds.filter((id) => id !== el.id)
+              : [...selectedIds, el.id]
+          );
+        } else {
+          onSelectIds([el.id]);
+        }
+      }}
+      onClick={(e) => emitViewUiEvent(el, "click", e)}
+      onDoubleClick={(e) => emitViewUiEvent(el, "dblclick", e)}
+      onContextMenu={(e) => emitViewUiEvent(el, "contextmenu", e)}
+      onMouseEnter={(e) => emitViewUiEvent(el, "mouseenter", e)}
+      onMouseLeave={(e) => emitViewUiEvent(el, "mouseleave", e)}
+      style={{
+        left: el.x,
+        top: el.y,
+        width: Math.max(1, el.width),
+        height: Math.max(1, el.height),
+        zIndex: el.zIndex ?? 1,
+        transform: `rotate(${el.rotate ?? 0}deg)`,
+        transformOrigin: "center center",
+        overflow: el.materialType === "viewport" ? "hidden" : undefined,
+        boxSizing: "border-box",
+        contentVisibility: "auto",
+        containIntrinsicSize: `${Math.max(1, el.width)}px ${Math.max(1, el.height)}px`,
+        ...getNodeVisualStyle(el),
+      }}
+    >
+      {CHART_TYPES.has(el.materialType ?? "") ? (
+        <ChartNodeContent
+          element={el}
+          previewLayoutKey={previewLayoutKey}
+          previewMode={previewMode}
+        />
+      ) : el.materialType === "reference" || el.materialType === "viewport" ? (
+        <ReferenceNodeContent element={el} allElements={allElements} />
+      ) : el.materialType === "grid" ? (
+        <GridNodeContent
+          element={el}
+          allElements={allElements}
+          previewMode={previewMode}
+        />
+      ) : el.materialType === "text" ? (
+        <TextNodeContent
+          element={el}
+          editable={(el.textAllowInput ?? true) && !el.locked && !layerLocked}
+          onChange={(nextHtml) => {
+            updateElement(el.id, { textHtml: nextHtml });
+          }}
+        />
+      ) : el.materialType === "audio" ? (
+        <AudioNodeContent element={el} selected={isSelected} />
+      ) : el.materialType === "video" ? (
+        <VideoNodeContent element={el} selected={isSelected} />
+      ) : el.materialType === "geometry" ? (
+        <GeometryNodeContent element={el} />
+      ) : el.materialType === "scene3d" ? (
+        <Scene3dNodeContent
+          config={el.scene3d}
+          previewMode={previewMode}
+          selected={isSelected}
+          updateConfig={(patch) =>
+            updateElement(el.id, {
+              scene3d: mergeScene3dConfig({ ...el.scene3d, ...patch }),
+            })
+          }
+        />
+      ) : el.materialType === "image" ? (
+        <ImageNodeContent element={el} />
+      ) : el.materialType === "table" ? (
+        <TableNodeContent
+          element={el}
+          interactive={previewMode || Boolean(onTableCellAction)}
+          onCellAction={onTableCellAction}
+        />
+      ) : (
+        <EmptyNodePlaceholder element={el} />
+      )}
+    </div>
+  );
+}, (prev, next) => {
+  if (prev.el !== next.el) return false;
+  if (prev.isSelected !== next.isSelected) return false;
+  if (prev.previewMode !== next.previewMode) return false;
+  if (prev.layerLocked !== next.layerLocked) return false;
+  if (prev.previewLayoutKey !== next.previewLayoutKey) return false;
+  if (prev.hasViewEvent !== next.hasViewEvent) return false;
+  if (prev.updateElement !== next.updateElement) return false;
+  if (prev.onSelectIds !== next.onSelectIds) return false;
+  if (prev.onTableCellAction !== next.onTableCellAction) return false;
+  if (prev.emitViewUiEvent !== next.emitViewUiEvent) return false;
+  if (prev.selectedIds !== next.selectedIds && (prev.isSelected || next.isSelected)) {
+    // shift-toggle path reads selectedIds; only matters while selected
+    return false;
+  }
+  if (needsSharedElementIndex(next.el) && prev.allElements !== next.allElements) {
+    return false;
+  }
+  return true;
 });
 
