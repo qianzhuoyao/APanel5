@@ -1,5 +1,6 @@
 import React, {
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -146,6 +147,37 @@ export function PanelConfigSidebar({
     return selectedElement ? [selectedElement] : [];
   }, [selectedElement, selectedElements]);
   const isMultiSelectMode = effectiveSelectedElements.length > 1;
+  const configScrollKey =
+    !isMultiSelectMode && selectedElement ? selectedElement.id : null;
+  const configScrollPosByIdRef = useRef(new Map<string, number>());
+  const activeConfigScrollKeyRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const el = sidebarScrollRef.current;
+    if (!el) return;
+    const onScroll = () => {
+      const key = activeConfigScrollKeyRef.current;
+      if (!key) return;
+      configScrollPosByIdRef.current.set(key, el.scrollTop);
+    };
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
+  }, []);
+
+  useLayoutEffect(() => {
+    const el = sidebarScrollRef.current;
+    const prevKey = activeConfigScrollKeyRef.current;
+    if (el && prevKey && prevKey !== configScrollKey) {
+      configScrollPosByIdRef.current.set(prevKey, el.scrollTop);
+    }
+    activeConfigScrollKeyRef.current = configScrollKey;
+    if (!el) return;
+    const top =
+      configScrollKey != null
+        ? (configScrollPosByIdRef.current.get(configScrollKey) ?? 0)
+        : 0;
+    el.scrollTop = top;
+  }, [configScrollKey]);
 
   useEffect(() => {
     if (!selectedElement) return;

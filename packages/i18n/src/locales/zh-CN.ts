@@ -1001,9 +1001,19 @@ export const zhCN = {
       workspaceLoaded: "工作区已加载",
       workspaceLoadedDesc: "视图与蓝图已恢复",
       openWorkspaceFailed: "打开工作区失败",
+      createWorkspaceFailed: "创建工作区失败",
       syncFailed: "同步失败",
+      deleteWorkspaceFailed: "删除工作区失败",
       workspaceDeleted: "工作区已删除",
       openPreviewFailed: "打开预览失败",
+      workspaceStorageUnavailable:
+        "当前环境无法使用本地存储（隐私模式、权限受限或嵌入页限制）。请换浏览器或关闭隐私模式后重试。",
+      workspaceStorageTimeout: "本地存储响应超时，请关闭多余标签页后重试。",
+      workspaceStorageQuotaExceeded:
+        "本地存储空间不足。请删除不用的工作区，或减少大图/音视频资源后重试。",
+      workspaceStorageSerializeFailed:
+        "工作区数据无法序列化保存。请检查是否含有不可保存的特殊对象后重试。",
+      workspaceStorageFailed: "写入本地工作区失败，请稍后重试。",
       clearedBlueprintLogs: "已清空 IndexedDB 中 {removed} 条蓝图日志",
       noSavedBlueprintLogs: "IndexedDB 中暂无已保存日志",
       mergeNeedTwoLayers: "至少勾选 2 个图层后可合并",

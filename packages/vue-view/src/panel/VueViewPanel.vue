@@ -583,8 +583,14 @@ async function handleBlueprintImportFile(file: File) {
 }
 
 async function handleWorkspaceCreateProject() {
-  const result = await workspaceProjects.handleCreateProject();
-  if (result?.name) message.success(panelMessages().workspaceCreated(result.name));
+  try {
+    const result = await workspaceProjects.handleCreateProject();
+    if (result?.name) message.success(panelMessages().workspaceCreated(result.name));
+  } catch (error) {
+    message.error(
+      error instanceof Error ? error.message : panelMessages().createWorkspaceFailed
+    );
+  }
 }
 
 async function handleWorkspaceOpenProject(id: string) {
@@ -609,8 +615,14 @@ async function handleWorkspaceSyncProject() {
 }
 
 async function handleWorkspaceDeleteProject(id: string) {
-  await workspaceProjects.handleDeleteProject(id);
-  message.success(panelMessages().workspaceDeleted);
+  try {
+    await workspaceProjects.handleDeleteProject(id);
+    message.success(panelMessages().workspaceDeleted);
+  } catch (error) {
+    message.error(
+      error instanceof Error ? error.message : panelMessages().deleteWorkspaceFailed
+    );
+  }
 }
 
 async function openOnlinePreviewForProject(

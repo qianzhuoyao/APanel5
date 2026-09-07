@@ -5,6 +5,7 @@ import { appStorageKey } from "@arronqzy/blueprint-dsl";
 const DB_NAME = "arronqzy-workspace-projects";
 const DB_VERSION = 1;
 const STORE_NAME = "projects";
+const OPEN_TIMEOUT_MS = 10_000;
 
 export type WorkspaceProjectListItem = {
   id: string;
@@ -25,10 +26,77 @@ export type WorkspaceProjectRecord = {
   titleIconDataUrl?: string;
 };
 
+const dbPromises = new Map<string, Promise<IDBDatabase>>();
+
+function getIndexedDb(): IDBFactory {
+  if (typeof indexedDB === "undefined" || !indexedDB) {
+    throw Object.assign(new Error("indexeddb-unavailable"), {
+      name: "IndexedDbUnavailable",
+    });
+  }
+  return indexedDB;
+}
+
+/** Make a value safe for IndexedDB structured clone (drops non-cloneable fields). */
+export function cloneForIndexedDb<T>(value: T): T {
+  if (typeof structuredClone === "function") {
+    try {
+      return structuredClone(value);
+    } catch {
+      /* fall through to JSON */
+    }
+  }
+  try {
+    return JSON.parse(JSON.stringify(value)) as T;
+  } catch (error) {
+    throw Object.assign(new Error("indexeddb-serialize-failed"), {
+      name: "DataCloneError",
+      cause: error,
+    });
+  }
+}
+
 function openDb(nameSpace?: string | null): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(appStorageKey(DB_NAME, nameSpace), DB_VERSION);
-    request.onerror = () => reject(request.error ?? new Error("indexeddb-open-failed"));
+  const key = appStorageKey(DB_NAME, nameSpace);
+  const cached = dbPromises.get(key);
+  if (cached) return cached;
+
+  const promise = new Promise<IDBDatabase>((resolve, reject) => {
+    let settled = false;
+    const fail = (error: unknown) => {
+      if (settled) return;
+      settled = true;
+      dbPromises.delete(key);
+      reject(
+        error instanceof Error
+          ? error
+          : Object.assign(new Error("indexeddb-open-failed"), { cause: error })
+      );
+    };
+
+    let request: IDBOpenDBRequest;
+    try {
+      request = getIndexedDb().open(key, DB_VERSION);
+    } catch (error) {
+      fail(error);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      fail(
+        Object.assign(new Error("indexeddb-open-timeout"), {
+          name: "TimeoutError",
+        })
+      );
+    }, OPEN_TIMEOUT_MS);
+
+    request.onerror = () => {
+      clearTimeout(timer);
+      fail(request.error ?? new Error("indexeddb-open-failed"));
+    };
+    request.onblocked = () => {
+      // Wait for onsuccess / timeout; another tab may be holding an older connection.
+    };
     request.onupgradeneeded = () => {
       const db = request.result;
       if (!db.objectStoreNames.contains(STORE_NAME)) {
@@ -36,8 +104,35 @@ function openDb(nameSpace?: string | null): Promise<IDBDatabase> {
         store.createIndex("updatedAt", "updatedAt", { unique: false });
       }
     };
-    request.onsuccess = () => resolve(request.result);
+    request.onsuccess = () => {
+      clearTimeout(timer);
+      if (settled) {
+        try {
+          request.result.close();
+        } catch {
+          /* ignore */
+        }
+        return;
+      }
+      settled = true;
+      const db = request.result;
+      db.onversionchange = () => {
+        try {
+          db.close();
+        } catch {
+          /* ignore */
+        }
+        dbPromises.delete(key);
+      };
+      db.onclose = () => {
+        dbPromises.delete(key);
+      };
+      resolve(db);
+    };
   });
+
+  dbPromises.set(key, promise);
+  return promise;
 }
 
 function runTransaction<T>(
@@ -48,27 +143,74 @@ function runTransaction<T>(
   return openDb(nameSpace).then(
     (db) =>
       new Promise<T>((resolve, reject) => {
-        const tx = db.transaction(STORE_NAME, mode);
+        let tx: IDBTransaction;
+        try {
+          tx = db.transaction(STORE_NAME, mode);
+        } catch (error) {
+          dbPromises.delete(appStorageKey(DB_NAME, nameSpace));
+          reject(error);
+          return;
+        }
         const store = tx.objectStore(STORE_NAME);
         const request = runner(store);
         let result!: T;
+        let settled = false;
+
+        const fail = (error: unknown) => {
+          if (settled) return;
+          settled = true;
+          reject(
+            error instanceof Error
+              ? error
+              : Object.assign(new Error("indexeddb-transaction-failed"), {
+                  cause: error,
+                })
+          );
+        };
 
         request.onerror = () =>
-          reject(request.error ?? new Error("indexeddb-request-failed"));
+          fail(request.error ?? new Error("indexeddb-request-failed"));
         request.onsuccess = () => {
           result = request.result as T;
         };
 
         tx.oncomplete = () => {
-          db.close();
+          if (settled) return;
+          settled = true;
           resolve(result);
         };
-        tx.onerror = () => {
-          db.close();
-          reject(tx.error ?? new Error("indexeddb-transaction-failed"));
-        };
+        tx.onerror = () => fail(tx.error ?? new Error("indexeddb-transaction-failed"));
+        tx.onabort = () => fail(tx.error ?? new Error("indexeddb-transaction-aborted"));
       })
-  );
+  ).catch(async (error) => {
+    const message = error instanceof Error ? error.message : String(error);
+    const name = error instanceof DOMException ? error.name : "";
+    if (
+      name === "InvalidStateError" ||
+      message.includes("InvalidStateError") ||
+      message.includes("closing")
+    ) {
+      dbPromises.delete(appStorageKey(DB_NAME, nameSpace));
+      const db = await openDb(nameSpace);
+      return new Promise<T>((resolve, reject) => {
+        const tx = db.transaction(STORE_NAME, mode);
+        const store = tx.objectStore(STORE_NAME);
+        const request = runner(store);
+        let result!: T;
+        request.onerror = () =>
+          reject(request.error ?? new Error("indexeddb-request-failed"));
+        request.onsuccess = () => {
+          result = request.result as T;
+        };
+        tx.oncomplete = () => resolve(result);
+        tx.onerror = () =>
+          reject(tx.error ?? new Error("indexeddb-transaction-failed"));
+        tx.onabort = () =>
+          reject(tx.error ?? new Error("indexeddb-transaction-aborted"));
+      });
+    }
+    throw error;
+  });
 }
 
 export function createWorkspaceProjectId(): string {
@@ -102,11 +244,9 @@ export async function listWorkspaceProjects(
       cursor.continue();
     };
     tx.oncomplete = () => {
-      db.close();
       resolve(items.sort((a, b) => b.updatedAt - a.updatedAt));
     };
     tx.onerror = () => {
-      db.close();
       reject(tx.error ?? new Error("indexeddb-transaction-failed"));
     };
   });
@@ -128,8 +268,13 @@ export async function putWorkspaceProject(
   record: WorkspaceProjectRecord,
   nameSpace?: string | null
 ): Promise<WorkspaceProjectRecord> {
-  await runTransaction<IDBValidKey>("readwrite", (store) => store.put(record), nameSpace);
-  return record;
+  const safeRecord = cloneForIndexedDb(record);
+  await runTransaction<IDBValidKey>(
+    "readwrite",
+    (store) => store.put(safeRecord),
+    nameSpace
+  );
+  return safeRecord;
 }
 
 export async function deleteWorkspaceProject(

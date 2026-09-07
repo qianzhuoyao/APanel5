@@ -1004,9 +1004,20 @@ export const enUS = {
       workspaceLoaded: "Workspace loaded",
       workspaceLoadedDesc: "View and blueprint restored",
       openWorkspaceFailed: "Failed to open workspace",
+      createWorkspaceFailed: "Failed to create workspace",
       syncFailed: "Sync failed",
+      deleteWorkspaceFailed: "Failed to delete workspace",
       workspaceDeleted: "Workspace deleted",
       openPreviewFailed: "Failed to open preview",
+      workspaceStorageUnavailable:
+        "Local storage is unavailable (private mode, permissions, or embedded page). Try another browser or exit private mode.",
+      workspaceStorageTimeout:
+        "Local storage timed out. Close extra tabs and try again.",
+      workspaceStorageQuotaExceeded:
+        "Local storage is full. Delete unused workspaces or reduce large media assets, then retry.",
+      workspaceStorageSerializeFailed:
+        "Workspace data could not be serialized. Remove non-persistable objects and retry.",
+      workspaceStorageFailed: "Failed to write the local workspace. Please try again.",
       clearedBlueprintLogs: "Cleared {removed} blueprint log(s) from IndexedDB",
       noSavedBlueprintLogs: "No saved logs in IndexedDB",
       mergeNeedTwoLayers: "Select at least 2 layers to merge",

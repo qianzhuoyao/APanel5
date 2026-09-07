@@ -23,6 +23,7 @@ import {
   workspaceSnapshotsEqual,
   type WorkspaceSnapshot,
 } from "../library/workspace-snapshot";
+import { mapWorkspaceStorageError } from "../library/workspace-storage-error";
 import { runBusyTask } from "../utils/async-work";
 import { createEmptyPanelState, normalizeImportedPanelState } from "../utils/panelStateIO";
 import { AbuilderEvents, emitAbuilderEvent } from "../library/event-subscription";
@@ -125,7 +126,11 @@ export function useWorkspaceProjects(options: UseWorkspaceProjectsOptions) {
   }
 
   async function refreshProjects() {
-    projects.value = await listWorkspaceProjects(nameSpace());
+    try {
+      projects.value = await listWorkspaceProjects(nameSpace());
+    } catch (error) {
+      console.warn("[abuilder] listWorkspaceProjects failed", error);
+    }
   }
 
   watch(
@@ -262,35 +267,48 @@ export function useWorkspaceProjects(options: UseWorkspaceProjectsOptions) {
     name: string;
     createdAt?: number;
   }) {
-    const snapshot = cloneWorkspaceSnapshot(buildCurrentSnapshot());
-    const now = Date.now();
-    const id = persistOptions.id ?? createWorkspaceProjectId();
-    const createdAt = persistOptions.createdAt ?? now;
-    const name = (persistOptions.name ?? "").trim() || resolveProjectName();
+    try {
+      const snapshot = cloneWorkspaceSnapshot(buildCurrentSnapshot());
+      const now = Date.now();
+      const id = persistOptions.id ?? createWorkspaceProjectId();
+      const createdAt = persistOptions.createdAt ?? now;
+      const name = (persistOptions.name ?? "").trim() || resolveProjectName();
 
-    const record: WorkspaceProjectRecord = {
-      id,
-      name,
-      createdAt,
-      updatedAt: now,
-      panelState: options.exportPanelData(),
-      blueprintDocument: snapshot.blueprintDocument,
-      blueprintMeta: snapshot.blueprintMeta,
-      productName:
-        typeof snapshot.productName === "string" ? snapshot.productName : resolveProjectName(),
-      titleIconDataUrl: snapshot.titleIconDataUrl || undefined,
-    };
+      let panelState: State;
+      try {
+        panelState = options.exportPanelData();
+      } catch (error) {
+        throw mapWorkspaceStorageError(error, t);
+      }
 
-    await putWorkspaceProject(record, nameSpace());
-    writeWorkspacePreviewCache(record, nameSpace());
-    broadcastWorkspaceProjectUpdate(id, now, nameSpace());
-    activeProjectId.value = id;
-    activeProjectName.value = name;
-    syncedSnapshotRef.value = snapshot;
-    syncedPanelRevision = toValue(options.panelRevision);
-    pendingRevisionSync = false;
-    await refreshProjects();
-    return record;
+      const record: WorkspaceProjectRecord = {
+        id,
+        name,
+        createdAt,
+        updatedAt: now,
+        panelState,
+        blueprintDocument: snapshot.blueprintDocument,
+        blueprintMeta: snapshot.blueprintMeta,
+        productName:
+          typeof snapshot.productName === "string"
+            ? snapshot.productName
+            : resolveProjectName(),
+        titleIconDataUrl: snapshot.titleIconDataUrl || undefined,
+      };
+
+      await putWorkspaceProject(record, nameSpace());
+      writeWorkspacePreviewCache(record, nameSpace());
+      broadcastWorkspaceProjectUpdate(id, now, nameSpace());
+      activeProjectId.value = id;
+      activeProjectName.value = name;
+      syncedSnapshotRef.value = snapshot;
+      syncedPanelRevision = toValue(options.panelRevision);
+      pendingRevisionSync = false;
+      await refreshProjects();
+      return record;
+    } catch (error) {
+      throw mapWorkspaceStorageError(error, t);
+    }
   }
 
   async function handleCreateProject() {
@@ -320,14 +338,18 @@ export function useWorkspaceProjects(options: UseWorkspaceProjectsOptions) {
   }
 
   async function handleOpenProject(id: string) {
-    await runBusyTask(t("common.loadingWorkspace"), async () => {
-      const record = await getWorkspaceProject(id, nameSpace());
-      if (!record) {
-        await refreshProjects();
-        throw new Error(t("panel.messages.workspaceNotFound"));
-      }
-      applyProjectRecord(record);
-    });
+    try {
+      await runBusyTask(t("common.loadingWorkspace"), async () => {
+        const record = await getWorkspaceProject(id, nameSpace());
+        if (!record) {
+          await refreshProjects();
+          throw new Error(t("panel.messages.workspaceNotFound"));
+        }
+        applyProjectRecord(record);
+      });
+    } catch (error) {
+      throw mapWorkspaceStorageError(error, t);
+    }
   }
 
   async function handleSyncProject() {
@@ -355,17 +377,21 @@ export function useWorkspaceProjects(options: UseWorkspaceProjectsOptions) {
   }
 
   async function handleDeleteProject(id: string) {
-    await runBusyTask(t("common.deletingWorkspace"), async () => {
-      await deleteWorkspaceProject(id, nameSpace());
-      if (activeProjectId.value === id) {
-        activeProjectId.value = null;
-        activeProjectName.value = null;
-        syncedSnapshotRef.value = null;
-      }
-      previewWindows.delete(id);
-      refreshPreviewing();
-      await refreshProjects();
-    });
+    try {
+      await runBusyTask(t("common.deletingWorkspace"), async () => {
+        await deleteWorkspaceProject(id, nameSpace());
+        if (activeProjectId.value === id) {
+          activeProjectId.value = null;
+          activeProjectName.value = null;
+          syncedSnapshotRef.value = null;
+        }
+        previewWindows.delete(id);
+        refreshPreviewing();
+        await refreshProjects();
+      });
+    } catch (error) {
+      throw mapWorkspaceStorageError(error, t);
+    }
   }
 
   async function handlePreviewProject(id: string, previewOptions?: { syncFirst?: boolean }) {

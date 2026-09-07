@@ -1079,11 +1079,18 @@ function ReactViewPanelInner({
   );
 
   const handleWorkspaceCreateProject = useCallback(async () => {
-    const result = await workspaceProjects.handleCreateProject();
-    if (result?.name) {
-      toast({ title: messages.workspaceCreated(result.name) });
+    try {
+      const result = await workspaceProjects.handleCreateProject();
+      if (result?.name) {
+        toast({ title: messages.workspaceCreated(result.name) });
+      }
+      return result;
+    } catch (error) {
+      toast({
+        title: error instanceof Error ? error.message : t("panel.messages.createWorkspaceFailed"),
+      });
+      throw error;
     }
-    return result;
   }, [workspaceProjects]);
 
   const handleWorkspaceOpenProject = useCallback(
@@ -1121,8 +1128,16 @@ function ReactViewPanelInner({
 
   const handleWorkspaceDeleteProject = useCallback(
     async (id: string) => {
-      await workspaceProjects.handleDeleteProject(id);
-      toast({ title: t("panel.messages.workspaceDeleted") });
+      try {
+        await workspaceProjects.handleDeleteProject(id);
+        toast({ title: t("panel.messages.workspaceDeleted") });
+      } catch (error) {
+        toast({
+          title:
+            error instanceof Error ? error.message : t("panel.messages.deleteWorkspaceFailed"),
+        });
+        throw error;
+      }
     },
     [workspaceProjects]
   );

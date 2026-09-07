@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from "@arronqzy/i18n/vue";
-import { computed, onMounted, provide, ref, watch } from "vue";
+import { computed, nextTick, onMounted, onUnmounted, provide, ref, watch } from "vue";
 import { Empty, Input } from "ant-design-vue";
 import type { PanelElement, PanelLayer, ReferenceCopyMode } from "../types";
 import { CHART_TYPES } from "../utils/chartOptionBuilder";
@@ -60,6 +60,8 @@ const props = withDefaults(
 const configSearch = ref("");
 const isSearchCollapsed = ref(false);
 const sidebarScrollRef = ref<HTMLElement | null>(null);
+const configScrollPosById = new Map<string, number>();
+const activeConfigScrollKey = ref<string | null>(null);
 
 const expandedSections = ref<Record<string, boolean>>({
   nodeInfo: true,
@@ -87,6 +89,49 @@ const effectiveSelectedElements = computed(() => {
 });
 
 const isMultiSelectMode = computed(() => effectiveSelectedElements.value.length > 1);
+
+const configScrollKey = computed(() => {
+  if (isMultiSelectMode.value || !props.selectedElement) return null;
+  return props.selectedElement.id;
+});
+
+function onConfigSidebarScroll() {
+  const el = sidebarScrollRef.value;
+  const key = activeConfigScrollKey.value;
+  if (!el || !key) return;
+  configScrollPosById.set(key, el.scrollTop);
+}
+
+function restoreConfigScroll(key: string | null) {
+  const el = sidebarScrollRef.value;
+  if (!el) return;
+  const top = key != null ? (configScrollPosById.get(key) ?? 0) : 0;
+  el.scrollTop = top;
+}
+
+watch(
+  configScrollKey,
+  (nextKey, prevKey) => {
+    const el = sidebarScrollRef.value;
+    if (el && prevKey && prevKey !== nextKey) {
+      configScrollPosById.set(prevKey, el.scrollTop);
+    }
+    activeConfigScrollKey.value = nextKey;
+    void nextTick(() => restoreConfigScroll(nextKey));
+  },
+  { flush: "post" }
+);
+
+onMounted(() => {
+  activeConfigScrollKey.value = configScrollKey.value;
+  const el = sidebarScrollRef.value;
+  el?.addEventListener("scroll", onConfigSidebarScroll, { passive: true });
+  restoreConfigScroll(configScrollKey.value);
+});
+
+onUnmounted(() => {
+  sidebarScrollRef.value?.removeEventListener("scroll", onConfigSidebarScroll);
+});
 
 const selectedLayer = computed(() => {
   if (!props.selectedElement) return null;

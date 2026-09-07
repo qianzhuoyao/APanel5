@@ -1077,7 +1077,14 @@ export function usePanelElements() {
         /* fall through */
       }
     }
-    return JSON.parse(JSON.stringify(current)) as State;
+    try {
+      return JSON.parse(JSON.stringify(current)) as State;
+    } catch (error) {
+      throw Object.assign(new Error("indexeddb-serialize-failed"), {
+        name: "DataCloneError",
+        cause: error,
+      });
+    }
   }, []);
 
   const importPanelData = useCallback((nextState: State) => {

@@ -52,7 +52,9 @@ export function getPanelMessages(t: TranslateFn) {
     workspaceLoaded: t("panel.messages.workspaceLoaded"),
     workspaceLoadedDesc: t("panel.messages.workspaceLoadedDesc"),
     openWorkspaceFailed: t("panel.messages.openWorkspaceFailed"),
+    createWorkspaceFailed: t("panel.messages.createWorkspaceFailed"),
     syncFailed: t("panel.messages.syncFailed"),
+    deleteWorkspaceFailed: t("panel.messages.deleteWorkspaceFailed"),
     workspaceDeleted: t("panel.messages.workspaceDeleted"),
     openPreviewFailed: t("panel.messages.openPreviewFailed"),
     clearedBlueprintLogs: (removed: number) =>

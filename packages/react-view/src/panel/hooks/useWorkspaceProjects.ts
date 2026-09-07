@@ -19,6 +19,7 @@ import {
   workspaceSnapshotsEqual,
   type WorkspaceSnapshot,
 } from "../library/workspace-snapshot";
+import { mapWorkspaceStorageError } from "../library/workspace-storage-error";
 import { runBusyTask } from "../utils/async-work";
 import { AbuilderEvents, emitAbuilderEvent } from "../library/event-subscription";
 import { parseBlueprintData } from "@arronqzy/react-blueprint";
@@ -145,8 +146,13 @@ export function useWorkspaceProjects({
   }, [blueprintDocument, blueprintMeta, productName, titleIconDataUrl]);
 
   const refreshProjects = useCallback(async () => {
-    const items = await listWorkspaceProjects(nameSpace);
-    setProjects(items);
+    try {
+      const items = await listWorkspaceProjects(nameSpace);
+      setProjects(items);
+    } catch (error) {
+      // Listing failure should not brick the editor; create/sync still surface errors.
+      console.warn("[abuilder] listWorkspaceProjects failed", error);
+    }
   }, [nameSpace]);
 
   useEffect(() => {
@@ -272,37 +278,58 @@ export function useWorkspaceProjects({
 
   const persistProject = useCallback(
     async (options: { id?: string; name: string; createdAt?: number }) => {
-      const snapshot = cloneWorkspaceSnapshot(buildCurrentSnapshot());
-      const now = Date.now();
-      const id = options.id ?? createWorkspaceProjectId();
-      const createdAt = options.createdAt ?? now;
-      const name = (options.name ?? "").trim() || resolveProjectName();
+      try {
+        const snapshot = cloneWorkspaceSnapshot(buildCurrentSnapshot());
+        const now = Date.now();
+        const id = options.id ?? createWorkspaceProjectId();
+        const createdAt = options.createdAt ?? now;
+        const name = (options.name ?? "").trim() || resolveProjectName();
 
-      const record: WorkspaceProjectRecord = {
-        id,
-        name,
-        createdAt,
-        updatedAt: now,
-        panelState: exportPanelData(),
-        blueprintDocument: snapshot.blueprintDocument,
-        blueprintMeta: snapshot.blueprintMeta,
-        productName:
-          typeof snapshot.productName === "string" ? snapshot.productName : resolveProjectName(),
-        titleIconDataUrl: snapshot.titleIconDataUrl || undefined,
-      };
+        let panelState: State;
+        try {
+          panelState = exportPanelData();
+        } catch (error) {
+          throw mapWorkspaceStorageError(error, t);
+        }
 
-      await putWorkspaceProject(record, nameSpace);
-      writeWorkspacePreviewCache(record, nameSpace);
-      broadcastWorkspaceProjectUpdate(id, now, nameSpace);
-      setActiveProjectId(id);
-      setActiveProjectName(name);
-      syncedSnapshotRef.current = snapshot;
-      syncedPanelRevisionRef.current = panelRevision;
-      pendingRevisionSyncRef.current = false;
-      await refreshProjects();
-      return record;
+        const record: WorkspaceProjectRecord = {
+          id,
+          name,
+          createdAt,
+          updatedAt: now,
+          panelState,
+          blueprintDocument: snapshot.blueprintDocument,
+          blueprintMeta: snapshot.blueprintMeta,
+          productName:
+            typeof snapshot.productName === "string"
+              ? snapshot.productName
+              : resolveProjectName(),
+          titleIconDataUrl: snapshot.titleIconDataUrl || undefined,
+        };
+
+        await putWorkspaceProject(record, nameSpace);
+        writeWorkspacePreviewCache(record, nameSpace);
+        broadcastWorkspaceProjectUpdate(id, now, nameSpace);
+        setActiveProjectId(id);
+        setActiveProjectName(name);
+        syncedSnapshotRef.current = snapshot;
+        syncedPanelRevisionRef.current = panelRevision;
+        pendingRevisionSyncRef.current = false;
+        await refreshProjects();
+        return record;
+      } catch (error) {
+        throw mapWorkspaceStorageError(error, t);
+      }
     },
-    [buildCurrentSnapshot, exportPanelData, nameSpace, panelRevision, resolveProjectName, refreshProjects]
+    [
+      buildCurrentSnapshot,
+      exportPanelData,
+      nameSpace,
+      panelRevision,
+      resolveProjectName,
+      refreshProjects,
+      t,
+    ]
   );
 
   const handleCreateProject = useCallback(async () => {
@@ -332,14 +359,18 @@ export function useWorkspaceProjects({
 
   const handleOpenProject = useCallback(
     async (id: string) => {
-      await runBusyTask(t("common.loadingWorkspace"), async () => {
-        const record = await getWorkspaceProject(id, nameSpace);
-        if (!record) {
-          await refreshProjects();
-          throw new Error(t("panel.messages.workspaceNotFound"));
-        }
-        applyProjectRecord(record);
-      });
+      try {
+        await runBusyTask(t("common.loadingWorkspace"), async () => {
+          const record = await getWorkspaceProject(id, nameSpace);
+          if (!record) {
+            await refreshProjects();
+            throw new Error(t("panel.messages.workspaceNotFound"));
+          }
+          applyProjectRecord(record);
+        });
+      } catch (error) {
+        throw mapWorkspaceStorageError(error, t);
+      }
     },
     [applyProjectRecord, nameSpace, refreshProjects, t]
   );
@@ -370,17 +401,21 @@ export function useWorkspaceProjects({
 
   const handleDeleteProject = useCallback(
     async (id: string) => {
-      await runBusyTask(t("common.deletingWorkspace"), async () => {
-        await deleteWorkspaceProject(id, nameSpace);
-        if (activeProjectId === id) {
-          setActiveProjectId(null);
-          setActiveProjectName(null);
-          syncedSnapshotRef.current = null;
-        }
-        previewWindowsRef.current.delete(id);
-        refreshPreviewing();
-        await refreshProjects();
-      });
+      try {
+        await runBusyTask(t("common.deletingWorkspace"), async () => {
+          await deleteWorkspaceProject(id, nameSpace);
+          if (activeProjectId === id) {
+            setActiveProjectId(null);
+            setActiveProjectName(null);
+            syncedSnapshotRef.current = null;
+          }
+          previewWindowsRef.current.delete(id);
+          refreshPreviewing();
+          await refreshProjects();
+        });
+      } catch (error) {
+        throw mapWorkspaceStorageError(error, t);
+      }
     },
     [activeProjectId, nameSpace, refreshPreviewing, refreshProjects, t]
   );
