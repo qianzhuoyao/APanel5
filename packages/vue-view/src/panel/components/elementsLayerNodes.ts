@@ -16,6 +16,7 @@ import type { PanelElement } from "../types";
 import { buildChartOption, CHART_TYPES } from "../utils/chartOptionBuilder";
 import { PREVIEW_LAYOUT_EVENT } from "../utils/panelStateIO";
 import { cssTextLineHeight, cssTextAlignStyle } from "../utils/panelElementDefaults";
+import { resolveBackgroundImageStyle } from "../utils/background-image-style";
 import {
   isViewportNode,
   normalizeViewportOverflow,
@@ -36,7 +37,7 @@ export function getNodeVisualStyle(element: PanelElement) {
   const style = element.style ?? {};
   return {
     backgroundColor: style.backgroundColor,
-    backgroundImage: style.backgroundImage,
+    backgroundImage: resolveBackgroundImageStyle(style),
     backgroundSize: style.backgroundSize,
     backgroundPosition: style.backgroundPosition,
     borderWidth: style.borderWidth,

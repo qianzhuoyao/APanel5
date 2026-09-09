@@ -66,18 +66,20 @@ function onVideoFileChange(e: Event) {
     @update:open="emit('update:open', $event)"
   >
     <ConfigFieldGroup :title="t('panel.config.groupVideoSource')">
-      <label class="block space-y-1">
+      <label class="block space-y-1" data-config-field="videoRemoteUrl">
         <div>{{ t("panel.config.videoUrl") }}</div>
         <Input
           size="small"
+          class="font-mono text-[11px]"
           :value="element.videoRemoteUrl ?? ''"
           :disabled="!isEditable"
-          placeholder="https://example.com/video.mp4"
+          :placeholder="t('panel.config.urlScopePlaceholder')"
           @update:value="(v: string) => patch({
             videoRemoteUrl: v || undefined,
             videoSrc: v || element.videoSrc,
           })"
         />
+        <p class="text-[10px] text-gray-500">{{ t("panel.config.urlScopeHint") }}</p>
       </label>
       <div class="flex items-center gap-2">
         <label

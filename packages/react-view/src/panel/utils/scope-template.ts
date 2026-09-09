@@ -1,7 +1,7 @@
 import type { PanelElement } from "../types";
 import type { PanelTableConfig } from "@arronqzy/view-table";
 import { isUsableTableRawData } from "@arronqzy/view-table";
-import { materializeChartLabelsFromScope } from "./scope-template-chart";
+import { materializeChartLabelsFromScope, materializeChartValuesFromScope } from "./scope-template-chart";
 import {
   SCOPE_SPREAD_TEMPLATE_RE,
   evaluateSpreadScopeExpression,
@@ -11,10 +11,12 @@ import {
   resolveSpreadScopePath,
 } from "./scope-template-spread";
 
-const SCOPE_TEMPLATE_RE = /\{[^}]+\}|\[\.\.\.\{[^}]+\}\]/;
+const SCOPE_TOKEN_RE = /\{(scope[^}]*)\}/g;
 
 export function hasScopeTemplate(value: string): boolean {
-  return SCOPE_TEMPLATE_RE.test(value);
+  SCOPE_TOKEN_RE.lastIndex = 0;
+  SCOPE_SPREAD_TEMPLATE_RE.lastIndex = 0;
+  return SCOPE_TOKEN_RE.test(value) || SCOPE_SPREAD_TEMPLATE_RE.test(value);
 }
 
 export function evaluateScopeExpression(
@@ -28,6 +30,19 @@ export function evaluateScopeExpression(
     return fn(scope);
   } catch {
     return undefined;
+  }
+}
+
+function stringifyScopeValue(value: unknown): string {
+  if (value === null || value === undefined) return "";
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
   }
 }
 
@@ -45,19 +60,10 @@ export function evaluateScopeTemplate(
     }
   );
 
-  return withSpread.replace(/\{([^}]+)\}/g, (_: string, rawExpr: string) => {
-    const value = evaluateScopeExpression(rawExpr, scope);
-    if (value === null || value === undefined) return "";
-    if (typeof value === "string") return value;
-    if (typeof value === "number" || typeof value === "boolean") {
-      return String(value);
-    }
-    try {
-      return JSON.stringify(value);
-    } catch {
-      return String(value);
-    }
-  });
+  // Only `{scope...}` tokens — keep ECharts / CSS braces like `{b}` intact.
+  return withSpread.replace(SCOPE_TOKEN_RE, (_: string, rawExpr: string) =>
+    stringifyScopeValue(evaluateScopeExpression(rawExpr, scope))
+  );
 }
 
 function tryParseJson(text: string): unknown | undefined {
@@ -85,7 +91,7 @@ function materializeTemplateValue(template: string, scope: unknown): unknown {
     );
   }
 
-  const singleMatch = /^\{([^}]+)\}$/.exec(trimmed);
+  const singleMatch = /^\{(scope[^}]*)\}$/.exec(trimmed);
   if (singleMatch) {
     return evaluateScopeExpression(singleMatch[1]!, scope);
   }
@@ -147,6 +153,11 @@ export function resolvePanelElementScope(
     if (labels !== undefined) {
       resolved.chart.labels = labels;
       delete resolved.chart.labelsText;
+    }
+    const values = materializeChartValuesFromScope(element.chart, scope);
+    if (values !== undefined) {
+      resolved.chart.values = values;
+      delete resolved.chart.valuesText;
     }
   }
   if (resolved.table) {

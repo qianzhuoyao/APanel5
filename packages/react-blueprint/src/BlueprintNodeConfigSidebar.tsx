@@ -400,7 +400,13 @@ export function BlueprintNodeConfigSidebar({
         ) : null}
 
         {configSource === "json" ? (
-          <JsonNodeConfigPanel node={node} onUpdateNode={onUpdateNode} />
+          <JsonNodeConfigPanel
+            node={node}
+            graphNodes={graphNodes}
+            graphEdges={graphEdges}
+            traceEntries={traceEntries}
+            onUpdateNode={onUpdateNode}
+          />
         ) : null}
 
         {configSource === "storage" ? (

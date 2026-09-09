@@ -90,3 +90,15 @@ export function materializeChartLabelsFromScope(
   }
   return undefined;
 }
+
+/** Prefer valuesText templates; expand [...{scope}] / {scope} into number[]. */
+export function materializeChartValuesFromScope(
+  chart: PanelChartConfig | undefined,
+  scope: unknown
+): number[] | undefined {
+  if (!chart) return undefined;
+  if (chart.valuesText !== undefined) {
+    return materializeChartValuesText(chart.valuesText, scope);
+  }
+  return undefined;
+}

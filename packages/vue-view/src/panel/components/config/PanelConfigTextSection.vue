@@ -88,6 +88,7 @@ watch(() => [props.element.id, props.element.textHtml], syncEditorHtml);
       </div>
       <div
         ref="textEditorRef"
+        data-config-field="textHtml"
         data-panel-user-text=""
         class="min-h-[120px] rounded border border-gray-200 bg-white px-2 py-1.5 leading-6 outline-none"
         :contenteditable="isEditable"
@@ -104,6 +105,20 @@ watch(() => [props.element.id, props.element.textHtml], syncEditorHtml);
           patch({ textHtml: nextHtml || '<p><br/></p>' });
         }"
       />
+      <label class="block space-y-1">
+        <div>{{ t("panel.config.textHtmlSource") }}</div>
+        <textarea
+          data-config-field="textHtml"
+          class="w-full rounded border border-gray-200 bg-white px-2 py-1.5 font-mono text-[11px] leading-relaxed outline-none"
+          rows="4"
+          spellcheck="false"
+          :value="element.textHtml ?? ''"
+          :disabled="!isEditable"
+          :placeholder="t('panel.config.textHtmlSourcePlaceholder')"
+          @input="(e) => patch({ textHtml: (e.target as HTMLTextAreaElement).value || '<p><br/></p>' })"
+        />
+        <p class="text-[10px] text-gray-500">{{ t("panel.config.scopeTemplateHint") }}</p>
+      </label>
     </ConfigFieldGroup>
     <ConfigFieldGroup :title="t('panel.config.groupTextStyle')">
       <label class="block space-y-1">

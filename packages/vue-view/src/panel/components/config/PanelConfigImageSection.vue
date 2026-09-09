@@ -2,8 +2,9 @@
 import { useI18n } from "@arronqzy/i18n/vue";
 import { ref } from "vue";
 import { Input, Select } from "ant-design-vue";
-import type { PanelElement } from "../../types";
+import type { PanelElement, PanelElementStyle } from "../../types";
 import { readFileAsDataUrl, uploadFileToRemote } from "./shared";
+import { patchBackgroundImageFromInput } from "../../utils/background-image-style";
 import { getPanelMessages } from "../../constants/messages";
 import ConfigFieldGroup from "./ConfigFieldGroup.vue";
 import ConfigSection from "./ConfigSection.vue";
@@ -30,7 +31,7 @@ const emit = defineEmits<{
 
 const uploadStatus = ref("");
 
-function patchStyle(patch: Record<string, string | undefined>) {
+function patchStyle(patch: Partial<PanelElementStyle> | Record<string, string | undefined>) {
   props.updateElement(props.element.id, {
     style: { ...(props.element.style ?? {}), ...patch },
   });
@@ -69,7 +70,7 @@ function onFileChange(e: Event) {
     @update:open="emit('update:open', $event)"
   >
     <ConfigFieldGroup :title="t('panel.config.groupImageSource')">
-      <label class="block space-y-1">
+      <label class="block space-y-1" data-config-field="style.backgroundImageRemoteUrl">
         <div class="flex items-center gap-1">
           <span>{{ t("panel.config.imageUrlCss") }}</span>
           <ConfigHintIcon :label="t('panel.config.imageUrlHintLabel')">
@@ -78,20 +79,13 @@ function onFileChange(e: Event) {
         </div>
         <Input
           size="small"
+          class="font-mono text-[11px]"
           :value="element.style?.backgroundImageRemoteUrl ?? element.style?.backgroundImage ?? ''"
           :disabled="!isEditable"
-          placeholder="https://example.com/image.png"
-          @update:value="(v: string) => {
-            if (v.startsWith('url(')) {
-              patchStyle({ backgroundImage: v, backgroundImageRemoteUrl: undefined });
-            } else {
-              patchStyle({
-                backgroundImage: v ? `url('${v}')` : undefined,
-                backgroundImageRemoteUrl: v || undefined,
-              });
-            }
-          }"
+          :placeholder="t('panel.config.urlScopePlaceholder')"
+          @update:value="(v: string) => patchStyle(patchBackgroundImageFromInput(String(v ?? '')))"
         />
+        <p class="text-[10px] text-gray-500">{{ t("panel.config.urlScopeHint") }}</p>
       </label>
       <div class="flex items-center gap-2">
         <label

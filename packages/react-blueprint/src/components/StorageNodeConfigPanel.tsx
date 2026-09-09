@@ -26,6 +26,7 @@ import type { BlueprintGraphEdge, BlueprintGraphNode } from "../graph/document";
 import { resolveNodeStorageConfig } from "../graph/document";
 import { ConfigFieldLabel, ConfigSectionTitle } from "./ConfigHintIcon";
 import { ScopeTemplateAutocompleteHost } from "./ScopeTemplateAutocompleteHost";
+import { StorageKeyAutocomplete } from "./StorageKeyAutocomplete";
 
 export type StorageNodeConfigPanelProps = {
   node: BlueprintGraphNode;
@@ -90,10 +91,10 @@ export function StorageNodeConfigPanel({
   );
 
   const handleReadKeyChange = useCallback(
-    (e: ChangeEvent<HTMLInputElement>) => {
+    (key: string) => {
       onUpdateNode(
         node.id,
-        patchStorageConfig(node, { read: { key: e.target.value } })
+        patchStorageConfig(node, { read: { key } })
       );
     },
     [node, onUpdateNode]
@@ -115,10 +116,10 @@ export function StorageNodeConfigPanel({
   );
 
   const handleSetKeyChange = useCallback(
-    (e: ChangeEvent<HTMLInputElement>) => {
+    (key: string) => {
       onUpdateNode(
         node.id,
-        patchStorageConfig(node, { set: { key: e.target.value } })
+        patchStorageConfig(node, { set: { key } })
       );
     },
     [node, onUpdateNode]
@@ -132,6 +133,14 @@ export function StorageNodeConfigPanel({
       );
     },
     [node, onUpdateNode]
+  );
+
+  const setKeySuggestionStorages = useMemo(
+    () =>
+      storageConfig.set.storages.length > 0
+        ? storageConfig.set.storages
+        : (["session", "local"] as const),
+    [storageConfig.set.storages]
   );
 
   return (
@@ -174,12 +183,11 @@ export function StorageNodeConfigPanel({
         </label>
         <label className="block space-y-1">
           <ConfigFieldLabel label={t("blueprint.config.storageKey")} />
-          <Input
+          <StorageKeyAutocomplete
             value={storageConfig.read.key}
-            onChange={handleReadKeyChange}
-            spellCheck={false}
-            className="h-8 font-mono text-[11px]"
+            storages={storageConfig.read.storage}
             placeholder="key"
+            onChange={handleReadKeyChange}
           />
         </label>
       </div>
@@ -213,12 +221,11 @@ export function StorageNodeConfigPanel({
         </div>
         <label className="block space-y-1">
           <ConfigFieldLabel label={t("blueprint.config.storageKey")} />
-          <Input
+          <StorageKeyAutocomplete
             value={storageConfig.set.key}
-            onChange={handleSetKeyChange}
-            spellCheck={false}
-            className="h-8 font-mono text-[11px]"
+            storages={setKeySuggestionStorages}
             placeholder="key"
+            onChange={handleSetKeyChange}
           />
         </label>
         <label className="block space-y-1">

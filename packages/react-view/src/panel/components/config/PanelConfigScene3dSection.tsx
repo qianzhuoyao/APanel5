@@ -69,6 +69,7 @@ export function PanelConfigScene3dSection({
     [element.scene3d]
   );
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [modelUrlDraft, setModelUrlDraft] = useState("");
   const [nameQuery, setNameQuery] = useState<Record<string, string>>({});
   const [openTagKeys, setOpenTagKeys] = useState<Record<string, boolean>>({});
   const patch = useCallback(
@@ -94,6 +95,25 @@ export function PanelConfigScene3dSection({
       }
     }
     patch({ models: nextModels });
+  };
+
+  const handleAddModelByUrl = () => {
+    const url = modelUrlDraft.trim();
+    if (!url) return;
+    const fileName = url.split(/[/?#]/).filter(Boolean).pop() || "model";
+    patch({
+      models: [
+        ...config.models,
+        {
+          id: randomId("mdl"),
+          label: fileName.replace(/\.[^.]+$/, "") || fileName,
+          url,
+          fileName,
+          format: inferModelFormat(fileName),
+        },
+      ],
+    });
+    setModelUrlDraft("");
   };
 
   const updateModelAnimation = (
@@ -382,6 +402,30 @@ export function PanelConfigScene3dSection({
           }}
         />
       </div>
+      <label className="block space-y-1" data-config-field="scene3d.modelUrl">
+        <div className="text-[10px] text-muted-foreground">
+          {t("panel.config.scene3dModelUrl")}
+        </div>
+        <div className="flex gap-1.5">
+          <Input
+            value={modelUrlDraft}
+            onChange={(e) => setModelUrlDraft(e.target.value)}
+            placeholder={t("panel.config.urlScopePlaceholder")}
+            className="h-7 flex-1 font-mono text-[11px]"
+          />
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="h-7 shrink-0 text-[11px]"
+            disabled={!modelUrlDraft.trim()}
+            onClick={handleAddModelByUrl}
+          >
+            {t("common.add")}
+          </Button>
+        </div>
+        <p className="text-[10px] text-muted-foreground">{t("panel.config.urlScopeHint")}</p>
+      </label>
 
       {config.models.length === 0 ? (
         <div className="rounded border border-dashed border-border/70 px-2 py-3 text-[11px] text-muted-foreground">
@@ -432,6 +476,34 @@ export function PanelConfigScene3dSection({
                 </Button>
               </div>
               <div className="text-[10px] text-muted-foreground">{model.fileName ?? model.url.slice(0, 48)}</div>
+              <label className="block space-y-0.5">
+                <span className="text-[10px] text-muted-foreground">
+                  {t("panel.config.scene3dModelUrl")}
+                </span>
+                <Input
+                  value={model.url}
+                  data-config-field="scene3d.models.url"
+                  className="h-7 font-mono text-[10px]"
+                  placeholder={t("panel.config.urlScopePlaceholder")}
+                  onChange={(e) => {
+                    const nextUrl = e.target.value;
+                    const fileName =
+                      nextUrl.split(/[/?#]/).filter(Boolean).pop() || model.fileName || "model";
+                    patch({
+                      models: config.models.map((m) =>
+                        m.id === model.id
+                          ? {
+                              ...m,
+                              url: nextUrl,
+                              fileName,
+                              format: inferModelFormat(fileName),
+                            }
+                          : m
+                      ),
+                    });
+                  }}
+                />
+              </label>
               <div className="grid grid-cols-3 gap-1">
                 {(["x", "y", "z"] as const).map((axis, index) => (
                   <Input

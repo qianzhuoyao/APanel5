@@ -1,3 +1,8 @@
+import {
+  evaluateScopeTemplateInJson,
+  hasScopeTemplate,
+} from "./scope-template.js";
+
 export type JsonNodeConfig = {
   jsonString: string;
 };
@@ -28,8 +33,30 @@ export function validateJsonString(
   }
 }
 
-export function parseJsonConfig(config: JsonNodeConfig): unknown {
-  const result = validateJsonString(config.jsonString ?? "");
+/** Config-time check: allow unresolved `{scope...}` templates until runtime. */
+export function validateJsonStringAllowingScope(
+  jsonString: string
+):
+  | { ok: true; value: unknown; deferred?: false }
+  | { ok: true; deferred: true }
+  | { ok: false; error: string } {
+  if (hasScopeTemplate(jsonString ?? "")) {
+    return { ok: true, deferred: true };
+  }
+  const result = validateJsonString(jsonString);
+  if (!result.ok) return result;
+  return { ok: true, value: result.value };
+}
+
+export function parseJsonConfig(
+  config: JsonNodeConfig,
+  scope?: unknown
+): unknown {
+  let raw = config.jsonString ?? "";
+  if (scope !== undefined && hasScopeTemplate(raw)) {
+    raw = evaluateScopeTemplateInJson(raw, scope);
+  }
+  const result = validateJsonString(raw);
   if (!result.ok) {
     throw new Error(result.error);
   }

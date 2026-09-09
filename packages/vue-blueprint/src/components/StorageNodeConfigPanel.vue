@@ -19,6 +19,7 @@ import type { BlueprintGraphEdge, BlueprintGraphNode } from "../graph/document";
 import { resolveNodeStorageConfig } from "../graph/document";
 import ConfigHintIcon from "./ConfigHintIcon.vue";
 import ScopeTemplateAutocompleteHost from "./ScopeTemplateAutocompleteHost.vue";
+import StorageKeyAutocomplete from "./StorageKeyAutocomplete.vue";
 
 const { t } = useI18n();
 
@@ -112,6 +113,12 @@ function handleSetValueChange(value: string) {
     patchStorageConfig(props.node, { set: { value: String(value ?? "") } })
   );
 }
+
+const setKeySuggestionStorages = computed(() =>
+  storageConfig.value.set.storages.length > 0
+    ? storageConfig.value.set.storages
+    : (["session", "local"] as const)
+);
 </script>
 
 <template>
@@ -148,13 +155,11 @@ function handleSetValueChange(value: string) {
       </label>
       <label class="block space-y-1">
         <span class="text-muted-foreground">{{ t("blueprint.config.storageKey") }}</span>
-        <Input
-          size="small"
+        <StorageKeyAutocomplete
           :value="storageConfig.read.key"
-          spellcheck="false"
-          class="font-mono text-[11px]"
+          :storages="storageConfig.read.storage"
           placeholder="key"
-          @update:value="(v) => handleReadKeyChange(String(v ?? ''))"
+          @change="handleReadKeyChange"
         />
       </label>
     </div>
@@ -187,13 +192,11 @@ function handleSetValueChange(value: string) {
       </div>
       <label class="block space-y-1">
         <span class="text-muted-foreground">{{ t("blueprint.config.storageKey") }}</span>
-        <Input
-          size="small"
+        <StorageKeyAutocomplete
           :value="storageConfig.set.key"
-          spellcheck="false"
-          class="font-mono text-[11px]"
+          :storages="setKeySuggestionStorages"
           placeholder="key"
-          @update:value="(v) => handleSetKeyChange(String(v ?? ''))"
+          @change="handleSetKeyChange"
         />
       </label>
       <label class="block space-y-1">

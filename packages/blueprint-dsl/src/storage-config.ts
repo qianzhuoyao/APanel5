@@ -3,6 +3,7 @@ import {
   evaluateScopeTemplate,
   hasScopeTemplate,
   looksLikeJsonText,
+  stringifyScopeValue,
 } from "./scope-template.js";
 import { isWholeScopeExpression } from "./incoming-node-scope.js";
 
@@ -102,6 +103,22 @@ export function resolveStorageWriteValue(
   return raw;
 }
 
+/** Resolve a storage key that may contain `{scope...}` templates. */
+export function resolveStorageKey(key: string, scope: unknown): string {
+  const raw = key ?? "";
+  const trimmed = raw.trim();
+  if (!trimmed) return "";
+  if (isWholeScopeExpression(trimmed)) {
+    return stringifyScopeValue(
+      evaluateScopeExpression(trimmed.slice(1, -1), scope)
+    );
+  }
+  if (hasScopeTemplate(raw)) {
+    return evaluateScopeTemplate(raw, scope).trim();
+  }
+  return trimmed;
+}
+
 export function serializeStorageValue(value: unknown): string {
   if (value === undefined || value === null) return "";
   if (typeof value === "string") return value;
@@ -136,6 +153,51 @@ function getDefaultStorageAccessors(): StorageAccessors | null {
   }
 }
 
+type BrowserStorageBucket = {
+  length: number;
+  key(index: number): string | null;
+};
+
+function readBrowserStorageBucket(kind: StorageKind): BrowserStorageBucket | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return kind === "session" ? window.sessionStorage : window.localStorage;
+  } catch {
+    return null;
+  }
+}
+
+/** Enumerate keys currently present in sessionStorage / localStorage. */
+export function listBrowserStorageKeys(
+  kind: StorageKind | readonly StorageKind[]
+): string[] {
+  const kinds = uniqueStorageKinds(Array.isArray(kind) ? kind : [kind]);
+  const keys = new Set<string>();
+  for (const next of kinds) {
+    const storage = readBrowserStorageBucket(next);
+    if (!storage) continue;
+    try {
+      for (let i = 0; i < storage.length; i += 1) {
+        const key = storage.key(i);
+        if (typeof key === "string" && key) keys.add(key);
+      }
+    } catch {
+      // Ignore unavailable / quota / security errors per bucket.
+    }
+  }
+  return [...keys].sort((a, b) => a.localeCompare(b));
+}
+
+/** Empty query returns all keys; otherwise case-insensitive substring match. */
+export function filterStorageKeySuggestions(
+  keys: readonly string[],
+  query: string
+): string[] {
+  const q = query.trim().toLowerCase();
+  if (!q) return [...keys];
+  return keys.filter((key) => key.toLowerCase().includes(q));
+}
+
 function requireStorage(
   accessors: StorageAccessors | null,
   kind: StorageKind
@@ -163,7 +225,10 @@ export function executeStorageConfig(
   if (isStorageSetConfigured(normalized)) {
     const value = resolveStorageWriteValue(normalized.set.value, incomingScope);
     const serialized = serializeStorageValue(value);
-    const key = normalized.set.key.trim();
+    const key = resolveStorageKey(normalized.set.key, incomingScope);
+    if (!key) {
+      throw new Error("存储写入 key 解析为空");
+    }
     for (const kind of normalized.set.storages) {
       requireStorage(store, kind).setItem(key, serialized);
     }
@@ -173,9 +238,12 @@ export function executeStorageConfig(
     return null;
   }
 
+  const readKey = resolveStorageKey(normalized.read.key, incomingScope);
+  if (!readKey) {
+    return null;
+  }
+
   return deserializeStorageValue(
-    requireStorage(store, normalized.read.storage).getItem(
-      normalized.read.key.trim()
-    )
+    requireStorage(store, normalized.read.storage).getItem(readKey)
   );
 }

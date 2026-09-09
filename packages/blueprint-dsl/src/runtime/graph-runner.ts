@@ -1206,7 +1206,12 @@ export class BlueprintGraphRunner {
           ...DEFAULT_JSON_NODE_CONFIG,
           ...node.jsonConfig,
         };
-        const value = parseJsonConfig(config);
+        const incomingScope = runner.buildFetchIncomingScope(
+          token.nodeId,
+          "in",
+          input
+        );
+        const value = parseJsonConfig(config, incomingScope);
         io.setOutput("out", createTrueSignal(value));
       } catch (error) {
         io.setOutput(

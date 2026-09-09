@@ -10,6 +10,7 @@ import {
 } from "@arronqzy/ui";
 import type { PanelElement, PanelElementStyle } from "../../types";
 import { readFileAsDataUrl, runBusyTask } from "../../utils/async-work";
+import { patchBackgroundImageFromInput } from "../../utils/background-image-style";
 import { getPanelMessages } from "../../constants/messages";
 import { type ConfigSectionHelpers, type UpdateElement } from "./helpers";
 
@@ -88,14 +89,23 @@ export function PanelConfigStyleSections({
               {renderFieldGroup(
                 t("panel.config.groupBgLayout"),
                 <>
-                  <label className="block space-y-1">
+                  <label className="block space-y-1" data-config-field="style.backgroundImage">
                     <div>{t("panel.config.backgroundImage")}</div>
                     <Input
-                      value={selectedElement.style?.backgroundImage ?? ""}
-                      onChange={(e) => updateSelectedStyle({ backgroundImage: e.target.value || undefined })}
-                      placeholder='url("https://...") / linear-gradient(...)'
-                      className="h-7"
+                      value={
+                        selectedElement.style?.backgroundImageRemoteUrl ??
+                        selectedElement.style?.backgroundImage ??
+                        ""
+                      }
+                      onChange={(e) =>
+                        updateSelectedStyle(patchBackgroundImageFromInput(e.target.value))
+                      }
+                      placeholder={t("panel.config.urlScopePlaceholder")}
+                      className="h-7 font-mono text-[11px]"
                     />
+                    <p className="text-[10px] text-muted-foreground">
+                      {t("panel.config.urlScopeHint")}
+                    </p>
                   </label>
                   <div className="flex items-center gap-2">
                     <label className="inline-flex cursor-pointer items-center rounded border border-border px-2 py-1 text-[11px] hover:bg-accent">

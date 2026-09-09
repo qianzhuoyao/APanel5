@@ -61,9 +61,12 @@ import WorkspaceConfigSidebar from "./components/WorkspaceConfigSidebar.vue";
 import type { WorkspaceConfigFocus } from "./components/WorkspaceConfigSidebar.vue";
 import {
   clearViewElementScopes,
+  getViewElementScope,
   setViewElementScopes,
   useViewElementScope,
+  useViewScopeStoreVersion,
 } from "./scope/view-scope-store";
+import { resolvePanelElementScope } from "./utils/scope-template";
 import { useRafThrottledScroll } from "./hooks/useRafThrottledScroll";
 import { useI18n } from "@arronqzy/i18n/vue";
 import { getPanelMessages } from "./constants/messages";
@@ -191,6 +194,13 @@ const hasUnlockedSelection = computed(() =>
 const viewElementScope = useViewElementScope(
   computed(() => selectedElement.value?.id ?? null)
 );
+const scopeStoreVersion = useViewScopeStoreVersion();
+const scopedCanvasElements = computed(() => {
+  void scopeStoreVersion.value;
+  return elements.value.map((el) =>
+    resolvePanelElementScope(el, getViewElementScope(el.id))
+  );
+});
 
 function excludeSelectedNode(nodeId: string) {
   const nextIds = selectedIds.value.filter((id) => id !== nodeId);
@@ -831,7 +841,7 @@ onUnmounted(() => window.removeEventListener("keydown", onKeyDown));
               @scroll-change="onViewportScrollChange"
             >
               <ElementsLayer
-                :elements="elements"
+                :elements="scopedCanvasElements"
                 :all-elements="allElements"
                 :selected-ids="selectedIds"
                 :update-element="updateElement"

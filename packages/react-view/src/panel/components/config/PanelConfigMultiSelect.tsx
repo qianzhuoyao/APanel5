@@ -1113,12 +1113,18 @@ export function PanelConfigMultiSelect({
                       ) : null}
                       {el.materialType === "audio" ? (
                     <div className="grid grid-cols-2 gap-2">
-                      <label className="block space-y-1 col-span-2">
+                      <label className="block space-y-1 col-span-2" data-config-field="audioRemoteUrl">
                         <div>{t("panel.config.audioUrl")}</div>
                         <Input
-                          className="h-7"
+                          className="h-7 font-mono text-[11px]"
                           value={el.audioRemoteUrl ?? ""}
-                          onChange={(e) => updateElement(el.id, { audioRemoteUrl: e.target.value || undefined })}
+                          placeholder={t("panel.config.urlScopePlaceholder")}
+                          onChange={(e) =>
+                            updateElement(el.id, {
+                              audioRemoteUrl: e.target.value || undefined,
+                              audioSrc: e.target.value || el.audioSrc,
+                            })
+                          }
                         />
                       </label>
                       <label className="block space-y-1">
@@ -1156,12 +1162,18 @@ export function PanelConfigMultiSelect({
                     </div>
                       ) : null}
                       {el.materialType === "video" ? (
-                    <label className="block space-y-1">
+                    <label className="block space-y-1" data-config-field="videoRemoteUrl">
                       <div>{t("panel.config.videoUrl")}</div>
                       <Input
-                        className="h-7"
+                        className="h-7 font-mono text-[11px]"
                         value={el.videoRemoteUrl ?? ""}
-                        onChange={(e) => updateElement(el.id, { videoRemoteUrl: e.target.value || undefined })}
+                        placeholder={t("panel.config.urlScopePlaceholder")}
+                        onChange={(e) =>
+                          updateElement(el.id, {
+                            videoRemoteUrl: e.target.value || undefined,
+                            videoSrc: e.target.value || el.videoSrc,
+                          })
+                        }
                       />
                     </label>
                       ) : null}

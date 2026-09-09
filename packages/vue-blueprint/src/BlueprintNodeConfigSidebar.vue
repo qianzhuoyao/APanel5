@@ -383,6 +383,9 @@ function toggleEventType(eventType: ViewEventType, checked: boolean) {
       <JsonNodeConfigPanel
         v-if="configSource === 'json'"
         :node="node"
+        :graph-nodes="graphNodes"
+        :graph-edges="graphEdges"
+        :trace-entries="traceEntries"
         :on-update-node="onUpdateNode"
       />
       <StorageNodeConfigPanel

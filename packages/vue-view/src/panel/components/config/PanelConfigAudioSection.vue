@@ -140,18 +140,20 @@ function onPosterFileChange(e: Event) {
     @update:open="emit('update:open', $event)"
   >
     <ConfigFieldGroup :title="t('panel.config.groupAudioSource')">
-      <label class="block space-y-1">
+      <label class="block space-y-1" data-config-field="audioRemoteUrl">
         <div>{{ t("panel.config.audioUrl") }}</div>
         <Input
           size="small"
+          class="font-mono text-[11px]"
           :value="element.audioRemoteUrl ?? ''"
           :disabled="!isEditable"
-          placeholder="https://example.com/audio.mp3"
+          :placeholder="t('panel.config.urlScopePlaceholder')"
           @update:value="(v: string) => patch({
             audioRemoteUrl: v || undefined,
             audioSrc: v || element.audioSrc,
           })"
         />
+        <p class="text-[10px] text-gray-500">{{ t("panel.config.urlScopeHint") }}</p>
       </label>
       <div class="flex items-center gap-2">
         <label

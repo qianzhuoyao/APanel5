@@ -13,6 +13,7 @@ import {
   viewportWindowContentScale,
 } from "../utils/viewportPlacement";
 import { cssTextLineHeight, cssTextAlignStyle } from "../utils/panelElementDefaults";
+import { resolveBackgroundImageStyle } from "../utils/background-image-style";
 import { mergeScene3dConfig } from "@arronqzy/view-scene3d";
 import { Scene3dNodeContent } from "@arronqzy/view-scene3d/react";
 import {
@@ -660,7 +661,7 @@ function getNodeVisualStyle(element: PanelElement): React.CSSProperties {
   const style = element.style ?? {};
   return {
     backgroundColor: style.backgroundColor,
-    backgroundImage: style.backgroundImage,
+    backgroundImage: resolveBackgroundImageStyle(style),
     backgroundSize: style.backgroundSize,
     backgroundPosition: style.backgroundPosition,
     borderWidth: style.borderWidth,

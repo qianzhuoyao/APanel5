@@ -9,6 +9,7 @@ import {
   normalizeViewportOverflow,
   type ViewportOverflowMode,
 } from "../../utils/viewportPlacement";
+import { patchBackgroundImageFromInput } from "../../utils/background-image-style";
 
 const { t, locale } = useI18n();
 const props = defineProps<{
@@ -288,12 +289,17 @@ function setNodeCardExpanded(id: string, open: boolean) {
 
             <template v-if="el.materialType === 'audio'">
               <div class="grid grid-cols-2 gap-2">
-                <label class="col-span-2 block space-y-1">
+                <label class="col-span-2 block space-y-1" data-config-field="audioRemoteUrl">
                   <div>{{ t("panel.config.audioUrl") }}</div>
                   <Input
                     size="small"
+                    class="font-mono text-[11px]"
                     :value="el.audioRemoteUrl ?? ''"
-                    @update:value="(v: string) => updateElement(el.id, { audioRemoteUrl: v || undefined })"
+                    :placeholder="t('panel.config.urlScopePlaceholder')"
+                    @update:value="(v: string) => updateElement(el.id, {
+                      audioRemoteUrl: v || undefined,
+                      audioSrc: v || el.audioSrc,
+                    })"
                   />
                 </label>
                 <label class="block space-y-1">
@@ -313,12 +319,17 @@ function setNodeCardExpanded(id: string, open: boolean) {
             </template>
 
             <template v-if="el.materialType === 'video'">
-              <label class="block space-y-1">
+              <label class="block space-y-1" data-config-field="videoRemoteUrl">
                 <div>{{ t("panel.config.videoUrl") }}</div>
                 <Input
                   size="small"
+                  class="font-mono text-[11px]"
                   :value="el.videoRemoteUrl ?? ''"
-                  @update:value="(v: string) => updateElement(el.id, { videoRemoteUrl: v || undefined })"
+                  :placeholder="t('panel.config.urlScopePlaceholder')"
+                  @update:value="(v: string) => updateElement(el.id, {
+                    videoRemoteUrl: v || undefined,
+                    videoSrc: v || el.videoSrc,
+                  })"
                 />
               </label>
             </template>
@@ -422,19 +433,21 @@ function setNodeCardExpanded(id: string, open: boolean) {
             </template>
 
             <template v-if="el.materialType === 'image'">
-              <label class="block space-y-1">
+              <label class="block space-y-1" data-config-field="style.backgroundImageRemoteUrl">
                 <div>{{ t("panel.config.backgroundImageUrl") }}</div>
                 <Input
                   size="small"
+                  class="font-mono text-[11px]"
                   :value="el.style?.backgroundImageRemoteUrl ?? el.style?.backgroundImage ?? ''"
+                  :placeholder="t('panel.config.urlScopePlaceholder')"
                   @update:value="(v: string) => updateElement(el.id, {
                     style: {
                       ...(el.style ?? {}),
-                      backgroundImage: v.startsWith('url(') ? v : v ? `url('${v}')` : undefined,
-                      backgroundImageRemoteUrl: v.startsWith('url(') ? undefined : v || undefined,
+                      ...patchBackgroundImageFromInput(String(v ?? '')),
                     },
                   })"
                 />
+                <p class="text-[10px] text-gray-500">{{ t("panel.config.urlScopeHint") }}</p>
               </label>
               <label class="block space-y-1">
                 <div>{{ t("panel.config.objectFit") }}</div>

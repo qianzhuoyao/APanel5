@@ -4,6 +4,7 @@ import { ref } from "vue";
 import { Input, Select } from "ant-design-vue";
 import type { PanelElement, PanelElementStyle } from "../../types";
 import { readFileAsDataUrl, uploadFileToRemote } from "./shared";
+import { patchBackgroundImageFromInput } from "../../utils/background-image-style";
 import { getPanelMessages } from "../../constants/messages";
 import ConfigColorField from "./ConfigColorField.vue";
 import ConfigFieldGroup from "./ConfigFieldGroup.vue";
@@ -86,15 +87,17 @@ function onFileChange(e: Event) {
       collapsible
       :default-open="false"
     >
-      <label class="block space-y-1">
-        <div>{{ t("panel.scope.fieldStyleBackgroundImage") }}</div>
+      <label class="block space-y-1" data-config-field="style.backgroundImage">
+        <div>{{ t("panel.config.backgroundImage") }}</div>
         <Input
           size="small"
-          :value="element.style?.backgroundImage ?? ''"
+          class="font-mono text-[11px]"
+          :value="element.style?.backgroundImageRemoteUrl ?? element.style?.backgroundImage ?? ''"
           :disabled="!isEditable"
-          placeholder='url("https://...") / linear-gradient(...)'
-          @update:value="(v: string) => patchStyle({ backgroundImage: v || undefined })"
+          :placeholder="t('panel.config.urlScopePlaceholder')"
+          @update:value="(v: string) => patchStyle(patchBackgroundImageFromInput(String(v ?? '')))"
         />
+        <p class="text-[10px] text-gray-500">{{ t("panel.config.urlScopeHint") }}</p>
       </label>
       <div class="flex items-center gap-2">
         <label

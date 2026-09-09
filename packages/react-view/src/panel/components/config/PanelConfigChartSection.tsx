@@ -117,7 +117,7 @@ export function PanelConfigChartSection({
                   {renderFieldGroup(
                     t("panel.config.groupData"),
                     <>
-                      <label className="block space-y-1">
+                      <label className="block space-y-1" data-config-field="chart.labelsText">
                         <div>{t("panel.config.labelsCsv")}</div>
                         <Input
                           value={getChartLabelsDisplayText(selectedElement.chart)}
@@ -126,11 +126,15 @@ export function PanelConfigChartSection({
                               labelsText: e.target.value,
                             })
                           }
+                          placeholder={t("panel.config.labelsCsvPlaceholder")}
                           className="h-7"
                         />
+                        <p className="text-[10px] text-muted-foreground">
+                          {t("panel.config.scopeTemplateHint")}
+                        </p>
                       </label>
 
-                      <label className="block space-y-1">
+                      <label className="block space-y-1" data-config-field="chart.valuesText">
                         <div>{t("panel.config.valuesCsv")}</div>
                         <Input
                           value={getChartValuesDisplayText(selectedElement.chart)}
@@ -139,8 +143,12 @@ export function PanelConfigChartSection({
                               valuesText: e.target.value,
                             })
                           }
+                          placeholder={t("panel.config.valuesCsvPlaceholder")}
                           className="h-7"
                         />
+                        <p className="text-[10px] text-muted-foreground">
+                          {t("panel.config.scopeTemplateHint")}
+                        </p>
                       </label>
                     </>
                   )}

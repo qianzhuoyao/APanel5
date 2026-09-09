@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, reactive, useTemplateRef } from "vue";
+import { computed, reactive, ref, useTemplateRef } from "vue";
 import { useI18n } from "@arronqzy/i18n/vue";
 import { Button, Checkbox, Input, Select } from "ant-design-vue";
 import {
@@ -38,6 +38,7 @@ const props = defineProps<{
 const emit = defineEmits<{ "update:open": [value: boolean] }>();
 
 const fileInputRef = useTemplateRef<HTMLInputElement>("fileInputRef");
+const modelUrlDraft = ref("");
 const config = computed(() => mergeScene3dConfig(props.element.scene3d));
 type CameraAnimPreset = "orbit" | "pushIn" | "pullBack" | "truckLeft" | "craneUp";
 
@@ -65,6 +66,42 @@ async function handleUploadModels(files: FileList | null) {
     }
   }
   patch({ models: nextModels });
+}
+
+function handleAddModelByUrl() {
+  const url = modelUrlDraft.value.trim();
+  if (!url) return;
+  const fileName = url.split(/[/?#]/).filter(Boolean).pop() || "model";
+  patch({
+    models: [
+      ...config.value.models,
+      {
+        id: randomId("mdl"),
+        label: fileName.replace(/\.[^.]+$/, "") || fileName,
+        url,
+        fileName,
+        format: inferModelFormat(fileName),
+      },
+    ],
+  });
+  modelUrlDraft.value = "";
+}
+
+function updateModelUrl(modelId: string, nextUrl: string) {
+  const fileName =
+    nextUrl.split(/[/?#]/).filter(Boolean).pop() || "model";
+  patch({
+    models: config.value.models.map((m) =>
+      m.id === modelId
+        ? {
+            ...m,
+            url: nextUrl,
+            fileName,
+            format: inferModelFormat(fileName),
+          }
+        : m
+    ),
+  });
 }
 
 function updateModelAnimation(id: string, next: Partial<Scene3dModelAnimationRule>) {
@@ -336,6 +373,27 @@ function onTagHtmlInput(modelId: string, objectName: string, event: Event) {
           @change="(e) => { void handleUploadModels((e.target as HTMLInputElement).files); (e.target as HTMLInputElement).value = ''; }"
         />
       </div>
+      <label class="block space-y-1" data-config-field="scene3d.modelUrl">
+        <div class="text-[10px] text-gray-500">{{ t("panel.config.scene3dModelUrl") }}</div>
+        <div class="flex gap-1.5">
+          <Input
+            size="small"
+            class="font-mono text-[11px]"
+            :disabled="!isEditable"
+            :value="modelUrlDraft"
+            :placeholder="t('panel.config.urlScopePlaceholder')"
+            @update:value="(v: string) => (modelUrlDraft = String(v ?? ''))"
+          />
+          <Button
+            size="small"
+            :disabled="!isEditable || !modelUrlDraft.trim()"
+            @click="handleAddModelByUrl"
+          >
+            {{ t("common.add") }}
+          </Button>
+        </div>
+        <p class="text-[10px] text-gray-500">{{ t("panel.config.urlScopeHint") }}</p>
+      </label>
       <div v-if="config.models.length === 0" class="text-[11px] text-gray-500">
         {{ t("panel.config.scene3dNoModels") }}
       </div>
@@ -345,6 +403,15 @@ function onTagHtmlInput(modelId: string, objectName: string, event: Event) {
           :disabled="!isEditable"
           :value="model.label"
           @update:value="(v: string) => patch({ models: config.models.map((m) => m.id === model.id ? { ...m, label: v } : m) })"
+        />
+        <Input
+          size="small"
+          class="font-mono text-[10px]"
+          data-config-field="scene3d.models.url"
+          :disabled="!isEditable"
+          :value="model.url"
+          :placeholder="t('panel.config.urlScopePlaceholder')"
+          @update:value="(v: string) => updateModelUrl(model.id, String(v ?? ''))"
         />
         <div v-if="model.objectNames?.length" class="space-y-1">
           <details :open="model.objectNames.length <= 12">

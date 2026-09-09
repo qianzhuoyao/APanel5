@@ -110,6 +110,25 @@ export function PanelConfigTextSection({
                         });
                       }}
                     />
+                    <label className="block space-y-1">
+                      <div>{t("panel.config.textHtmlSource")}</div>
+                      <textarea
+                        data-config-field="textHtml"
+                        value={selectedElement.textHtml ?? ""}
+                        onChange={(e) =>
+                          updateSelectedText({
+                            textHtml: e.target.value || "<p><br/></p>",
+                          })
+                        }
+                        rows={4}
+                        spellCheck={false}
+                        placeholder={t("panel.config.textHtmlSourcePlaceholder")}
+                        className="w-full rounded border border-border bg-background px-2 py-1.5 font-mono text-[11px] leading-relaxed outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                      />
+                      <p className="text-[10px] text-muted-foreground">
+                        {t("panel.config.scopeTemplateHint")}
+                      </p>
+                    </label>
                   </>
                 )}
                 {renderFieldGroup(
