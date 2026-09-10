@@ -2,12 +2,19 @@
 import { computed, inject, ref, type ComputedRef } from "vue";
 import ConfigHintIcon from "../ConfigHintIcon.vue";
 
+export type ConfigExpandState = {
+  isExpanded: (key: string, defaultValue?: boolean) => boolean;
+  setExpanded: (key: string, next: boolean) => void;
+};
+
 const props = withDefaults(
   defineProps<{
     title: string;
     hint?: boolean;
     collapsible?: boolean;
     defaultOpen?: boolean;
+    /** Stable key for remembering expand state per view node */
+    groupKey?: string;
   }>(),
   { defaultOpen: true, collapsible: false }
 );
@@ -16,13 +23,30 @@ const hasSearch = inject<ComputedRef<boolean>>(
   "configHasSearch",
   computed(() => false)
 );
+const expandState = inject<ConfigExpandState | null>("configExpandState", null);
 
-const open = ref(props.defaultOpen);
-const isOpen = computed(() => !props.collapsible || hasSearch.value || open.value);
+const localOpen = ref(props.defaultOpen);
+const storageKey = computed(
+  () => props.groupKey?.trim() || `fg:${props.title}`
+);
+
+const isOpen = computed(() => {
+  if (!props.collapsible) return true;
+  if (hasSearch.value) return true;
+  if (expandState) {
+    return expandState.isExpanded(storageKey.value, props.defaultOpen);
+  }
+  return localOpen.value;
+});
 
 function toggle() {
   if (!props.collapsible || hasSearch.value) return;
-  open.value = !open.value;
+  const next = !isOpen.value;
+  if (expandState) {
+    expandState.setExpanded(storageKey.value, next);
+    return;
+  }
+  localOpen.value = next;
 }
 </script>
 

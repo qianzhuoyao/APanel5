@@ -186,6 +186,7 @@ function onPosterFileChange(e: Event) {
     </ConfigFieldGroup>
     <ConfigFieldGroup
       :title="t('panel.config.groupDisplayStyle')"
+      group-key="audioDisplayStyle"
       collapsible
       :default-open="false"
     >

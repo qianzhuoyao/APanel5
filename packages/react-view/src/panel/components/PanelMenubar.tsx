@@ -8,6 +8,9 @@ import {
   MenubarRadioGroup,
   MenubarRadioItem,
   MenubarSeparator,
+  MenubarSub,
+  MenubarSubContent,
+  MenubarSubTrigger,
   MenubarTrigger,
 } from "@arronqzy/ui";
 import type { Locale } from "@arronqzy/i18n";
@@ -37,6 +40,10 @@ export type PanelMenubarProps = {
   setLocale: (locale: Locale) => void;
   outputScale: boolean;
   setOutputScale: (value: boolean) => void;
+  /** 产品包名（可选，关于二级菜单不展示） */
+  packageName?: string | null;
+  /** 产品版本号，如 1.1.32 */
+  packageVersion?: string | null;
 };
 
 export function PanelMenubar({
@@ -64,13 +71,18 @@ export function PanelMenubar({
   setLocale,
   outputScale,
   setOutputScale,
+  packageVersion,
 }: PanelMenubarProps) {
+  const versionOnly =
+    packageVersion && packageVersion.trim()
+      ? t("panel.menubar.versionValue", { version: packageVersion.trim() })
+      : t("panel.menubar.versionUnavailable");
+
   return (
         <Menubar className="h-8 border-0 bg-transparent p-0 shadow-none">
           <MenubarMenu>
             <MenubarTrigger className="px-2 py-1 text-xs font-normal">{t("panel.menubar.file")}</MenubarTrigger>
             <MenubarContent className="z-[10100]">
-              {/* <MenubarItem onClick={handlePreviewLayer}>{t("panel.workspace.previewDocTitle")}</MenubarItem> */}
               <MenubarItem onClick={handleExport}>{t("panel.menubar.export")}</MenubarItem>
               <MenubarItem onClick={() => importInputRef.current?.click()}>{t("panel.menubar.import")}</MenubarItem>
             </MenubarContent>
@@ -113,7 +125,7 @@ export function PanelMenubar({
           </MenubarMenu>
           <MenubarMenu>
             <MenubarTrigger className="px-2 py-1 text-xs font-normal">{t("panel.menubar.settings")}</MenubarTrigger>
-            <MenubarContent className="z-[10100]">
+            <MenubarContent className="z-[10100] min-w-[180px]">
               <MenubarRadioGroup
                 value={panelFontSize}
                 onValueChange={(value) => setPanelFontSize(value as "sm" | "md" | "lg")}
@@ -141,6 +153,20 @@ export function PanelMenubar({
               >
                 {t("panel.menubar.outputScale")}
               </MenubarCheckboxItem>
+              <MenubarSeparator />
+              <MenubarSub>
+                <MenubarSubTrigger>{t("panel.menubar.about")}</MenubarSubTrigger>
+                <MenubarSubContent className="z-[10100] min-w-[100px]">
+                  <MenubarItem
+                    className="cursor-default select-text"
+                    onSelect={(e) => e.preventDefault()}
+                    data-abuilder-version={packageVersion ?? undefined}
+                    title={`${t("panel.menubar.versionLabel")} ${versionOnly}`}
+                  >
+                    {versionOnly}
+                  </MenubarItem>
+                </MenubarSubContent>
+              </MenubarSub>
             </MenubarContent>
           </MenubarMenu>
         </Menubar>

@@ -11,6 +11,7 @@ import {
 import { provideI18n } from "@arronqzy/i18n/vue";
 import { isLocale, LOCALE_STORAGE_KEY } from "@arronqzy/i18n";
 import type { AbuilderVueAppProps } from "./types";
+import { ABUILDER_VUE_PACKAGE_NAME, ABUILDER_VUE_VERSION } from "./version";
 
 const props = withDefaults(defineProps<AbuilderVueAppProps>(), {
   initialZoom: 1,
@@ -75,6 +76,8 @@ const antdLocale = computed(() =>
       :initial-zoom="props.initialZoom"
       :name-space="props.nameSpace"
       :initial-workspace="props.initialWorkspace"
+      :package-name="ABUILDER_VUE_PACKAGE_NAME"
+      :package-version="ABUILDER_VUE_VERSION"
     />
   </ConfigProvider>
 </template>

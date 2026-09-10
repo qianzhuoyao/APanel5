@@ -128,6 +128,10 @@ export const enUS = {
       outputScale: "Output scale",
       outputScaleHint:
         "On: fonts and content scale as the preview fills the screen. Off: blocks still fill the screen, but content stays original size to avoid distortion",
+      about: "About",
+      versionLabel: "Version",
+      versionValue: "{version}",
+      versionUnavailable: "Unknown",
       productName: "Product name",
       productNamePlaceholder: "Enter the current build product name",
       uploadTitleIcon: "Upload title icon",

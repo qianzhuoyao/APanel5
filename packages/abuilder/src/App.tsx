@@ -7,6 +7,7 @@ import {
   parseOnlinePreviewSearchParams,
 } from "@arronqzy/react-view";
 import type { WorkspaceProjectRecord } from "@arronqzy/react-view";
+import { ABUILDER_PACKAGE_NAME, ABUILDER_VERSION } from "./version";
 
 export type AbuilderAppProps = {
   className?: string;
@@ -117,6 +118,8 @@ export function App({
         locale={effectiveLocale}
         onLocaleChange={setLocaleState}
         nameSpace={nameSpace}
+        packageName={ABUILDER_PACKAGE_NAME}
+        packageVersion={ABUILDER_VERSION}
       />
     </ThemeProvider>
   );

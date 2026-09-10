@@ -62,8 +62,10 @@ const isSearchCollapsed = ref(false);
 const sidebarScrollRef = ref<HTMLElement | null>(null);
 const configScrollPosById = new Map<string, number>();
 const activeConfigScrollKey = ref<string | null>(null);
+const expandedSectionsById = new Map<string, Record<string, boolean>>();
+const activeExpandedKey = ref<string | null>(null);
 
-const expandedSections = ref<Record<string, boolean>>({
+const DEFAULT_EXPANDED_SECTIONS: Record<string, boolean> = {
   nodeInfo: true,
   styleBackground: false,
   styleBorder: false,
@@ -78,6 +80,10 @@ const expandedSections = ref<Record<string, boolean>>({
   reference: true,
   imageConfig: true,
   tableConfig: true,
+};
+
+const expandedSections = ref<Record<string, boolean>>({
+  ...DEFAULT_EXPANDED_SECTIONS,
 });
 
 const normalizedSearch = computed(() => configSearch.value.trim().toLowerCase());
@@ -118,12 +124,39 @@ watch(
     }
     activeConfigScrollKey.value = nextKey;
     void nextTick(() => restoreConfigScroll(nextKey));
+
+    if (prevKey && prevKey !== nextKey) {
+      expandedSectionsById.set(prevKey, { ...expandedSections.value });
+    }
+    activeExpandedKey.value = nextKey;
+    if (!nextKey) {
+      expandedSections.value = { ...DEFAULT_EXPANDED_SECTIONS };
+      return;
+    }
+    const saved = expandedSectionsById.get(nextKey);
+    if (saved) {
+      expandedSections.value = { ...saved };
+      return;
+    }
+    const initial = { ...DEFAULT_EXPANDED_SECTIONS };
+    expandedSectionsById.set(nextKey, initial);
+    expandedSections.value = initial;
   },
   { flush: "post" }
 );
 
 onMounted(() => {
   activeConfigScrollKey.value = configScrollKey.value;
+  activeExpandedKey.value = configScrollKey.value;
+  if (configScrollKey.value) {
+    const saved = expandedSectionsById.get(configScrollKey.value);
+    if (saved) expandedSections.value = { ...saved };
+    else {
+      const initial = { ...DEFAULT_EXPANDED_SECTIONS };
+      expandedSectionsById.set(configScrollKey.value, initial);
+      expandedSections.value = initial;
+    }
+  }
   const el = sidebarScrollRef.value;
   el?.addEventListener("scroll", onConfigSidebarScroll, { passive: true });
   restoreConfigScroll(configScrollKey.value);
@@ -171,13 +204,23 @@ const materialType = computed(() => props.selectedElement?.materialType ?? "");
 
 const forceOpenSections = computed(() => hasSearch.value);
 provide("configHasSearch", hasSearch);
+provide("configExpandState", {
+  isExpanded: (key: string, defaultValue = true) =>
+    expandedSections.value[key] ?? defaultValue,
+  setExpanded: (key: string, next: boolean) => {
+    setSectionExpanded(key, next);
+  },
+});
 
 function isSectionExpanded(key: string, defaultValue = true) {
   return expandedSections.value[key] ?? defaultValue;
 }
 
 function setSectionExpanded(key: string, next: boolean) {
-  expandedSections.value = { ...expandedSections.value, [key]: next };
+  const updated = { ...expandedSections.value, [key]: next };
+  expandedSections.value = updated;
+  const id = activeExpandedKey.value;
+  if (id) expandedSectionsById.set(id, updated);
 }
 
 function shouldShowSection(key: string, title: string, searchTerms: string[] = []) {
@@ -223,15 +266,6 @@ onMounted(() => {
 watch(isSearchCollapsed, (next) => {
   window.localStorage.setItem(SEARCH_COLLAPSE_STORAGE_KEY, next ? "1" : "0");
 });
-
-watch(
-  () => [props.selectedElement?.id, props.selectedElement?.materialType],
-  () => {
-    if (isChartElement.value) {
-      setSectionExpanded("chartBasic", true);
-    }
-  }
-);
 </script>
 
 <template>

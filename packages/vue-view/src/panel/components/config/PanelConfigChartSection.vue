@@ -238,6 +238,7 @@ function onOptionJsonChange(v: string) {
     </ConfigFieldGroup>
     <ConfigFieldGroup
       :title="t('panel.config.groupChartDisplayMore')"
+      group-key="chartDisplayMore"
       collapsible
       :default-open="false"
     >
@@ -308,6 +309,7 @@ function onOptionJsonChange(v: string) {
 
     <ConfigFieldGroup
       :title="t('panel.config.groupTooltip')"
+      group-key="chartTooltip"
       collapsible
       :default-open="false"
     >
@@ -369,6 +371,7 @@ function onOptionJsonChange(v: string) {
     <ConfigFieldGroup
       v-if="['bar', 'line', 'area', 'scatter'].includes(selectedChartType)"
       :title="t('panel.config.groupAxes')"
+      group-key="chartAxes"
       collapsible
       :default-open="false"
     >

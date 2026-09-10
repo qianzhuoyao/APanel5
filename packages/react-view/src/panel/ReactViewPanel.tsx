@@ -143,6 +143,10 @@ export type ReactViewPanelProps = {
    * 省略或空字符串保持历史全局库名。
    */
   nameSpace?: string | null;
+  /** 顶栏「设置 → 关于」展示的 npm 包名，如 @arronqzy/abuilder */
+  packageName?: string | null;
+  /** 顶栏「设置 → 关于」展示的包版本号 */
+  packageVersion?: string | null;
 };
 
 function ReactViewPanelInner({
@@ -150,6 +154,8 @@ function ReactViewPanelInner({
   className,
   initialWorkspace = null,
   nameSpace = null,
+  packageName = null,
+  packageVersion = null,
 }: ReactViewPanelProps) {
   const { t, locale, setLocale } = useI18n();
   const messages = useMemo(() => getPanelMessages(t), [t]);
@@ -1904,6 +1910,8 @@ function ReactViewPanelInner({
           setLocale={setLocale}
           outputScale={outputScale}
           setOutputScale={setOutputScale}
+          packageName={packageName}
+          packageVersion={packageVersion}
         />
         <WorkspaceProjectNav
           projects={workspaceProjects.projects}

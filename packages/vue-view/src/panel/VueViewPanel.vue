@@ -83,9 +83,25 @@ const props = withDefaults(
     initialZoom?: number;
     nameSpace?: string | null;
     initialWorkspace?: WorkspaceProjectRecord | null;
+    /** 顶栏「设置 → 关于」展示的 npm 包名 */
+    packageName?: string | null;
+    /** 顶栏「设置 → 关于」展示的包版本号 */
+    packageVersion?: string | null;
   }>(),
-  { initialZoom: 1, nameSpace: null, initialWorkspace: null }
+  {
+    initialZoom: 1,
+    nameSpace: null,
+    initialWorkspace: null,
+    packageName: null,
+    packageVersion: null,
+  }
 );
+
+const packageVersionText = computed(() => {
+  const version = (props.packageVersion ?? "").trim();
+  if (!version) return t("panel.menubar.versionUnavailable");
+  return t("panel.menubar.versionValue", { version });
+});
 
 const {
   elements,
@@ -756,7 +772,29 @@ onUnmounted(() => window.removeEventListener("keydown", onKeyDown));
         @delete-project="handleWorkspaceDeleteProject"
         @preview-project="openOnlinePreviewForProject"
       />
-            <Dropdown :trigger="['click']">
+      <Dropdown :trigger="['click']">
+        <Button type="text" class="!text-white">{{ t("panel.menubar.settings") }}</Button>
+        <template #overlay>
+          <Menu>
+            <Menu.ItemGroup :title="t('panel.theme.language')">
+              <Menu.Item :class="{ 'ant-menu-item-selected': locale === 'zh-CN' }" @click="setLocale('zh-CN')">{{ t("panel.theme.zhCN") }}</Menu.Item>
+              <Menu.Item :class="{ 'ant-menu-item-selected': locale === 'en-US' }" @click="setLocale('en-US')">{{ t("panel.theme.enUS") }}</Menu.Item>
+            </Menu.ItemGroup>
+            <Menu.Divider />
+            <Menu.SubMenu :title="t('panel.menubar.about')" key="about">
+              <Menu.Item
+                key="version"
+                disabled
+                class="!cursor-default !opacity-100"
+                :data-abuilder-version="props.packageVersion || undefined"
+              >
+                {{ packageVersionText }}
+              </Menu.Item>
+            </Menu.SubMenu>
+          </Menu>
+        </template>
+      </Dropdown>
+      <Dropdown :trigger="['click']">
         <Button type="text" class="!text-white">{{ t("panel.theme.language") }}</Button>
         <template #overlay>
           <Menu>

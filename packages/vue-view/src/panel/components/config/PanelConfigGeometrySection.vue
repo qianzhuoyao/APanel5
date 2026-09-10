@@ -140,6 +140,7 @@ function clearSketch() {
     </ConfigFieldGroup>
     <ConfigFieldGroup
       :title="t('panel.config.groupCanvasScript')"
+      group-key="geometryCanvasScript"
       collapsible
       :default-open="false"
     >
@@ -158,6 +159,7 @@ function clearSketch() {
     </ConfigFieldGroup>
     <ConfigFieldGroup
       :title="t('panel.config.groupSketchOverlay')"
+      group-key="geometrySketch"
       collapsible
       :default-open="false"
     >

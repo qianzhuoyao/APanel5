@@ -1,5 +1,6 @@
 export { default as App } from "./App.vue";
 export type { AbuilderVueAppProps, WorkspaceProjectRecord } from "./types";
+export { ABUILDER_VUE_PACKAGE_NAME, ABUILDER_VUE_VERSION } from "./version";
 export type { Locale } from "@arronqzy/i18n";
 
 export {

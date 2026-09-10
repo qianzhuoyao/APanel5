@@ -215,6 +215,7 @@ watch(() => [props.element.id, props.element.textHtml], syncEditorHtml);
     </ConfigFieldGroup>
     <ConfigFieldGroup
       :title="t('panel.config.groupInputAbility')"
+      group-key="textInputAbility"
       collapsible
       :default-open="false"
     >

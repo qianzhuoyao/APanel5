@@ -107,7 +107,7 @@ export function PanelConfigSidebar({
   const matchCountRef = useRef(0);
   const themedScrollbarClass =
     "scrollbar-thin [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-muted/40 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border/80 [&::-webkit-scrollbar-thumb]:hover:bg-border";
-  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+  const DEFAULT_EXPANDED_SECTIONS: Record<string, boolean> = {
     nodeInfo: true,
     styleBackground: false,
     styleBorder: false,
@@ -117,7 +117,14 @@ export function PanelConfigSidebar({
     chartAdvancedLayout: false,
     chartAdvancedAxisPointer: false,
     reference: true,
-  });
+  };
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>(
+    () => ({ ...DEFAULT_EXPANDED_SECTIONS })
+  );
+  const expandedSectionsByIdRef = useRef(new Map<string, Record<string, boolean>>());
+  const expandedSectionsRef = useRef(expandedSections);
+  expandedSectionsRef.current = expandedSections;
+  const activeExpandedKeyRef = useRef<string | null>(null);
 
   const isChartElement = !!selectedElement && CHART_TYPES.has(selectedElement.materialType ?? "");
   const selectedLayer = selectedElement
@@ -179,14 +186,27 @@ export function PanelConfigSidebar({
     el.scrollTop = top;
   }, [configScrollKey]);
 
-  useEffect(() => {
-    if (!selectedElement) return;
-    if (!CHART_TYPES.has(selectedElement.materialType ?? "")) return;
-    setExpandedSections((prev) => ({
-      ...prev,
-      chartBasic: true,
-    }));
-  }, [selectedElement?.id, selectedElement?.materialType]);
+  useLayoutEffect(() => {
+    const prevKey = activeExpandedKeyRef.current;
+    if (prevKey && prevKey !== configScrollKey) {
+      expandedSectionsByIdRef.current.set(prevKey, {
+        ...expandedSectionsRef.current,
+      });
+    }
+    activeExpandedKeyRef.current = configScrollKey;
+    if (!configScrollKey) {
+      setExpandedSections({ ...DEFAULT_EXPANDED_SECTIONS });
+      return;
+    }
+    const saved = expandedSectionsByIdRef.current.get(configScrollKey);
+    if (saved) {
+      setExpandedSections({ ...saved });
+      return;
+    }
+    const initial = { ...DEFAULT_EXPANDED_SECTIONS };
+    expandedSectionsByIdRef.current.set(configScrollKey, initial);
+    setExpandedSections(initial);
+  }, [configScrollKey]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -202,7 +222,12 @@ export function PanelConfigSidebar({
     expandedSections[key] ?? defaultValue;
 
   const setSectionExpanded = (key: string, next: boolean) => {
-    setExpandedSections((prev) => ({ ...prev, [key]: next }));
+    setExpandedSections((prev) => {
+      const updated = { ...prev, [key]: next };
+      const id = activeExpandedKeyRef.current;
+      if (id) expandedSectionsByIdRef.current.set(id, updated);
+      return updated;
+    });
   };
 
   useEffect(() => {
@@ -220,6 +245,8 @@ export function PanelConfigSidebar({
         next.geometryCanvasScript = true;
         next.geometrySketch = true;
         next.referenceCopyStrategy = true;
+        const id = activeExpandedKeyRef.current;
+        if (id) expandedSectionsByIdRef.current.set(id, next);
         return next;
       });
       window.requestAnimationFrame(() => {

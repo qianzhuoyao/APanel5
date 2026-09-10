@@ -101,6 +101,7 @@ function patch(patch: Partial<PanelElement>) {
     </div>
     <ConfigFieldGroup
       :title="t('panel.config.groupNodeMore')"
+      group-key="nodeMore"
       collapsible
       :default-open="false"
     >

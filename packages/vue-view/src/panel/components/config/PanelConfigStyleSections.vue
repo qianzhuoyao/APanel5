@@ -84,6 +84,7 @@ function onFileChange(e: Event) {
     </ConfigFieldGroup>
     <ConfigFieldGroup
       :title="t('panel.config.groupBgLayout')"
+      group-key="styleBgLayout"
       collapsible
       :default-open="false"
     >

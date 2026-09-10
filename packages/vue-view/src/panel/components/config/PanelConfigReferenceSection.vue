@@ -59,6 +59,7 @@ function patch(patch: Partial<PanelElement>) {
     </ConfigFieldGroup>
     <ConfigFieldGroup
       :title="t('panel.config.groupCopyStrategy')"
+      group-key="referenceCopyStrategy"
       collapsible
       :default-open="false"
     >

@@ -74,6 +74,7 @@ function patch(next: Partial<PanelElement>) {
     </ConfigFieldGroup>
     <ConfigFieldGroup
       :title="t('panel.config.groupCopyStrategy')"
+      group-key="viewportCopyStrategy"
       collapsible
       :default-open="false"
     >

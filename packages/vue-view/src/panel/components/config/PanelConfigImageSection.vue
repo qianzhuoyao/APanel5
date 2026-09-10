@@ -100,6 +100,7 @@ function onFileChange(e: Event) {
     </ConfigFieldGroup>
     <ConfigFieldGroup
       :title="t('panel.config.groupDisplayMode')"
+      group-key="imageDisplayMode"
       collapsible
       :default-open="false"
     >
