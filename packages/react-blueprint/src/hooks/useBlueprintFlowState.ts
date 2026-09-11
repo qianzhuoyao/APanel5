@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import { useI18n } from "@arronqzy/i18n/react";
+import { useI18nOptional as useI18n } from "@arronqzy/i18n/react";
 import { toast } from "@arronqzy/ui";
 import {
   addEdge,

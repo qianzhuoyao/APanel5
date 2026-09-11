@@ -14,6 +14,7 @@ import {
   type Node,
   type Edge,
 } from "@xyflow/react";
+import { EnsureI18nProvider } from "@arronqzy/i18n/react";
 import "@xyflow/react/dist/style.css";
 import "./blueprint.css";
 
@@ -241,33 +242,35 @@ export const BluePrintReactRoot: FC<BluePrintReactRootProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
 
   return (
-    <div
-      ref={containerRef}
-      data-workspace-region="blueprint"
-      className="bp-canvas h-full w-full bg-background text-foreground"
-      style={{
-        width: "100%",
-        height: "100%",
-        minHeight: 0,
-        ...style,
-      }}
-    >
-      <BlueprintCanvasProvider
-        onSelectNode={onSelectNode}
-        onAbortClock={onAbortClock}
+    <EnsureI18nProvider>
+      <div
+        ref={containerRef}
+        data-workspace-region="blueprint"
+        className="bp-canvas h-full w-full bg-background text-foreground"
+        style={{
+          width: "100%",
+          height: "100%",
+          minHeight: 0,
+          ...style,
+        }}
       >
-        <ReactFlowProvider>
-          <BlueprintCanvas
-            containerRef={containerRef}
-            graph={graph}
-            onGraphChange={onGraphChange}
-            selectedNodeId={selectedNodeId}
-            executionOverlay={executionOverlay}
-            onSelectNode={onSelectNode}
-            libraryNameById={libraryNameById}
-          />
-        </ReactFlowProvider>
-      </BlueprintCanvasProvider>
-    </div>
+        <BlueprintCanvasProvider
+          onSelectNode={onSelectNode}
+          onAbortClock={onAbortClock}
+        >
+          <ReactFlowProvider>
+            <BlueprintCanvas
+              containerRef={containerRef}
+              graph={graph}
+              onGraphChange={onGraphChange}
+              selectedNodeId={selectedNodeId}
+              executionOverlay={executionOverlay}
+              onSelectNode={onSelectNode}
+              libraryNameById={libraryNameById}
+            />
+          </ReactFlowProvider>
+        </BlueprintCanvasProvider>
+      </div>
+    </EnsureI18nProvider>
   );
 };

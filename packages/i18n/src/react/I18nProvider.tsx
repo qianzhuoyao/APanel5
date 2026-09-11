@@ -81,6 +81,25 @@ export function useI18n(): I18nContextValue {
   return ctx;
 }
 
+/** Whether the nearest I18nProvider from *this* package instance is present. */
+export function useHasI18nProvider(): boolean {
+  return useContext(I18nContext) != null;
+}
+
+/**
+ * If no I18nProvider from this package is above, wrap children with one.
+ * Fixes Umi/npm duplicate-`@arronqzy/i18n` cases where the panel Provider
+ * comes from a different copy than react-blueprint's `useI18n`.
+ */
+export function EnsureI18nProvider({
+  children,
+  ...providerProps
+}: I18nProviderProps) {
+  const hasProvider = useHasI18nProvider();
+  if (hasProvider) return <>{children}</>;
+  return <I18nProvider {...providerProps}>{children}</I18nProvider>;
+}
+
 /** Safe hook: returns zh-CN translator when outside provider (for utilities). */
 export function useI18nOptional(): I18nContextValue {
   const ctx = useContext(I18nContext);

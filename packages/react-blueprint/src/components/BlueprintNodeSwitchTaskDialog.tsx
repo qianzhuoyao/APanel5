@@ -7,7 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@arronqzy/ui";
-import { useI18n } from "@arronqzy/i18n/react";
+import { useI18nOptional as useI18n } from "@arronqzy/i18n/react";
 
 export type BlueprintNodeSwitchTaskDialogProps = {
   open: boolean;

@@ -9,7 +9,7 @@ import {
   resolveFetchScopeAutocompleteRoot,
   validateJsonStringAllowingScope,
 } from "@arronqzy/blueprint-dsl";
-import { useI18n } from "@arronqzy/i18n/react";
+import { useI18nOptional as useI18n } from "@arronqzy/i18n/react";
 
 import type { BlueprintGraphEdge, BlueprintGraphNode } from "../graph/document";
 import { resolveNodeJsonConfig } from "../graph/document";

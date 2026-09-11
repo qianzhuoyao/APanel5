@@ -16,7 +16,7 @@ import {
   type PageLifecyclePhase,
   type ViewEventType,
 } from "@arronqzy/blueprint-dsl";
-import { useI18n } from "@arronqzy/i18n/react";
+import { EnsureI18nProvider, useI18nOptional as useI18n } from "@arronqzy/i18n/react";
 
 import { FetchNodeConfigPanel } from "./components/FetchNodeConfigPanel";
 import { ClockNodeConfigPanel } from "./components/ClockNodeConfigPanel";
@@ -96,7 +96,15 @@ const ROLE_LABEL_KEYS: Record<BlueprintNodeRole, string> = {
   event: "blueprint.config.roleEvent",
 };
 
-export function BlueprintNodeConfigSidebar({
+export function BlueprintNodeConfigSidebar(props: BlueprintNodeConfigSidebarProps) {
+  return (
+    <EnsureI18nProvider>
+      <BlueprintNodeConfigSidebarInner {...props} />
+    </EnsureI18nProvider>
+  );
+}
+
+function BlueprintNodeConfigSidebarInner({
   node,
   graphNodes = [],
   graphEdges = [],

@@ -1,4 +1,4 @@
-import { useI18n } from "@arronqzy/i18n/react";
+import { useI18nOptional as useI18n } from "@arronqzy/i18n/react";
 import type { NodeProps } from "@xyflow/react";
 
 import { resolveBlueprintNodeTypeLabel } from "../graph/document";

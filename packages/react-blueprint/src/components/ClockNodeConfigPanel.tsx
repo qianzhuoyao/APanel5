@@ -1,7 +1,7 @@
 import { useCallback, type ChangeEvent } from "react";
 import { Input } from "@arronqzy/ui";
 import type { ClockNodeConfig } from "@arronqzy/blueprint-dsl";
-import { useI18n } from "@arronqzy/i18n/react";
+import { useI18nOptional as useI18n } from "@arronqzy/i18n/react";
 
 import type { BlueprintGraphNode } from "../graph/document";
 import { resolveNodeClockConfig } from "../graph/document";

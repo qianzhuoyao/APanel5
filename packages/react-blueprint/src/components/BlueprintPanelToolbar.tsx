@@ -18,7 +18,7 @@ import {
 import type { BlueprintLibraryListItem } from "../library/types";
 import type { LifecycleNodeOption } from "../hooks/useBlueprintDebugSession";
 import { type PageLifecyclePhase } from "@arronqzy/blueprint-dsl";
-import { useI18n } from "@arronqzy/i18n/react";
+import { EnsureI18nProvider, useI18nOptional as useI18n } from "@arronqzy/i18n/react";
 import { getLifecyclePhaseLabel } from "../graph/document";
 
 export type BlueprintRenameDialogProps = {
@@ -393,7 +393,15 @@ function LibraryRow({
   );
 }
 
-export function BlueprintPanelToolbar({
+export function BlueprintPanelToolbar(props: BlueprintPanelToolbarProps) {
+  return (
+    <EnsureI18nProvider>
+      <BlueprintPanelToolbarInner {...props} />
+    </EnsureI18nProvider>
+  );
+}
+
+function BlueprintPanelToolbarInner({
   items,
   activeId,
   currentBlueprintLabel,

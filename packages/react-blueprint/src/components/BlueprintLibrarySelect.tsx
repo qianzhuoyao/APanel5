@@ -7,7 +7,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@arronqzy/ui";
-import { useI18n } from "@arronqzy/i18n/react";
+import { useI18nOptional as useI18n } from "@arronqzy/i18n/react";
 
 import type { BlueprintLibraryListItem } from "../library/types";
 

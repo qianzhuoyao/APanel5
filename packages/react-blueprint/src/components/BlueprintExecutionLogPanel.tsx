@@ -20,7 +20,7 @@ import {
     type ExecutionTraceEntry,
   type PageLifecyclePhase,
 } from "@arronqzy/blueprint-dsl";
-import { useI18n } from "@arronqzy/i18n/react";
+import { EnsureI18nProvider, useI18nOptional as useI18n } from "@arronqzy/i18n/react";
 import { getLifecyclePhaseLabel } from "../graph/document";
 
 import type { ExecutionLogSettings } from "../library/execution-log-settings";
@@ -140,7 +140,15 @@ export type BlueprintExecutionLogPanelProps = {
   lifecyclePhase?: string;
 };
 
-export function BlueprintExecutionLogPanel({
+export function BlueprintExecutionLogPanel(props: BlueprintExecutionLogPanelProps) {
+  return (
+    <EnsureI18nProvider>
+      <BlueprintExecutionLogPanelInner {...props} />
+    </EnsureI18nProvider>
+  );
+}
+
+function BlueprintExecutionLogPanelInner({
   entries,
   settings,
   onUpdateSettings,

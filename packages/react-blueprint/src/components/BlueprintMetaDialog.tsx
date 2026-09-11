@@ -11,7 +11,7 @@ import {
   Label,
   Textarea,
 } from "@arronqzy/ui";
-import { useI18n } from "@arronqzy/i18n/react";
+import { useI18nOptional as useI18n } from "@arronqzy/i18n/react";
 
 import type { BlueprintMetaDraft } from "../library/types";
 

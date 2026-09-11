@@ -45,7 +45,7 @@ import {
   useFetchDebugTask,
   useSwaggerLoadTask,
 } from "../fetch-config-task-store";
-import { useI18n } from "@arronqzy/i18n/react";
+import { useI18nOptional as useI18n } from "@arronqzy/i18n/react";
 
 import { ConfigFieldLabel, ConfigHintIcon, ConfigSectionTitle } from "./ConfigHintIcon";
 import { FetchUrlAutocomplete } from "./FetchUrlAutocomplete";

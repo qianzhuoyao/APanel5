@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { useI18n } from "@arronqzy/i18n/react";
+import { useI18nOptional as useI18n } from "@arronqzy/i18n/react";
 import {
   Tooltip,
   TooltipContent,

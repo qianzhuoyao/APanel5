@@ -20,7 +20,7 @@ import {
   resolveFetchScopeAutocompleteRoot,
   uniqueStorageKinds,
 } from "@arronqzy/blueprint-dsl";
-import { useI18n } from "@arronqzy/i18n/react";
+import { useI18nOptional as useI18n } from "@arronqzy/i18n/react";
 
 import type { BlueprintGraphEdge, BlueprintGraphNode } from "../graph/document";
 import { resolveNodeStorageConfig } from "../graph/document";
