@@ -1,15 +1,8 @@
 # @arronqzy/react-rx-store
 
-为 `@arronqzy/rx-store` 提供的 **React Hooks** 封装，用于在画布/编辑器中精准订阅节点与选中状态。
+`@arronqzy/rx-store` 的 React Hooks。按节点 id 订阅，拖一个节点时不要让整棵树重渲染。
 
-## 功能概览
-
-- **`useStore`**：订阅全局 store 状态
-- **`useNode`**：按节点 id 订阅单个节点
-- **`useSelectedNodes` / `useSelectedNodesFull`**：订阅当前选中节点
-- **`useSelectedPositions`**：订阅选中节点位置（适合高频拖拽场景）
-
-基于 `use-sync-external-store`，与 RxJS 路径订阅配合，减少不必要的重渲染。
+更新仍走 `store.update` / `store.updateById` / `store.undo`，本包只负责读。
 
 ## 安装
 
@@ -17,11 +10,12 @@
 pnpm add @arronqzy/react-rx-store @arronqzy/rx-store react
 ```
 
-## 使用
+React 18+。
+
+## 用法
 
 ```tsx
 import { useNode, useStore } from "@arronqzy/react-rx-store";
-import { store } from "@arronqzy/rx-store";
 
 function NodeLabel({ id }: { id: string }) {
   const node = useNode(id);
@@ -30,17 +24,19 @@ function NodeLabel({ id }: { id: string }) {
 
 function SelectionCount() {
   const state = useStore();
-  const count = state.selectedIds?.length ?? 0;
-  return <span>已选 {count} 个</span>;
+  return <span>已选 {state.selectedIds?.length ?? 0} 个</span>;
 }
 ```
 
-更新状态仍通过 `store.update` / `store.undo` 等 API（见 `@arronqzy/rx-store`）。
+| Hook | 订阅什么 |
+|------|----------|
+| `useStore` | 整份或选择器切出的状态 |
+| `useNode(id)` | 单个节点 |
+| `useSelectedNodes` | 当前选中节点 |
+| `useSelectedNodesFull` | 选中节点的完整对象 |
+| `useSelectedPositions` | 选中节点位置，给拖拽用 |
 
-## 依赖关系
-
-- `@arronqzy/rx-store` — 核心状态引擎
-- `react` >= 18（peer）
+实现基于 `use-sync-external-store`，和 store 的路径订阅配合。不要在组件里自己 `store.select().subscribe` 再 `setState`，容易和批量更新打架。
 
 ## 许可证
 

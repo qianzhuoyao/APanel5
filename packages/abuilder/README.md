@@ -1,28 +1,25 @@
 # @arronqzy/abuilder
 
-Abuilder **一站式可视化编辑器** npm 包。安装后在 React 应用中引入 `App` 即可渲染完整应用（视图画布 + 蓝图 + 工作区 + 在线预览）。
+React 一站式编辑器。安装后渲染 `<App />`，就是完整的 Abuilder：物料画布、蓝图、工作区、在线预览和浏览器内 AI 助手。
 
-## 功能概览
+![安装后直接得到的编辑器](https://github.com/qianzhuoyao/APanel5/raw/v5/docs/guide-assets/live-zh/01-overview.png)
 
-- **视图编辑**：拖拽物料、图层、缩放平移、多选、图表与 Scope 配置
-- **蓝图编辑**：节点连线、调试执行、蓝图库与执行日志
-- **工作区**：多项目、IndexedDB 持久化、导入导出
-- **在线预览**：独立预览页，支持 URL 参数或外部工作区数据
-- **宿主集成**：事件订阅、预览快照、外部工作区加载与预览/编辑模式切换
+当前版本见本包 `package.json`（设置菜单「关于」里显示的就是这个版本号）。
 
 ## 安装
 
 ```bash
-npm install @arronqzy/abuilder react react-dom
-# 或
 pnpm add @arronqzy/abuilder react react-dom
 ```
 
-### Vite 宿主项目
+需要 React 18+。容器建议撑满高度（样式里已经处理 `#root` / `#app`）。
 
-若你用 Vite 打包集成了 `<App />` 的应用，请在 `vite.config.ts` 注册 WebLLM 插件（避免 `@mlc-ai/web-llm` 触发 `stripLiteral` 栈溢出）：
+### Vite 必须加插件
+
+宿主用 Vite 打包 `<App />` 时，在 `vite.config.ts` 注册：
 
 ```ts
+import { defineConfig } from "vite";
 import { webllmAssistant } from "@arronqzy/abuilder/vite";
 
 export default defineConfig({
@@ -30,67 +27,78 @@ export default defineConfig({
 });
 ```
 
-请从 `@arronqzy/abuilder/vite` 导入，不要从 `@arronqzy/webllm-assistant/vite` 导入——pnpm 下后者不是 easycode 的直接依赖，配置加载阶段会 `ERR_MODULE_NOT_FOUND`。
+从 `@arronqzy/abuilder/vite` 导入，不要从 `@arronqzy/webllm-assistant/vite` 导入。pnpm 下后者常常不是宿主的直接依赖，配置加载阶段会 `ERR_MODULE_NOT_FOUND`。
 
-## 使用
+不加这个插件，Vite 5 转换 `@mlc-ai/web-llm` 时会在 `stripLiteral` 里栈溢出。Webpack / Umi **不要**导入这个 vite 插件，也不要写 `@mlc-ai/web-llm?url`。
+
+## 最小用法
 
 ```tsx
 import { createRoot } from "react-dom/client";
 import { App } from "@arronqzy/abuilder";
 import "@arronqzy/abuilder/styles.css";
 
-createRoot(document.getElementById("root")!).render(<App />);
+createRoot(document.getElementById("root")!).render(<App locale="zh-CN" />);
 ```
 
-### App 参数
+用户打开后会看到：
 
-| 参数 | 说明 | 默认值 |
-|------|------|--------|
-| `className` | 编辑面板根节点 class | — |
-| `initialZoom` | 初始画布缩放 | `1` |
-| `defaultTheme` | 编辑器主题 `"dark"` / `"light"` | `"dark"` |
-| `locale` | 界面语言 `"zh-CN"` / `"en-US"`；省略则按 localStorage / 浏览器语言 | — |
-| `nameSpace` | 隔离 IndexedDB / 缓存；同一页面多个 App 传入不同值 | — |
-| `previewSearch` | 在线预览 URL 查询串；含 `?preview=online&projectId=...` 时进入预览 | `window.location.search` |
-| `preview` | `true` 为预览页，`false` 为编辑面板 | `false` |
-| `initialWorkspace` | 完整工作区数据；空则首次渲染空白，不会自动打开 IndexedDB 记录 | — |
+- 顶栏：文件、编辑、视图、蓝图、设置、创建/保存工作区、AI 助手
+- 左侧：物料（图表、文本、表格、几何、三维、媒体）和节点树
+- 中间：无限画布，带标尺、缩放、多选
+- 右侧：选中节点的配置；没选中时是空状态
+- 底部：图层
+
+打开蓝图后上下分屏：
+
+![视图在上、蓝图在下](https://github.com/qianzhuoyao/APanel5/raw/v5/docs/guide-assets/live-zh/40-blueprint-open.png)
+
+## App 参数
+
+| 参数 | 说明 | 默认 |
+|------|------|------|
+| `className` | 根节点 class | — |
+| `initialZoom` | 初始缩放 | `1` |
+| `defaultTheme` | `"dark"` / `"light"` | `"dark"` |
+| `locale` | `"zh-CN"` / `"en-US"`；省略则 localStorage → 浏览器 → 中文 | — |
+| `nameSpace` | 隔离 IndexedDB；同一页多个 App 必须不同 | — |
+| `previewSearch` | 预览 URL 查询串 | `window.location.search` |
+| `preview` | `true` 只渲染预览页 | `false` |
+| `initialWorkspace` | 完整工作区。不传则空白画布，**不会**自动打开 IndexedDB 里已有项目 | — |
 
 ```tsx
 <App
   className="h-screen"
   defaultTheme="dark"
-  initialZoom={1}
   locale="zh-CN"
-  preview={false}
+  nameSpace="my-app"
   initialWorkspace={savedWorkspace}
 />
 ```
 
-编辑器顶栏「设置 → 语言」可运行时切换中文 / English（写入 `localStorage` key `abuilder.locale`）。
+顶栏「设置」可切换主题和语言（写入 `abuilder.locale`）。「关于」只显示版本号。
 
-### 编辑 / 预览模式
+## 编辑和预览
 
 ```tsx
-// 编辑模式（默认）：加载工作区到面板
 <App key={workspace.id} initialWorkspace={workspace} />
-
-// 预览模式：根据工作区数据直接渲染预览页
 <App key={workspace.id} preview initialWorkspace={workspace} />
 ```
 
-切换工作区时建议配合 `key`，确保完整重新加载。
+切换工作区时带上 `key`，避免旧画布状态残留。
 
-### 在线预览（URL）
-
-URL 带 `?preview=online&projectId=<工作区ID>` 时自动进入预览模式（从 IndexedDB 加载）。若编辑器传了 `nameSpace`，预览 URL 会带 `ns=`，预览页用同一命名空间读库：
+URL 带 `?preview=online&projectId=<id>` 时进入预览，从 IndexedDB 读。编辑器传了 `nameSpace` 时，预览 URL 会带 `ns=`，预览页用同一命名空间：
 
 ```tsx
 <App previewSearch="?preview=online&projectId=xxx&ns=my-app" />
 ```
 
-同一页面挂多个编辑器时，给每个 App 不同的 `nameSpace`，工作区 / 蓝图库 / 预览缓存不会互相覆盖。不传或空字符串保持原来的全局库名。
+## 把工作区交给自己的后端
 
-### 外部持久化完整流程
+IndexedDB 是编辑器自己的浏览器缓存，**不导出** list / get / put / delete。宿主应：
+
+1. 订阅创建和同步事件，把回调里的完整对象写到自己的存储。
+2. 下次打开时校验 JSON，再交给 `initialWorkspace`。
 
 ```tsx
 import { useEffect, useState } from "react";
@@ -98,6 +106,7 @@ import {
   App,
   addEventSubscription,
   AbuilderEvents,
+  parseWorkspaceData,
   type WorkspaceData,
 } from "@arronqzy/abuilder";
 import "@arronqzy/abuilder/styles.css";
@@ -117,73 +126,40 @@ function HostApp() {
   if (!workspace) return <App />;
 
   return (
-    <>
-      <button onClick={() => setIsPreview(false)}>编辑</button>
-      <button onClick={() => setIsPreview(true)}>预览</button>
-      <App
-        key={`${workspace.id}-${workspace.updatedAt}-${isPreview}`}
-        preview={isPreview}
-        initialWorkspace={workspace}
-      />
-    </>
+    <App
+      key={`${workspace.id}-${workspace.updatedAt}-${isPreview}`}
+      preview={isPreview}
+      initialWorkspace={workspace}
+    />
   );
 }
 ```
 
-### 工作区事件订阅
+| 事件 | 常量 | 何时触发 |
+|------|------|----------|
+| `workspace:add` | `AbuilderEvents.workspaceAdd` | 创建工作区成功 |
+| `workspace:sync` | `AbuilderEvents.workspaceSync` | 同步工作区成功 |
 
-```ts
-import {
-  addEventSubscription,
-  AbuilderEvents,
-  type WorkspaceData,
-} from "@arronqzy/abuilder";
-
-const addSub = addEventSubscription(
-  AbuilderEvents.workspaceAdd,
-  async (workspace: WorkspaceData) => {
-    await saveToServer(workspace);
-  }
-);
-
-const syncSub = addEventSubscription(
-  AbuilderEvents.workspaceSync,
-  async (workspace) => {
-    await saveToServer(workspace);
-  }
-);
-
-addSub.unsubscribe();
-syncSub.unsubscribe();
-```
-
-| 事件 | 常量 | 触发时机 | 回调参数 |
-|------|------|----------|----------|
-| `workspace:add` | `AbuilderEvents.workspaceAdd` | 创建工作区成功 | `WorkspaceData` |
-| `workspace:sync` | `AbuilderEvents.workspaceSync` | 同步工作区成功 | `WorkspaceData` |
-
-`WorkspaceData`（即 `WorkspaceProjectRecord`）字段：
+回调参数是完整 `WorkspaceData`（即 `WorkspaceProjectRecord`）：
 
 | 字段 | 说明 |
 |------|------|
 | `id` | 工作区 ID |
-| `name` | 工作区名称 |
+| `name` | 名称 |
 | `createdAt` / `updatedAt` | 时间戳 |
-| `panelState` | 面板完整状态（rx-store） |
+| `panelState` | 画布完整状态 |
 | `blueprintDocument` | 蓝图文档 |
-| `blueprintMeta` | 蓝图元信息（名称、备注） |
-| `productName` | 产品名称 |
+| `blueprintMeta` | 蓝图名称、备注 |
+| `productName` | 产物名称 |
 | `titleIconDataUrl` | 标题图标（可选） |
 
-也可使用事件名字符串订阅，例如 `addEventSubscription("workspace:add", callback)`。
+也可以用字符串：`addEventSubscription("workspace:add", callback)`。
 
-### 校验 / 解析工作区数据
-
-把后端或文件里的 JSON 交给 `App` 之前：
+## 校验和空工作区
 
 - `validate*`：只回答能不能用，不改数据。
-- `parseWorkspaceData`：校验通过后补齐 `id` / 时间戳 / 空字段，返回的 `value` 可直接作为 `initialWorkspace`。
-- `createEmptyWorkspace`：构造一份形状正确的空工作区，不必自己猜字段。
+- `parseWorkspaceData`：通过后补齐 `id`、时间戳和空字段，`value` 可直接当 `initialWorkspace`。
+- `createEmptyWorkspace`：一份形状正确的空白工作区。
 
 ```ts
 import {
@@ -195,25 +171,22 @@ import {
   createWorkspaceProjectId,
 } from "@arronqzy/abuilder";
 
-validateViewData(workspace.panelState); // { ok: true } 或 { ok: false, error: "invalid-view-data" }
-validateBlueprintData(workspace.blueprintDocument);
-validateWorkspaceData(workspace); // 同时检查视图 + 蓝图，结果里带 `view` / `blueprint`
-
 const parsed = parseWorkspaceData(jsonFromBackend);
 if (parsed.ok && parsed.value) {
   // <App initialWorkspace={parsed.value} />
 }
 
-const blank = createEmptyWorkspace({ name: "未命名", id: createWorkspaceProjectId() });
+validateWorkspaceData(workspace); // { ok, view, blueprint }
+createEmptyWorkspace({ name: "未命名", id: createWorkspaceProjectId() });
 ```
 
-也可把完整工作区对象传给 `validateViewData` / `parseViewData`（读 `panelState`）和 `validateBlueprintData` / `parseBlueprintData`（读 `blueprintDocument`）。只校验视图或只校验蓝图时用这两套，不要用 `parseWorkspaceData`（它要求两边都合法）。
+只校验视图用 `validateViewData` / `parseViewData`（读 `panelState`）。只校验蓝图用 `validateBlueprintData` / `parseBlueprintData`（读 `blueprintDocument`）。两边都要合法时才用 `parseWorkspaceData`。
 
-`initialWorkspace` 为空（不传 / `null`）时，编辑器首次渲染空画布和空蓝图，**不会**自动选中 IndexedDB 里的第一条工作区。侧栏仍可列出已保存项目，需用户手动打开。传入的工作区会按这份数据完整显示。
+`initialWorkspace` 为空时，首次是空画布和空蓝图。侧栏仍可列出已保存项目，但要用户手动打开。
 
-IndexedDB 的 list / get / put / delete **不对外导出**。那是编辑器自己的浏览器缓存，和宿主后端双写会打架。宿主应订阅 `workspace:add` / `workspace:sync` 写入自己的存储，再用 `parseWorkspaceData` + `initialWorkspace` 灌回来。同一页多个编辑器用 `nameSpace` 隔离这份缓存。
+## 预览缩略图
 
-### 获取预览快照
+画布已经渲染且有内容时：
 
 ```ts
 import { getPreviewSnapshot } from "@arronqzy/abuilder";
@@ -224,21 +197,20 @@ const thumbnail = await getPreviewSnapshot({
   mimeType: "image/jpeg",
   quality: 0.85,
 });
-// 返回 "data:image/jpeg;base64,..."
 ```
 
-| 参数 | 说明 | 默认值 |
-|------|------|--------|
-| `maxWidth` / `maxHeight` | 等比缩放上限 | 不限制 |
+| 参数 | 说明 | 默认 |
+|------|------|------|
+| `maxWidth` / `maxHeight` | 等比上限 | 不限制 |
 | `mimeType` | `"image/png"` 或 `"image/jpeg"` | `"image/png"` |
-| `quality` | JPEG 质量 0–1 | `0.92` |
+| `quality` | JPEG 0–1 | `0.92` |
 | `backgroundColor` | 背景色 | `"#ffffff"` |
 
-需在 `App` / `ReactViewPanel` 或在线预览页已渲染且画布有内容时调用。Vue 包 `@arronqzy/abuilder-vue` **没有**对等实现，不要从那边找同名导出。
+Vue 包没有这个函数。
 
-### 高级导出
+## 还导出什么
 
-除 `App` 外，也可单独使用底层组件：
+一般宿主只用 `App`。需要拆开时：
 
 ```tsx
 import {
@@ -249,46 +221,24 @@ import {
   getPreviewSnapshot,
   parseWorkspaceData,
   createEmptyWorkspace,
-  createWorkspaceProjectId,
-} from "@arronqzy/abuilder";
-
-import type {
-  WorkspaceData,
-  WorkspaceProjectRecord,
-  AbuilderEventName,
-  GetPreviewSnapshotOptions,
-  ParseCheckResult,
-  WorkspaceParseCheckResult,
 } from "@arronqzy/abuilder";
 ```
 
-## Monorepo 包结构
+类型：`WorkspaceData`、`WorkspaceProjectRecord`、`AbuilderEventName`、`GetPreviewSnapshotOptions`、`ParseCheckResult`、`WorkspaceParseCheckResult`。
 
-| 包 | 职责 |
-|----|------|
-| `@arronqzy/abuilder` | 聚合入口（本包） |
-| `@arronqzy/i18n` | 共享中英文本 |
-| `@arronqzy/react-view` | 视图画布与工作区 |
-| `@arronqzy/react-blueprint` | 蓝图编辑器 UI |
-| `@arronqzy/blueprint-dsl` | 蓝图 DSL 与运行时 |
-| `@arronqzy/rx-store` | 画布状态与 Undo/Redo |
-| `@arronqzy/ui` | 共享 UI 组件 |
+## 本仓库里怎么预览
 
-## 宿主应用要求
+```bash
+pnpm -C apps/web dev
+```
 
-- React 18+
-- 构建工具需支持 CSS 导入（Vite / Webpack 5 等）
-- 根节点容器建议 `height: 100%`（样式已包含 `#root` / `#app` 规则）
-
-本地开发时若样式缺失，需先构建 CSS：
+`http://127.0.0.1:31011`。样式缺失时：
 
 ```bash
 pnpm -C packages/ui run build:css
 pnpm -C packages/react-view run build:css
 pnpm -C packages/abuilder run build:css
 ```
-
-`apps/web` 的 `pnpm dev` 会通过 `predev` 自动执行上述步骤。
 
 ## 许可证
 

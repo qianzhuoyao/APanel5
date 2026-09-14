@@ -1,35 +1,26 @@
 # @arronqzy/eslint-config
 
-Abuilder monorepo 的**共享 ESLint 配置**，统一 TypeScript 与 Prettier 规则。
+仓库共享的 ESLint 规则：`eslint:recommended`、`@typescript-eslint/recommended`，并用 `eslint-config-prettier` 避开和 Prettier 冲突的格式规则。
 
-## 规则集
+默认关掉 `@typescript-eslint/no-non-null-assertion`。编辑器代码里对画布节点做非空断言很常见，开着会全仓库报噪。
 
-基于：
-
-- `eslint:recommended`
-- `plugin:@typescript-eslint/recommended`
-- `eslint-config-prettier`（避免与 Prettier 冲突）
-
-默认关闭 `@typescript-eslint/no-non-null-assertion`，适配编辑器类代码习惯。
-
-## 使用
-
-在包根目录创建 `eslint.config` 或 `.eslintrc.cjs`：
+## 用法
 
 ```js
+// .eslintrc.cjs
 module.exports = {
   root: true,
   extends: ["@arronqzy/eslint-config"],
 };
 ```
 
-若使用扁平配置，可在 `eslint.config.js` 中 require 本包导出的规则（与仓库内各包 `lint` 脚本保持一致即可）。
-
-## 安装
-
 ```bash
 pnpm add -D @arronqzy/eslint-config eslint
 ```
+
+各包的 `lint` 脚本已经 extend 本包。改规则时先在一个包里跑 `pnpm lint`，确认不是把历史代码一次性打红。
+
+本包版本仍是 `0.0.0`，只在 monorepo 内用，不要当成稳定的对外配置发布。
 
 ## 许可证
 

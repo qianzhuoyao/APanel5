@@ -1,15 +1,23 @@
 # @arronqzy/vue-blueprint
 
-Vue 3 版 Abuilder **蓝图编辑器**，使用 **@vue-flow/core** 与 **Ant Design Vue**，功能与 `@arronqzy/react-blueprint` 对齐。
+Vue 3 蓝图编辑器，用 `@vue-flow/core` 和 Ant Design Vue。节点类型、调试和蓝图库与 `@arronqzy/react-blueprint` 对齐，不依赖 React Flow。
 
-## 功能
+一般由 `@arronqzy/vue-view` 嵌在视图下方。
 
-- 可编辑蓝图画布：拖拽节点、连线、右键菜单
-- 7 种内置节点：Blueprint、Logic、And、Lifecycle、Fetch、Json、Clock
-- 自定义边与执行 overlay 高亮
-- 蓝图库（IndexedDB）、导入/导出
+![蓝图画布嵌在编辑器下半部分](https://github.com/qianzhuoyao/APanel5/raw/v5/docs/guide-assets/live-zh/41-blueprint-nodes.png)
+
+## 能力
+
+- 拖节点、连线、右键菜单
+- 内置节点：蓝图、逻辑、与门、生命周期、请求、JSON、存储、时钟、事件
+- 自定义边和执行时的高亮
+- 蓝图库（IndexedDB）、导入 / 导出
 - 节点配置侧栏、执行日志、调试会话
-- 页面生命周期与 Scope 写入视图
+- 页面生命周期把 Scope 写入视图
+
+节点配置和 React 版同一套字段：名称、配置类型、引用蓝图库、是否允许假信号继续传递。
+
+![节点配置](https://github.com/qianzhuoyao/APanel5/raw/v5/docs/guide-assets/live-zh/42-blueprint-node-config.png)
 
 ## 使用
 
@@ -33,17 +41,17 @@ const selectedNodeId = ref<string | null>(null);
 </template>
 ```
 
-## 样式
+样式：
 
 ```ts
 import "@arronqzy/vue-blueprint/blueprint.css";
 ```
 
-## 与 React 版关系
+## 和 React 版
 
-- 图数据层（`BlueprintGraph`、document 同步等）为独立 TS 实现，结构与 `react-blueprint` 对齐
-- UI 与画布基于 Vue Flow，不依赖 `@xyflow/react`
-- 长期可抽取共享 `blueprint-core` 消除双份 graph 代码
+图数据结构（`BlueprintGraph`、文档同步）是独立 TypeScript 实现，形状与 `react-blueprint` 对齐，所以同一份蓝图 JSON 两边都能打开。画布实现不共享。长期可以抽一层 `blueprint-core`，目前还没有。
+
+执行引擎仍是 `@arronqzy/blueprint-dsl`，不要在本包里再实现一套节点行为。
 
 ## 许可证
 

@@ -1,15 +1,12 @@
 # @arronqzy/ui
 
-Abuilder 的**共享 UI 组件库**，基于 [shadcn/ui](https://ui.shadcn.com/) + Radix UI + Tailwind CSS，为编辑器与蓝图提供统一视觉与交互。
+React 编辑器和蓝图用的组件：Button、Dialog、Menu、Toast、可调面板等。基于 Radix 和 Tailwind，视觉和 `@arronqzy/tailwind` 的令牌一致。
 
-## 功能概览
+这是编辑器内部 UI，不是给业务大屏用的组件库。大屏上的图表、表格、三维在 `react-view` 的物料里。
 
-- **基础组件**：Button、Input、Dialog、Dropdown、Tabs、Tooltip、Toast 等
-- **表单**：与 `react-hook-form`、`zod` 集成的表单控件
-- **布局**：Resizable Panels、ScrollArea、Separator
-- **主题**：`ThemeProvider` 支持亮/暗色与 `class` 策略
-- **层级管理**：`UI_Z_INDEX` / `MODAL_Z_INDEX` 统一浮层 z-index
-- **图表**：封装 Recharts 常用图表（按需使用）
+下图顶栏、侧栏、按钮都来自本包：
+
+![编辑器界面由本包的菜单、按钮和面板拼出来](https://github.com/qianzhuoyao/APanel5/raw/v5/docs/guide-assets/live-zh/01-overview.png)
 
 ## 安装
 
@@ -21,7 +18,7 @@ pnpm add @arronqzy/ui
 import "@arronqzy/ui/styles.css";
 ```
 
-## 使用
+## 用法
 
 ```tsx
 import { ThemeProvider, Button, toast } from "@arronqzy/ui";
@@ -36,27 +33,27 @@ function App() {
 }
 ```
 
-### 工具函数
-
 ```ts
-import { cn } from "@arronqzy/ui";
-import { UI_Z_INDEX } from "@arronqzy/ui";
+import { cn, UI_Z_INDEX } from "@arronqzy/ui";
 ```
 
-## 导出说明
+浮层 z-index 用 `UI_Z_INDEX` / `MODAL_Z_INDEX`，不要在蓝图或配置面板里另写一个魔法数字，否则菜单会被画布盖住。
 
-- `@arronqzy/ui` — 全部组件、`cn`、`ThemeProvider`、`useToast`
-- `@arronqzy/ui/styles.css` — 编译后的 Tailwind 样式
+## 导出
 
-组件源码位于 `src/ui/`，遵循 shadcn 可组合模式，可按需在本包内扩展。
+- `@arronqzy/ui` — 组件、`cn`、`ThemeProvider`、`useToast`
+- `@arronqzy/ui/styles.css` — 编好的 Tailwind
+
+源码在 `src/ui/`，按 shadcn 的方式组合。加组件时放进这个包，不要在 `react-view` 里复制一份 Dialog。
 
 ## 构建样式
 
 ```bash
 pnpm -C packages/ui build:css
+pnpm -C packages/ui dev:css
 ```
 
-依赖 `@arronqzy/tailwind` 预设保持与设计令牌一致。
+`apps/web` 的 `predev` 会构建一次。改组件 class 时开 `dev:css`，否则演示页看不到样式变化。
 
 ## 许可证
 

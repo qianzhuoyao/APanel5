@@ -1,18 +1,18 @@
 # @arronqzy/typescript-config
 
-Abuilder monorepo 的**共享 TypeScript 配置**，供各包与应用继承，保持编译选项一致。
+仓库共享的 `tsconfig`，让各包的 `strict`、模块解析和 JSX 选项一致。新包继承这里，不要从零抄一份。
 
-## 提供的配置
+## 文件
 
-| 文件 | 用途 |
-|------|------|
-| `base.json` | 基础严格模式、模块解析、ES 目标 |
-| `vite.json` | 面向 Vite 应用的扩展 |
+| 文件 | 给谁用 |
+|------|--------|
+| `base.json` | 纯 TS 包（DSL、store、工具） |
+| `vite.json` | Vite 应用 |
 | `react-library.json` | React 组件库（JSX、DOM 类型） |
 
-## 使用
+## 用法
 
-在包的 `tsconfig.json` 中继承：
+库：
 
 ```json
 {
@@ -25,7 +25,7 @@ Abuilder monorepo 的**共享 TypeScript 配置**，供各包与应用继承，�
 }
 ```
 
-Vite 应用示例：
+Vite 应用：
 
 ```json
 {
@@ -34,13 +34,11 @@ Vite 应用示例：
 }
 ```
 
-## 安装
-
 ```bash
 pnpm add -D @arronqzy/typescript-config
 ```
 
-Monorepo 内通常使用 `workspace:*`。
+仓库内用 `workspace:*`。
 
 ## 许可证
 

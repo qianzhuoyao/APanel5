@@ -1,16 +1,27 @@
 # @arronqzy/react-view
 
-Abuilder 的**视图编辑器** React 包，提供可视化画布、图层、物料、在线预览与工作区管理能力。
+视图编辑器。物料、无限画布、图层、配置侧栏、工作区和在线预览都在这个包。蓝图分屏通过依赖的 `@arronqzy/react-blueprint` 嵌进来。
 
-## 功能概览
+大多数 React 宿主应直接用 [`@arronqzy/abuilder`](../abuilder/README.md) 的 `<App />`。只有要把面板拆进已有布局时才引本包。
 
-- **无限画布**：平移、缩放、标尺、框选与 Moveable 拖拽/缩放/旋转
-- **图层系统**：多图层、映射图层、主图层、锁定与合并
-- **物料节点**：图表（ECharts）、文本、图片、音视频、几何、网格、引用节点等
-- **Scope 模版**：节点属性支持 `{scope.xxx}` 表达式与解析预览
-- **工作区**：IndexedDB 持久化、多项目切换、同步与在线预览
-- **蓝图联动**：与 `@arronqzy/react-blueprint` 分屏编辑，运行时 Scope 回写视图
-- **宿主集成**：工作区事件订阅、预览快照、外部工作区数据加载
+![左侧物料、中间画布、右侧配置、底部图层](https://github.com/qianzhuoyao/APanel5/raw/v5/docs/guide-assets/live-zh/01-overview.png)
+
+## 画布上有什么
+
+- **无限画布**：平移、缩放、标尺、框选，Moveable 拖拽 / 缩放 / 旋转
+- **物料**：ECharts 图表、可视化表格、文本、图片、音视频、几何、网格、视口、三维、引用节点
+- **图层**：多图层、映射图层、主图层、锁定、显示、合并
+- **配置**：按类型展开；可搜字段；展开状态按节点记住
+- **Scope**：属性可写 `{scope.xxx}`，蓝图执行后展开
+- **工作区**：IndexedDB 多项目、导入导出、跨标签同步
+
+表格是物料里配置最多的一类，列、条件样式和外观都在右侧：
+
+![表格节点与配置侧栏](https://github.com/qianzhuoyao/APanel5/raw/v5/docs/guide-assets/live-zh/09-table-full.png)
+
+打开蓝图后，本包把画布拆成上下两块，下面交给蓝图编辑器：
+
+![视图与蓝图分屏](https://github.com/qianzhuoyao/APanel5/raw/v5/docs/guide-assets/live-zh/17-blueprint.png)
 
 ## 安装
 
@@ -18,15 +29,13 @@ Abuilder 的**视图编辑器** React 包，提供可视化画布、图层、物
 pnpm add @arronqzy/react-view
 ```
 
-依赖 React 19，并需引入样式：
-
 ```ts
 import "@arronqzy/react-view/styles.css";
 ```
 
-## 使用
+Vite 宿主还要加 `@arronqzy/abuilder/vite` 的 `webllmAssistant()`，见 abuilder 的 README。否则打包 WebLLM 会失败。
 
-### 完整编辑器面板
+## 编辑面板
 
 ```tsx
 import { ReactViewPanel } from "@arronqzy/react-view";
@@ -44,15 +53,15 @@ export function Editor({ workspace }: { workspace?: WorkspaceProjectRecord | nul
 }
 ```
 
-| `ReactViewPanel` 参数 | 说明 | 默认值 |
-|----------------------|------|--------|
+| 参数 | 说明 | 默认 |
+|------|------|------|
 | `className` | 根节点 class | — |
 | `initialZoom` | 初始缩放 | `1` |
-| `initialWorkspace` | 外部传入的完整工作区，挂载后自动加载 | — |
+| `initialWorkspace` | 挂载后加载的完整工作区。空则空白画布 | — |
 
-### 在线预览
+## 在线预览
 
-按工作区 ID 从 IndexedDB / 缓存加载：
+按 ID 从 IndexedDB / 缓存加载：
 
 ```tsx
 import { ReactViewOnlinePreview } from "@arronqzy/react-view";
@@ -60,65 +69,62 @@ import { ReactViewOnlinePreview } from "@arronqzy/react-view";
 <ReactViewOnlinePreview projectId="your-project-id" />
 ```
 
-直接传入工作区数据（无需 IndexedDB）：
+直接给数据（优先于 `projectId`）：
 
 ```tsx
 <ReactViewOnlinePreview workspace={savedWorkspace} />
 ```
 
-URL 参数解析：
-
 ```ts
 import { parseOnlinePreviewSearchParams } from "@arronqzy/react-view";
 
-const params = parseOnlinePreviewSearchParams("?preview=online&projectId=xxx");
+parseOnlinePreviewSearchParams("?preview=online&projectId=xxx");
 ```
 
-| `ReactViewOnlinePreview` 参数 | 说明 |
-|------------------------------|------|
-| `projectId` | 从 IndexedDB 加载的工作区 ID |
-| `workspace` | 直接传入的完整工作区数据（优先于 `projectId`） |
+| 参数 | 说明 |
+|------|------|
+| `projectId` | 从 IndexedDB 加载 |
+| `workspace` | 宿主传入的完整工作区，优先 |
 | `previewInstanceId` | 预览实例 ID（可选） |
 
-### 工作区事件订阅
+## 工作区事件
 
-监听工作区创建与同步，回调携带**完整工作区数据**（面板 + 蓝图），便于持久化到自有后端：
+回调带完整工作区，用来写自己的后端。IndexedDB 的增删改查不导出。
 
 ```ts
 import {
   addEventSubscription,
   AbuilderEvents,
+  parseWorkspaceData,
   type WorkspaceData,
 } from "@arronqzy/react-view";
 
-const addSub = addEventSubscription(
-  AbuilderEvents.workspaceAdd,
+const syncSub = addEventSubscription(
+  AbuilderEvents.workspaceSync,
   async (workspace: WorkspaceData) => {
     await saveToServer(workspace);
   }
 );
-
-const syncSub = addEventSubscription(
-  AbuilderEvents.workspaceSync,
-  async (workspace) => {
-    await saveToServer(workspace);
-  }
-);
-
-addSub.unsubscribe();
 syncSub.unsubscribe();
 ```
 
-| 事件 | 常量 | 触发时机 |
+| 事件 | 常量 | 何时触发 |
 |------|------|----------|
-| `workspace:add` | `AbuilderEvents.workspaceAdd` | 创建工作区成功 |
-| `workspace:sync` | `AbuilderEvents.workspaceSync` | 同步工作区成功 |
+| `workspace:add` | `AbuilderEvents.workspaceAdd` | 创建成功 |
+| `workspace:sync` | `AbuilderEvents.workspaceSync` | 同步成功 |
 
-回调参数类型为 `WorkspaceData`（即 `WorkspaceProjectRecord`），字段包括：`id`、`name`、`createdAt`、`updatedAt`、`panelState`、`blueprintDocument`、`blueprintMeta`、`productName`、`titleIconDataUrl`。
+字段：`id`、`name`、`createdAt`、`updatedAt`、`panelState`、`blueprintDocument`、`blueprintMeta`、`productName`、`titleIconDataUrl`。
 
-### 获取预览快照
+校验：
 
-在编辑器或在线预览页已挂载时，截取当前预览画面为 base64（data URL），可用于缩略图：
+- `validateViewData` / `parseViewData` — 视图 `panelState`
+- `validateBlueprintData` / `parseBlueprintData` — 蓝图文档
+- `validateWorkspaceData` / `parseWorkspaceData` — 两边都要合法；`parse` 的 `value` 可作 `initialWorkspace`
+- `createEmptyWorkspace` / `createWorkspaceProjectId` — 空白记录和 ID
+
+## 预览缩略图
+
+编辑器或预览页已挂载且画布有内容时：
 
 ```ts
 import { getPreviewSnapshot } from "@arronqzy/react-view";
@@ -131,56 +137,38 @@ const dataUrl = await getPreviewSnapshot({
 });
 ```
 
-| 参数 | 说明 | 默认值 |
-|------|------|--------|
-| `maxWidth` / `maxHeight` | 等比缩放上限 | 不限制 |
-| `mimeType` | `"image/png"` 或 `"image/jpeg"` | `"image/png"` |
-| `quality` | JPEG 质量 0–1 | `0.92` |
+| 参数 | 说明 | 默认 |
+|------|------|------|
+| `maxWidth` / `maxHeight` | 等比上限 | 不限制 |
+| `mimeType` | png 或 jpeg | `"image/png"` |
+| `quality` | JPEG 0–1 | `0.92` |
 | `backgroundColor` | 背景色 | `"#ffffff"` |
 
-## 核心导出
+## 主要导出
 
 | 导出 | 说明 |
 |------|------|
-| `ReactViewPanel` | 主编辑面板（画布 + 配置侧栏 + 蓝图分屏） |
-| `ReactViewOnlinePreview` | 只读在线预览页 |
-| `parseOnlinePreviewSearchParams` | 解析预览 URL 参数 |
-| `addEventSubscription` | 订阅工作区事件，返回 `{ unsubscribe }` |
-| `AbuilderEvents` | 工作区事件名常量 |
-| `getPreviewSnapshot` | 获取预览画面 base64 缩略图（仅本包 / `@arronqzy/abuilder`） |
-| `parseWorkspaceData` / `validateWorkspaceData` | 解析或校验完整工作区；`parse` 的 `value` 可作 `initialWorkspace` |
-| `parseViewData` / `validateViewData` | 解析或校验视图 `panelState` |
-| `parseBlueprintData` / `validateBlueprintData` | 解析或校验蓝图文档 |
-| `createEmptyWorkspace` | 构造空工作区记录 |
-| `createWorkspaceProjectId` | 生成工作区 ID |
-| `WorkspaceData` / `WorkspaceProjectRecord` | 完整工作区数据类型 |
-| `createView` / `createAction` 等 | 视图 DSL 与指令扩展（`src/core`） |
+| `ReactViewPanel` | 主面板（画布 + 配置 + 蓝图分屏） |
+| `ReactViewOnlinePreview` | 只读预览 |
+| `parseOnlinePreviewSearchParams` | 解析预览 URL |
+| `addEventSubscription` / `AbuilderEvents` | 工作区事件 |
+| `getPreviewSnapshot` | 预览截图 data URL |
+| `parseWorkspaceData` 等 | 校验 / 解析 / 空工作区 |
+| `createView` / `createAction` | 视图 DSL 扩展点（`src/core`） |
 
-相关类型：`AbuilderEventName`、`AbuilderEventPayloadMap`、`WorkspaceAddEventPayload`、`WorkspaceSyncEventPayload`、`GetPreviewSnapshotOptions`。
+## 样式
 
-## 样式与 Tailwind
-
-本包内置 Tailwind 配置，构建产物为 `dist/styles.css`：
+产物是 `dist/styles.css`。本仓库构建：
 
 ```bash
 pnpm -C packages/react-view build:css
 ```
 
-若由应用侧 Tailwind 扫描源码，请将本包加入 `content`：
+若应用自己的 Tailwind 要扫描本包源码，把 `node_modules/@arronqzy/react-view/src/**/*.{ts,tsx}` 加进 `content`。
 
-```ts
-content: [
-  "./src/**/*.{ts,tsx}",
-  "./node_modules/@arronqzy/react-view/src/**/*.{ts,tsx}",
-]
-```
+## 依赖
 
-## 依赖关系
-
-- `@arronqzy/ui` — 基础 UI 组件
-- `@arronqzy/rx-store` — 画布状态与历史
-- `@arronqzy/react-blueprint` — 蓝图编辑与执行
-- `@arronqzy/blueprint-dsl` — 蓝图运行时
+`@arronqzy/ui`、`@arronqzy/rx-store`、`@arronqzy/react-blueprint`、`@arronqzy/blueprint-dsl`、`@arronqzy/view-table`、`@arronqzy/view-scene3d`。
 
 ## 许可证
 

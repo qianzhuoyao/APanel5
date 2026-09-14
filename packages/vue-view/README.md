@@ -1,16 +1,22 @@
 # @arronqzy/vue-view
 
-Vue 3 版 Abuilder **视图编辑器**，使用 **Ant Design Vue** 作为 UI 组件库，功能与 `@arronqzy/react-view` 对齐。
+Vue 3 视图编辑器，功能对齐 `@arronqzy/react-view`，组件用 Ant Design Vue。大多数 Vue 宿主应直接用 [`@arronqzy/abuilder-vue`](../abuilder-vue/README.md)。
 
-## 功能
+![物料、画布、配置和图层](https://github.com/qianzhuoyao/APanel5/raw/v5/docs/guide-assets/live-zh/09-table-full.png)
 
-- **画布**：无限平移/缩放（Infinite Viewer）、Moveable 拖拽/缩放/旋转、Selecto 框选
-- **物料**：图表（ECharts）、文本、图片、音视频、几何、网格、引用节点
-- **图层**：多图层、映射图层、主图层、锁定与合并
-- **配置侧栏**：按物料类型的完整属性编辑、Scope 模版与预览
-- **工作区**：IndexedDB 多项目、导入导出、跨标签页同步
-- **蓝图集成**：分屏蓝图编辑器、调试 Scope 绑定
-- **在线预览**：`VueViewOnlinePreview` 独立预览页
+## 能力
+
+- 无限平移 / 缩放（Infinite Viewer）、Moveable、Selecto 框选
+- 图表、文本、表格、图片、音视频、几何、网格、三维、引用节点
+- 多图层、映射图层、主图层、锁定与合并
+- 按物料类型的配置侧栏，支持 Scope 模版
+- IndexedDB 多项目、导入导出、跨标签同步
+- 分屏蓝图（`@arronqzy/vue-blueprint`）和调试时的 Scope 回写
+- `VueViewOnlinePreview` 只读预览
+
+打开蓝图后的分屏和 React 版一样：上面视图，下面节点：
+
+![分屏蓝图](https://github.com/qianzhuoyao/APanel5/raw/v5/docs/guide-assets/live-zh/40-blueprint-open.png)
 
 ## 使用
 
@@ -29,7 +35,7 @@ createApp(VueViewPanel).use(Antd).mount("#app");
 import { VueViewOnlinePreview, parseOnlinePreviewSearchParams } from "@arronqzy/vue-view";
 ```
 
-URL 参数：`?preview=online&projectId=<id>&pid=<instanceId>`。也可传入 `workspace` 直接预览宿主数据（优先于 `projectId`）。
+URL：`?preview=online&projectId=<id>&pid=<instanceId>`。传入 `workspace` 时优先于 `projectId`。
 
 ### 宿主集成
 
@@ -43,21 +49,19 @@ import {
 } from "@arronqzy/vue-view";
 ```
 
-创建 / 同步工作区会发出 `workspace:add` / `workspace:sync`。`parseWorkspaceData` 的 `value` 可作 `initialWorkspace`。IndexedDB CRUD 与 `getPreviewSnapshot` **不导出**（后者仅 React 实现）。
+创建 / 同步发出 `workspace:add` / `workspace:sync`。`parseWorkspaceData` 的 `value` 可作 `initialWorkspace`。
+
+IndexedDB CRUD 与 `getPreviewSnapshot` **不导出**。缩略图只在 React 包实现。
+
+## 和 React 版的差别
+
+- UI 是 Ant Design Vue
+- 标尺是 canvas 实现（可换成 `@scena/ruler`）
+- 画布状态仍是共享的 `@arronqzy/rx-store`
 
 ## 依赖
 
-- `@arronqzy/rx-store` — 画布状态
-- `@arronqzy/vue-rx-store` — Vue composables
-- `@arronqzy/vue-blueprint` — 蓝图编辑器
-- `@arronqzy/blueprint-dsl` — 蓝图 DSL
-- `ant-design-vue`、`echarts`、`moveable`、`selecto`、`infinite-viewer`
-
-## 与 React 版差异
-
-- UI 使用 **Ant Design Vue**，非 shadcn/Radix
-- 标尺使用 canvas 兼容实现（可替换为 `@scena/ruler`）
-- 共享 `@arronqzy/rx-store` 与 `panel/utils` 数据逻辑
+`@arronqzy/rx-store`、`@arronqzy/vue-rx-store`、`@arronqzy/vue-blueprint`、`@arronqzy/blueprint-dsl`、`ant-design-vue`、`echarts`、`moveable`、`selecto`、`infinite-viewer`。
 
 ## 许可证
 
