@@ -227,11 +227,13 @@ Vue 栈以源码发布（`exports` 指向 `src/`）。React 的 `@arronqzy/abuil
 
 ## 更细的说明
 
+版本变更见仓库根目录 [CHANGELOG.md](./CHANGELOG.md)。
+
 截图素材在 `docs/guide-assets/live-zh/`。更长的操作手册是仓库里的 Word：`docs/Abuilder使用文档与功能说明.docx`（不随 npm 包发布）。
 
 **手册适用版本（2026-09-18）：** `@arronqzy/abuilder@1.1.36` · `@arronqzy/abuilder-vue@0.1.20` · `react-view@1.0.35` · `vue-view@0.1.21` · `react-blueprint@1.0.21` · `vue-blueprint@0.1.16` · `blueprint-dsl@1.0.16` · `i18n@0.1.16`。
 
-近期能力摘要：接口集合（跨域时本地 API JSON）、`{system?...}` 系统模版（可与 scope 嵌套）、JSON 节点错误高亮。
+近期能力摘要：蓝图 Soft UI 节点样式、接口集合（跨域时本地 API JSON）、`{system?...}` 系统模版（可与 scope 嵌套）、JSON 节点错误高亮。
 
 ## 许可证
 
