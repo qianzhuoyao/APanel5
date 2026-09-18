@@ -229,6 +229,10 @@ Vue 栈以源码发布（`exports` 指向 `src/`）。React 的 `@arronqzy/abuil
 
 截图素材在 `docs/guide-assets/live-zh/`。更长的操作手册是仓库里的 Word：`docs/Abuilder使用文档与功能说明.docx`（不随 npm 包发布）。
 
+**手册适用版本（2026-09-18）：** `@arronqzy/abuilder@1.1.35` · `@arronqzy/abuilder-vue@0.1.19` · `react-view@1.0.34` · `vue-view@0.1.21` · `react-blueprint@1.0.20` · `vue-blueprint@0.1.15` · `blueprint-dsl@1.0.16` · `i18n@0.1.16`。
+
+近期能力摘要：接口集合（跨域时本地 API JSON）、`{system?...}` 系统模版（可与 scope 嵌套）、JSON 节点错误高亮。
+
 ## 许可证
 
 核心包多为 MIT，以各包 `package.json` 为准。

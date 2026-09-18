@@ -27,6 +27,8 @@ export type {
   AbuilderEventPayloadMap,
   WorkspaceAddEventPayload,
   WorkspaceSyncEventPayload,
+  ApiCollectionUploadStartEventPayload,
+  ApiCollectionUploadSuccessEventPayload,
   WorkspaceData,
   WorkspaceProjectRecord,
   GetPreviewSnapshotOptions,

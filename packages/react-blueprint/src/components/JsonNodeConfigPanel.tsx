@@ -1,6 +1,7 @@
-import { useCallback, useMemo, useState, type ChangeEvent } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type {
   ExecutionTraceEntry,
+  JsonErrorRange,
   JsonNodeConfig,
 } from "@arronqzy/blueprint-dsl";
 import {
@@ -14,6 +15,7 @@ import { useI18nOptional as useI18n } from "@arronqzy/i18n/react";
 import type { BlueprintGraphEdge, BlueprintGraphNode } from "../graph/document";
 import { resolveNodeJsonConfig } from "../graph/document";
 import { ConfigHintIcon, ConfigSectionTitle } from "./ConfigHintIcon";
+import { JsonLintTextarea } from "./JsonLintTextarea";
 import { ScopeTemplateAutocompleteHost } from "./ScopeTemplateAutocompleteHost";
 
 export type JsonNodeConfigPanelProps = {
@@ -48,6 +50,7 @@ export function JsonNodeConfigPanel({
   const [formEl, setFormEl] = useState<HTMLDivElement | null>(null);
   const jsonConfig = resolveNodeJsonConfig(node);
   const [draftError, setDraftError] = useState<string | null>(null);
+  const [draftRanges, setDraftRanges] = useState<JsonErrorRange[] | null>(null);
 
   const incomingScope = useMemo(() => {
     const outputs = latestTraceOutputsByNode(traceEntries);
@@ -68,16 +71,21 @@ export function JsonNodeConfigPanel({
   const parseError =
     draftError ??
     (storedValidation.ok ? null : storedValidation.error);
+  const errorRanges: JsonErrorRange[] =
+    draftRanges ??
+    (!storedValidation.ok && "ranges" in storedValidation
+      ? storedValidation.ranges
+      : []);
   const deferredScope =
     storedValidation.ok && "deferred" in storedValidation
       ? storedValidation.deferred === true
       : false;
 
   const handleChange = useCallback(
-    (e: ChangeEvent<HTMLTextAreaElement>) => {
-      const jsonString = e.target.value;
+    (jsonString: string) => {
       const result = validateJsonStringAllowingScope(jsonString);
       setDraftError(result.ok ? null : result.error);
+      setDraftRanges(result.ok ? null : result.ranges);
       onUpdateNode(node.id, patchJsonConfig(node, { jsonString }));
     },
     [node, onUpdateNode]
@@ -104,12 +112,11 @@ export function JsonNodeConfigPanel({
             {t("blueprint.config.jsonScopeHint")}
           </ConfigHintIcon>
         </span>
-        <textarea
+        <JsonLintTextarea
           value={jsonConfig.jsonString}
           onChange={handleChange}
+          ranges={errorRanges}
           rows={12}
-          spellCheck={false}
-          className="w-full rounded-md border border-input bg-background px-2 py-1.5 font-mono text-[11px] leading-relaxed text-foreground shadow-sm outline-none focus-visible:ring-1 focus-visible:ring-primary"
           placeholder={'{\n  "key": "{scope?.value}"\n}'}
         />
         {parseError ? (

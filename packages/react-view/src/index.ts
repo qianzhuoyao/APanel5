@@ -14,6 +14,8 @@ export type {
   AbuilderEventPayloadMap,
   WorkspaceAddEventPayload,
   WorkspaceSyncEventPayload,
+  ApiCollectionUploadStartEventPayload,
+  ApiCollectionUploadSuccessEventPayload,
   WorkspaceData,
 } from "./panel/library/event-subscription";
 export type { WorkspaceProjectRecord } from "./panel/library/workspace-project-db";

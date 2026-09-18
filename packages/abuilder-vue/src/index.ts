@@ -25,5 +25,7 @@ export type {
   AbuilderEventPayloadMap,
   WorkspaceAddEventPayload,
   WorkspaceSyncEventPayload,
+  ApiCollectionUploadStartEventPayload,
+  ApiCollectionUploadSuccessEventPayload,
   WorkspaceData,
 } from "@arronqzy/vue-view";

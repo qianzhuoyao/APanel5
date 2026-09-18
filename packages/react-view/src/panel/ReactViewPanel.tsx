@@ -46,6 +46,7 @@ import { revealPanelConfigFromPatch } from "./ai/revealConfigField";
 import {
   BlueprintGraph,
   BlueprintMetaDialog,
+  ApiCollectionManagerDialog,
   BlueprintNodeSwitchTaskDialog,
   blueprintDocumentsEqual,
   buildBlueprintExportPayload,
@@ -55,6 +56,7 @@ import {
   downloadBlueprintExport,
   documentToRunnableGraph,
   getBlueprintLibraryRecord,
+  hydrateApiCollections,
   libraryRecordFromImport,
   listBlueprintLibrary,
   parseBlueprintImportFile,
@@ -72,12 +74,16 @@ import {
   type BlueprintMetaDraft,
 } from "@arronqzy/react-blueprint";
 import type { LibraryBlueprintResolver } from "@arronqzy/blueprint-dsl";
-import { abortClockNode, appStorageKey, collectArmedViewEventBindings, EVENT_NODE_TYPE, LIFECYCLE_NODE_TYPE } from "@arronqzy/blueprint-dsl";
+import { abortClockNode, appStorageKey, buildApiCollectionSyncPatches, toApiCollectionSyncResult, collectArmedViewEventBindings, EVENT_NODE_TYPE, LIFECYCLE_NODE_TYPE } from "@arronqzy/blueprint-dsl";
 import { WorkspaceStageSplit } from "./components/WorkspaceStageSplit";
 import {
   WorkspaceConfigSidebar,
   type WorkspaceConfigFocus,
 } from "./components/WorkspaceConfigSidebar";
+import {
+  AbuilderEvents,
+  emitAbuilderEvent,
+} from "./library/event-subscription";
 import {
   getViewElementScope,
   setViewElementScopes,
@@ -295,6 +301,7 @@ function ReactViewPanelInner({
   const [blueprintMetaDialogMode, setBlueprintMetaDialogMode] = useState<
     "export" | "save"
   >("save");
+  const [apiCollectionManagerOpen, setApiCollectionManagerOpen] = useState(false);
   const [selectedBlueprintNodeId, setSelectedBlueprintNodeId] = useState<string | null>(
     null
   );
@@ -654,6 +661,12 @@ function ReactViewPanelInner({
     },
     [nameSpace]
   );
+
+  useEffect(() => {
+    void hydrateApiCollections(nameSpace).catch((error) => {
+      console.error("[abuilder] hydrate api collections failed", error);
+    });
+  }, [nameSpace]);
 
   const handleBlueprintExecutionBlocked = useCallback((message: string) => {
     toast({ title: message });
@@ -1904,6 +1917,7 @@ function ReactViewPanelInner({
           applyTheme={applyTheme}
           isDark={isDark}
           openBlueprintExportDialog={openBlueprintExportDialog}
+          openApiCollectionManager={() => setApiCollectionManagerOpen(true)}
           panelFontSize={panelFontSize}
           setPanelFontSize={setPanelFontSize}
           locale={locale}
@@ -2766,6 +2780,43 @@ function ReactViewPanelInner({
         onOpenChange={setBlueprintMetaDialogOpen}
         onConfirm={(meta) => {
           void handleBlueprintMetaConfirm(meta);
+        }}
+      />
+      <ApiCollectionManagerDialog
+        open={apiCollectionManagerOpen}
+        onOpenChange={setApiCollectionManagerOpen}
+        onUploadStart={(info) => {
+          emitAbuilderEvent(AbuilderEvents.apiCollectionUploadStart, info);
+        }}
+        onUploadSuccess={(info) => {
+          emitAbuilderEvent(AbuilderEvents.apiCollectionUploadSuccess, info);
+        }}
+        onSyncCollection={(record) => {
+          const patches = buildApiCollectionSyncPatches({
+            collectionId: record.id,
+            document: record.document,
+            nodes: blueprintGraph.document.nodes
+              .filter((node) => node.role === "fetch" || Boolean(node.fetchConfig))
+              .map((node) => ({
+                id: node.id,
+                label: node.label,
+                fetchConfig: node.fetchConfig,
+              })),
+          });
+          if (patches.length === 0) {
+            return toApiCollectionSyncResult([]);
+          }
+          setBlueprintGraph((graph) => {
+            let next = graph;
+            for (const patch of patches) {
+              next = next.updateNode(patch.nodeId, {
+                fetchConfig:
+                  patch.fetchConfigPatch as import("@arronqzy/blueprint-dsl").FetchRequestConfig,
+              });
+            }
+            return next;
+          });
+          return toApiCollectionSyncResult(patches);
         }}
       />
       {pendingBlueprintNodeSwitch ? (

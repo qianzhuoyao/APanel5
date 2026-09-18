@@ -184,11 +184,11 @@ m.alignment = WD_ALIGN_PARAGRAPH.CENTER
 m.paragraph_format.space_before = Pt(24)
 r = m.add_run(
     "【适用软件版本】\n"
-    "主包 @arronqzy/abuilder 1.1.33（React 入口）\n"
-    "可选 @arronqzy/abuilder-vue 0.1.18（Vue 入口）\n"
-    "配套：react-view 1.0.32 · vue-view 0.1.20 · react-blueprint 1.0.18 ·\n"
-    "vue-blueprint 0.1.14 · blueprint-dsl 1.0.15 · i18n 0.1.14\n"
-    "文档日期：2026-09-10\n"
+    "主包 @arronqzy/abuilder 1.1.35（React 入口）\n"
+    "可选 @arronqzy/abuilder-vue 0.1.19（Vue 入口）\n"
+    "配套：react-view 1.0.34 · vue-view 0.1.21 · react-blueprint 1.0.20 ·\n"
+    "vue-blueprint 0.1.15 · blueprint-dsl 1.0.16 · i18n 0.1.16\n"
+    "文档日期：2026-09-18\n"
     "配图：docs/guide-assets/live-zh/（中文界面）"
 )
 set_run(r, 10, False, (100, 116, 139))
@@ -200,14 +200,21 @@ p("本手册假设你不会写代码：会用浏览器、会拖拽鼠标即可�
 
 h("0.0 本手册适用的 Abuilder 版本", 2)
 p("请先确认你安装/使用的包版本与下表一致或接近；版本差太多时，个别菜单文案或字段可能略有不同。", bold=True)
-bullet("主入口（React）：@arronqzy/abuilder@1.1.33")
-bullet("主入口（Vue，可选）：@arronqzy/abuilder-vue@0.1.18")
-bullet("视图：@arronqzy/react-view@1.0.32 / @arronqzy/vue-view@0.1.20")
-bullet("蓝图：@arronqzy/react-blueprint@1.0.18 / @arronqzy/vue-blueprint@0.1.14")
-bullet("蓝图 DSL：@arronqzy/blueprint-dsl@1.0.15")
-bullet("文案包：@arronqzy/i18n@0.1.14")
-tip("在项目里打开 packages/abuilder/package.json 看 \"version\" 字段，或在依赖里查 @arronqzy/abuilder 的版本号。")
+bullet("主入口（React）：@arronqzy/abuilder@1.1.35")
+bullet("主入口（Vue，可选）：@arronqzy/abuilder-vue@0.1.19")
+bullet("视图：@arronqzy/react-view@1.0.34 / @arronqzy/vue-view@0.1.21")
+bullet("蓝图：@arronqzy/react-blueprint@1.0.20 / @arronqzy/vue-blueprint@0.1.15")
+bullet("蓝图 DSL：@arronqzy/blueprint-dsl@1.0.16")
+bullet("文案包：@arronqzy/i18n@0.1.16")
+tip("在项目里打开 packages/abuilder/package.json 看 \"version\" 字段，或在依赖里查 @arronqzy/abuilder 的版本号；顶栏「设置 → 关于」也会显示主包版本。")
 warn("本手册截图与操作步骤以 React 版 apps/web + 中文界面为准；Vue 版布局接近，个别分区名称可能略有差异。")
+
+h("0.0.1 相对上一版手册的能力更新（2026-09-18）", 2)
+p("本版手册对应下列能力（请确认软件已升级到上文版本后再对照操作）：", bold=True)
+bullet("接口集合：蓝图菜单可上传/管理本地 API JSON；数据源获取节点可从集合选接口回填；支持按 URL 同步更新蓝图节点。")
+bullet("模版双根：配置与蓝图除 {scope?...} 外，新增 {system?...}（time / math / location），可与 scope 互相嵌套。")
+bullet("JSON 节点错误高亮：不合规处（如中文引号 “”）会在编辑器内标红，便于定位。")
+bullet("集合 JSON 的 url / params / headers / body / baseUrl 字符串值支持 Scope/System 模版。")
 
 p("核心口诀（请背下来）：", bold=True)
 numbered("拖——从左侧物料区把零件拖到中间画布；")
@@ -224,7 +231,7 @@ warn(
     "「状态枚举（逗号分隔）」等多值字段时，分隔符必须用英文逗号 , "
     "不能用中文逗号 ，或顿号 、。"
 )
-tip("建议学习路径：第 0～2 章 → 第 4～5 章跟练拖柱状图 → 第 7～12 章按需查字段 → 第 13～18 章图层/蓝图 → 第 18B 章 Demo 跟练 → 第 19 章 Scope。")
+tip("建议学习路径：第 0～2 章 → 第 4～5 章跟练拖柱状图 → 第 7～12 章按需查字段 → 第 13～18 章图层/蓝图/接口集合 → 第 18B 章 Demo 跟练 → 第 19 章 Scope/System。")
 
 h("0.2 本手册覆盖范围", 2)
 for line in [
@@ -234,9 +241,11 @@ for line in [
     "图表/文本/表格/媒体/几何/三维/网格/视窗/引用/图片——逐字段",
     "图层合并与删除注意事项、节点树、顶栏菜单、工作区",
     "蓝图面板、日志、保存；全部 10 种蓝图配置类型",
+    "接口集合（上传 / 管理 / 同步）与数据源集合模式",
+    "Scope 与 System 双模版；JSON 节点错误高亮",
     "蓝图可跟练 Demo（连线 / 设置 / 预期结果）",
     "文首标注的适用 Abuilder 版本清单",
-    "Scope 模板教材与 FAQ、附录名词与截图目录",
+    "Scope / System 模板教材与 FAQ、附录名词与截图目录",
 ]:
     bullet(line)
 
@@ -940,6 +949,8 @@ field("切换到浅色 / 切换到深色", "编辑器主题。", "按环境光�
 
 h("15.4 蓝图", 2)
 field("导出 / 导入", "蓝图 JSON 备份与恢复。", "与面板文件导入导出分开。")
+field("接口集合", "上传 / 新建 / 编辑 / 删除本地 API 集合；可勾选写入 IndexedDB。", "跨域拉不到 Swagger 时用；详见第 17.5 章。")
+field("下载模版", "下载接口集合 JSON 模版。", "按模版填 url / method / headers / body / description。")
 
 h("15.5 设置", 2)
 field("字体：小 / 中 / 大", "界面字号。", "屏幕小可选小。")
@@ -1015,6 +1026,22 @@ field("保留天数", "过期清理阈值。", "例 7。")
 field("清理过期与超额", "按条数/天数清理。", "日志膨胀时点。")
 field("清空 IndexedDB 日志 / 清空当前日志", "清空存储或当前视图。", "慎用。")
 
+h("17.5 接口集合（API Collection）", 2)
+p(
+    "当 Swagger 文档地址因跨域无法在浏览器里拉取时，可把接口清单做成本地 JSON 集合，"
+    "供「数据源获取」节点选用。适用版本：@arronqzy/abuilder@1.1.35 起（配套 react-blueprint 1.0.20 / vue-blueprint 0.1.15 / blueprint-dsl 1.0.16）。",
+    bold=True,
+)
+numbered("顶栏「蓝图 → 接口集合」打开管理对话框。")
+numbered("可「下载模版」→ 本地编辑 →「上传 JSON」；或「新建 / 粘贴」直接编辑。")
+numbered("勾选「本地化保存到 IndexedDB」则刷新后仍在；关闭则仅当前会话内存。")
+numbered("集合内每条接口可含：name、url、method、params、headers、body、description。")
+numbered("字符串值（url / params 值 / headers 值 / body / baseUrl）支持 {scope?...} 与 {system?...}。")
+numbered("在数据源获取节点选「配置来源 = 接口集合」→ 选集合 → 选接口名称；悬停接口名称可看 description。")
+numbered("管理对话框里对集合点「同步」：按 URL（忽略查询参数）匹配当前蓝图中的数据源节点并回填；同步结果会提示更新了哪些节点。")
+tip("模版示例里 params 可用 {scope?.value?.page}，Authorization 可用 Bearer {scope?.value?.token}。")
+warn("同步只改「URL 路径能对上」的节点；对不上的不会动。回填后仍可手动改表单。")
+
 page()
 
 # =============================================================================
@@ -1067,21 +1094,31 @@ for stage in [
     bullet(stage)
 
 h("18.5 数据源获取（Fetch）", 2)
-p("用途：发 HTTP 请求取数。")
-field("上游输入 Scope", "来自上游的数据包。", "只读观察。")
+p("用途：发 HTTP 请求取数。URL / 请求头 / 请求体 / Base URL 支持 {scope?...} 与 {system?...}。")
+field("配置来源", "手动/Swagger，或接口集合。", "跨域无法拉 Swagger 时选「接口集合」。")
+field("上游输入 Scope", "来自上游的数据包。", "只读观察；无上游时仍可用 system 模版。")
 field("解析后的 URL/请求头/请求体", "模板解析后的实际请求。", "调试时核对。")
-field("Swagger 文档 URL / 解析 Swagger / 中止解析", "从 Swagger 联想接口。", "有文档时用。")
+field("Swagger 文档 URL / 解析 Swagger / 中止解析", "从 Swagger 联想接口。", "有文档且无跨域时用。")
+field("接口集合 / 接口名称", "从已上传集合选接口并回填。", "悬停接口名称可看 description。")
 field("请求 URL / 接口联想 / 手动输入", "目标地址。", "可配合 API 主机、选择接口。")
 field("请求方法", "GET/POST 等。", "按接口选。")
-field("请求头 (JSON)", "Header 对象。", "合法 JSON。")
-field("请求体", "Body。", "POST 时填写。")
+field("请求头 (JSON)", "Header 对象。", "合法 JSON；值里可写模版。")
+field("请求体", "Body。", "POST 时填写；可含模版。")
 field("响应解析", "如何从响应取数据。", "按接口结构。")
 field("超时 (ms)", "超时毫秒。", "例 10000。")
 field("发送调试请求 / 中止请求 / 调试响应", "面板内试请求。", "先调试通再连下游。")
+tip("集合同步后，节点配置区可能出现「已更新」提示条，标明更新来源与变更字段。")
 
 h("18.6 JSON 节点", 2)
 p("用途：提供固定 JSON 数据（新手验证贴视图最方便）。")
-field("JSON 内容", "数据本体。", "保持格式正确。")
+field("JSON 内容", "数据本体。", "必须是合法 JSON 对象或数组；可用 {scope?...}/{system?...}。")
+p(
+    "错误高亮（@arronqzy/abuilder@1.1.35 / blueprint-dsl@1.0.16 起）："
+    "解析失败时，出错位置与常见误用字符（中文引号 “”、全角逗号 ，、全角冒号 ： 等）会在编辑器内标红并带波浪下划线，"
+    "下方仍显示错误文案。请改用英文双引号 \"。",
+    bold=True,
+)
+warn("多一个英文逗号、少一个括号也会失败；先看标红位置再改。")
 
 h("18.7 存储节点", 2)
 p("用途：读/写浏览器存储。")
@@ -1267,7 +1304,8 @@ numbered("③（可选）逻辑配置：把响应整理成 `{labels, values}`。
 numbered("④ 视图节点配置勾选图表；类目/数值用 Scope 展开。")
 numbered("连线：①→②→（③）→④。")
 p("预期：调试响应成功后，走完全流程，图表显示接口数据；失败则日志里能看到请求错误，先改 URL/方法/请求头。")
-warn("跨域、错误地址、需要登录的接口都会失败。教学环境请用可公开访问的测试 API，或继续用 JSON 节点。")
+warn("跨域、错误地址、需要登录的接口都会失败。教学环境请用可公开访问的测试 API、接口集合，或继续用 JSON 节点。")
+tip("无 Swagger 时：蓝图 → 接口集合上传 JSON，Fetch 选「接口集合」模式。")
 
 h("18B.7 Demo 对照表（快速查）", 2)
 bullet("只会静态数据 → Demo A（JSON→图）")
@@ -1290,16 +1328,30 @@ page()
 # =============================================================================
 # 19 SCOPE
 # =============================================================================
-h("19. Scope 模板教材与常用例子")
-p("Scope 是贴在零件上的数据包。配置里用花括号填空取值。")
+h("19. Scope / System 模板教材与常用例子")
+p(
+    "模版有两套根，可写在同一字符串里、也可互相嵌套（适用 @arronqzy/blueprint-dsl@1.0.16 起）：",
+    bold=True,
+)
+bullet("scope：蓝图流程里节点互相传递的业务数据（像快递包裹）。")
+bullet("system：系统预设工具与变量（像工具箱）—— time（dayjs 当前时间）、math（Math）、location（Location）。")
 
-h("19.1 语法要点", 2)
-bullet("基础：{scope?.title}、{scope?.a||0}、{scope?.name||''} — 支持 ?. 与 ||")
-bullet("数组展开：[...{scope?.a?.b}] 或 [...{scope?.labels}] — 图表类目/数值展开为多项")
-bullet("文本 HTML：<p>{scope?.title}</p>")
+h("19.1 scope 与 system 怎么选", 2)
+bullet("要显示接口返回的 title、列表行 → 用 scope。")
+bullet("要拼「七天前」「随机数」「当前页 hostname」→ 用 system。")
+bullet("要「七天前」且天数来自上游 → 嵌套：{system?.time?.subtract(scope?.value?.days||7,'d')}。")
+
+h("19.2 语法要点", 2)
+bullet("Scope 基础：{scope?.title}、{scope?.a||0}、{scope?.name||''} — 支持 ?. 与 ||")
+bullet("System 基础：{system?.time}、{system?.math?.PI}、{system?.location?.href}")
+bullet("Time 链式（dayjs）：{system?.time?.subtract(7,'d')?.format('YYYY-MM-DD')}")
+bullet("System 互嵌：{system?.time.subtract(system?.math?.random(),'d')}")
+bullet("数组展开（仅 scope）：[...{scope?.a?.b}] 或 [...{scope?.labels}] — 图表类目/数值展开为多项")
+bullet("文本 HTML：<p>{scope?.title}</p> 或 startTime:{system?.time?.subtract(7,'d')}")
 bullet("URL 拼接：http://{scope?.host}:30081/a.png")
+tip("输入 { 可联想 scope / system；system?.time?. 可联想 dayjs 常用方法。无上游连线时 system 仍可用。")
 
-h("19.2 常用例子", 2)
+h("19.3 常用例子", 2)
 example_box(
     "图表",
     [
@@ -1318,6 +1370,15 @@ example_box(
     "文本",
     [
         "HTML：<p>{scope?.title}</p>",
+        "时间：startTime:{system?.time?.subtract(7,'d')?.format('YYYY-MM-DD')}",
+    ],
+)
+example_box(
+    "Fetch / 接口集合",
+    [
+        "Authorization：Bearer {scope?.value?.token}",
+        "查询参数 page：{scope?.value?.page}",
+        "路径：/users/{scope?.value?.id}",
     ],
 )
 example_box(
@@ -1337,7 +1398,7 @@ example_box(
         "{value}",
     ],
 )
-warn("写错字段名会在解析预览或异常调用警告中体现；先用 JSON 节点固定数据验证。")
+warn("写错字段名会在解析预览或异常调用警告中体现；先用 JSON 节点固定数据验证。JSON 节点请用英文双引号，错误处会标红。")
 
 page()
 
@@ -1363,6 +1424,9 @@ faqs = [
     ("配置搜索不到字段？", "是否选错节点类型；换关键词；取消搜索看全部分组。"),
     ("节点树拖不到别的图层？", "节点或图层锁定；或已在当前层。"),
     ("导入后内容不对？", "确认导入的是面板 JSON 还是蓝图 JSON；先备份再导入。"),
+    ("JSON 节点里中文引号标红？", "请改成英文双引号 \"。标红位置就是出错处。"),
+    ("没有 Swagger / 跨域拉不了文档？", "蓝图 → 接口集合，上传本地 JSON，Fetch 选集合模式。"),
+    ("想取当前时间或七天前？", "用 {system?.time?.subtract(7,'d')?.format('YYYY-MM-DD')}，见第 19 章。"),
     ("Shift 多选无效？", "先单击选中一个，再 Shift+单击；或改用框选。"),
     ("仪表盘只显示一个值？", "数值第一项即仪表值，其余可忽略或作扩展。"),
     ("网格吸不进去？", "拖到槽位中心；略加大吸附阈值。"),
@@ -1388,8 +1452,11 @@ for k, v in [
     ("映射图层", "与源层映射关联的层"),
     ("工作区", "浏览器本地保存的作品"),
     ("蓝图", "数据与逻辑流程图"),
-    ("Scope", "贴在零件上的数据包"),
+    ("Scope", "贴在零件上的业务数据包（流程传递）"),
+    ("System", "系统工具箱：time / math / location"),
     ("Scope 模板", "{scope?...} 填空写法"),
+    ("System 模板", "{system?...} 系统变量写法，可与 scope 嵌套"),
+    ("接口集合", "本地 API JSON，供 Fetch 在跨域时选用"),
     ("浅拷贝", "引用跟随源图层变化"),
     ("深拷贝", "冻结引用快照"),
     ("批量设置", "多选时的统一操作面板"),
@@ -1398,15 +1465,15 @@ for k, v in [
     bullet(f"{k}：{v}")
 
 h("附录 B　建议跟练路径（约 2～3 小时）")
-numbered("第 0～2 章：切中文 + 认识五区")
+numbered("第 0～2 章：切中文 + 认识五区（先核对文首适用版本）")
 numbered("第 3～4 章：三种搜索 + 画布手感")
 numbered("第 5～7 章：拖齐物料认知 + 共有配置")
 numbered("第 8～9 章：多选 + 柱状图全字段")
 numbered("第 10～12 章：文本/表格/其他组件按需")
 numbered("第 13～16 章：图层/节点树/菜单/工作区")
-numbered("第 17～18 章：蓝图面板与 10 种节点")
+numbered("第 17～18 章：蓝图面板、接口集合与 10 种节点（含 JSON 标红）")
 numbered("第 18B 章：按 Demo A→B 把 JSON 喂图、时钟文本跑通")
-numbered("第 19 章：把 Scope 模板写稳并导出备份")
+numbered("第 19 章：把 Scope / System 模板写稳并导出备份")
 numbered("第 20 章 FAQ 当索引")
 
 h("附录 C　截图目录与脚本名")

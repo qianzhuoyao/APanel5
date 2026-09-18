@@ -66,17 +66,13 @@ function closeDropdown() {
 }
 
 function refreshForInput(input: HTMLInputElement | HTMLTextAreaElement) {
-  if (props.scope === undefined) {
-    closeDropdown();
-    return;
-  }
   const cursor = input.selectionStart ?? input.value.length;
-  const parsed = parseScopeAutocomplete(input.value, cursor, props.scope);
+  const parsed = parseScopeAutocomplete(input.value, cursor, props.scope ?? {});
   if (!parsed) {
     closeDropdown();
     return;
   }
-  const suggestions = getScopeAutocompleteSuggestions(props.scope, parsed);
+  const suggestions = getScopeAutocompleteSuggestions(props.scope ?? {}, parsed);
   if (suggestions.length === 0) {
     closeDropdown();
     return;
@@ -170,7 +166,7 @@ function onPointerDown(event: MouseEvent) {
 watch(
   () => toValue(props.containerRef),
   (container, _prev, onCleanup) => {
-    if (!container || props.scope === undefined) return;
+    if (!container) return;
 
     container.addEventListener("focusin", onFocusIn);
     container.addEventListener("input", onInput, true);
@@ -194,13 +190,15 @@ watch(
 watch(
   () => props.scope,
   () => {
-    if (props.scope === undefined) closeDropdown();
+    // scope 变化时刷新；system 联想不依赖 scope，勿因 undefined 关掉
+    const current = dropdown.value;
+    if (current) refreshForInput(current.input);
   }
 );
 </script>
 
 <template>
-  <Teleport v-if="dropdown && scope !== undefined" to="body">
+  <Teleport v-if="dropdown" to="body">
     <div
       data-scope-ac-list
       class="fixed z-[10120] max-h-44 min-w-[140px] overflow-auto rounded-md border border-border bg-white py-1 text-gray-800 shadow-md"

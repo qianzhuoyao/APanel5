@@ -3,6 +3,7 @@ import { useI18n } from "@arronqzy/i18n/vue";
 import { computed, ref } from "vue";
 import type {
   ExecutionTraceEntry,
+  JsonErrorRange,
   JsonNodeConfig,
 } from "@arronqzy/blueprint-dsl";
 import {
@@ -13,6 +14,7 @@ import {
 } from "@arronqzy/blueprint-dsl";
 
 import ConfigHintIcon from "./ConfigHintIcon.vue";
+import JsonLintTextarea from "./JsonLintTextarea.vue";
 import ScopeTemplateAutocompleteHost from "./ScopeTemplateAutocompleteHost.vue";
 import type { BlueprintGraphEdge, BlueprintGraphNode } from "../graph/document";
 import { resolveNodeJsonConfig } from "../graph/document";
@@ -38,6 +40,7 @@ const props = withDefaults(defineProps<JsonNodeConfigPanelProps>(), {
 
 const formRef = ref<HTMLDivElement | null>(null);
 const draftError = ref<string | null>(null);
+const draftRanges = ref<JsonErrorRange[] | null>(null);
 
 function patchJsonConfig(node: BlueprintGraphNode, patch: Partial<JsonNodeConfig>) {
   return {
@@ -70,6 +73,15 @@ const parseError = computed(
     draftError.value ??
     (storedValidation.value.ok ? null : storedValidation.value.error)
 );
+
+const errorRanges = computed<JsonErrorRange[]>(() => {
+  if (draftRanges.value) return draftRanges.value;
+  if (!storedValidation.value.ok && "ranges" in storedValidation.value) {
+    return storedValidation.value.ranges;
+  }
+  return [];
+});
+
 const deferredScope = computed(
   () =>
     storedValidation.value.ok &&
@@ -77,10 +89,10 @@ const deferredScope = computed(
     storedValidation.value.deferred === true
 );
 
-function handleChange(event: Event) {
-  const jsonString = (event.target as HTMLTextAreaElement).value;
+function handleChange(jsonString: string) {
   const result = validateJsonStringAllowingScope(jsonString);
   draftError.value = result.ok ? null : result.error;
+  draftRanges.value = result.ok ? null : result.ranges;
   props.onUpdateNode(props.node.id, patchJsonConfig(props.node, { jsonString }));
 }
 </script>
@@ -105,15 +117,14 @@ function handleChange(event: Event) {
           {{ t("blueprint.config.jsonScopeHint") }}
         </ConfigHintIcon>
       </span>
-      <textarea
-        :value="jsonConfig.jsonString"
-        rows="12"
-        spellcheck="false"
-        class="w-full rounded-md border border-input bg-background px-2 py-1.5 font-mono text-[11px] leading-relaxed text-foreground shadow-sm outline-none focus-visible:ring-1 focus-visible:ring-primary"
+      <JsonLintTextarea
+        :model-value="jsonConfig.jsonString"
+        :ranges="errorRanges"
+        :rows="12"
         placeholder='{
   "key": "{scope?.value}"
 }'
-        @input="handleChange"
+        @update:model-value="handleChange"
       />
       <p v-if="parseError" class="text-[11px] text-destructive">
         {{ t("blueprint.config.jsonFormatError", { error: parseError }) }}

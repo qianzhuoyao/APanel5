@@ -34,6 +34,7 @@ export type PanelMenubarProps = {
   applyTheme: (dark: boolean) => void;
   isDark: boolean;
   openBlueprintExportDialog: () => void;
+  openApiCollectionManager: () => void;
   panelFontSize: "sm" | "md" | "lg";
   setPanelFontSize: (value: "sm" | "md" | "lg") => void;
   locale: Locale;
@@ -65,6 +66,7 @@ export function PanelMenubar({
   applyTheme,
   isDark,
   openBlueprintExportDialog,
+  openApiCollectionManager,
   panelFontSize,
   setPanelFontSize,
   locale,
@@ -120,6 +122,10 @@ export function PanelMenubar({
               <MenubarItem onClick={openBlueprintExportDialog}>{t("panel.menubar.export")}</MenubarItem>
               <MenubarItem onClick={() => blueprintImportInputRef.current?.click()}>
                 {t("panel.menubar.import")}
+              </MenubarItem>
+              <MenubarSeparator />
+              <MenubarItem onClick={openApiCollectionManager}>
+                {t("panel.menubar.apiCollections")}
               </MenubarItem>
             </MenubarContent>
           </MenubarMenu>

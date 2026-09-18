@@ -7,6 +7,7 @@ export function ScopeTemplateUsageHint() {
     <div className="space-y-2">
       <p>{t("panel.scope.usageHint1")}</p>
       <p>{t("panel.scope.usageHint2")}</p>
+      <p>{t("panel.scope.usageHintSystem")}</p>
     </div>
   );
 }

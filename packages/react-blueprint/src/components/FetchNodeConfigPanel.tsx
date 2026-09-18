@@ -7,6 +7,10 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
   cn,
 } from "@arronqzy/ui";
 import type {
@@ -14,8 +18,10 @@ import type {
   FetchHttpMethod,
   FetchRequestConfig,
   FetchResponseType,
+  FetchUrlInputMode,
 } from "@arronqzy/blueprint-dsl";
 import {
+  applyApiCollectionEndpointToFetchConfig,
   applyFetchConfigScope,
   draftFetchHeadersText,
   FETCH_CACHES,
@@ -45,6 +51,7 @@ import {
   useFetchDebugTask,
   useSwaggerLoadTask,
 } from "../fetch-config-task-store";
+import { useApiCollections } from "../library/api-collection-store";
 import { useI18nOptional as useI18n } from "@arronqzy/i18n/react";
 
 import { ConfigFieldLabel, ConfigHintIcon, ConfigSectionTitle } from "./ConfigHintIcon";
@@ -274,10 +281,22 @@ export function FetchNodeConfigPanel({
 }: FetchNodeConfigPanelProps) {
   const { t } = useI18n();
   const fetchConfig = resolveNodeFetchConfig(node);
+  const apiCollections = useApiCollections();
   const endpoints = fetchConfig.swaggerEndpoints ?? [];
   const hasSwaggerEndpoints = endpoints.length > 0;
-  const urlInputMode =
+  const urlInputMode: FetchUrlInputMode =
     fetchConfig.urlInputMode ?? (hasSwaggerEndpoints ? "swagger" : "manual");
+  const usingCollection = urlInputMode === "collection";
+  const selectedCollection =
+    apiCollections.find((item) => item.id === fetchConfig.apiCollectionId) ??
+    null;
+  const collectionEndpoints = selectedCollection?.document.apis ?? [];
+  const selectedCollectionEndpoint =
+    collectionEndpoints.find(
+      (item) => item.name === fetchConfig.apiCollectionEndpointName
+    ) ?? null;
+  const selectedEndpointDescription =
+    selectedCollectionEndpoint?.description?.trim() || "";
   const swaggerTask = useSwaggerLoadTask(node.id);
   const fetchDebugTask = useFetchDebugTask(node.id);
   const loadingSwagger = swaggerTask.status === "loading";
@@ -352,10 +371,88 @@ export function FetchNodeConfigPanel({
   const [formEl, setFormEl] = useState<HTMLDivElement | null>(null);
 
   const setUrlInputMode = useCallback(
-    (mode: "swagger" | "manual") => {
+    (mode: FetchUrlInputMode) => {
       onUpdateNode(node.id, patchFetchConfig(node, { urlInputMode: mode }));
     },
     [node, onUpdateNode]
+  );
+
+  const setFetchSourceMode = useCallback(
+    (mode: "direct" | "collection") => {
+      if (mode === "collection") {
+        onUpdateNode(
+          node.id,
+          patchFetchConfig(node, { urlInputMode: "collection" })
+        );
+        return;
+      }
+      const nextMode: FetchUrlInputMode = hasSwaggerEndpoints ? "swagger" : "manual";
+      onUpdateNode(
+        node.id,
+        patchFetchConfig(node, {
+          urlInputMode: nextMode,
+          apiCollectionId: undefined,
+          apiCollectionEndpointName: undefined,
+        })
+      );
+    },
+    [hasSwaggerEndpoints, node, onUpdateNode]
+  );
+
+  const handleSelectCollection = useCallback(
+    (collectionId: string) => {
+      if (!collectionId) {
+        onUpdateNode(
+          node.id,
+          patchFetchConfig(node, {
+            apiCollectionId: undefined,
+            apiCollectionEndpointName: undefined,
+            urlInputMode: "collection",
+          })
+        );
+        return;
+      }
+      onUpdateNode(
+        node.id,
+        patchFetchConfig(node, {
+          apiCollectionId: collectionId,
+          apiCollectionEndpointName: undefined,
+          urlInputMode: "collection",
+        })
+      );
+    },
+    [node, onUpdateNode]
+  );
+
+  const handleSelectCollectionEndpoint = useCallback(
+    (endpointName: string) => {
+      if (!selectedCollection || !endpointName) {
+        onUpdateNode(
+          node.id,
+          patchFetchConfig(node, {
+            apiCollectionEndpointName: undefined,
+            urlInputMode: "collection",
+          })
+        );
+        return;
+      }
+      const endpoint = selectedCollection.document.apis.find(
+        (item) => item.name === endpointName
+      );
+      if (!endpoint) return;
+      onUpdateNode(
+        node.id,
+        patchFetchConfig(
+          node,
+          applyApiCollectionEndpointToFetchConfig({
+            collectionId: selectedCollection.id,
+            document: selectedCollection.document,
+            endpoint,
+          })
+        )
+      );
+    },
+    [node, onUpdateNode, selectedCollection]
   );
 
   const handleLoadSwagger = useCallback(() => {
@@ -454,6 +551,90 @@ export function FetchNodeConfigPanel({
         title={t("blueprint.config.fetchTitle")}
         hint={t("blueprint.config.fetchHint")}
       />
+
+      {fetchConfig.apiCollectionSyncNotice ? (
+        <div className="rounded-md border border-emerald-500/40 bg-emerald-500/10 p-2.5 text-[11px] text-foreground">
+          <div className="flex items-start justify-between gap-2">
+            <div className="space-y-1">
+              <p className="font-medium text-emerald-800 dark:text-emerald-200">
+                {t("blueprint.config.apiCollectionSyncUpdatedTitle")}
+              </p>
+              <p className="text-muted-foreground">
+                {t("blueprint.config.apiCollectionSyncUpdatedSource")}
+              </p>
+              <p>
+                {t("blueprint.config.apiCollectionSyncUpdatedCollection", {
+                  collection: fetchConfig.apiCollectionSyncNotice.collectionName,
+                  endpoint: fetchConfig.apiCollectionSyncNotice.endpointName,
+                })}
+              </p>
+              <p>
+                {fetchConfig.apiCollectionSyncNotice.changedFields.length > 0
+                  ? t("blueprint.config.apiCollectionSyncUpdatedFields", {
+                      fields: fetchConfig.apiCollectionSyncNotice.changedFields
+                        .map((field) =>
+                          t(`blueprint.config.apiCollectionSyncField.${field}`)
+                        )
+                        .join("、"),
+                    })
+                  : t("blueprint.config.apiCollectionSyncUpdatedNoFieldChange")}
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-7 shrink-0 px-2 text-[11px]"
+              onClick={() =>
+                onUpdateNode(
+                  node.id,
+                  patchFetchConfig(node, { apiCollectionSyncNotice: null })
+                )
+              }
+            >
+              {t("common.close")}
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
+      <div className="space-y-1">
+        <span className="text-[11px] text-muted-foreground">
+          {t("blueprint.config.fetchSourceMode")}
+        </span>
+        <div className="flex rounded-md border border-border p-0.5">
+          <button
+            type="button"
+            className={cn(
+              "flex-1 rounded px-2 py-1 text-[11px] transition-colors",
+              !usingCollection
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+            onClick={() => setFetchSourceMode("direct")}
+          >
+            {t("blueprint.config.fetchSourceDirect")}
+          </button>
+          <button
+            type="button"
+            className={cn(
+              "flex-1 rounded px-2 py-1 text-[11px] transition-colors",
+              usingCollection
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+            onClick={() => setFetchSourceMode("collection")}
+          >
+            {t("blueprint.config.fetchSourceCollection")}
+          </button>
+        </div>
+        <p className="text-[10px] text-muted-foreground">
+          {usingCollection
+            ? t("blueprint.config.fetchSourceCollectionHint")
+            : t("blueprint.config.fetchSourceDirectHint")}
+        </p>
+      </div>
+
       <div className="space-y-1 rounded-md border border-border/60 bg-background/70 p-2">
         <div className="flex items-center gap-1.5 text-[11px] font-medium text-foreground">
           {t("blueprint.config.fetchScopeTitle")}
@@ -477,6 +658,133 @@ export function FetchNodeConfigPanel({
         )}
       </div>
 
+      {usingCollection ? (
+        <div className="space-y-2 rounded-md border border-border/60 bg-background/70 p-2">
+          <label className="block space-y-1">
+            <span className="text-muted-foreground">
+              {t("blueprint.config.apiCollectionSelect")}
+            </span>
+            <Select
+              value={fetchConfig.apiCollectionId || undefined}
+              onValueChange={handleSelectCollection}
+            >
+              <SelectTrigger className="h-8 text-[11px]">
+                <SelectValue
+                  placeholder={t("blueprint.config.apiCollectionSelectPlaceholder")}
+                />
+              </SelectTrigger>
+              <SelectContent className="z-[10200]">
+                {apiCollections.length === 0 ? (
+                  <SelectItem value="__empty" disabled>
+                    {t("blueprint.config.apiCollectionEmpty")}
+                  </SelectItem>
+                ) : (
+                  apiCollections.map((item) => (
+                    <SelectItem key={item.id} value={item.id}>
+                      {item.name}
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
+          </label>
+          <label className="block space-y-1">
+            <span className="text-muted-foreground">
+              {t("blueprint.config.apiCollectionEndpoint")}
+            </span>
+            <div className="flex gap-1.5">
+              <TooltipProvider delayDuration={200}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="min-w-0 flex-1">
+                      <Select
+                        value={fetchConfig.apiCollectionEndpointName || undefined}
+                        onValueChange={handleSelectCollectionEndpoint}
+                        disabled={!selectedCollection}
+                      >
+                        <SelectTrigger className="h-8 w-full text-[11px]">
+                          <SelectValue
+                            placeholder={t(
+                              "blueprint.config.apiCollectionEndpointPlaceholder"
+                            )}
+                          />
+                        </SelectTrigger>
+                        <SelectContent className="z-[10200]">
+                          {collectionEndpoints.length === 0 ? (
+                            <SelectItem value="__empty" disabled>
+                              {t("blueprint.config.apiCollectionNoEndpoints")}
+                            </SelectItem>
+                          ) : (
+                            collectionEndpoints.map((item) => (
+                              <SelectItem
+                                key={item.name}
+                                value={item.name}
+                                title={item.description?.trim() || undefined}
+                              >
+                                {item.name}
+                              </SelectItem>
+                            ))
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </TooltipTrigger>
+                  {selectedEndpointDescription ? (
+                    <TooltipContent
+                      side="top"
+                      className="z-[10300] max-w-sm whitespace-pre-wrap text-[11px]"
+                    >
+                      {selectedEndpointDescription}
+                    </TooltipContent>
+                  ) : null}
+                </Tooltip>
+              </TooltipProvider>
+              <AsyncSendButton
+                loading={loadingFetchDebug}
+                disabled={!fetchConfig.url?.trim()}
+                onSend={handleSendFetchDebug}
+                onAbort={handleAbortFetchDebug}
+                sendTitle={t("blueprint.config.sendDebugRequest")}
+                abortTitle={t("blueprint.config.abortRequest")}
+                sendAriaLabel={t("blueprint.config.sendDebugRequest")}
+                abortAriaLabel={t("blueprint.config.abortDebugAria")}
+              />
+            </div>
+          </label>
+          {selectedCollection ? (
+            <p className="text-[10px] text-muted-foreground">
+              {t("blueprint.config.apiCollectionFilledHint")}
+            </p>
+          ) : null}
+          <label className="block space-y-1">
+            <span className="text-muted-foreground">{t("blueprint.config.requestUrl")}</span>
+            <Input
+              value={fetchConfig.url}
+              disabled={loadingFetchDebug}
+              onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                onUpdateNode(node.id, patchFetchConfig(node, { url: e.target.value }))
+              }
+              className="h-8 font-mono text-[11px]"
+            />
+          </label>
+          {usesScopeTemplate && resolvedUrlPreview ? (
+            <p className="break-all font-mono text-[10px] text-muted-foreground">
+              {t("blueprint.config.fetchScopeResolvedUrl")}: {resolvedUrlPreview}
+            </p>
+          ) : null}
+          {loadingFetchDebug ? (
+            <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+              <LoaderIcon className="h-3.5 w-3.5 shrink-0" />
+              {t("blueprint.config.sendingDebug")}
+            </p>
+          ) : null}
+          {fetchValidationError ? (
+            <p className="text-[11px] text-destructive">{fetchValidationError}</p>
+          ) : null}
+          <FetchDebugResponsePanel task={fetchDebugTask} />
+        </div>
+      ) : (
+      <>
       <label className="block space-y-1">
         <span className="text-muted-foreground">{t("blueprint.config.swaggerUrlOptional")}</span>
         <div className="flex gap-1.5">
@@ -666,6 +974,9 @@ export function FetchNodeConfigPanel({
         ) : null}
         <FetchDebugResponsePanel task={fetchDebugTask} />
       </label>
+
+      </>
+      )}
 
       <label className="block space-y-1">
         <span className="text-muted-foreground">{t("blueprint.config.requestMethod")}</span>

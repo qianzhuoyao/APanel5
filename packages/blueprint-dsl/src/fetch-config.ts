@@ -32,7 +32,16 @@ export const FETCH_CACHES = [
 
 export const FETCH_REDIRECTS = ["follow", "error", "manual"] as const;
 
-export type FetchUrlInputMode = "swagger" | "manual";
+export type FetchUrlInputMode = "swagger" | "manual" | "collection";
+
+export type ApiCollectionSyncNotice = {
+  source: "api-collection-sync";
+  collectionName: string;
+  endpointName: string;
+  /** 机器字段名：url / method / headers / body / apiBaseUrl */
+  changedFields: string[];
+  updatedAt: number;
+};
 
 export type FetchRequestConfig = {
   url: string;
@@ -56,8 +65,17 @@ export type FetchRequestConfig = {
   apiBaseUrl?: string;
   /** 从 Swagger 文档解析出的接口列表 */
   swaggerEndpoints?: SwaggerApiEndpoint[];
-  /** 请求 URL 输入方式：接口联想或手动输入 */
+  /** 请求 URL 输入方式：接口联想、手动输入，或接口集合回填 */
   urlInputMode?: FetchUrlInputMode;
+  /** 接口集合记录 id（urlInputMode=collection） */
+  apiCollectionId?: string;
+  /** 集合内选中的接口名称 */
+  apiCollectionEndpointName?: string;
+  /**
+   * 接口集合同步后的配置区提示；用户可关闭。
+   * source 固定为 api-collection-sync，表示来源是数据集合更新。
+   */
+  apiCollectionSyncNotice?: ApiCollectionSyncNotice | null;
 };
 
 export const DEFAULT_FETCH_REQUEST_CONFIG: FetchRequestConfig = {
@@ -86,6 +104,7 @@ export function normalizeFetchRequestConfig(
     },
     headersJson: config?.headersJson,
     swaggerEndpoints: config?.swaggerEndpoints,
+    apiCollectionSyncNotice: config?.apiCollectionSyncNotice,
   };
 }
 

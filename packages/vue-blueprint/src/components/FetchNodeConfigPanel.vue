@@ -1,14 +1,16 @@
 <script setup lang="ts">
 import { useI18n } from "@arronqzy/i18n/vue";
 import { computed, ref } from "vue";
-import { Button, Input, Select } from "ant-design-vue";
+import { Button, Input, Select, Tooltip } from "ant-design-vue";
 import type {
   ExecutionTraceEntry,
   FetchHttpMethod,
   FetchRequestConfig,
   FetchResponseType,
+  FetchUrlInputMode,
 } from "@arronqzy/blueprint-dsl";
 import {
+  applyApiCollectionEndpointToFetchConfig,
   applyFetchConfigScope,
   draftFetchHeadersText,
   FETCH_CACHES,
@@ -38,6 +40,7 @@ import {
   useFetchDebugTask,
   useSwaggerLoadTask,
 } from "../fetch-config-task-store";
+import { useApiCollections } from "../library/api-collection-store";
 import ConfigHintIcon from "./ConfigHintIcon.vue";
 import FetchUrlAutocomplete from "./FetchUrlAutocomplete.vue";
 import ScopeTemplateAutocompleteHost from "./ScopeTemplateAutocompleteHost.vue";
@@ -127,10 +130,28 @@ const autocompleteScope = computed(() =>
   resolveFetchScopeAutocompleteRoot(incomingScope.value)
 );
 const formRef = ref<HTMLElement | null>(null);
+const apiCollections = useApiCollections();
 const endpoints = computed(() => fetchConfig.value.swaggerEndpoints ?? []);
 const hasSwaggerEndpoints = computed(() => endpoints.value.length > 0);
 const urlInputMode = computed(
-  () => fetchConfig.value.urlInputMode ?? (hasSwaggerEndpoints.value ? "swagger" : "manual")
+  (): FetchUrlInputMode =>
+    fetchConfig.value.urlInputMode ?? (hasSwaggerEndpoints.value ? "swagger" : "manual")
+);
+const usingCollection = computed(() => urlInputMode.value === "collection");
+const selectedCollection = computed(
+  () =>
+    apiCollections.value.find((item) => item.id === fetchConfig.value.apiCollectionId) ??
+    null
+);
+const collectionEndpoints = computed(() => selectedCollection.value?.document.apis ?? []);
+const selectedCollectionEndpoint = computed(
+  () =>
+    collectionEndpoints.value.find(
+      (item) => item.name === fetchConfig.value.apiCollectionEndpointName
+    ) ?? null
+);
+const selectedEndpointDescription = computed(
+  () => selectedCollectionEndpoint.value?.description?.trim() || ""
 );
 
 const swaggerTask = useSwaggerLoadTask(props.node.id);
@@ -151,8 +172,83 @@ function patchFetchConfig(node: BlueprintGraphNode, patch: Partial<FetchRequestC
   };
 }
 
-function setUrlInputMode(mode: "swagger" | "manual") {
+function dismissSyncNotice() {
+  props.onUpdateNode(
+    props.node.id,
+    patchFetchConfig(props.node, { apiCollectionSyncNotice: null })
+  );
+}
+
+function setUrlInputMode(mode: FetchUrlInputMode) {
   props.onUpdateNode(props.node.id, patchFetchConfig(props.node, { urlInputMode: mode }));
+}
+
+function setFetchSourceMode(mode: "direct" | "collection") {
+  if (mode === "collection") {
+    props.onUpdateNode(
+      props.node.id,
+      patchFetchConfig(props.node, { urlInputMode: "collection" })
+    );
+    return;
+  }
+  const nextMode: FetchUrlInputMode = hasSwaggerEndpoints.value ? "swagger" : "manual";
+  props.onUpdateNode(
+    props.node.id,
+    patchFetchConfig(props.node, {
+      urlInputMode: nextMode,
+      apiCollectionId: undefined,
+      apiCollectionEndpointName: undefined,
+    })
+  );
+}
+
+function handleSelectCollection(collectionId: string) {
+  if (!collectionId) {
+    props.onUpdateNode(
+      props.node.id,
+      patchFetchConfig(props.node, {
+        apiCollectionId: undefined,
+        apiCollectionEndpointName: undefined,
+        urlInputMode: "collection",
+      })
+    );
+    return;
+  }
+  props.onUpdateNode(
+    props.node.id,
+    patchFetchConfig(props.node, {
+      apiCollectionId: collectionId,
+      apiCollectionEndpointName: undefined,
+      urlInputMode: "collection",
+    })
+  );
+}
+
+function handleSelectCollectionEndpoint(endpointName: string) {
+  const collection = selectedCollection.value;
+  if (!collection || !endpointName) {
+    props.onUpdateNode(
+      props.node.id,
+      patchFetchConfig(props.node, {
+        apiCollectionEndpointName: undefined,
+        urlInputMode: "collection",
+      })
+    );
+    return;
+  }
+  const endpoint = collection.document.apis.find((item) => item.name === endpointName);
+  if (!endpoint) return;
+  props.onUpdateNode(
+    props.node.id,
+    patchFetchConfig(
+      props.node,
+      applyApiCollectionEndpointToFetchConfig({
+        collectionId: collection.id,
+        document: collection.document,
+        endpoint,
+      })
+    )
+  );
 }
 
 function handleLoadSwagger() {
@@ -275,6 +371,84 @@ function handleHeadersInput(event: Event) {
         {{ t("blueprint.config.fetchHint") }}
       </ConfigHintIcon>
     </div>
+
+    <div
+      v-if="fetchConfig.apiCollectionSyncNotice"
+      class="rounded-md border border-emerald-500/40 bg-emerald-500/10 p-2.5 text-[11px] text-foreground"
+    >
+      <div class="flex items-start justify-between gap-2">
+        <div class="space-y-1">
+          <p class="font-medium text-emerald-800">
+            {{ t("blueprint.config.apiCollectionSyncUpdatedTitle") }}
+          </p>
+          <p class="text-muted-foreground">
+            {{ t("blueprint.config.apiCollectionSyncUpdatedSource") }}
+          </p>
+          <p>
+            {{
+              t("blueprint.config.apiCollectionSyncUpdatedCollection", {
+                collection: fetchConfig.apiCollectionSyncNotice.collectionName,
+                endpoint: fetchConfig.apiCollectionSyncNotice.endpointName,
+              })
+            }}
+          </p>
+          <p>
+            {{
+              fetchConfig.apiCollectionSyncNotice.changedFields.length > 0
+                ? t("blueprint.config.apiCollectionSyncUpdatedFields", {
+                    fields: fetchConfig.apiCollectionSyncNotice.changedFields
+                      .map((field) => t(`blueprint.config.apiCollectionSyncField.${field}`))
+                      .join("、"),
+                  })
+                : t("blueprint.config.apiCollectionSyncUpdatedNoFieldChange")
+            }}
+          </p>
+        </div>
+        <Button size="small" @click="dismissSyncNotice">
+          {{ t("common.close") }}
+        </Button>
+      </div>
+    </div>
+
+    <div class="space-y-1">
+      <span class="text-[11px] text-muted-foreground">
+        {{ t("blueprint.config.fetchSourceMode") }}
+      </span>
+      <div class="flex rounded-md border border-border p-0.5">
+        <button
+          type="button"
+          class="flex-1 rounded px-2 py-1 text-[11px] transition-colors"
+          :class="
+            !usingCollection
+              ? 'bg-primary text-primary-foreground'
+              : 'text-muted-foreground hover:text-foreground'
+          "
+          @click="setFetchSourceMode('direct')"
+        >
+          {{ t("blueprint.config.fetchSourceDirect") }}
+        </button>
+        <button
+          type="button"
+          class="flex-1 rounded px-2 py-1 text-[11px] transition-colors"
+          :class="
+            usingCollection
+              ? 'bg-primary text-primary-foreground'
+              : 'text-muted-foreground hover:text-foreground'
+          "
+          @click="setFetchSourceMode('collection')"
+        >
+          {{ t("blueprint.config.fetchSourceCollection") }}
+        </button>
+      </div>
+      <p class="text-[10px] text-muted-foreground">
+        {{
+          usingCollection
+            ? t("blueprint.config.fetchSourceCollectionHint")
+            : t("blueprint.config.fetchSourceDirectHint")
+        }}
+      </p>
+    </div>
+
     <div class="space-y-1 rounded-md border border-gray-200/80 bg-white/80 p-2">
       <div class="flex items-center gap-1.5 text-[11px] font-medium text-gray-800">
         {{ t("blueprint.config.fetchScopeTitle") }}
@@ -292,6 +466,163 @@ function handleHeadersInput(event: Event) {
       </template>
     </div>
 
+    <template v-if="usingCollection">
+      <div class="space-y-2 rounded-md border border-border/60 bg-background/70 p-2">
+        <label class="block space-y-1">
+          <span class="text-muted-foreground">{{ t("blueprint.config.apiCollectionSelect") }}</span>
+          <Select
+            size="small"
+            class="w-full"
+            :value="fetchConfig.apiCollectionId || undefined"
+            :placeholder="t('blueprint.config.apiCollectionSelectPlaceholder')"
+            allow-clear
+            @change="(v) => handleSelectCollection(v == null ? '' : String(v))"
+          >
+            <Select.Option v-if="apiCollections.length === 0" value="__empty" disabled>
+              {{ t("blueprint.config.apiCollectionEmpty") }}
+            </Select.Option>
+            <Select.Option
+              v-for="item in apiCollections"
+              :key="item.id"
+              :value="item.id"
+            >
+              {{ item.name }}
+            </Select.Option>
+          </Select>
+        </label>
+        <label class="block space-y-1">
+          <span class="text-muted-foreground">{{ t("blueprint.config.apiCollectionEndpoint") }}</span>
+          <div class="flex gap-1.5">
+            <Tooltip
+              :title="selectedEndpointDescription || undefined"
+              :mouse-enter-delay="0.2"
+              placement="top"
+              overlay-class-name="max-w-sm whitespace-pre-wrap text-[11px]"
+            >
+              <div class="min-w-0 flex-1">
+                <Select
+                  size="small"
+                  class="w-full"
+                  :value="fetchConfig.apiCollectionEndpointName || undefined"
+                  :placeholder="t('blueprint.config.apiCollectionEndpointPlaceholder')"
+                  :disabled="!selectedCollection"
+                  allow-clear
+                  @change="(v) => handleSelectCollectionEndpoint(v == null ? '' : String(v))"
+                >
+                  <Select.Option v-if="collectionEndpoints.length === 0" value="__empty" disabled>
+                    {{ t("blueprint.config.apiCollectionNoEndpoints") }}
+                  </Select.Option>
+                  <Select.Option
+                    v-for="item in collectionEndpoints"
+                    :key="item.name"
+                    :value="item.name"
+                    :title="item.description?.trim() || undefined"
+                  >
+                    {{ item.name }}
+                  </Select.Option>
+                </Select>
+              </div>
+            </Tooltip>
+            <Button
+              v-if="loadingFetchDebug"
+              size="small"
+              class="h-8 w-8 shrink-0"
+              :title="t('blueprint.config.abortRequest')"
+              @click="handleAbortFetchDebug"
+            >
+              ■
+            </Button>
+            <Button
+              v-else
+              size="small"
+              class="h-8 w-8 shrink-0"
+              :disabled="!fetchConfig.url?.trim()"
+              :title="t('blueprint.config.sendDebugRequest')"
+              @click="handleSendFetchDebug"
+            >
+              ➤
+            </Button>
+          </div>
+        </label>
+        <p v-if="selectedCollection" class="text-[10px] text-muted-foreground">
+          {{ t("blueprint.config.apiCollectionFilledHint") }}
+        </p>
+        <label class="block space-y-1">
+          <span class="text-muted-foreground">{{ t("blueprint.config.requestUrl") }}</span>
+          <Input
+            size="small"
+            :value="fetchConfig.url"
+            :disabled="loadingFetchDebug"
+            class="font-mono text-[11px]"
+            @update:value="(v) => onUpdateNode(node.id, patchFetchConfig(node, { url: String(v) }))"
+          />
+        </label>
+        <p
+          v-if="usesScopeTemplate && resolvedUrlPreview"
+          class="break-all font-mono text-[10px] text-gray-500"
+        >
+          {{ t("blueprint.config.fetchScopeResolvedUrl") }}: {{ resolvedUrlPreview }}
+        </p>
+        <p v-if="loadingFetchDebug" class="text-[11px] text-muted-foreground">
+          {{ t("blueprint.config.sendingDebug") }}
+        </p>
+        <p v-if="fetchValidationError" class="text-[11px] text-destructive">
+          {{ fetchValidationError }}
+        </p>
+        <div
+          v-if="fetchDebugTask.status === 'error'"
+          class="rounded-md border border-destructive/40 bg-destructive/5 p-2"
+        >
+          <p class="text-[11px] text-destructive">
+            {{ fetchDebugTask.error ?? t("blueprint.config.requestFailed") }}
+          </p>
+        </div>
+        <div
+          v-else-if="fetchDebugTask.status === 'success' && fetchDebugTask.result"
+          class="rounded-md border border-border/70 bg-background/80"
+        >
+          <button
+            type="button"
+            class="flex w-full items-center gap-2 px-2 py-1.5 text-left"
+            @click="debugExpanded = !debugExpanded"
+          >
+            <span
+              class="text-muted-foreground transition-transform"
+              :class="debugExpanded && 'rotate-180'"
+            >
+              ▼
+            </span>
+            <span class="text-[11px] font-medium text-foreground">{{ t("blueprint.config.debugResponse") }}</span>
+            <span
+              class="rounded px-1.5 py-0.5 font-mono text-[10px]"
+              :class="
+                debugOk
+                  ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
+                  : 'bg-destructive/15 text-destructive'
+              "
+            >
+              {{ fetchDebugTask.result.status }} {{ fetchDebugTask.result.statusText }}
+            </span>
+            <span
+              v-if="!debugExpanded"
+              class="min-w-0 flex-1 truncate font-mono text-[10px] text-muted-foreground"
+            >
+              {{ debugPreview }}
+            </span>
+          </button>
+          <div v-if="debugExpanded" class="border-t border-border/60 px-2 py-2">
+            <div class="mb-1 truncate font-mono text-[10px] text-muted-foreground">
+              {{ fetchDebugTask.result.url }}
+            </div>
+            <pre
+              class="max-h-56 overflow-auto whitespace-pre-wrap break-all rounded bg-muted/30 p-2 font-mono text-[10px] leading-relaxed text-foreground"
+            >{{ debugBodyText }}</pre>
+          </div>
+        </div>
+      </div>
+    </template>
+
+    <template v-else>
     <label class="block space-y-1">
       <span class="text-muted-foreground">{{ t("blueprint.config.swaggerUrlOptional") }}</span>
       <div class="flex gap-1.5">
@@ -527,6 +858,7 @@ function handleHeadersInput(event: Event) {
         </div>
       </div>
     </label>
+    </template>
 
     <label class="block space-y-1">
       <span class="text-muted-foreground">{{ t("blueprint.config.requestMethod") }}</span>

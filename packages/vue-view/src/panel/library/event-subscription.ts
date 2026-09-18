@@ -5,6 +5,10 @@ export const AbuilderEvents = {
   workspaceAdd: "workspace:add",
   /** 同步工作区 */
   workspaceSync: "workspace:sync",
+  /** 开始上传接口集合 */
+  apiCollectionUploadStart: "api-collection:upload-start",
+  /** 上传接口集合成功 */
+  apiCollectionUploadSuccess: "api-collection:upload-success",
 } as const;
 
 export type AbuilderEventName = (typeof AbuilderEvents)[keyof typeof AbuilderEvents];
@@ -15,9 +19,25 @@ export type WorkspaceData = WorkspaceProjectRecord;
 export type WorkspaceAddEventPayload = WorkspaceData;
 export type WorkspaceSyncEventPayload = WorkspaceData;
 
+export type ApiCollectionUploadStartEventPayload = {
+  fileNames: string[];
+  count: number;
+};
+
+export type ApiCollectionUploadSuccessEventPayload = {
+  collections: Array<{
+    id: string;
+    name: string;
+    apiCount: number;
+    persistLocal: boolean;
+  }>;
+};
+
 export type AbuilderEventPayloadMap = {
   [AbuilderEvents.workspaceAdd]: WorkspaceAddEventPayload;
   [AbuilderEvents.workspaceSync]: WorkspaceSyncEventPayload;
+  [AbuilderEvents.apiCollectionUploadStart]: ApiCollectionUploadStartEventPayload;
+  [AbuilderEvents.apiCollectionUploadSuccess]: ApiCollectionUploadSuccessEventPayload;
 };
 
 type EventCallback = (payload: unknown) => void;

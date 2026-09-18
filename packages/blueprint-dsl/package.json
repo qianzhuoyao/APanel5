@@ -1,12 +1,13 @@
 {
   "name": "@arronqzy/blueprint-dsl",
-  "version": "1.0.15",
+  "version": "1.0.16",
   "description": "Abuilder blueprint DSL runtime",
   "license": "MIT",
   "type": "module",
   "files": [
     "dist",
-    "readme.md"
+    "readme.md",
+    "vendor"
   ],
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",

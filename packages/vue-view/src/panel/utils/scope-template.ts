@@ -1,6 +1,10 @@
 import type { PanelElement } from "../types";
 import type { PanelTableConfig } from "@arronqzy/view-table";
 import { isUsableTableRawData } from "@arronqzy/view-table";
+import {
+  createSystemRoot,
+  isDayjsValue,
+} from "@arronqzy/blueprint-dsl";
 import { materializeChartLabelsFromScope, materializeChartValuesFromScope } from "./scope-template-chart";
 import {
   SCOPE_SPREAD_TEMPLATE_RE,
@@ -11,12 +15,12 @@ import {
   resolveSpreadScopePath,
 } from "./scope-template-spread";
 
-const SCOPE_TOKEN_RE = /\{(scope[^}]*)\}/g;
+const TEMPLATE_TOKEN_RE = /\{((?:scope|system)[^}]*)\}/g;
 
 export function hasScopeTemplate(value: string): boolean {
-  SCOPE_TOKEN_RE.lastIndex = 0;
+  TEMPLATE_TOKEN_RE.lastIndex = 0;
   SCOPE_SPREAD_TEMPLATE_RE.lastIndex = 0;
-  return SCOPE_TOKEN_RE.test(value) || SCOPE_SPREAD_TEMPLATE_RE.test(value);
+  return TEMPLATE_TOKEN_RE.test(value) || SCOPE_SPREAD_TEMPLATE_RE.test(value);
 }
 
 export function evaluateScopeExpression(
@@ -26,8 +30,13 @@ export function evaluateScopeExpression(
   const trimmed = expression.trim();
   if (!trimmed) return undefined;
   try {
-    const fn = new Function("scope", `"use strict"; return (${trimmed});`);
-    return fn(scope);
+    const system = createSystemRoot();
+    const fn = new Function(
+      "scope",
+      "system",
+      `"use strict"; return (${trimmed});`
+    );
+    return fn(scope, system);
   } catch {
     return undefined;
   }
@@ -38,6 +47,9 @@ function stringifyScopeValue(value: unknown): string {
   if (typeof value === "string") return value;
   if (typeof value === "number" || typeof value === "boolean") {
     return String(value);
+  }
+  if (isDayjsValue(value)) {
+    return value.toISOString();
   }
   try {
     return JSON.stringify(value);
@@ -60,8 +72,8 @@ export function evaluateScopeTemplate(
     }
   );
 
-  // Only `{scope...}` tokens — keep ECharts / CSS braces like `{b}` intact.
-  return withSpread.replace(SCOPE_TOKEN_RE, (_: string, rawExpr: string) =>
+  // Only `{scope...}` / `{system...}` — keep ECharts / CSS braces like `{b}` intact.
+  return withSpread.replace(TEMPLATE_TOKEN_RE, (_: string, rawExpr: string) =>
     stringifyScopeValue(evaluateScopeExpression(rawExpr, scope))
   );
 }
@@ -91,7 +103,7 @@ function materializeTemplateValue(template: string, scope: unknown): unknown {
     );
   }
 
-  const singleMatch = /^\{(scope[^}]*)\}$/.exec(trimmed);
+  const singleMatch = /^\{((?:scope|system)[^}]*)\}$/.exec(trimmed);
   if (singleMatch) {
     return evaluateScopeExpression(singleMatch[1]!, scope);
   }

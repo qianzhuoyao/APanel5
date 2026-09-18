@@ -252,13 +252,13 @@ export function resolveFetchBody(
   if (body === undefined) return undefined;
   const trimmed = body.trim();
   if (!trimmed) return body;
-  if (scope !== undefined && isWholeScopeExpression(trimmed)) {
+  if (isWholeScopeExpression(trimmed)) {
     const value = evaluateScopeExpression(trimmed.slice(1, -1), scope);
     if (value === undefined) return "";
     if (typeof value === "string") return value;
     return stringifyScopeValue(value);
   }
-  if (scope === undefined || !hasScopeTemplate(body)) return body;
+  if (!hasScopeTemplate(body)) return body;
   if (looksLikeJsonText(trimmed)) {
     return evaluateScopeTemplateInJson(body, scope);
   }
@@ -303,7 +303,8 @@ export function getFetchHeadersValidationError(
 export function isWholeScopeExpression(text: string): boolean {
   const trimmed = text.trim();
   if (!trimmed.startsWith("{") || !trimmed.endsWith("}")) return false;
-  return trimmed.slice(1, -1).trim().startsWith("scope");
+  const inner = trimmed.slice(1, -1).trim();
+  return inner.startsWith("scope") || inner.startsWith("system");
 }
 
 function asHeaderRecord(value: unknown): Record<string, string> | undefined {
@@ -320,7 +321,6 @@ function applyScopeToHeaderRecord(
   headers: Record<string, string>,
   scope: unknown
 ): Record<string, string> {
-  if (scope === undefined) return headers;
   return Object.fromEntries(
     Object.entries(headers).map(([key, value]) => [
       evaluateScopeTemplate(String(key), scope),
@@ -329,7 +329,7 @@ function applyScopeToHeaderRecord(
   );
 }
 
-/** 将请求头编辑器原文解析为对象；支持 JSON 内模板，也支持整段 `{scope?...}` */
+/** 将请求头编辑器原文解析为对象；支持 JSON 内模板，也支持整段 `{scope?...}` / `{system?...}` */
 export function parseFetchHeadersJson(
   text: string,
   scope?: unknown
@@ -337,12 +337,11 @@ export function parseFetchHeadersJson(
   const trimmed = text.trim();
   if (!trimmed) return {};
   if (isWholeScopeExpression(trimmed)) {
-    if (scope === undefined) return undefined;
     const inner = trimmed.slice(1, -1);
     return asHeaderRecord(evaluateScopeExpression(inner, scope));
   }
   let jsonText = trimmed;
-  if (scope !== undefined && hasScopeTemplate(trimmed) && looksLikeJsonText(trimmed)) {
+  if (hasScopeTemplate(trimmed) && looksLikeJsonText(trimmed)) {
     jsonText = evaluateScopeTemplateInJson(trimmed, scope);
   }
   try {
@@ -379,21 +378,27 @@ export function resolveFetchHeaders(
   return applyScopeToHeaderRecord(config.headers, scope);
 }
 
-/** 用上游 scope 解析 fetch 表单中的 URL / Base URL / headers / body */
+/** 用上游 scope / 系统 system 解析 fetch 表单中的 URL / Base URL / headers / body */
 export function applyFetchConfigScope(
   config: FetchRequestConfig,
   scope: unknown
 ): FetchRequestConfig {
   const headers = resolveFetchHeaders(config, scope);
   const body = resolveFetchBody(config.body, scope);
-  if (scope === undefined) {
-    if (headers === config.headers && body === config.body) return config;
-    return { ...config, headers, body };
+  const url = resolveTemplateString(config.url, scope) ?? "";
+  const apiBaseUrl = resolveTemplateString(config.apiBaseUrl, scope);
+  if (
+    url === (config.url ?? "") &&
+    apiBaseUrl === config.apiBaseUrl &&
+    headers === config.headers &&
+    body === config.body
+  ) {
+    return config;
   }
   return {
     ...config,
-    url: resolveTemplateString(config.url, scope) ?? "",
-    apiBaseUrl: resolveTemplateString(config.apiBaseUrl, scope),
+    url,
+    apiBaseUrl,
     body,
     headers,
   };

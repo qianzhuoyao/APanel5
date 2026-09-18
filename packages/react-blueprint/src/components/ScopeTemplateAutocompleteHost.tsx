@@ -76,17 +76,13 @@ export function ScopeTemplateAutocompleteHost({
 
   const refreshForInput = useCallback(
     (input: HTMLInputElement | HTMLTextAreaElement) => {
-      if (scope === undefined) {
-        closeDropdown();
-        return;
-      }
       const cursor = input.selectionStart ?? input.value.length;
-      const parsed = parseScopeAutocomplete(input.value, cursor, scope);
+      const parsed = parseScopeAutocomplete(input.value, cursor, scope ?? {});
       if (!parsed) {
         closeDropdown();
         return;
       }
-      const suggestions = getScopeAutocompleteSuggestions(scope, parsed);
+      const suggestions = getScopeAutocompleteSuggestions(scope ?? {}, parsed);
       if (suggestions.length === 0) {
         closeDropdown();
         return;
@@ -126,7 +122,7 @@ export function ScopeTemplateAutocompleteHost({
   );
 
   useEffect(() => {
-    if (!root || scope === undefined) return;
+    if (!root) return;
 
     const onFocusIn = (event: FocusEvent) => {
       if (!isAutocompleteTarget(event.target)) return;
@@ -209,7 +205,7 @@ export function ScopeTemplateAutocompleteHost({
     };
   }, [applySuggestion, closeDropdown, refreshForInput, root, scope]);
 
-  if (!dropdown || scope === undefined) return null;
+  if (!dropdown) return null;
 
   return createPortal(
     <div

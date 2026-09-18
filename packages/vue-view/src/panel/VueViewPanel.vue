@@ -2,6 +2,7 @@
 import { computed, onMounted, onUnmounted, ref, shallowRef, watch } from "vue";
 import type { State } from "@arronqzy/rx-store";
 import {
+  ApiCollectionManagerDialog,
   BlueprintGraph,
   abortClockNode,
   blueprintDocumentsEqual,
@@ -12,6 +13,7 @@ import {
   documentToRunnableGraph,
   downloadBlueprintExport,
   getBlueprintLibraryRecord,
+  hydrateApiCollections,
   libraryRecordFromImport,
   listBlueprintLibrary,
   parseBlueprintImportFile,
@@ -27,7 +29,7 @@ import {
   resolveRunnableNodeType,
   resolveViewElementIds,
 } from "@arronqzy/vue-blueprint";
-import { collectArmedViewEventBindings, EVENT_NODE_TYPE, LIFECYCLE_NODE_TYPE, type LibraryBlueprintResolver } from "@arronqzy/blueprint-dsl";
+import { collectArmedViewEventBindings, EVENT_NODE_TYPE, LIFECYCLE_NODE_TYPE, buildApiCollectionSyncPatches, toApiCollectionSyncResult, type LibraryBlueprintResolver } from "@arronqzy/blueprint-dsl";
 import {
   Button,
   Checkbox,
@@ -49,6 +51,7 @@ import {
   useWorkspaceProjects,
 } from "./hooks/useWorkspaceProjects";
 import type { WorkspaceProjectRecord } from "./library/workspace-project-db";
+import { AbuilderEvents, emitAbuilderEvent } from "./library/event-subscription";
 import { type ViewportZoom } from "./viewportZoom";
 import PanelCanvas from "./components/PanelCanvas.vue";
 import ElementsLayer from "./components/ElementsLayer.vue";
@@ -158,6 +161,7 @@ const leftWidth = ref(240);
 const rightWidth = ref(300);
 const importInputRef = ref<HTMLInputElement | null>(null);
 const blueprintImportInputRef = ref<HTMLInputElement | null>(null);
+const apiCollectionManagerOpen = ref(false);
 
 const viewportEl = ref<HTMLDivElement | null>(null);
 const canvasEl = ref<HTMLDivElement | null>(null);
@@ -391,6 +395,16 @@ async function refreshBlueprintLibrary() {
   blueprintLibraryItems.value = await listBlueprintLibrary(props.nameSpace);
 }
 
+watch(
+  () => props.nameSpace,
+  (nameSpace) => {
+    void hydrateApiCollections(nameSpace).catch((error) => {
+      console.error("[abuilder] hydrate api collections failed", error);
+    });
+  },
+  { immediate: true }
+);
+
 onMounted(() => {
   void refreshBlueprintLibrary();
 });
@@ -604,6 +618,50 @@ function openBlueprintExport() {
   });
 }
 
+function handleApiCollectionUploadStart(info: {
+  fileNames: string[];
+  count: number;
+}) {
+  emitAbuilderEvent(AbuilderEvents.apiCollectionUploadStart, info);
+}
+
+function handleApiCollectionUploadSuccess(info: {
+  collections: Array<{
+    id: string;
+    name: string;
+    apiCount: number;
+    persistLocal: boolean;
+  }>;
+}) {
+  emitAbuilderEvent(AbuilderEvents.apiCollectionUploadSuccess, info);
+}
+
+function handleApiCollectionSync(record: {
+  id: string;
+  document: import("@arronqzy/blueprint-dsl").ApiCollectionDocument;
+}) {
+  const patches = buildApiCollectionSyncPatches({
+    collectionId: record.id,
+    document: record.document,
+    nodes: blueprintGraph.value.document.nodes
+      .filter((node) => node.role === "fetch" || Boolean(node.fetchConfig))
+      .map((node) => ({
+        id: node.id,
+        label: node.label,
+        fetchConfig: node.fetchConfig,
+      })),
+  });
+  if (patches.length === 0) return toApiCollectionSyncResult([]);
+  let next = blueprintGraph.value;
+  for (const patch of patches) {
+    next = next.updateNode(patch.nodeId, {
+      fetchConfig: patch.fetchConfigPatch as import("@arronqzy/blueprint-dsl").FetchRequestConfig,
+    });
+  }
+  blueprintGraph.value = next;
+  return toApiCollectionSyncResult(patches);
+}
+
 async function handleBlueprintImportFile(file: File) {
   try {
     await runBusyTask(t("common.importingBlueprint"), async () => {
@@ -757,6 +815,8 @@ onUnmounted(() => window.removeEventListener("keydown", onKeyDown));
           <Menu>
             <Menu.Item @click="openBlueprintExport">{{ t("panel.menubar.exportBlueprint") }}</Menu.Item>
             <Menu.Item @click="blueprintImportInputRef?.click()">{{ t("panel.menubar.importBlueprint") }}</Menu.Item>
+            <Menu.Divider />
+            <Menu.Item @click="apiCollectionManagerOpen = true">{{ t("panel.menubar.apiCollections") }}</Menu.Item>
           </Menu>
         </template>
       </Dropdown>
@@ -1021,6 +1081,14 @@ onUnmounted(() => window.removeEventListener("keydown", onKeyDown));
       <Input v-model:value="mergeLayerName" :placeholder="t('panel.layers.mergedNamePlaceholderOptional')" />
       <div class="mt-2 text-xs text-gray-500">{{ t("panel.layers.mergeSelectedCount", { count: mergeSelectedCount }) }}</div>
     </Modal>
+
+    <ApiCollectionManagerDialog
+      :open="apiCollectionManagerOpen"
+      :on-open-change="(open) => (apiCollectionManagerOpen = open)"
+      :on-upload-start="handleApiCollectionUploadStart"
+      :on-upload-success="handleApiCollectionUploadSuccess"
+      :on-sync-collection="handleApiCollectionSync"
+    />
   </Layout>
 </template>
 

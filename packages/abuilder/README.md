@@ -4,7 +4,7 @@ React 一站式编辑器。安装后渲染 `<App />`，就是完整的 Abuilder�
 
 ![安装后直接得到的编辑器](https://github.com/qianzhuoyao/APanel5/raw/v5/docs/guide-assets/live-zh/01-overview.png)
 
-当前版本见本包 `package.json`（设置菜单「关于」里显示的就是这个版本号）。
+当前版本见本包 `package.json`（设置菜单「关于」里显示的就是这个版本号）。本包 **1.1.35** 起配套能力：接口集合、`{system?...}` 模版、JSON 节点错误高亮。完整中文手册见仓库 `docs/Abuilder使用文档与功能说明.docx`（适用版本表写在文首）。
 
 ## 安装
 

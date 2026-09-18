@@ -36,6 +36,29 @@ export { useBlueprintNodeSelectionGuard } from "./src/hooks/useBlueprintNodeSele
 export type { PendingBlueprintNodeSwitch } from "./src/hooks/useBlueprintNodeSelectionGuard";
 export { BlueprintMetaDialog } from "./src/components/BlueprintMetaDialog";
 export type { BlueprintMetaDialogProps } from "./src/components/BlueprintMetaDialog";
+export { ApiCollectionManagerDialog } from "./src/components/ApiCollectionManagerDialog";
+export type {
+  ApiCollectionManagerDialogProps,
+  ApiCollectionUploadStartInfo,
+  ApiCollectionUploadSuccessInfo,
+} from "./src/components/ApiCollectionManagerDialog";
+export {
+  hydrateApiCollections,
+  getApiCollectionRecords,
+  getApiCollectionById,
+  getApiCollectionListItems,
+  upsertApiCollectionFromJson,
+  removeApiCollection,
+  subscribeApiCollections,
+  useApiCollections,
+  useApiCollectionListItems,
+} from "./src/library/api-collection-store";
+export {
+  listApiCollectionRecords,
+  getApiCollectionRecord,
+  putApiCollectionRecord,
+  deleteApiCollectionRecord,
+} from "./src/library/api-collection-db";
 export { BlueprintLibrarySelect } from "./src/components/BlueprintLibrarySelect";
 export type { BlueprintLibrarySelectProps } from "./src/components/BlueprintLibrarySelect";
 export { BlueprintPanelToolbar, BlueprintRenameDialog, BlueprintDeleteDialog } from "./src/components/BlueprintPanelToolbar";
