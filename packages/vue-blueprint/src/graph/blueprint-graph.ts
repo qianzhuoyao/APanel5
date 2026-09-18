@@ -3,6 +3,7 @@ import {
   createNodeId,
   defaultBlueprintNodeLabel,
   filterInvalidBlueprintEdges,
+  isDefaultBlueprintNodeLabel,
   patchNodeConfigSource,
   resolveNodeClockConfig,
   resolveNodeEventConfig,
@@ -218,6 +219,14 @@ export class BlueprintGraph {
       nodes: this.document.nodes.map((n) => {
         if (n.id !== nodeId) return n;
         const nextNode = { ...n, ...configPatch, ...patch };
+        if (
+          patch.configSource &&
+          patch.configSource !== exists.configSource &&
+          patch.label === undefined &&
+          isDefaultBlueprintNodeLabel(exists.label)
+        ) {
+          nextNode.label = defaultBlueprintNodeLabel(patch.configSource);
+        }
         if (
           patch.viewElementIds !== undefined ||
           patch.viewElementId !== undefined

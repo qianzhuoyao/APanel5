@@ -6,8 +6,8 @@ import type { BlueprintGraph } from "./blueprint-graph";
 
 /** 边线描边（写入 edge.style；使用 hex 避免 SVG style 解析 hsl 异常） */
 export const BP_EDGE_STYLE = {
-  stroke: "#2563eb",
-  strokeWidth: 2.5,
+  stroke: "#94a3b8",
+  strokeWidth: 1.75,
 } as const;
 
 export const BP_FLOW_EDGE_TYPE = "blueprintSmooth" as const;

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from "@arronqzy/i18n/vue";
+import { computed } from "vue";
 import { cn } from "../utils/cn";
 
 const { t } = useI18n();
@@ -10,7 +11,7 @@ export type BlueprintNodeCardProps = {
   meta?: string;
   subtitle?: string;
   progressLabel?: string;
-  variant?: "blueprint" | "logic" | "and" | "lifecycle" | "event" | "fetch" | "json" | "storage" | "clock";
+  variant?: "blueprint" | "view" | "logic" | "and" | "lifecycle" | "event" | "fetch" | "json" | "storage" | "clock";
   selected?: boolean;
   hideLeadingDot?: boolean;
 };
@@ -25,146 +26,101 @@ const emit = defineEmits<{
   select: [nodeId: string];
 }>();
 
-const variantStyle = {
-  blueprint: {
-    accent: "border-l-primary",
-    badge: "bg-primary/10 text-primary",
-    dot: "bg-primary",
-  },
-  logic: {
-    accent: "border-l-sky-500 dark:border-l-sky-400",
-    badge: "bg-sky-500/10 text-sky-700 dark:text-sky-300",
-    dot: "bg-sky-500",
-  },
-  and: {
-    accent: "border-l-indigo-500 dark:border-l-indigo-400",
-    badge: "bg-indigo-500/10 text-indigo-700 dark:text-indigo-300",
-    dot: "bg-indigo-500",
-  },
-  lifecycle: {
-    accent: "border-l-amber-500 dark:border-l-amber-400",
-    badge: "bg-amber-500/10 text-amber-700 dark:text-amber-300",
-    dot: "bg-amber-500",
-  },
-  event: {
-    accent: "border-l-fuchsia-500 dark:border-l-fuchsia-400",
-    badge: "bg-fuchsia-500/10 text-fuchsia-700 dark:text-fuchsia-300",
-    dot: "bg-fuchsia-500",
-  },
-  fetch: {
-    accent: "border-l-violet-500 dark:border-l-violet-400",
-    badge: "bg-violet-500/10 text-violet-700 dark:text-violet-300",
-    dot: "bg-violet-500",
-  },
-  json: {
-    accent: "border-l-teal-500 dark:border-l-teal-400",
-    badge: "bg-teal-500/10 text-teal-700 dark:text-teal-300",
-    dot: "bg-teal-500",
-  },
-  storage: {
-    accent: "border-l-emerald-500 dark:border-l-emerald-400",
-    badge: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
-    dot: "bg-emerald-500",
-  },
-  clock: {
-    accent: "border-l-rose-500 dark:border-l-rose-400",
-    badge: "bg-rose-500/10 text-rose-700 dark:text-rose-300",
-    dot: "bg-rose-500",
-  },
-} as const;
-
-const v = variantStyle[props.variant];
+const showMeta = computed(() => Boolean(props.meta && props.meta !== props.label));
 </script>
 
 <template>
   <div
     data-blueprint-node-card
-    :class="
-      cn(
-        'bp-node-card w-[168px] overflow-hidden rounded-lg border border-border bg-card text-card-foreground shadow-sm',
-        'transition-[box-shadow,border-color] duration-150',
-        hideLeadingDot
-          ? cn(
-              'border-t-[3px]',
-              variant === 'event'
-                ? 'border-t-fuchsia-500 dark:border-t-fuchsia-400'
-                : 'border-t-amber-500 dark:border-t-amber-400'
-            )
-          : cn('border-l-[3px]', v.accent),
-        selected &&
-          'border-primary/50 shadow-[0_0_0_1px_hsl(var(--primary)/0.35),0_4px_12px_hsl(var(--primary)/0.12)]'
-      )
-    "
+    :class="cn('bp-node-card bp-flow-drag-handle', selected && 'bp-node-card--selected')"
+    :title="t('blueprint.node.dragToMove')"
   >
-    <div
-      class="bp-flow-drag-handle flex cursor-grab items-center gap-2 border-b border-border/50 px-2 py-1.5 bg-muted/25 text-muted-foreground active:cursor-grabbing"
-      :title="t('blueprint.node.dragToMove')"
-    >
-      <div class="flex shrink-0 flex-col gap-[3px] opacity-35" aria-hidden="true">
-        <span class="flex gap-[3px]">
-          <span class="h-[3px] w-[3px] rounded-full bg-current" />
-          <span class="h-[3px] w-[3px] rounded-full bg-current" />
-        </span>
-        <span class="flex gap-[3px]">
-          <span class="h-[3px] w-[3px] rounded-full bg-current" />
-          <span class="h-[3px] w-[3px] rounded-full bg-current" />
-        </span>
-      </div>
-      <span
-        v-if="meta"
-        :class="
-          cn(
-            'min-w-0 flex-1 truncate rounded px-1.5 py-0.5 text-[10px] font-medium leading-none tracking-wide',
-            v.badge
-          )
-        "
-        :title="meta"
-      >
-        {{ meta }}
-      </span>
-    </div>
-
     <button
       type="button"
-      :class="
-        cn(
-          'nodrag flex w-full text-left outline-none transition-colors hover:bg-accent/30',
-          'focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-inset',
-          hideLeadingDot
-            ? cn('px-2.5 py-2', subtitle ? 'items-start' : 'items-center')
-            : 'items-start gap-2 px-2.5 py-2'
-        )
-      "
+      class="bp-node-card__body"
       @click.stop="emit('select', nodeId)"
     >
       <span
-        v-if="!hideLeadingDot"
-        :class="cn('mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full', v.dot)"
+        :class="cn('bp-node-icon', `bp-node-icon--${variant}`)"
         aria-hidden="true"
-      />
-      <div class="min-w-0 flex-1">
-        <div class="flex items-start gap-1.5">
-          <div class="min-w-0 flex-1 truncate text-[13px] font-medium leading-snug text-foreground">
-            {{ label }}
-          </div>
+      >
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <template v-if="variant === 'logic'">
+            <path d="M6 4v6a4 4 0 0 0 4 4h4" />
+            <path d="M14 14v6" />
+            <circle cx="6" cy="4" r="1.5" fill="currentColor" stroke="none" />
+            <circle cx="14" cy="20" r="1.5" fill="currentColor" stroke="none" />
+            <circle cx="18" cy="14" r="1.5" fill="currentColor" stroke="none" />
+          </template>
+          <template v-else-if="variant === 'and'">
+            <path d="M8 6v12" />
+            <path d="M8 12h8" />
+            <path d="M16 6v12" />
+          </template>
+          <template v-else-if="variant === 'lifecycle'">
+            <circle cx="12" cy="12" r="7" />
+            <path d="M12 8v4l2.5 1.5" />
+          </template>
+          <template v-else-if="variant === 'event'">
+            <path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z" />
+          </template>
+          <template v-else-if="variant === 'fetch'">
+            <path d="M12 3v12" />
+            <path d="m7 10 5 5 5-5" />
+            <path d="M5 19h14" />
+          </template>
+          <template v-else-if="variant === 'json'">
+            <path d="M8 4c-2 0-3 1.5-3 4s1 4 3 4" />
+            <path d="M8 12c-2 0-3 1.5-3 4s1 4 3 4" />
+            <path d="M16 4c2 0 3 1.5 3 4s-1 4-3 4" />
+            <path d="M16 12c2 0 3 1.5 3 4s-1 4-3 4" />
+          </template>
+          <template v-else-if="variant === 'storage'">
+            <ellipse cx="12" cy="6" rx="7" ry="3" />
+            <path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6" />
+            <path d="M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6" />
+          </template>
+          <template v-else-if="variant === 'clock'">
+            <circle cx="12" cy="12" r="8" />
+            <path d="M12 8v4.5L15 15" />
+          </template>
+          <template v-else-if="variant === 'view'">
+            <rect x="3" y="5" width="18" height="14" rx="2" />
+            <path d="M3 9h18" />
+            <path d="M8 14h4" />
+          </template>
+          <template v-else>
+            <circle cx="7" cy="7" r="2.5" />
+            <circle cx="17" cy="7" r="2.5" />
+            <circle cx="12" cy="17" r="2.5" />
+            <path d="M9.2 8.2 14.8 8.2" />
+            <path d="M8.2 9.2 11 14.8" />
+            <path d="M15.8 9.2 13 14.8" />
+          </template>
+        </svg>
+      </span>
+      <div class="bp-node-card__content">
+        <div class="bp-node-card__title-row">
+          <div class="bp-node-card__title">{{ label }}</div>
           <span
             v-if="progressLabel"
-            :class="
-              cn(
-                'shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold leading-none',
-                v.badge
-              )
-            "
+            :class="cn('bp-node-card__badge', `bp-node-card__badge--${variant}`)"
             :title="t('blueprint.node.signalSentCount')"
           >
             {{ progressLabel }}
           </span>
         </div>
-        <div
-          v-if="subtitle"
-          class="mt-0.5 truncate font-mono text-[10px] leading-tight text-muted-foreground"
-          :title="subtitle"
-        >
+        <div v-if="showMeta" class="bp-node-card__meta" :title="meta">
+          {{ meta }}
+        </div>
+        <div v-if="subtitle" class="bp-node-card__subtitle" :title="subtitle">
           {{ subtitle }}
         </div>
       </div>

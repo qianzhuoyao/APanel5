@@ -1,7 +1,7 @@
 import { BaseEdge, getSmoothStepPath, type EdgeProps } from "@xyflow/react";
 
-const EDGE_STROKE = "#2563eb";
-const EDGE_WIDTH = 2.5;
+const EDGE_STROKE = "#94a3b8";
+const EDGE_WIDTH = 1.75;
 
 export function BlueprintSmoothEdge({
   sourceX,

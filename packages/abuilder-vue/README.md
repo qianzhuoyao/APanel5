@@ -2,7 +2,7 @@
 
 Vue 3 版入口，对应 React 的 `@arronqzy/abuilder`。功能对齐：无限画布、物料配置、图层、蓝图调试、工作区和中英切换。UI 是 Ant Design Vue，蓝图画布是 Vue Flow。
 
-本包 **0.1.19** 与 `@arronqzy/abuilder@1.1.35` 能力对齐（接口集合、System 模版、JSON 错误高亮等）。中文全功能手册：仓库 `docs/Abuilder使用文档与功能说明.docx`。
+本包 **0.1.20** 与 `@arronqzy/abuilder@1.1.36` 能力对齐（蓝图 Soft UI、接口集合、System 模版、JSON 错误高亮等）。中文全功能手册：仓库 `docs/Abuilder使用文档与功能说明.docx`。
 
 ![同一套编辑器：上半视图，下半蓝图](https://github.com/qianzhuoyao/APanel5/raw/v5/docs/guide-assets/live-zh/40-blueprint-open.png)
 

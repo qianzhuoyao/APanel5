@@ -20,6 +20,7 @@ export function LifecycleFlowNode({ id, data }: NodeProps) {
     <div
       className={cn(
         "bp-node bp-node--lifecycle",
+        nodeData.isSelected && "bp-node--selected",
         executionTone === "success" && "bp-node--execution-true",
         executionTone === "error" && "bp-node--execution-false"
       )}

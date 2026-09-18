@@ -41,6 +41,7 @@ const emit = defineEmits<{
     :class="
       cn(
         'bp-node',
+        selected && 'bp-node--selected',
         executionTone === 'success' && 'bp-node--execution-true',
         executionTone === 'error' && 'bp-node--execution-false'
       )

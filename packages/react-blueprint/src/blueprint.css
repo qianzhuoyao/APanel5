@@ -14,13 +14,13 @@
 .bp-flow.react-flow,
 [data-workspace-region="blueprint"] .react-flow {
   --xy-background-color: transparent;
-  --xy-edge-stroke: #2563eb;
-  --xy-edge-stroke-width: 2.5;
-  --xy-edge-stroke-selected: #1d4ed8;
-  --xy-connectionline-stroke: #2563eb;
-  --xy-connectionline-stroke-width: 2.5;
-  --xy-handle-background-color: hsl(var(--primary));
-  --xy-handle-border-color: hsl(var(--background));
+  --xy-edge-stroke: #94a3b8;
+  --xy-edge-stroke-width: 1.75;
+  --xy-edge-stroke-selected: #64748b;
+  --xy-connectionline-stroke: #94a3b8;
+  --xy-connectionline-stroke-width: 1.75;
+  --xy-handle-background-color: #ffffff;
+  --xy-handle-border-color: #94a3b8;
   background-color: transparent;
 }
 
@@ -73,16 +73,16 @@
 [data-workspace-region="blueprint"] .react-flow__edges path.react-flow__edge-path,
 [data-workspace-region="blueprint"] .react-flow__edges path.bp-edge-visible {
   fill: none !important;
-  stroke: #2563eb !important;
-  stroke-width: 2.5px !important;
+  stroke: #94a3b8 !important;
+  stroke-width: 1.75px !important;
   opacity: 1 !important;
 }
 
 .bp-canvas .react-flow__edge.selected path.react-flow__edge-path,
 .bp-flow .react-flow__edge.selected path.react-flow__edge-path,
 [data-workspace-region="blueprint"] .react-flow__edge.selected path.react-flow__edge-path {
-  stroke: #1d4ed8 !important;
-  stroke-width: 3px !important;
+  stroke: #64748b !important;
+  stroke-width: 2.25px !important;
 }
 
 .bp-canvas .react-flow__edge.bp-edge--signal-true path.react-flow__edge-path,
@@ -130,16 +130,16 @@
 .bp-canvas .react-flow__arrowhead polyline,
 .bp-flow .react-flow__arrowhead polyline,
 [data-workspace-region="blueprint"] .react-flow__arrowhead polyline {
-  stroke: #2563eb;
-  fill: #2563eb;
+  stroke: #94a3b8;
+  fill: #94a3b8;
 }
 
 .bp-canvas .react-flow__connection-path,
 .bp-flow .react-flow__connection-path,
 [data-workspace-region="blueprint"] .react-flow__connection-path {
   fill: none !important;
-  stroke: #2563eb !important;
-  stroke-width: 2.5px !important;
+  stroke: #94a3b8 !important;
+  stroke-width: 1.75px !important;
 }
 
 .bp-canvas .react-flow__edge-interaction,
@@ -167,95 +167,115 @@
   padding: 0;
 }
 
-/* 连接点：禁止 transform，避免覆盖 React Flow 的 translate(-50%, -50%) 定位 */
+/* 以卡片壳为 handle 定位基准，避免挂到外层导致左右/垂直偏移 */
+.bp-node {
+  position: relative;
+  display: block;
+  width: max-content;
+  min-height: 1px;
+}
+
+/* 连接点：显式锚定左右中线（勿覆盖 transform 以外的 RF 行为） */
 .bp-canvas .react-flow__handle.bp-flow-handle,
 .bp-flow .react-flow__handle.bp-flow-handle,
 [data-workspace-region="blueprint"] .react-flow__handle.bp-flow-handle {
+  position: absolute !important;
   z-index: 3;
-  width: 10px;
-  height: 10px;
-  min-width: 10px;
-  min-height: 10px;
-  border: 2px solid hsl(var(--background)) !important;
+  width: 8px;
+  height: 8px;
+  min-width: 8px;
+  min-height: 8px;
+  border: 1.5px solid hsl(var(--card)) !important;
   border-radius: 9999px;
-  background-color: hsl(var(--foreground) / 0.42) !important;
+  background-color: #ffffff !important;
+  box-shadow: 0 0 0 1px rgb(148 163 184 / 0.55);
+  pointer-events: all !important;
   transition:
     background-color 0.15s ease,
     border-color 0.15s ease,
     box-shadow 0.15s ease;
 }
 
+.bp-node > .react-flow__handle.react-flow__handle-left,
+.bp-node > .react-flow__handle[data-handlepos="left"] {
+  top: 50%;
+  left: 0;
+  right: auto;
+  bottom: auto;
+  transform: translate(-50%, -50%);
+}
+
+.bp-node > .react-flow__handle.react-flow__handle-right,
+.bp-node > .react-flow__handle[data-handlepos="right"] {
+  top: 50%;
+  right: 0;
+  left: auto;
+  bottom: auto;
+  transform: translate(50%, -50%);
+}
+
 .bp-canvas .react-flow__handle.bp-flow-handle:hover,
 .bp-flow .react-flow__handle.bp-flow-handle:hover,
 [data-workspace-region="blueprint"] .react-flow__handle.bp-flow-handle:hover {
-  background-color: hsl(var(--primary)) !important;
-  border-color: hsl(var(--background)) !important;
-  box-shadow: 0 0 0 3px hsl(var(--primary) / 0.28);
+  background-color: #ffffff !important;
+  border-color: hsl(var(--primary)) !important;
+  box-shadow: 0 0 0 3px hsl(var(--primary) / 0.22);
 }
 
 .bp-canvas .react-flow__handle.bp-flow-handle--target,
 .bp-flow .react-flow__handle.bp-flow-handle--target,
 [data-workspace-region="blueprint"] .react-flow__handle.bp-flow-handle--target {
-  background-color: hsl(var(--foreground) / 0.48) !important;
+  background-color: #ffffff !important;
 }
 
 .bp-canvas .react-flow__handle.bp-flow-handle--source,
 .bp-flow .react-flow__handle.bp-flow-handle--source,
 [data-workspace-region="blueprint"] .react-flow__handle.bp-flow-handle--source {
-  background-color: hsl(var(--primary) / 0.72) !important;
+  background-color: #ffffff !important;
 }
 
 .bp-node--selected .bp-flow-handle {
-  border-color: hsl(var(--card)) !important;
-  box-shadow: 0 0 0 2px hsl(var(--primary) / 0.35);
+  border-color: hsl(var(--primary) / 0.55) !important;
+  box-shadow: 0 0 0 2px hsl(var(--primary) / 0.2);
 }
 
-.bp-node--selected .bp-flow-handle--target {
-  background-color: hsl(var(--foreground) / 0.55) !important;
-}
-
+.bp-node--selected .bp-flow-handle--target,
 .bp-node--selected .bp-flow-handle--source {
-  background-color: hsl(var(--primary)) !important;
+  background-color: #ffffff !important;
 }
 
 .bp-node--execution-true .bp-node-card {
-  border-color: rgb(22 163 74 / 0.65);
+  border-color: rgb(22 163 74 / 0.55);
   box-shadow:
-    0 0 0 1px rgb(22 163 74 / 0.35),
-    0 4px 14px rgb(22 163 74 / 0.18);
+    0 0 0 1px rgb(22 163 74 / 0.28),
+    0 8px 24px rgb(22 163 74 / 0.14);
 }
 
 .bp-node--execution-true .bp-flow-handle {
-  border-color: hsl(var(--card));
-  box-shadow: 0 0 0 2px rgb(22 163 74 / 0.45);
+  border-color: rgb(22 163 74 / 0.7) !important;
+  box-shadow: 0 0 0 2px rgb(22 163 74 / 0.28);
 }
 
-.bp-node--execution-true .bp-flow-handle--source {
-  background-color: #16a34a !important;
-}
-
+.bp-node--execution-true .bp-flow-handle--source,
 .bp-node--execution-true .bp-flow-handle--target {
-  background-color: rgb(22 163 74 / 0.55) !important;
+  background-color: #ffffff !important;
 }
 
 .bp-node--execution-false .bp-node-card {
-  border-color: hsl(var(--destructive) / 0.65);
+  border-color: hsl(var(--destructive) / 0.55);
   box-shadow:
-    0 0 0 1px hsl(var(--destructive) / 0.4),
-    0 4px 14px hsl(var(--destructive) / 0.16);
+    0 0 0 1px hsl(var(--destructive) / 0.3),
+    0 8px 24px hsl(var(--destructive) / 0.12);
 }
 
 .bp-node--execution-false .bp-flow-handle {
-  border-color: hsl(var(--card));
-  box-shadow: 0 0 0 2px hsl(var(--destructive) / 0.4);
+  border-color: hsl(var(--destructive) / 0.65) !important;
+  box-shadow: 0 0 0 2px hsl(var(--destructive) / 0.25);
 }
 
-.bp-node--execution-false .bp-flow-handle--source {
-  background-color: hsl(var(--destructive)) !important;
-}
-
+.bp-node--execution-false .bp-flow-handle--source,
 .bp-node--execution-false .bp-flow-handle--target {
-  background-color: hsl(var(--destructive) / 0.55) !important;
+  background-color: #ffffff !important;
 }
 
 /* 生命周期节点无输入口：隐藏任何左侧/目标连接点（含旧数据产生的幽灵 handle） */
@@ -324,4 +344,266 @@
   height: 1px;
   margin: 4px 0;
   background: hsl(var(--border));
+}
+
+/* Soft UI 节点卡片（写入 CSS，避免 Tailwind content 未扫到 react-blueprint） */
+.bp-node-card {
+  width: 200px;
+  overflow: hidden;
+  border-radius: 1rem;
+  border: 1px solid hsl(var(--border) / 0.7);
+  background: hsl(var(--card));
+  color: hsl(var(--card-foreground));
+  box-shadow: 0 8px 24px rgb(15 23 42 / 0.08);
+  cursor: grab;
+  transition:
+    box-shadow 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.bp-node-card:active {
+  cursor: grabbing;
+}
+
+.bp-node-card.bp-node-card--selected {
+  border-color: hsl(var(--primary) / 0.7);
+  box-shadow:
+    0 0 0 2px hsl(var(--primary) / 0.35),
+    0 10px 28px hsl(var(--primary) / 0.18);
+}
+
+.bp-node-card__body {
+  display: flex;
+  width: 100%;
+  align-items: flex-start;
+  padding: 10px 12px;
+  border: none;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: inherit;
+  outline: none;
+  transition: background-color 0.15s ease;
+}
+
+.bp-node-card__body:hover {
+  background: hsl(var(--accent) / 0.25);
+}
+
+.bp-node-card__body:focus-visible {
+  box-shadow: inset 0 0 0 1px hsl(var(--primary));
+}
+
+.bp-node-card__content {
+  min-width: 0;
+  flex: 1;
+}
+
+.bp-node-card__title-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.bp-node-card__title {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: hsl(var(--foreground));
+}
+
+.bp-node-card__meta,
+.bp-node-card__subtitle {
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.3;
+  color: hsl(var(--muted-foreground));
+}
+
+.bp-node-card__meta {
+  font-size: 11px;
+}
+
+.bp-node-card__subtitle {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 10px;
+  opacity: 0.85;
+}
+
+.bp-node-card__badge {
+  flex-shrink: 0;
+  border-radius: 6px;
+  padding: 2px 6px;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.bp-node-icon {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin-top: 2px;
+  margin-right: 10px;
+  border-radius: 8px;
+}
+
+.bp-node-icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+.bp-node-icon--blueprint {
+  background: hsl(var(--primary) / 0.14);
+  color: hsl(var(--primary));
+}
+
+.bp-node-icon--view {
+  background: rgb(100 116 139 / 0.18);
+  color: rgb(71 85 105);
+}
+
+.bp-node-icon--logic {
+  background: rgb(14 165 233 / 0.15);
+  color: rgb(2 132 199);
+}
+
+.bp-node-icon--and {
+  background: rgb(99 102 241 / 0.15);
+  color: rgb(79 70 229);
+}
+
+.bp-node-icon--lifecycle {
+  background: rgb(245 158 11 / 0.15);
+  color: rgb(217 119 6);
+}
+
+.bp-node-icon--event {
+  background: rgb(217 70 239 / 0.15);
+  color: rgb(192 38 211);
+}
+
+.bp-node-icon--fetch {
+  background: rgb(139 92 246 / 0.15);
+  color: rgb(124 58 237);
+}
+
+.bp-node-icon--json {
+  background: rgb(20 184 166 / 0.15);
+  color: rgb(13 148 136);
+}
+
+.bp-node-icon--storage {
+  background: rgb(16 185 129 / 0.15);
+  color: rgb(5 150 105);
+}
+
+.bp-node-icon--clock {
+  background: rgb(244 63 94 / 0.15);
+  color: rgb(225 29 72);
+}
+
+.bp-node-card__badge--blueprint {
+  background: hsl(var(--primary) / 0.1);
+  color: hsl(var(--primary));
+}
+
+.bp-node-card__badge--view {
+  background: rgb(100 116 139 / 0.12);
+  color: rgb(51 65 85);
+}
+
+.bp-node-card__badge--logic {
+  background: rgb(14 165 233 / 0.1);
+  color: rgb(3 105 161);
+}
+
+.bp-node-card__badge--and {
+  background: rgb(99 102 241 / 0.1);
+  color: rgb(67 56 202);
+}
+
+.bp-node-card__badge--lifecycle {
+  background: rgb(245 158 11 / 0.1);
+  color: rgb(180 83 9);
+}
+
+.bp-node-card__badge--event {
+  background: rgb(217 70 239 / 0.1);
+  color: rgb(162 28 175);
+}
+
+.bp-node-card__badge--fetch {
+  background: rgb(139 92 246 / 0.1);
+  color: rgb(109 40 217);
+}
+
+.bp-node-card__badge--json {
+  background: rgb(20 184 166 / 0.1);
+  color: rgb(15 118 110);
+}
+
+.bp-node-card__badge--storage {
+  background: rgb(16 185 129 / 0.1);
+  color: rgb(4 120 87);
+}
+
+.bp-node-card__badge--clock {
+  background: rgb(244 63 94 / 0.1);
+  color: rgb(190 18 60);
+}
+
+.dark .bp-node-icon--logic,
+:root.dark .bp-node-icon--logic {
+  color: rgb(125 211 252);
+}
+
+.dark .bp-node-icon--view,
+:root.dark .bp-node-icon--view {
+  color: rgb(203 213 225);
+}
+
+.dark .bp-node-icon--and,
+:root.dark .bp-node-icon--and {
+  color: rgb(165 180 252);
+}
+
+.dark .bp-node-icon--lifecycle,
+:root.dark .bp-node-icon--lifecycle {
+  color: rgb(252 211 77);
+}
+
+.dark .bp-node-icon--event,
+:root.dark .bp-node-icon--event {
+  color: rgb(240 171 252);
+}
+
+.dark .bp-node-icon--fetch,
+:root.dark .bp-node-icon--fetch {
+  color: rgb(196 181 253);
+}
+
+.dark .bp-node-icon--json,
+:root.dark .bp-node-icon--json {
+  color: rgb(94 234 212);
+}
+
+.dark .bp-node-icon--storage,
+:root.dark .bp-node-icon--storage {
+  color: rgb(110 231 183);
+}
+
+.dark .bp-node-icon--clock,
+:root.dark .bp-node-icon--clock {
+  color: rgb(253 164 175);
 }

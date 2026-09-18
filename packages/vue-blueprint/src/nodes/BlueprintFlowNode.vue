@@ -1,7 +1,11 @@
 <script setup lang="ts">
 import { useI18n } from "@arronqzy/i18n/vue";
 import type { NodeProps } from "@vue-flow/core";
-import { resolveBlueprintNodeTypeLabel } from "../graph/document";
+import { computed } from "vue";
+import {
+  resolveBlueprintConfigSource,
+  resolveBlueprintNodeTypeLabel,
+} from "../graph/document";
 import { resolveBlueprintNodeSummary } from "../graph/node-summary";
 import { useBlueprintNodeSelect } from "../BlueprintCanvasContext";
 import { resolveBlueprintNodeExecutionTone } from "../runtime/execution-overlay";
@@ -13,6 +17,9 @@ const { t } = useI18n();
 const props = defineProps<NodeProps<BlueprintFlowNodeData>>();
 const onSelect = useBlueprintNodeSelect();
 const nodeData = props.data;
+const variant = computed(() =>
+  resolveBlueprintConfigSource(nodeData) === "view" ? "view" : "blueprint"
+);
 </script>
 
 <template>
@@ -21,7 +28,7 @@ const nodeData = props.data;
     :label="nodeData.label"
     :meta="resolveBlueprintNodeTypeLabel(nodeData, t)"
     :subtitle="resolveBlueprintNodeSummary(nodeData, t)"
-    variant="blueprint"
+    :variant="variant"
     :selected="Boolean(nodeData.isSelected)"
     :execution-tone="resolveBlueprintNodeExecutionTone(nodeData)"
     @select="onSelect"

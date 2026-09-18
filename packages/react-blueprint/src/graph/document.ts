@@ -289,6 +289,18 @@ export function defaultBlueprintNodeLabel(
   return getBlueprintNodeTypeLabel(t, configSource);
 }
 
+/** 当前名称是否仍是「类型默认名」（空或等于任一类型文案） */
+export function isDefaultBlueprintNodeLabel(
+  label: string | undefined | null,
+  t: TranslateFn = defaultTranslate()
+): boolean {
+  const trimmed = (label ?? "").trim();
+  if (!trimmed) return true;
+  return (
+    Object.keys(BLUEPRINT_CONFIG_TYPE_LABEL_KEYS) as BlueprintConfigSource[]
+  ).some((src) => getBlueprintNodeTypeLabel(t, src) === trimmed);
+}
+
 export function resolveNodeFetchConfig(
   node: Pick<BlueprintGraphNode, "fetchConfig">
 ): FetchRequestConfig {

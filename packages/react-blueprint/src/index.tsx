@@ -10,6 +10,8 @@ import {
   ReactFlow,
   ReactFlowProvider,
   ConnectionMode,
+  Background,
+  BackgroundVariant,
   useReactFlow,
   type Node,
   type Edge,
@@ -217,7 +219,15 @@ function BlueprintCanvas({
         elevateNodesOnSelect={false}
         nodeClickDistance={8}
         proOptions={{ hideAttribution: true }}
-      />
+      >
+        <Background
+          id="bp-dots"
+          variant={BackgroundVariant.Dots}
+          gap={18}
+          size={1.25}
+          color="rgba(148, 163, 184, 0.45)"
+        />
+      </ReactFlow>
       <BlueprintContextMenu
         menu={menu}
         onClose={() => setMenu(null)}

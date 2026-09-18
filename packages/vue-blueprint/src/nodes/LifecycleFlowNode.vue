@@ -22,6 +22,7 @@ const executionTone = resolveBlueprintNodeExecutionTone(nodeData);
     :class="
       cn(
         'bp-node bp-node--lifecycle',
+        nodeData.isSelected && 'bp-node--selected',
         executionTone === 'success' && 'bp-node--execution-true',
         executionTone === 'error' && 'bp-node--execution-false'
       )

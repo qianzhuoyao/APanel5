@@ -8,6 +8,7 @@ import {
   type NodeMouseEvent,
   type EdgeMouseEvent,
 } from "@vue-flow/core";
+import { Background } from "@vue-flow/background";
 import { computed, ref, toRef, watch } from "vue";
 import "@vue-flow/core/dist/style.css";
 import "@vue-flow/core/dist/theme-default.css";
@@ -210,7 +211,15 @@ function handleDeleteEdge(edgeId: string) {
       @edge-context-menu="onEdgeContextMenu"
       @edge-click="onEdgeClick"
       @pane-click="onPaneClick"
-    />
+    >
+      <Background
+        id="bp-dots"
+        variant="dots"
+        :gap="18"
+        :size="1.25"
+        color="rgba(148, 163, 184, 0.45)"
+      />
+    </VueFlow>
     <BlueprintContextMenu
       :menu="menu"
       @close="menu = null"

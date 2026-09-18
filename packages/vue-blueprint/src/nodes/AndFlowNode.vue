@@ -22,6 +22,7 @@ const executionTone = resolveBlueprintNodeExecutionTone(nodeData);
     :class="
       cn(
         'bp-node bp-node--and',
+        nodeData.isSelected && 'bp-node--selected',
         executionTone === 'success' && 'bp-node--execution-true',
         executionTone === 'error' && 'bp-node--execution-false'
       )
@@ -32,7 +33,7 @@ const executionTone = resolveBlueprintNodeExecutionTone(nodeData);
       :position="Position.Left"
       id="inA"
       class="bp-flow-handle bp-flow-handle--target"
-      :style="{ top: '35%' }"
+      :style="{ top: '32%' }"
       :title="t('blueprint.node.andInA')"
     />
     <Handle
@@ -40,7 +41,7 @@ const executionTone = resolveBlueprintNodeExecutionTone(nodeData);
       :position="Position.Left"
       id="inB"
       class="bp-flow-handle bp-flow-handle--target"
-      :style="{ top: '65%' }"
+      :style="{ top: '68%' }"
       :title="t('blueprint.node.andInB')"
     />
     <BlueprintNodeCard

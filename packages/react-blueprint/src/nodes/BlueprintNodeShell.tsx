@@ -27,6 +27,7 @@ export function BlueprintNodeShell({
     <div
       className={cn(
         "bp-node",
+        selected && "bp-node--selected",
         executionTone === "success" && "bp-node--execution-true",
         executionTone === "error" && "bp-node--execution-false"
       )}

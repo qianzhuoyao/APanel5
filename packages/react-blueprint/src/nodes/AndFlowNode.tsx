@@ -20,6 +20,7 @@ export function AndFlowNode({ id, data }: NodeProps) {
     <div
       className={cn(
         "bp-node bp-node--and",
+        nodeData.isSelected && "bp-node--selected",
         executionTone === "success" && "bp-node--execution-true",
         executionTone === "error" && "bp-node--execution-false"
       )}
@@ -29,7 +30,7 @@ export function AndFlowNode({ id, data }: NodeProps) {
         position={Position.Left}
         id="inA"
         className="bp-flow-handle bp-flow-handle--target"
-        style={{ top: "35%" }}
+        style={{ top: "32%" }}
         title={t("blueprint.node.andInA")}
       />
       <Handle
@@ -37,7 +38,7 @@ export function AndFlowNode({ id, data }: NodeProps) {
         position={Position.Left}
         id="inB"
         className="bp-flow-handle bp-flow-handle--target"
-        style={{ top: "65%" }}
+        style={{ top: "68%" }}
         title={t("blueprint.node.andInB")}
       />
       <BlueprintNodeCard

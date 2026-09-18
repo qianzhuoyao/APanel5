@@ -184,10 +184,10 @@ m.alignment = WD_ALIGN_PARAGRAPH.CENTER
 m.paragraph_format.space_before = Pt(24)
 r = m.add_run(
     "【适用软件版本】\n"
-    "主包 @arronqzy/abuilder 1.1.35（React 入口）\n"
-    "可选 @arronqzy/abuilder-vue 0.1.19（Vue 入口）\n"
-    "配套：react-view 1.0.34 · vue-view 0.1.21 · react-blueprint 1.0.20 ·\n"
-    "vue-blueprint 0.1.15 · blueprint-dsl 1.0.16 · i18n 0.1.16\n"
+    "主包 @arronqzy/abuilder 1.1.36（React 入口）\n"
+    "可选 @arronqzy/abuilder-vue 0.1.20（Vue 入口）\n"
+    "配套：react-view 1.0.35 · vue-view 0.1.21 · react-blueprint 1.0.21 ·\n"
+    "vue-blueprint 0.1.16 · blueprint-dsl 1.0.16 · i18n 0.1.16\n"
     "文档日期：2026-09-18\n"
     "配图：docs/guide-assets/live-zh/（中文界面）"
 )
@@ -200,10 +200,10 @@ p("本手册假设你不会写代码：会用浏览器、会拖拽鼠标即可�
 
 h("0.0 本手册适用的 Abuilder 版本", 2)
 p("请先确认你安装/使用的包版本与下表一致或接近；版本差太多时，个别菜单文案或字段可能略有不同。", bold=True)
-bullet("主入口（React）：@arronqzy/abuilder@1.1.35")
-bullet("主入口（Vue，可选）：@arronqzy/abuilder-vue@0.1.19")
-bullet("视图：@arronqzy/react-view@1.0.34 / @arronqzy/vue-view@0.1.21")
-bullet("蓝图：@arronqzy/react-blueprint@1.0.20 / @arronqzy/vue-blueprint@0.1.15")
+bullet("主入口（React）：@arronqzy/abuilder@1.1.36")
+bullet("主入口（Vue，可选）：@arronqzy/abuilder-vue@0.1.20")
+bullet("视图：@arronqzy/react-view@1.0.35 / @arronqzy/vue-view@0.1.21")
+bullet("蓝图：@arronqzy/react-blueprint@1.0.21 / @arronqzy/vue-blueprint@0.1.16")
 bullet("蓝图 DSL：@arronqzy/blueprint-dsl@1.0.16")
 bullet("文案包：@arronqzy/i18n@0.1.16")
 tip("在项目里打开 packages/abuilder/package.json 看 \"version\" 字段，或在依赖里查 @arronqzy/abuilder 的版本号；顶栏「设置 → 关于」也会显示主包版本。")
@@ -1029,7 +1029,7 @@ field("清空 IndexedDB 日志 / 清空当前日志", "清空存储或当前视�
 h("17.5 接口集合（API Collection）", 2)
 p(
     "当 Swagger 文档地址因跨域无法在浏览器里拉取时，可把接口清单做成本地 JSON 集合，"
-    "供「数据源获取」节点选用。适用版本：@arronqzy/abuilder@1.1.35 起（配套 react-blueprint 1.0.20 / vue-blueprint 0.1.15 / blueprint-dsl 1.0.16）。",
+    "供「数据源获取」节点选用。适用版本：@arronqzy/abuilder@1.1.36 起（配套 react-blueprint 1.0.21 / vue-blueprint 0.1.16 / blueprint-dsl 1.0.16）。",
     bold=True,
 )
 numbered("顶栏「蓝图 → 接口集合」打开管理对话框。")
@@ -1113,7 +1113,7 @@ h("18.6 JSON 节点", 2)
 p("用途：提供固定 JSON 数据（新手验证贴视图最方便）。")
 field("JSON 内容", "数据本体。", "必须是合法 JSON 对象或数组；可用 {scope?...}/{system?...}。")
 p(
-    "错误高亮（@arronqzy/abuilder@1.1.35 / blueprint-dsl@1.0.16 起）："
+    "错误高亮（@arronqzy/abuilder@1.1.36 / blueprint-dsl@1.0.16 起）："
     "解析失败时，出错位置与常见误用字符（中文引号 “”、全角逗号 ，、全角冒号 ： 等）会在编辑器内标红并带波浪下划线，"
     "下方仍显示错误文案。请改用英文双引号 \"。",
     bold=True,

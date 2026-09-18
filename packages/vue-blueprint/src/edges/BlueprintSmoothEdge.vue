@@ -2,8 +2,8 @@
 import { BaseEdge, getSmoothStepPath, type EdgeProps } from "@vue-flow/core";
 import { computed } from "vue";
 
-const EDGE_STROKE = "#2563eb";
-const EDGE_WIDTH = 2.5;
+const EDGE_STROKE = "#94a3b8";
+const EDGE_WIDTH = 1.75;
 
 const props = defineProps<EdgeProps>();
 
