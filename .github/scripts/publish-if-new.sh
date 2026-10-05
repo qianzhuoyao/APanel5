@@ -24,5 +24,9 @@ if npm view "$TAG" version >/dev/null 2>&1; then
 fi
 
 echo "📦 发布 $TAG ..."
-pnpm --filter "$PKG" publish --access public --no-git-checks
+# 无权限时 npm 对已有 scope 包的 PUT 常返回 404，附带提示便于排障
+if ! pnpm --filter "$PKG" publish --access public --no-git-checks; then
+  echo "❌ 发布 $TAG 失败。若报 404 Not Found - PUT，多半是 NPM_TOKEN 无效/过期/无 @arronqzy 发布权限（而非版本不存在）。" >&2
+  exit 1
+fi
 echo "✅ 已发布 $TAG"

@@ -43,6 +43,18 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Verify npm auth
+        run: |
+          if [ -z "${NODE_AUTH_TOKEN:-}" ]; then
+            echo "::error::NODE_AUTH_TOKEN / secrets.NPM_TOKEN 为空，无法发包"
+            exit 1
+          fi
+          # PUT 已有 scope 包时，无权限常被 npm 伪装成 404；先 whoami 暴露真实鉴权问题
+          if ! npm whoami; then
+            echo "::error::npm whoami 失败：请检查 GitHub Secrets 里的 NPM_TOKEN（需对 @arronqzy/* 有 publish 权限；建议用 Automation 类型 granular token，或未开 2FA 限制的 classic token）"
+            exit 1
+          fi
+
       - name: Build publish artifacts
         run: |
           # Shared
