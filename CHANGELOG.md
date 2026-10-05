@@ -4,6 +4,25 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)，版本号遵循 [SemVer](https://semver.org/lang/zh-CN/)。
 
+## [1.1.37] - 2026-10-05
+
+配套：`ui@1.0.10` · `i18n@0.1.17` · `blueprint-dsl@1.0.17` · `react-blueprint@1.0.22` · `vue-blueprint@0.1.17` · `react-view@1.0.36` · `vue-view@0.1.22` · `abuilder-vue@0.1.21`
+
+### Added
+
+- 主题配色基于 chroma.js：按 WCAG 对比度自动校正前景、弱化文字、边框、危险色等主题变量；`ThemeProvider` 新增 `palette` 选项，可自定义主色或覆盖单个 token
+- `blueprint-dsl` 运行时与校验消息支持中英文，随界面语言自动切换
+
+### Changed
+
+- 表单项下方的长段说明统一改为标签旁的圆圈问号图标，悬停查看（React / Vue）
+- 「允许假信号传递」「收到信号立即发送」等复选框拆分为短标签 + 问号说明
+
+### Fixed
+
+- 切换语言后，图层、产品、蓝图、节点的默认名称与默认图表标题 / 文本内容同步本地化（用户自定义名称保持不变）
+- 表格配置中的若干占位文案、Fetch / Logic 节点配置在切换语言后未刷新的问题
+
 ## [1.1.36] - 2026-09-18
 
 配套：`react-blueprint@1.0.21` · `vue-blueprint@0.1.16` · `react-view@1.0.35` · `abuilder-vue@0.1.20`
