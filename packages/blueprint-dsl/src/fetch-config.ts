@@ -1,5 +1,6 @@
 import type { SwaggerApiEndpoint } from "./swagger.js";
 import { looksLikeJsonText } from "./scope-template.js";
+import { dslMessage } from "./messages.js";
 
 export const FETCH_HTTP_METHODS = [
   "GET",
@@ -153,7 +154,7 @@ export function resolveFetchRequestUrl(
 ): string {
   const rawUrl = config.url?.trim() ?? "";
   if (!rawUrl) {
-    throw new Error("请求 URL 未配置");
+    throw new Error(dslMessage("fetchUrlMissing"));
   }
 
   if (hasExplicitUrlScheme(rawUrl)) {
@@ -199,7 +200,7 @@ export async function executeFetch(
 ): Promise<FetchResultValue> {
   const rawUrl = config.url?.trim();
   if (!rawUrl) {
-    throw new Error("请求 URL 未配置");
+    throw new Error(dslMessage("fetchUrlMissing"));
   }
 
   const url = resolveFetchRequestUrl(config);
@@ -214,7 +215,9 @@ export async function executeFetch(
       JSON.parse(body);
     } catch (error) {
       throw new Error(
-        `请求体不是有效 JSON：${error instanceof Error ? error.message : "格式无效"}`
+        dslMessage("fetchBodyInvalidJson", {
+          reason: error instanceof Error ? error.message : dslMessage("invalidFormat"),
+        })
       );
     }
   }
@@ -263,7 +266,7 @@ export async function executeFetch(
           if (options?.allowHttpError) {
             data = text;
           } else {
-            throw new Error("响应不是有效的 JSON");
+            throw new Error(dslMessage("fetchResponseInvalidJson"));
           }
         }
       }
@@ -288,9 +291,9 @@ export async function executeFetch(
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") {
       if (options?.signal?.aborted) {
-        throw new Error("请求已中止");
+        throw new Error(dslMessage("fetchAborted"));
       }
-      throw new Error(`请求超时（${timeoutMs}ms）`);
+      throw new Error(dslMessage("fetchTimeout", { ms: timeoutMs }));
     }
     throw error;
   } finally {

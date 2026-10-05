@@ -344,6 +344,7 @@ function onTagHtmlInput(modelId: string, objectName: string, event: Event) {
     @update:open="emit('update:open', $event)"
   >
     <ConfigFieldGroup :title="t('panel.config.groupScene3dPurpose')">
+      <template #hint>{{ t("panel.config.scene3dPurposeHint") }}</template>
       <Select
         size="small"
         class="w-full"
@@ -356,7 +357,6 @@ function onTagHtmlInput(modelId: string, objectName: string, event: Event) {
         ]"
         @update:value="(v) => patch(purposePresetPatch(String(v) as Scene3dPurpose))"
       />
-      <div class="text-[10px] text-gray-500">{{ t("panel.config.scene3dPurposeHint") }}</div>
     </ConfigFieldGroup>
 
     <ConfigFieldGroup :title="t('panel.config.groupScene3dModels')">
@@ -374,7 +374,12 @@ function onTagHtmlInput(modelId: string, objectName: string, event: Event) {
         />
       </div>
       <label class="block space-y-1" data-config-field="scene3d.modelUrl">
-        <div class="text-[10px] text-gray-500">{{ t("panel.config.scene3dModelUrl") }}</div>
+        <div class="flex items-center gap-1 text-[10px] text-gray-500">
+          {{ t("panel.config.scene3dModelUrl") }}
+          <ConfigHintIcon :label="t('panel.config.scene3dModelUrl')">
+            {{ t("panel.config.urlScopeHint") }}
+          </ConfigHintIcon>
+        </div>
         <div class="flex gap-1.5">
           <Input
             size="small"
@@ -392,7 +397,6 @@ function onTagHtmlInput(modelId: string, objectName: string, event: Event) {
             {{ t("common.add") }}
           </Button>
         </div>
-        <p class="text-[10px] text-gray-500">{{ t("panel.config.urlScopeHint") }}</p>
       </label>
       <div v-if="config.models.length === 0" class="text-[11px] text-gray-500">
         {{ t("panel.config.scene3dNoModels") }}
@@ -477,7 +481,7 @@ function onTagHtmlInput(modelId: string, objectName: string, event: Event) {
     </ConfigFieldGroup>
 
     <ConfigFieldGroup :title="t('panel.config.groupScene3dCamera')">
-      <div class="text-[10px] text-gray-500">{{ t("panel.config.scene3dCameraEditDesc") }}</div>
+      <template #hint>{{ t("panel.config.scene3dCameraEditDesc") }}</template>
       <div class="grid grid-cols-3 gap-1">
         <Input
           v-for="(axis, index) in ['x', 'y', 'z']"

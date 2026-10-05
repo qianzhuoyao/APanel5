@@ -1,6 +1,7 @@
 export { BluePrintReactRoot } from "./src/index";
 export type { BluePrintReactRootProps } from "./src/index";
 export { BlueprintNodeConfigSidebar } from "./src/BlueprintNodeConfigSidebar";
+export { BlueprintDslLocaleSync } from "./src/BlueprintDslLocaleSync";
 export type {
   BlueprintNodeConfigSidebarProps,
   BlueprintViewElementOption,

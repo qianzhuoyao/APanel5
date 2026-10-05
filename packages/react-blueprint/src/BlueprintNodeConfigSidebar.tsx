@@ -284,18 +284,21 @@ function BlueprintNodeConfigSidebarInner({
                 {t("blueprint.config.selectLibraryFirst")}
               </p>
             ) : null}
-            <label className="flex items-start gap-2 pt-1">
+            <label className="flex items-center gap-2 pt-1">
               <input
                 type="checkbox"
                 checked={allowFalseSignalPropagation}
                 onChange={(e) =>
                   onUpdateAllowFalseSignalPropagation?.(e.target.checked)
                 }
-                className="mt-0.5 h-3.5 w-3.5 shrink-0 rounded border border-input"
+                className="h-3.5 w-3.5 shrink-0 rounded border border-input"
               />
-              <span className="text-[11px] leading-relaxed text-muted-foreground">
-                {t("blueprint.config.allowFalsePropagateBlueprint")}
+              <span className="text-[11px] text-muted-foreground">
+                {t("blueprint.config.allowFalsePropagate")}
               </span>
+              <ConfigHintIcon label={t("blueprint.config.allowFalsePropagate")}>
+                {t("blueprint.config.allowFalsePropagateBlueprint")}
+              </ConfigHintIcon>
             </label>
           </div>
         ) : null}
@@ -454,18 +457,21 @@ function BlueprintNodeConfigSidebarInner({
         {configSource !== "blueprint" && configSource !== "and" ? (
           <div className="space-y-2 rounded-md border border-border/70 bg-muted/20 p-2.5">
             <div className="font-medium text-foreground">{t("blueprint.config.taskChain")}</div>
-            <label className="flex items-start gap-2">
+            <label className="flex items-center gap-2">
               <input
                 type="checkbox"
                 checked={allowFalseSignalPropagation}
                 onChange={(e) =>
                   onUpdateAllowFalseSignalPropagation?.(e.target.checked)
                 }
-                className="mt-0.5 h-3.5 w-3.5 shrink-0 rounded border border-input"
+                className="h-3.5 w-3.5 shrink-0 rounded border border-input"
               />
-              <span className="text-[11px] leading-relaxed text-muted-foreground">
-                {t("blueprint.config.allowFalsePropagateDefault")}
+              <span className="text-[11px] text-muted-foreground">
+                {t("blueprint.config.allowFalsePropagate")}
               </span>
+              <ConfigHintIcon label={t("blueprint.config.allowFalsePropagate")}>
+                {t("blueprint.config.allowFalsePropagateDefault")}
+              </ConfigHintIcon>
             </label>
           </div>
         ) : null}

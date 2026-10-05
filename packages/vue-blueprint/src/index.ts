@@ -4,6 +4,7 @@ export { documentToRunnableGraph } from "./runtime/document-to-runnable-graph";
 export type { BlueprintExecutionOverlay } from "./runtime/execution-overlay";
 export type { BlueprintFlowNodeData } from "./types";
 export { default as BluePrintVueRoot } from "./components/BluePrintVueRoot.vue";
+export { useBlueprintDslLocaleSync } from "./composables/useBlueprintDslLocaleSync";
 export { default as BlueprintCanvas } from "./components/BlueprintCanvas.vue";
 export { default as BlueprintNodeConfigSidebar } from "./BlueprintNodeConfigSidebar.vue";
 export type {

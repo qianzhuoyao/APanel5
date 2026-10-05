@@ -17,6 +17,7 @@ import type { State } from "@arronqzy/rx-store";
 import { ElementsLayer } from "./components/ElementsLayer";
 import type { TableCellActionHandler } from "./components/table/TableNodeContent";
 import type { PanelElement } from "./types";
+import { localizePanelElement } from "./utils/panelElementDefaults";
 import {
   clearViewElementScopes,
   getViewElementScope,
@@ -236,7 +237,8 @@ function ReactViewOnlinePreviewInner({
 
   const displayElements = useMemo(
     () =>
-      scopedLayerElements.map((el) => {
+      scopedLayerElements.map((source) => {
+        const el = localizePanelElement(source, t);
         const x = el.x - sceneBounds.minX;
         const y = el.y - sceneBounds.minY;
         if (outputScale) return { ...el, x, y };
@@ -255,6 +257,7 @@ function ReactViewOnlinePreviewInner({
       sceneBounds.minX,
       sceneBounds.minY,
       scopedLayerElements,
+      t,
     ]
   );
 

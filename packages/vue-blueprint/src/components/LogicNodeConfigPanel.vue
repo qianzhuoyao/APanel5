@@ -8,7 +8,7 @@ import ConfigHintIcon from "./ConfigHintIcon.vue";
 import type { BlueprintGraphNode } from "../graph/document";
 import { resolveNodeLogicConfig } from "../graph/document";
 
-const { t } = useI18n();
+const { t, locale } = useI18n();
 
 export type LogicNodeConfigPanelProps = {
   node: BlueprintGraphNode;
@@ -31,9 +31,10 @@ function patchLogicConfig(node: BlueprintGraphNode, patch: Partial<LogicNodeConf
 
 const logicConfig = computed(() => resolveNodeLogicConfig(props.node));
 
-const storedValidation = computed(() =>
-  validateLogicSourceCode(logicConfig.value.sourceCode)
-);
+const storedValidation = computed(() => {
+  void locale.value;
+  return validateLogicSourceCode(logicConfig.value.sourceCode);
+});
 
 const parseError = computed(
   () => draftError.value ?? (storedValidation.value.ok ? null : storedValidation.value.error)

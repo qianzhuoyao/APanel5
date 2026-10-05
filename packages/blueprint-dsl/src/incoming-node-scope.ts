@@ -8,6 +8,7 @@ import {
   stringifyScopeValue,
 } from "./scope-template.js";
 import { isFalseSignal, isTrueSignal } from "./node-signal.js";
+import { dslMessage } from "./messages.js";
 
 export type IncomingNodeSource = {
   id: string;
@@ -219,7 +220,7 @@ export function parseJsonText(
   } catch (error) {
     return {
       ok: false,
-      error: error instanceof Error ? error.message : "JSON 格式无效",
+      error: error instanceof Error ? error.message : dslMessage("jsonInvalid"),
     };
   }
 }
@@ -231,7 +232,7 @@ export function validateFetchJsonText(
   const trimmed = text.trim();
   if (!trimmed) {
     if (options?.allowEmpty === false) {
-      return { ok: false, error: "内容不能为空" };
+      return { ok: false, error: dslMessage("contentRequired") };
     }
     return { ok: true };
   }
@@ -289,13 +290,13 @@ export function getFetchHeadersValidationError(
   if (isWholeScopeExpression(raw) || hasScopeTemplate(raw)) {
     if (scope === undefined) return null;
     const parsed = parseFetchHeadersJson(raw, scope);
-    if (!parsed) return "请求头模板解析后不是有效的 JSON 对象";
+    if (!parsed) return dslMessage("headersTemplateNotObject");
     return null;
   }
   const result = validateFetchJsonText(raw);
   if (!result.ok) return result.error;
   const parsed = parseFetchHeadersJson(raw, scope);
-  if (!parsed) return "请求头不是有效的 JSON 对象";
+  if (!parsed) return dslMessage("headersNotObject");
   return null;
 }
 

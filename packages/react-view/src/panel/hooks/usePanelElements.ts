@@ -22,6 +22,8 @@ import {
   getDefaultScene3dConfigForMaterial,
   getDefaultSizeByMaterial,
   getDefaultTextContent,
+  localizeLayers,
+  localizePanelElement,
   normalizePrimaryLayer,
   randomId,
 } from "../utils/panelElementDefaults";
@@ -67,7 +69,7 @@ export function usePanelElements() {
     () => store.getState()
   ) as State;
   const rawLayers = (state.variables?.layers as PanelLayer[] | undefined) ?? [defaultLayer];
-  const layers = useMemo(() => normalizePrimaryLayer(rawLayers), [rawLayers]);
+  const layers = useMemo(() => localizeLayers(normalizePrimaryLayer(rawLayers), t), [rawLayers, t]);
   const activeLayerId =
     (state.variables?.activeLayerId as string | undefined) ?? DEFAULT_LAYER_ID;
   const canUndo = store.getHistoryCursorIndex() > 0;
@@ -137,14 +139,29 @@ export function usePanelElements() {
     });
   }, []);
 
+  const localizedCacheRef = useRef<{ t: typeof t; map: WeakMap<PanelElement, PanelElement> }>({
+    t,
+    map: new WeakMap(),
+  });
   const allElements = useMemo(() => {
     const next = materializePanelElements(
       state.root.children,
       allElementsCacheRef.current
     );
     allElementsCacheRef.current = next;
-    return next;
-  }, [state.root.children]);
+    if (localizedCacheRef.current.t !== t) {
+      localizedCacheRef.current = { t, map: new WeakMap() };
+    }
+    const { map } = localizedCacheRef.current;
+    return next.map((el) => {
+      let localized = map.get(el);
+      if (!localized) {
+        localized = localizePanelElement(el, t);
+        map.set(el, localized);
+      }
+      return localized;
+    });
+  }, [state.root.children, t]);
 
   const elements = useMemo(() => {
     const next = allElements.filter((el) => el.layerId === activeLayerId);

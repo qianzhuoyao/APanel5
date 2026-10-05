@@ -1,4 +1,5 @@
 export * from "./type.js";
+export * from "./messages.js";
 export * from "./lifecycle.js";
 export * from "./node-signal.js";
 export * from "./blueprint-signal.js";

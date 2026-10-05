@@ -74,7 +74,8 @@ function onFileChange(e: Event) {
         <div class="flex items-center gap-1">
           <span>{{ t("panel.config.imageUrlCss") }}</span>
           <ConfigHintIcon :label="t('panel.config.imageUrlHintLabel')">
-            {{ t("panel.config.imageUrlHint") }}
+            <p>{{ t("panel.config.imageUrlHint") }}</p>
+            <p class="mt-1">{{ t("panel.config.urlScopeHint") }}</p>
           </ConfigHintIcon>
         </div>
         <Input
@@ -85,7 +86,6 @@ function onFileChange(e: Event) {
           :placeholder="t('panel.config.urlScopePlaceholder')"
           @update:value="(v: string) => patchStyle(patchBackgroundImageFromInput(String(v ?? '')))"
         />
-        <p class="text-[10px] text-gray-500">{{ t("panel.config.urlScopeHint") }}</p>
       </label>
       <div class="flex items-center gap-2">
         <label

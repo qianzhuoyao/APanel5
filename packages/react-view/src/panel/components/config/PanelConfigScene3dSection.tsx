@@ -305,7 +305,12 @@ export function PanelConfigScene3dSection({
   return (
     <div className="space-y-3">
       <div className="space-y-1.5">
-        <div className="text-[11px] font-medium">{t("panel.config.groupScene3dPurpose")}</div>
+        <div className="flex items-center gap-1 text-[11px] font-medium">
+          {t("panel.config.groupScene3dPurpose")}
+          <ConfigHintIcon label={t("panel.config.groupScene3dPurpose")}>
+            {t("panel.config.scene3dPurposeHint")}
+          </ConfigHintIcon>
+        </div>
         <Select
           value={config.presentation.purpose}
           onValueChange={(value) => {
@@ -322,9 +327,6 @@ export function PanelConfigScene3dSection({
             <SelectItem value="sandbox">{t("panel.config.scene3dPurposeSandbox")}</SelectItem>
           </SelectContent>
         </Select>
-        <div className="text-[10px] text-muted-foreground">
-          {t("panel.config.scene3dPurposeHint")}
-        </div>
         <label className="block space-y-0.5 text-[10px]">
           <span>{t("panel.config.scene3dEnvironment")}</span>
           <Select
@@ -403,8 +405,11 @@ export function PanelConfigScene3dSection({
         />
       </div>
       <label className="block space-y-1" data-config-field="scene3d.modelUrl">
-        <div className="text-[10px] text-muted-foreground">
+        <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
           {t("panel.config.scene3dModelUrl")}
+          <ConfigHintIcon label={t("panel.config.scene3dModelUrl")}>
+            {t("panel.config.urlScopeHint")}
+          </ConfigHintIcon>
         </div>
         <div className="flex gap-1.5">
           <Input
@@ -424,7 +429,6 @@ export function PanelConfigScene3dSection({
             {t("common.add")}
           </Button>
         </div>
-        <p className="text-[10px] text-muted-foreground">{t("panel.config.urlScopeHint")}</p>
       </label>
 
       {config.models.length === 0 ? (
@@ -688,7 +692,12 @@ export function PanelConfigScene3dSection({
       )}
 
       <div className="space-y-2">
-        <div className="text-[11px] font-medium">{t("panel.config.groupScene3dCamera")}</div>
+        <div className="flex items-center gap-1 text-[11px] font-medium">
+          {t("panel.config.groupScene3dCamera")}
+          <ConfigHintIcon label={t("panel.config.groupScene3dCamera")}>
+            {t("panel.config.scene3dCameraEditDesc")}
+          </ConfigHintIcon>
+        </div>
         <div className="grid grid-cols-3 gap-1.5">
           {(["x", "y", "z"] as const).map((axis, index) => (
             <label key={`pos-${axis}`} className="space-y-0.5 text-[10px]">
@@ -734,7 +743,6 @@ export function PanelConfigScene3dSection({
             }
           />
         </label>
-        <div className="text-[10px] text-muted-foreground">{t("panel.config.scene3dCameraEditDesc")}</div>
       </div>
 
       <div className="space-y-2">

@@ -7,6 +7,7 @@ import { cssTextLineHeight, cssTextAlignStyle } from "../../utils/panelElementDe
 import ConfigColorField from "./ConfigColorField.vue";
 import ConfigFieldGroup from "./ConfigFieldGroup.vue";
 import ConfigSection from "./ConfigSection.vue";
+import ConfigHintIcon from "../ConfigHintIcon.vue";
 
 const { t, locale } = useI18n();
 const props = defineProps<{
@@ -106,7 +107,12 @@ watch(() => [props.element.id, props.element.textHtml], syncEditorHtml);
         }"
       />
       <label class="block space-y-1">
-        <div>{{ t("panel.config.textHtmlSource") }}</div>
+        <div class="flex items-center gap-1">
+          {{ t("panel.config.textHtmlSource") }}
+          <ConfigHintIcon :label="t('panel.config.textHtmlSource')">
+            {{ t("panel.config.scopeTemplateHint") }}
+          </ConfigHintIcon>
+        </div>
         <textarea
           data-config-field="textHtml"
           class="w-full rounded border border-gray-200 bg-white px-2 py-1.5 font-mono text-[11px] leading-relaxed outline-none"
@@ -116,9 +122,7 @@ watch(() => [props.element.id, props.element.textHtml], syncEditorHtml);
           :disabled="!isEditable"
           :placeholder="t('panel.config.textHtmlSourcePlaceholder')"
           @input="(e) => patch({ textHtml: (e.target as HTMLTextAreaElement).value || '<p><br/></p>' })"
-        />
-        <p class="text-[10px] text-gray-500">{{ t("panel.config.scopeTemplateHint") }}</p>
-      </label>
+        />      </label>
     </ConfigFieldGroup>
     <ConfigFieldGroup :title="t('panel.config.groupTextStyle')">
       <label class="block space-y-1">

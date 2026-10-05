@@ -279,7 +279,7 @@ export function FetchNodeConfigPanel({
   traceEntries = [],
   onUpdateNode,
 }: FetchNodeConfigPanelProps) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const fetchConfig = resolveNodeFetchConfig(node);
   const apiCollections = useApiCollections();
   const endpoints = fetchConfig.swaggerEndpoints ?? [];
@@ -353,11 +353,11 @@ export function FetchNodeConfigPanel({
   }, [resolvedFetchConfig.body, usesScopeTemplate]);
   const headersJsonError = useMemo(
     () => getFetchHeadersValidationError(fetchConfig, incomingScope),
-    [fetchConfig, incomingScope]
+    [fetchConfig, incomingScope, locale]
   );
   const bodyJsonError = useMemo(
     () => getFetchBodyValidationError(fetchConfig.body, resolvedFetchConfig.body),
-    [fetchConfig.body, resolvedFetchConfig.body]
+    [fetchConfig.body, resolvedFetchConfig.body, locale]
   );
   const incomingHasPendingValue = useMemo(() => {
     if (!incomingScope || typeof incomingScope !== "object") return false;
@@ -599,8 +599,13 @@ export function FetchNodeConfigPanel({
       ) : null}
 
       <div className="space-y-1">
-        <span className="text-[11px] text-muted-foreground">
+        <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
           {t("blueprint.config.fetchSourceMode")}
+          <ConfigHintIcon label={t("blueprint.config.fetchSourceMode")}>
+            {usingCollection
+              ? t("blueprint.config.fetchSourceCollectionHint")
+              : t("blueprint.config.fetchSourceDirectHint")}
+          </ConfigHintIcon>
         </span>
         <div className="flex rounded-md border border-border p-0.5">
           <button
@@ -628,11 +633,6 @@ export function FetchNodeConfigPanel({
             {t("blueprint.config.fetchSourceCollection")}
           </button>
         </div>
-        <p className="text-[10px] text-muted-foreground">
-          {usingCollection
-            ? t("blueprint.config.fetchSourceCollectionHint")
-            : t("blueprint.config.fetchSourceDirectHint")}
-        </p>
       </div>
 
       <div className="space-y-1 rounded-md border border-border/60 bg-background/70 p-2">
@@ -689,9 +689,10 @@ export function FetchNodeConfigPanel({
             </Select>
           </label>
           <label className="block space-y-1">
-            <span className="text-muted-foreground">
-              {t("blueprint.config.apiCollectionEndpoint")}
-            </span>
+            <ConfigFieldLabel
+              label={t("blueprint.config.apiCollectionEndpoint")}
+              hint={t("blueprint.config.apiCollectionFilledHint")}
+            />
             <div className="flex gap-1.5">
               <TooltipProvider delayDuration={200}>
                 <Tooltip>
@@ -751,11 +752,6 @@ export function FetchNodeConfigPanel({
               />
             </div>
           </label>
-          {selectedCollection ? (
-            <p className="text-[10px] text-muted-foreground">
-              {t("blueprint.config.apiCollectionFilledHint")}
-            </p>
-          ) : null}
           <label className="block space-y-1">
             <span className="text-muted-foreground">{t("blueprint.config.requestUrl")}</span>
             <Input

@@ -17,6 +17,7 @@ import {
   type Edge,
 } from "@xyflow/react";
 import { EnsureI18nProvider } from "@arronqzy/i18n/react";
+import { BlueprintDslLocaleSync } from "./BlueprintDslLocaleSync";
 import "@xyflow/react/dist/style.css";
 import "./blueprint.css";
 
@@ -39,6 +40,7 @@ export type { BlueprintExecutionOverlay } from "./runtime/execution-overlay";
 
 export type { BlueprintNodeConfigSidebarProps, BlueprintViewElementOption, BlueprintLibraryOption } from "./BlueprintNodeConfigSidebar";
 export { BlueprintNodeConfigSidebar } from "./BlueprintNodeConfigSidebar";
+export { BlueprintDslLocaleSync } from "./BlueprintDslLocaleSync";
 
 export type BluePrintReactRootProps = {
   style?: React.CSSProperties;
@@ -66,7 +68,6 @@ function BlueprintCanvas({
   selectedNodeId = null,
   executionOverlay = null,
   onSelectNode,
-  onAbortClock,
   libraryNameById,
   containerRef,
 }: BlueprintCanvasProps) {
@@ -253,34 +254,36 @@ export const BluePrintReactRoot: FC<BluePrintReactRootProps> = ({
 
   return (
     <EnsureI18nProvider>
-      <div
-        ref={containerRef}
-        data-workspace-region="blueprint"
-        className="bp-canvas h-full w-full bg-background text-foreground"
-        style={{
-          width: "100%",
-          height: "100%",
-          minHeight: 0,
-          ...style,
-        }}
-      >
-        <BlueprintCanvasProvider
-          onSelectNode={onSelectNode}
-          onAbortClock={onAbortClock}
+      <BlueprintDslLocaleSync>
+        <div
+          ref={containerRef}
+          data-workspace-region="blueprint"
+          className="bp-canvas h-full w-full bg-background text-foreground"
+          style={{
+            width: "100%",
+            height: "100%",
+            minHeight: 0,
+            ...style,
+          }}
         >
-          <ReactFlowProvider>
-            <BlueprintCanvas
-              containerRef={containerRef}
-              graph={graph}
-              onGraphChange={onGraphChange}
-              selectedNodeId={selectedNodeId}
-              executionOverlay={executionOverlay}
-              onSelectNode={onSelectNode}
-              libraryNameById={libraryNameById}
-            />
-          </ReactFlowProvider>
-        </BlueprintCanvasProvider>
-      </div>
+          <BlueprintCanvasProvider
+            onSelectNode={onSelectNode}
+            onAbortClock={onAbortClock}
+          >
+            <ReactFlowProvider>
+              <BlueprintCanvas
+                containerRef={containerRef}
+                graph={graph}
+                onGraphChange={onGraphChange}
+                selectedNodeId={selectedNodeId}
+                executionOverlay={executionOverlay}
+                onSelectNode={onSelectNode}
+                libraryNameById={libraryNameById}
+              />
+            </ReactFlowProvider>
+          </BlueprintCanvasProvider>
+        </div>
+      </BlueprintDslLocaleSync>
     </EnsureI18nProvider>
   );
 };

@@ -22,6 +22,8 @@ import {
   getDefaultSizeByMaterial,
   getDefaultTableConfig,
   getDefaultTextContent,
+  localizeLayers,
+  localizePanelElement,
   normalizePrimaryLayer,
   randomId,
 } from "../utils/panelElementDefaults";
@@ -122,7 +124,8 @@ export function usePanelElements() {
   const layers = computed(() => {
     const rawLayers =
       (stateRef.value.variables?.layers as PanelLayer[] | undefined) ?? [DEFAULT_LAYER];
-    return normalizePrimaryLayer(rawLayers);
+    void locale.value;
+    return localizeLayers(normalizePrimaryLayer(rawLayers), t);
   });
 
   const activeLayerId = computed(
@@ -133,13 +136,26 @@ export function usePanelElements() {
   const allElementsCache = shallowRef<PanelElement[]>([]);
   const elementsCache = shallowRef<PanelElement[]>([]);
 
+  let localizedCache = { locale: locale.value, map: new WeakMap<PanelElement, PanelElement>() };
+
   const allElements = computed(() => {
     const next = materializePanelElements(
       stateRef.value.root.children,
       allElementsCache.value
     );
     allElementsCache.value = next;
-    return next;
+    if (localizedCache.locale !== locale.value) {
+      localizedCache = { locale: locale.value, map: new WeakMap() };
+    }
+    const { map } = localizedCache;
+    return next.map((el) => {
+      let localized = map.get(el);
+      if (!localized) {
+        localized = localizePanelElement(el, t);
+        map.set(el, localized);
+      }
+      return localized;
+    });
   });
 
   const elements = computed(() => {

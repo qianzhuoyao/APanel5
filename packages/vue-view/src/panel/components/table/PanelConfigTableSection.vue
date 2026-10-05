@@ -504,10 +504,16 @@ function patchProgressRuleWhen(ruleIndex: number, when: Condition) {
       </label>
       <details class="rounded-md border border-gray-200 bg-gray-50/60 px-2 py-1.5">
         <summary class="cursor-pointer text-[11px] font-medium text-gray-600">
-          {{ t("panel.config.tableAdvancedData") }}
+          <span class="inline-flex items-center gap-1 align-middle">
+            {{ t("panel.config.tableAdvancedData") }}
+            <span class="inline-flex" @click.prevent>
+              <ConfigHintIcon :label="t('panel.config.tableAdvancedData')">
+                {{ t("panel.config.tableAdvancedDataHint") }}
+              </ConfigHintIcon>
+            </span>
+          </span>
         </summary>
         <div class="mt-2 space-y-2 border-t border-gray-100 pt-2">
-          <p class="text-[10px] text-gray-500">{{ t("panel.config.tableAdvancedDataHint") }}</p>
           <div class="grid grid-cols-2 gap-2">
             <label class="block space-y-1.5">
               <div class="flex items-center gap-1">
@@ -1338,7 +1344,7 @@ function patchProgressRuleWhen(ruleIndex: number, when: Condition) {
               <Input
                 size="small"
                 :value="String(selectedColumn.column.widgetProps?.progressStatic ?? '')"
-                placeholder="80 或 {scope?.pct}"
+                :placeholder="t('panel.config.tableProgressStaticPlaceholder')"
                 :disabled="!isEditable"
                 @update:value="
                   (v: unknown) =>
@@ -1756,7 +1762,7 @@ function patchProgressRuleWhen(ruleIndex: number, when: Condition) {
               size="small"
               :value="selectedColumn.column.displayTemplate ?? ''"
               :disabled="!isEditable"
-              placeholder="{current}分"
+              :placeholder="t('panel.config.tableDisplayTemplatePlaceholder')"
               @update:value="
                 (v: unknown) => {
                   const s = asSelectString(v).trim();

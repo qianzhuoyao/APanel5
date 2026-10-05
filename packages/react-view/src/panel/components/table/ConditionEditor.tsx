@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from "@arronqzy/ui";
 import React from "react";
+import { ConfigHintIcon } from "../ConfigHintIcon";
 
 const CONDITION_OPS: ConditionOp[] = [
   "eq",
@@ -90,7 +91,12 @@ export function ConditionEditor({
     <div className="space-y-2">
       <div className="flex items-center justify-between gap-2">
         <label className={`${fieldClass} min-w-0 flex-1`}>
-          <div className="text-[11px] text-muted-foreground">{t("panel.config.tableConditionLogic")}</div>
+          <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+            {t("panel.config.tableConditionLogic")}
+            <ConfigHintIcon label={t("panel.config.tableConditionLogic")}>
+              {t("panel.config.tableConditionLogicHint")}
+            </ConfigHintIcon>
+          </div>
           <Select
             value={logic}
             onValueChange={(next) => onChange(setConditionLogic(value, next as ConditionLogic))}
@@ -115,7 +121,6 @@ export function ConditionEditor({
           {t("panel.config.tableConditionAddItem")}
         </Button>
       </div>
-      <div className="text-[10px] text-muted-foreground">{t("panel.config.tableConditionLogicHint")}</div>
       {items.map((item, index) => {
         const leaf: ConditionLeaf = isConditionLeaf(item)
           ? item

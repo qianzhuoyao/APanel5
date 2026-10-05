@@ -10,6 +10,7 @@ import {
   type ViewportOverflowMode,
 } from "../../utils/viewportPlacement";
 import { patchBackgroundImageFromInput } from "../../utils/background-image-style";
+import ConfigHintIcon from "../ConfigHintIcon.vue";
 
 const { t, locale } = useI18n();
 const props = defineProps<{
@@ -434,7 +435,12 @@ function setNodeCardExpanded(id: string, open: boolean) {
 
             <template v-if="el.materialType === 'image'">
               <label class="block space-y-1" data-config-field="style.backgroundImageRemoteUrl">
-                <div>{{ t("panel.config.backgroundImageUrl") }}</div>
+                <div class="flex items-center gap-1">
+                  {{ t("panel.config.backgroundImageUrl") }}
+                  <ConfigHintIcon :label="t('panel.config.backgroundImageUrl')">
+                    {{ t("panel.config.urlScopeHint") }}
+                  </ConfigHintIcon>
+                </div>
                 <Input
                   size="small"
                   class="font-mono text-[11px]"
@@ -447,7 +453,6 @@ function setNodeCardExpanded(id: string, open: boolean) {
                     },
                   })"
                 />
-                <p class="text-[10px] text-gray-500">{{ t("panel.config.urlScopeHint") }}</p>
               </label>
               <label class="block space-y-1">
                 <div>{{ t("panel.config.objectFit") }}</div>

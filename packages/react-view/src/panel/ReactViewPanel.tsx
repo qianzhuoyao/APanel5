@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useI18n } from "@arronqzy/i18n/react";
-import type { Locale } from "@arronqzy/i18n";
+import { relocalizeMessage, type Locale } from "@arronqzy/i18n";
 import type { State } from "@arronqzy/rx-store";
 import type { PanelElement } from "./types";
 
@@ -283,6 +283,12 @@ function ReactViewPanelInner({
     name: t("panel.defaults.unnamedBlueprint"),
     remark: "",
   });
+  const displayProductName = relocalizeMessage(productName, "panel.defaults.unnamedProduct", t);
+  const displayBlueprintName = relocalizeMessage(
+    blueprintMeta.name,
+    ["panel.defaults.unnamedBlueprint", "blueprint.dialog.unnamedBlueprint"],
+    t
+  );
   const [blueprintLibraryItems, setBlueprintLibraryItems] = useState<
     BlueprintLibraryListItem[]
   >([]);
@@ -682,7 +688,7 @@ function ReactViewPanelInner({
   const blueprintDebugSession = useBlueprintDebugSession({
     graph: blueprintGraph,
     blueprintId: activeBlueprintLibraryId,
-    blueprintName: blueprintMeta.name || t("panel.defaults.unnamedBlueprint"),
+    blueprintName: displayBlueprintName || t("panel.defaults.unnamedBlueprint"),
     resolveLibraryBlueprint,
     libraryNameById: blueprintLibraryNameById,
     onExecutionBlocked: handleBlueprintExecutionBlocked,
@@ -1648,7 +1654,7 @@ function ReactViewPanelInner({
     const previewFaviconLink = faviconHrefWithVersion
       ? `<link rel="icon" type="image/png" href="${faviconHrefWithVersion}" /><link rel="shortcut icon" type="image/png" href="${faviconHrefWithVersion}" />`
       : "";
-    const previewTitle = productName.trim() || t("panel.defaults.unnamedProduct");
+    const previewTitle = displayProductName.trim() || t("panel.defaults.unnamedProduct");
     const escapedPreviewTitle = previewTitle
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
@@ -1787,7 +1793,7 @@ function ReactViewPanelInner({
         win.document.head.appendChild(link);
       });
     }
-  }, [allElements, layers, productName, titleIconDataUrl]);
+  }, [allElements, layers, displayProductName, t, titleIconDataUrl]);
 
   const handlePreviewLayer = useCallback(() => {
     void (async () => {
@@ -2048,7 +2054,7 @@ function ReactViewPanelInner({
                 style={{ zIndex: PANEL_Z_INDEX.toolbar }}
               >
                 <Input
-                  value={productName}
+                  value={displayProductName}
                   onChange={(e) => setProductName(e.target.value)}
                   placeholder={t("panel.menubar.productNamePlaceholder")}
                   className="h-7 w-[220px] text-xs focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none"
@@ -2332,7 +2338,7 @@ function ReactViewPanelInner({
                 blueprintProps={blueprintCanvasProps}
                 blueprintLibraryItems={blueprintLibraryItems}
                 activeBlueprintLibraryId={activeBlueprintLibraryId}
-                currentBlueprintLabel={blueprintMeta.name}
+                currentBlueprintLabel={displayBlueprintName}
                 onSelectBlueprintLibraryItem={(id) => {
                   void handleSelectBlueprintLibraryItem(id);
                 }}

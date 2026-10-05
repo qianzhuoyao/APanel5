@@ -26,7 +26,7 @@ export const Template = (
       instructions.execute(props.id + "click", { e });
     } else {
       if (isDevMode()) {
-        console.warn("Template 缺少 id,无法触发事件");
+        console.warn("Template is missing an id; events cannot be triggered");
       }
     }
   };

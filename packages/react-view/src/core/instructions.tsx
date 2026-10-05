@@ -33,7 +33,7 @@ export class InstructionSet {
   execute(name: string, ...args: any[]) {
     const fn = this.instructions[name];
     if (!fn) {
-      console.warn(`指令不存在: ${name}`);
+      console.warn(`Instruction not found: ${name}`);
       return;
     }
     const result = fn(...args);

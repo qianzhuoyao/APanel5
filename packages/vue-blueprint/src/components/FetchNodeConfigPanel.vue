@@ -45,7 +45,7 @@ import ConfigHintIcon from "./ConfigHintIcon.vue";
 import FetchUrlAutocomplete from "./FetchUrlAutocomplete.vue";
 import ScopeTemplateAutocompleteHost from "./ScopeTemplateAutocompleteHost.vue";
 
-const { t } = useI18n();
+const { t, locale } = useI18n();
 
 export type FetchNodeConfigPanelProps = {
   node: BlueprintGraphNode;
@@ -113,12 +113,14 @@ const resolvedBodyPreview = computed(() => {
   if (!usesScopeTemplate.value) return "";
   return resolvedFetchConfig.value.body?.trim() ?? "";
 });
-const headersJsonError = computed(() =>
-  getFetchHeadersValidationError(fetchConfig.value, incomingScope.value)
-);
-const bodyJsonError = computed(() =>
-  getFetchBodyValidationError(fetchConfig.value.body, resolvedFetchConfig.value.body)
-);
+const headersJsonError = computed(() => {
+  void locale.value;
+  return getFetchHeadersValidationError(fetchConfig.value, incomingScope.value);
+});
+const bodyJsonError = computed(() => {
+  void locale.value;
+  return getFetchBodyValidationError(fetchConfig.value.body, resolvedFetchConfig.value.body);
+});
 const incomingHasPendingValue = computed(() => {
   const scope = incomingScope.value;
   if (!scope || typeof scope !== "object") return false;
@@ -411,8 +413,15 @@ function handleHeadersInput(event: Event) {
     </div>
 
     <div class="space-y-1">
-      <span class="text-[11px] text-muted-foreground">
+      <span class="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
         {{ t("blueprint.config.fetchSourceMode") }}
+        <ConfigHintIcon :label="t('blueprint.config.fetchSourceMode')">
+          {{
+            usingCollection
+              ? t("blueprint.config.fetchSourceCollectionHint")
+              : t("blueprint.config.fetchSourceDirectHint")
+          }}
+        </ConfigHintIcon>
       </span>
       <div class="flex rounded-md border border-border p-0.5">
         <button
@@ -440,13 +449,6 @@ function handleHeadersInput(event: Event) {
           {{ t("blueprint.config.fetchSourceCollection") }}
         </button>
       </div>
-      <p class="text-[10px] text-muted-foreground">
-        {{
-          usingCollection
-            ? t("blueprint.config.fetchSourceCollectionHint")
-            : t("blueprint.config.fetchSourceDirectHint")
-        }}
-      </p>
     </div>
 
     <div class="space-y-1 rounded-md border border-gray-200/80 bg-white/80 p-2">
@@ -491,7 +493,12 @@ function handleHeadersInput(event: Event) {
           </Select>
         </label>
         <label class="block space-y-1">
-          <span class="text-muted-foreground">{{ t("blueprint.config.apiCollectionEndpoint") }}</span>
+          <span class="inline-flex items-center gap-1 text-muted-foreground">
+            {{ t("blueprint.config.apiCollectionEndpoint") }}
+            <ConfigHintIcon :label="t('blueprint.config.apiCollectionEndpoint')">
+              {{ t("blueprint.config.apiCollectionFilledHint") }}
+            </ConfigHintIcon>
+          </span>
           <div class="flex gap-1.5">
             <Tooltip
               :title="selectedEndpointDescription || undefined"
@@ -544,9 +551,6 @@ function handleHeadersInput(event: Event) {
             </Button>
           </div>
         </label>
-        <p v-if="selectedCollection" class="text-[10px] text-muted-foreground">
-          {{ t("blueprint.config.apiCollectionFilledHint") }}
-        </p>
         <label class="block space-y-1">
           <span class="text-muted-foreground">{{ t("blueprint.config.requestUrl") }}</span>
           <Input

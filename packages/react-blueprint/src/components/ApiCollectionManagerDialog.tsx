@@ -25,6 +25,7 @@ import {
   subscribeApiCollections,
   upsertApiCollectionFromJson,
 } from "../library/api-collection-store";
+import { ConfigHintIcon } from "./ConfigHintIcon";
 
 export type ApiCollectionUploadStartInfo = {
   fileNames: string[];
@@ -282,6 +283,9 @@ export function ApiCollectionManagerDialog({
                 onChange={(e) => setPersistLocalDefault(e.target.checked)}
               />
               {t("blueprint.apiCollection.persistLocal")}
+              <ConfigHintIcon label={t("blueprint.apiCollection.persistLocal")}>
+                {t("blueprint.apiCollection.persistLocalHint")}
+              </ConfigHintIcon>
             </label>
             <input
               ref={fileInputRef}
@@ -292,10 +296,6 @@ export function ApiCollectionManagerDialog({
               onChange={(e) => void handleFiles(e.target.files)}
             />
           </div>
-
-          <p className="text-[11px] text-muted-foreground">
-            {t("blueprint.apiCollection.persistLocalHint")}
-          </p>
 
           {error ? (
             <pre className="max-h-24 overflow-auto whitespace-pre-wrap rounded border border-destructive/40 bg-destructive/5 p-2 text-[11px] text-destructive">

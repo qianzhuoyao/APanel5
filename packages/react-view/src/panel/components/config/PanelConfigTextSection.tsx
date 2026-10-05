@@ -11,6 +11,7 @@ import {
 } from "@arronqzy/ui";
 import type { PanelElement } from "../../types";
 import { cssTextLineHeight, cssTextAlignStyle } from "../../utils/panelElementDefaults";
+import { ConfigHintIcon } from "../ConfigHintIcon";
 import { type ConfigSectionHelpers, type UpdateElement } from "./helpers";
 
 export function PanelConfigTextSection({
@@ -111,7 +112,12 @@ export function PanelConfigTextSection({
                       }}
                     />
                     <label className="block space-y-1">
-                      <div>{t("panel.config.textHtmlSource")}</div>
+                      <div className="flex items-center gap-1">
+                        {t("panel.config.textHtmlSource")}
+                        <ConfigHintIcon label={t("panel.config.textHtmlSource")}>
+                          {t("panel.config.scopeTemplateHint")}
+                        </ConfigHintIcon>
+                      </div>
                       <textarea
                         data-config-field="textHtml"
                         value={selectedElement.textHtml ?? ""}
@@ -125,9 +131,6 @@ export function PanelConfigTextSection({
                         placeholder={t("panel.config.textHtmlSourcePlaceholder")}
                         className="w-full rounded border border-border bg-background px-2 py-1.5 font-mono text-[11px] leading-relaxed outline-none focus-visible:ring-1 focus-visible:ring-primary"
                       />
-                      <p className="text-[10px] text-muted-foreground">
-                        {t("panel.config.scopeTemplateHint")}
-                      </p>
                     </label>
                   </>
                 )}

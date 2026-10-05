@@ -6,6 +6,7 @@ import {
   stringifyScopeValue,
 } from "./scope-template.js";
 import { isWholeScopeExpression } from "./incoming-node-scope.js";
+import { dslMessage } from "./messages.js";
 
 export type StorageKind = "session" | "local";
 
@@ -206,8 +207,8 @@ function requireStorage(
   if (!target) {
     throw new Error(
       kind === "session"
-        ? "当前环境不支持 sessionStorage"
-        : "当前环境不支持 localStorage"
+        ? dslMessage("storageUnsupported", { storage: "sessionStorage" })
+        : dslMessage("storageUnsupported", { storage: "localStorage" })
     );
   }
   return target;
@@ -227,7 +228,7 @@ export function executeStorageConfig(
     const serialized = serializeStorageValue(value);
     const key = resolveStorageKey(normalized.set.key, incomingScope);
     if (!key) {
-      throw new Error("存储写入 key 解析为空");
+      throw new Error(dslMessage("storageKeyEmpty"));
     }
     for (const kind of normalized.set.storages) {
       requireStorage(store, kind).setItem(key, serialized);

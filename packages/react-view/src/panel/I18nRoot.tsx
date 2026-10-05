@@ -1,6 +1,7 @@
 import { I18nProvider } from "@arronqzy/i18n/react";
 import { LOCALE_STORAGE_KEY } from "@arronqzy/i18n";
 import { appStorageKey } from "@arronqzy/blueprint-dsl";
+import { BlueprintDslLocaleSync } from "@arronqzy/react-blueprint";
 import type { Locale } from "@arronqzy/i18n";
 import type { ReactNode } from "react";
 
@@ -24,7 +25,7 @@ export function I18nRoot({
       onLocaleChange={onLocaleChange}
       storageKey={appStorageKey(LOCALE_STORAGE_KEY, nameSpace)}
     >
-      {children}
+      <BlueprintDslLocaleSync>{children}</BlueprintDslLocaleSync>
     </I18nProvider>
   );
 }

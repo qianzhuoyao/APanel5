@@ -152,7 +152,12 @@ export function PanelConfigAudioSection({
                   t("panel.config.groupAudioSource"),
                   <>
                     <label className="block space-y-1" data-config-field="audioRemoteUrl">
-                      <div>{t("panel.config.audioUrl")}</div>
+                      <div className="flex items-center gap-1">
+                        {t("panel.config.audioUrl")}
+                        <ConfigHintIcon label={t("panel.config.audioUrl")}>
+                          {t("panel.config.urlScopeHint")}
+                        </ConfigHintIcon>
+                      </div>
                       <Input
                         value={selectedElement.audioRemoteUrl ?? ""}
                         onChange={(e) =>
@@ -164,9 +169,6 @@ export function PanelConfigAudioSection({
                         placeholder={t("panel.config.urlScopePlaceholder")}
                         className="h-7 font-mono text-[11px]"
                       />
-                      <p className="text-[10px] text-muted-foreground">
-                        {t("panel.config.urlScopeHint")}
-                      </p>
                     </label>
                     <div className="flex items-center gap-2">
                       <label className="inline-flex cursor-pointer items-center rounded border border-border px-2 py-1 text-[11px] hover:bg-accent">

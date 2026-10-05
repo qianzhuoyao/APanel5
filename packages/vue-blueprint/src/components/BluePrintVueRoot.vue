@@ -2,6 +2,9 @@
 import type { BlueprintGraph } from "../graph/blueprint-graph";
 import type { BlueprintExecutionOverlay } from "../runtime/execution-overlay";
 import BlueprintCanvas from "./BlueprintCanvas.vue";
+import { useBlueprintDslLocaleSync } from "../composables/useBlueprintDslLocaleSync";
+
+useBlueprintDslLocaleSync();
 
 const props = withDefaults(
   defineProps<{

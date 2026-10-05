@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
+import ConfigHintIcon from "./ConfigHintIcon.vue";
 import { useI18n } from "@arronqzy/i18n/vue";
 import { Button, Checkbox, Input, Modal } from "ant-design-vue";
 import {
@@ -263,6 +264,9 @@ async function handleFiles(files: FileList | null) {
       <label class="ml-auto flex cursor-pointer items-center gap-2 text-[11px] text-muted-foreground">
         <Checkbox v-model:checked="persistLocalDefault" />
         {{ t("blueprint.apiCollection.persistLocal") }}
+        <ConfigHintIcon :label="t('blueprint.apiCollection.persistLocal')">
+          {{ t("blueprint.apiCollection.persistLocalHint") }}
+        </ConfigHintIcon>
       </label>
       <input
         ref="fileInputRef"
@@ -273,11 +277,6 @@ async function handleFiles(files: FileList | null) {
         @change="(e) => void handleFiles((e.target as HTMLInputElement).files)"
       />
     </div>
-
-    <p class="mb-2 text-[11px] text-muted-foreground">
-      {{ t("blueprint.apiCollection.persistLocalHint") }}
-    </p>
-
     <pre
       v-if="error"
       class="mb-2 max-h-24 overflow-auto whitespace-pre-wrap rounded border border-destructive/40 bg-destructive/5 p-2 text-[11px] text-destructive"

@@ -2,6 +2,7 @@
 import { useI18n } from "@arronqzy/i18n/vue";
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import {
+  useBlueprintDslLocaleSync,
   BlueprintGraph,
   documentToRunnableGraph,
   getBlueprintLibraryRecord,
@@ -22,6 +23,7 @@ import {
   useViewScopeStoreVersion,
 } from "./scope/view-scope-store";
 import { resolvePanelElementScope } from "./utils/scope-template";
+import { localizePanelElement } from "./utils/panelElementDefaults";
 import {
   getWorkspaceProject,
   type WorkspaceProjectRecord,
@@ -40,6 +42,7 @@ import {
 import { applyPreviewSceneFill, readOutputScale } from "./utils/outputScale";
 
 const { t, locale } = useI18n();
+useBlueprintDslLocaleSync();
 
 const PREVIEW_BOOT_PHASES: PageLifecyclePhase[] = ["mounted"];
 
@@ -194,7 +197,9 @@ const scopedLayerElements = computed(() => {
 const sceneBounds = computed(() => computePanelSceneBounds(scopedLayerElements.value));
 
 const displayElements = computed(() =>
-  scopedLayerElements.value.map((el) => {
+  scopedLayerElements.value.map((source) => {
+    void locale.value;
+    const el = localizePanelElement(source, t);
     const x = el.x - sceneBounds.value.minX;
     const y = el.y - sceneBounds.value.minY;
     if (outputScale.value) return { ...el, x, y };

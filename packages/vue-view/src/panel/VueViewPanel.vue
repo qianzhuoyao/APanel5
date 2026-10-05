@@ -2,6 +2,7 @@
 import { computed, onMounted, onUnmounted, ref, shallowRef, watch } from "vue";
 import type { State } from "@arronqzy/rx-store";
 import {
+  useBlueprintDslLocaleSync,
   ApiCollectionManagerDialog,
   BlueprintGraph,
   abortClockNode,
@@ -72,12 +73,14 @@ import {
 import { resolvePanelElementScope } from "./utils/scope-template";
 import { useRafThrottledScroll } from "./hooks/useRafThrottledScroll";
 import { useI18n } from "@arronqzy/i18n/vue";
+import { relocalizeMessage } from "@arronqzy/i18n";
 import { getPanelMessages } from "./constants/messages";
 import BusyOverlay from "./components/BusyOverlay.vue";
 import { assertFileSize, parseJsonText, runBusyTask } from "./utils/async-work";
 import "../tailwind.css";
 
 const { t, locale, setLocale } = useI18n();
+useBlueprintDslLocaleSync();
 const panelMessages = () => getPanelMessages(t);
 
 const props = withDefaults(
@@ -152,6 +155,18 @@ const workspaceBlueprintRef = shallowRef<{
 } | null>(null);
 const configFocus = ref<WorkspaceConfigFocus>("view");
 const productName = ref(t("panel.defaults.unnamedProduct"));
+const displayProductName = computed(() => {
+  void locale.value;
+  return relocalizeMessage(productName.value, "panel.defaults.unnamedProduct", t);
+});
+const displayBlueprintName = computed(() => {
+  void locale.value;
+  return relocalizeMessage(
+    blueprintMeta.value.name,
+    ["panel.defaults.unnamedBlueprint", "blueprint.dialog.unnamedBlueprint"],
+    t
+  );
+});
 const titleIconDataUrl = ref("");
 const editingLayerId = ref<string | null>(null);
 const editingLayerName = ref("");
@@ -346,7 +361,7 @@ function handleViewScopeUpdate(viewElementIds: string[], scope: unknown) {
 const blueprintDebugSession = useBlueprintDebugSession({
   graph: blueprintGraph,
   blueprintId: activeBlueprintLibraryId,
-  blueprintName: computed(() => { void locale.value; return blueprintMeta.value.name || t("panel.defaults.unnamedBlueprint"); }),
+  blueprintName: computed(() => displayBlueprintName.value || t("panel.defaults.unnamedBlueprint")),
   resolveLibraryBlueprint,
   libraryNameById: blueprintLibraryNameById,
   onExecutionBlocked: handleBlueprintExecutionBlocked,
@@ -892,8 +907,9 @@ onUnmounted(() => window.removeEventListener("keydown", onKeyDown));
         <div class="flex h-full min-h-0 flex-col">
           <div class="flex flex-wrap items-center gap-2 border-b bg-white px-3 py-2">
             <Input
-              v-model:value="productName"
+              :value="displayProductName"
               size="small"
+              @update:value="(value: string) => (productName = value)"
               class="w-[200px]"
               :placeholder="t('panel.menubar.productName')"
             />
@@ -919,7 +935,7 @@ onUnmounted(() => window.removeEventListener("keydown", onKeyDown));
             :blueprint-props="blueprintCanvasProps"
             :blueprint-library-items="blueprintLibraryItems"
             :active-blueprint-library-id="activeBlueprintLibraryId"
-            :current-blueprint-label="blueprintMeta.name"
+            :current-blueprint-label="displayBlueprintName"
             :can-sync-blueprint="blueprintLibraryDirty"
             :blueprint-debug="blueprintDebugToolbar"
             :on-select-blueprint-library-item="(id) => void handleSelectBlueprintLibraryItem(id)"

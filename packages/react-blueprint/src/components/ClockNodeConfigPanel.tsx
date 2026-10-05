@@ -5,7 +5,7 @@ import { useI18nOptional as useI18n } from "@arronqzy/i18n/react";
 
 import type { BlueprintGraphNode } from "../graph/document";
 import { resolveNodeClockConfig } from "../graph/document";
-import { ConfigFieldLabel, ConfigSectionTitle } from "./ConfigHintIcon";
+import { ConfigFieldLabel, ConfigHintIcon, ConfigSectionTitle } from "./ConfigHintIcon";
 
 export type ClockNodeConfigPanelProps = {
   node: BlueprintGraphNode;
@@ -109,16 +109,19 @@ export function ClockNodeConfigPanel({
         />
       </label>
 
-      <label className="flex items-start gap-2">
+      <label className="flex items-center gap-2">
         <input
           type="checkbox"
           checked={clockConfig.emitImmediately}
           onChange={handleEmitImmediatelyChange}
-          className="mt-0.5 h-3.5 w-3.5 shrink-0 rounded border border-input"
+          className="h-3.5 w-3.5 shrink-0 rounded border border-input"
         />
-        <span className="text-[11px] leading-relaxed text-muted-foreground">
+        <span className="text-[11px] text-muted-foreground">
           {t("blueprint.config.emitImmediately")}
         </span>
+        <ConfigHintIcon label={t("blueprint.config.emitImmediately")}>
+          {t("blueprint.config.emitImmediatelyHint")}
+        </ConfigHintIcon>
       </label>
 
       <label className="block space-y-1">

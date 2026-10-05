@@ -4,6 +4,7 @@ import {
   type FetchRequestConfig,
 } from "./fetch-config.js";
 import { hasScopeTemplate } from "./scope-template.js";
+import { dslMessage } from "./messages.js";
 
 export const API_COLLECTION_DOCUMENT_VERSION = 1 as const;
 
@@ -70,32 +71,32 @@ function isPlainStringRecord(value: unknown): value is Record<string, string> {
 
 function normalizeEndpoint(raw: unknown, index: number): ApiCollectionEndpoint | string {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
-    return `apis[${index}] 必须是对象`;
+    return dslMessage("apiItemMustBeObject", { index });
   }
   const item = raw as Record<string, unknown>;
   const name = typeof item.name === "string" ? item.name.trim() : "";
-  if (!name) return `apis[${index}].name 必填且为非空字符串`;
+  if (!name) return dslMessage("apiItemFieldRequired", { index, field: "name" });
 
   const url = typeof item.url === "string" ? item.url.trim() : "";
-  if (!url) return `apis[${index}].url 必填且为非空字符串`;
+  if (!url) return dslMessage("apiItemFieldRequired", { index, field: "url" });
 
   const methodRaw =
     typeof item.method === "string" ? item.method.trim().toUpperCase() : "";
   if (!HTTP_METHOD_SET.has(methodRaw)) {
-    return `apis[${index}].method 必须是 ${FETCH_HTTP_METHODS.join(" / ")} 之一`;
+    return dslMessage("apiItemMethodInvalid", { index, methods: FETCH_HTTP_METHODS.join(" / ") });
   }
 
   if (item.params !== undefined && !isPlainStringRecord(item.params)) {
-    return `apis[${index}].params 必须是 string 字典`;
+    return dslMessage("apiItemFieldStringMap", { index, field: "params" });
   }
   if (item.headers !== undefined && !isPlainStringRecord(item.headers)) {
-    return `apis[${index}].headers 必须是 string 字典`;
+    return dslMessage("apiItemFieldStringMap", { index, field: "headers" });
   }
   if (item.body !== undefined && typeof item.body !== "string") {
-    return `apis[${index}].body 必须是字符串`;
+    return dslMessage("apiItemFieldString", { index, field: "body" });
   }
   if (item.description !== undefined && typeof item.description !== "string") {
-    return `apis[${index}].description 必须是字符串`;
+    return dslMessage("apiItemFieldString", { index, field: "description" });
   }
 
   return {
@@ -116,28 +117,28 @@ export function validateApiCollectionDocument(
   input: unknown
 ): { ok: true; document: ApiCollectionDocument } | { ok: false; error: string } {
   if (!input || typeof input !== "object" || Array.isArray(input)) {
-    return { ok: false, error: "根节点必须是对象" };
+    return { ok: false, error: dslMessage("apiRootMustBeObject") };
   }
   const root = input as Record<string, unknown>;
   const version = root.version;
   if (version !== API_COLLECTION_DOCUMENT_VERSION && version !== "1") {
     return {
       ok: false,
-      error: `version 必须为 ${API_COLLECTION_DOCUMENT_VERSION}`,
+      error: dslMessage("apiVersionMismatch", { version: API_COLLECTION_DOCUMENT_VERSION }),
     };
   }
   const name = typeof root.name === "string" ? root.name.trim() : "";
-  if (!name) return { ok: false, error: "name 必填且为非空字符串" };
+  if (!name) return { ok: false, error: dslMessage("apiNameRequired") };
 
   if (root.baseUrl !== undefined && typeof root.baseUrl !== "string") {
-    return { ok: false, error: "baseUrl 必须是字符串" };
+    return { ok: false, error: dslMessage("apiBaseUrlString") };
   }
 
   if (!Array.isArray(root.apis)) {
-    return { ok: false, error: "apis 必须是数组" };
+    return { ok: false, error: dslMessage("apiListMustBeArray") };
   }
   if (root.apis.length === 0) {
-    return { ok: false, error: "apis 至少包含一条接口" };
+    return { ok: false, error: dslMessage("apiListEmpty") };
   }
 
   const apis: ApiCollectionEndpoint[] = [];
@@ -148,7 +149,7 @@ export function validateApiCollectionDocument(
       return { ok: false, error: normalized };
     }
     if (nameSet.has(normalized.name)) {
-      return { ok: false, error: `接口名称重复：${normalized.name}` };
+      return { ok: false, error: dslMessage("apiNameDuplicated", { name: normalized.name }) };
     }
     nameSet.add(normalized.name);
     apis.push(normalized);
@@ -170,14 +171,16 @@ export function validateApiCollectionDocument(
 /** 解析上传 / 编辑框里的 JSON 文本 */
 export function parseApiCollectionJson(text: string): ApiCollectionParseResult {
   const trimmed = text.trim();
-  if (!trimmed) return { ok: false, error: "内容为空" };
+  if (!trimmed) return { ok: false, error: dslMessage("contentEmpty") };
   let parsed: unknown;
   try {
     parsed = JSON.parse(trimmed) as unknown;
   } catch (error) {
     return {
       ok: false,
-      error: `不是有效 JSON：${error instanceof Error ? error.message : "格式无效"}`,
+      error: dslMessage("invalidJson", {
+        reason: error instanceof Error ? error.message : dslMessage("invalidFormat"),
+      }),
     };
   }
   const validated = validateApiCollectionDocument(parsed);
@@ -209,11 +212,11 @@ export function apiCollectionToListItem(
 export function getApiCollectionTemplateDocument(): ApiCollectionDocument {
   return {
     version: API_COLLECTION_DOCUMENT_VERSION,
-    name: "示例接口集合",
+    name: dslMessage("apiTemplateName"),
     baseUrl: "https://api.example.com",
     apis: [
       {
-        name: "获取用户列表",
+        name: dslMessage("apiTemplateListUsers"),
         method: "GET",
         url: "/users",
         params: {
@@ -225,22 +228,22 @@ export function getApiCollectionTemplateDocument(): ApiCollectionDocument {
           Accept: "application/json",
           Authorization: "Bearer {scope?.value?.token}",
         },
-        description: "分页查询用户；page / tenant / token 可用 Scope 模版",
+        description: dslMessage("apiTemplateListUsersDesc"),
       },
       {
-        name: "创建用户",
+        name: dslMessage("apiTemplateCreateUser"),
         method: "POST",
         url: "/tenants/{scope?.value?.tenant}/users",
         headers: { "Content-Type": "application/json" },
         body: '{\n  "name": "{scope?.value?.name}",\n  "role": "member"\n}',
-        description: "创建用户；URL 与 body 均支持 Scope 模版",
+        description: dslMessage("apiTemplateCreateUserDesc"),
       },
       {
-        name: "获取用户详情",
+        name: dslMessage("apiTemplateGetUser"),
         method: "GET",
         url: "/users/{scope?.value?.id}",
         headers: { Accept: "application/json" },
-        description: "按 id 查询；路径里可直接写 Scope 模版",
+        description: dslMessage("apiTemplateGetUserDesc"),
       },
     ],
   };

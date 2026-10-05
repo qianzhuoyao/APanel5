@@ -1,6 +1,7 @@
 import { useI18nOptional as useI18n } from "@arronqzy/i18n/react";
 import { cn } from "@arronqzy/ui";
 import type { ReactNode } from "react";
+import { localizeBlueprintNodeLabel } from "../graph/document";
 
 export type BlueprintNodeCardProps = {
   nodeId: string;
@@ -145,7 +146,8 @@ export function BlueprintNodeCard({
   onSelect,
 }: BlueprintNodeCardProps) {
   const { t } = useI18n();
-  const showMeta = Boolean(meta && meta !== label);
+  const displayLabel = localizeBlueprintNodeLabel(label, t);
+  const showMeta = Boolean(meta && meta !== displayLabel);
 
   return (
     <div
@@ -172,7 +174,7 @@ export function BlueprintNodeCard({
         </span>
         <div className="bp-node-card__content">
           <div className="bp-node-card__title-row">
-            <div className="bp-node-card__title">{label}</div>
+            <div className="bp-node-card__title">{displayLabel}</div>
             {progressLabel ? (
               <span
                 className={cn(

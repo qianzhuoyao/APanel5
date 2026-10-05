@@ -1,7 +1,7 @@
 import type { Locale, MessageParams, NestedMessages } from "./types";
 import { LOCALE_STORAGE_KEY } from "./types";
 
-function getByPath(messages: NestedMessages, path: string): string | undefined {
+export function getByPath(messages: NestedMessages, path: string): string | undefined {
   const parts = path.split(".");
   let cur: string | NestedMessages | undefined = messages;
   for (const part of parts) {

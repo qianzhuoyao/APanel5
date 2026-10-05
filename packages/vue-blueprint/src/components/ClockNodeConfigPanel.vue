@@ -102,15 +102,17 @@ function handleEmitImmediatelyChange(checked: boolean) {
       />
     </label>
 
-    <label class="flex items-start gap-2">
+    <label class="flex items-center gap-2">
       <Checkbox
         :checked="clockConfig.emitImmediately"
-        class="mt-0.5"
         @update:checked="handleEmitImmediatelyChange"
       />
-      <span class="text-[11px] leading-relaxed text-muted-foreground">
+      <span class="text-[11px] text-muted-foreground">
         {{ t("blueprint.config.emitImmediately") }}
       </span>
+      <ConfigHintIcon :label="t('blueprint.config.emitImmediately')">
+        {{ t("blueprint.config.emitImmediatelyHint") }}
+      </ConfigHintIcon>
     </label>
 
     <label class="block space-y-1">

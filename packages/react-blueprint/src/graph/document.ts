@@ -207,7 +207,7 @@ export function resolveRunnableNodeType(
 }
 
 import type { TranslateFn } from "@arronqzy/i18n";
-import { resolveLocale, tForLocale } from "@arronqzy/i18n";
+import { matchMessageInAnyLocale, relocalizeMessage, resolveLocale, tForLocale } from "@arronqzy/i18n";
 
 /** 画布节点顶部（拖拽区）配置类型对应的 i18n key */
 export const BLUEPRINT_CONFIG_TYPE_LABEL_KEYS: Record<
@@ -289,16 +289,23 @@ export function defaultBlueprintNodeLabel(
   return getBlueprintNodeTypeLabel(t, configSource);
 }
 
-/** 当前名称是否仍是「类型默认名」（空或等于任一类型文案） */
+const BLUEPRINT_TYPE_LABEL_KEY_LIST = Object.values(BLUEPRINT_CONFIG_TYPE_LABEL_KEYS);
+
+/** 当前名称是否仍是「类型默认名」（空或等于任一语言下的任一类型文案） */
 export function isDefaultBlueprintNodeLabel(
   label: string | undefined | null,
   t: TranslateFn = defaultTranslate()
 ): boolean {
   const trimmed = (label ?? "").trim();
   if (!trimmed) return true;
-  return (
-    Object.keys(BLUEPRINT_CONFIG_TYPE_LABEL_KEYS) as BlueprintConfigSource[]
-  ).some((src) => getBlueprintNodeTypeLabel(t, src) === trimmed);
+  return BLUEPRINT_TYPE_LABEL_KEY_LIST.some(
+    (key) => t(key) === trimmed || matchMessageInAnyLocale(trimmed, key) !== null
+  );
+}
+
+/** 类型默认名按当前语言显示；用户自定义名称保持不变 */
+export function localizeBlueprintNodeLabel(label: string, t: TranslateFn): string {
+  return relocalizeMessage(label, BLUEPRINT_TYPE_LABEL_KEY_LIST, t);
 }
 
 export function resolveNodeFetchConfig(

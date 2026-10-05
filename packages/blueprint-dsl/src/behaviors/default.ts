@@ -7,6 +7,7 @@ import {
 import type { LifecycleSignal } from "../lifecycle.js";
 import type { ViewEventSignal } from "../event-config.js";
 import { BehaviorRegistry } from "../core/behavior-registry.js";
+import { dslMessage } from "../messages.js";
 
 const LIFECYCLE_SIGNAL_KEY = "__lifecycleSignal";
 const BLUEPRINT_ACTIVATION_INPUT_KEY = "__blueprintActivationInput";
@@ -31,7 +32,7 @@ export function registerDefaultBehaviors(registry: BehaviorRegistry) {
       | LifecycleSignal
       | undefined;
     if (!lifecycle) {
-      io.setOutput("out", createFalseSignal("生命周期信号缺失"));
+      io.setOutput("out", createFalseSignal(dslMessage("lifecycleSignalMissing")));
     } else if (lifecycle.phase === "blueprintActivated") {
       io.setOutput(
         "out",

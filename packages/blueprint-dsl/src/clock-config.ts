@@ -1,3 +1,5 @@
+import { dslMessage } from "./messages.js";
+
 export type ClockNodeConfig = {
   /** 两次输出之间的间隔秒数 */
   intervalSeconds: number;
@@ -57,7 +59,7 @@ export function validateClockScheduleConfig(
   const normalized = normalizeClockConfig(config);
 
   if (normalized.outputCount <= 0) {
-    return { ok: false, error: "输出次数须大于 0" };
+    return { ok: false, error: dslMessage("clockCountPositive") };
   }
 
   const needsInterval =
@@ -65,7 +67,7 @@ export function validateClockScheduleConfig(
     (normalized.outputCount === 1 && !normalized.emitImmediately);
 
   if (needsInterval && normalized.intervalSeconds <= 0) {
-    return { ok: false, error: "当前配置下时钟信号间隔须大于 0 秒" };
+    return { ok: false, error: dslMessage("clockIntervalPositive") };
   }
 
   return { ok: true };

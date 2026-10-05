@@ -7,6 +7,7 @@ import { readFileAsDataUrl, uploadFileToRemote } from "./shared";
 import { getPanelMessages } from "../../constants/messages";
 import ConfigFieldGroup from "./ConfigFieldGroup.vue";
 import ConfigSection from "./ConfigSection.vue";
+import ConfigHintIcon from "../ConfigHintIcon.vue";
 
 const { t, locale } = useI18n();
 const msgs = () => getPanelMessages(t);
@@ -67,7 +68,12 @@ function onVideoFileChange(e: Event) {
   >
     <ConfigFieldGroup :title="t('panel.config.groupVideoSource')">
       <label class="block space-y-1" data-config-field="videoRemoteUrl">
-        <div>{{ t("panel.config.videoUrl") }}</div>
+        <div class="flex items-center gap-1">
+          {{ t("panel.config.videoUrl") }}
+          <ConfigHintIcon :label="t('panel.config.videoUrl')">
+            {{ t("panel.config.urlScopeHint") }}
+          </ConfigHintIcon>
+        </div>
         <Input
           size="small"
           class="font-mono text-[11px]"
@@ -78,9 +84,7 @@ function onVideoFileChange(e: Event) {
             videoRemoteUrl: v || undefined,
             videoSrc: v || element.videoSrc,
           })"
-        />
-        <p class="text-[10px] text-gray-500">{{ t("panel.config.urlScopeHint") }}</p>
-      </label>
+        />      </label>
       <div class="flex items-center gap-2">
         <label
           class="inline-flex cursor-pointer items-center rounded border border-gray-200 px-2 py-1 text-[11px] hover:bg-gray-50"

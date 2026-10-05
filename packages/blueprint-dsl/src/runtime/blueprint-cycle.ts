@@ -1,5 +1,6 @@
 import { BLUEPRINT_NODE_TYPE } from "../nodes/definitions.js";
 import type { LibraryBlueprintResolver, RunnableGraph } from "./graph-runner.js";
+import { dslMessage } from "../messages.js";
 
 export const BLUEPRINT_CALL_STACK_KEY = "__blueprintCallStack";
 
@@ -28,7 +29,7 @@ export function formatBlueprintCycleMessage(
   resolveName?: (libraryBlueprintId: string) => string
 ): string {
   const labels = cycleIds.map((id) => resolveName?.(id) ?? id);
-  return `蓝图引用存在死循环：${labels.join(" → ")}`;
+  return dslMessage("blueprintCycle", { path: labels.join(" → ") });
 }
 
 export type BlueprintCycleCheckOptions = {

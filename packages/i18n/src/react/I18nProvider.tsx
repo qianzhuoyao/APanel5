@@ -101,15 +101,13 @@ export function EnsureI18nProvider({
 }
 
 /** Safe hook: returns zh-CN translator when outside provider (for utilities). */
+const fallbackContextValue: I18nContextValue = {
+  locale: "zh-CN",
+  setLocale: () => undefined,
+  t: createTranslator(catalogs["zh-CN"]),
+  messages: catalogs["zh-CN"],
+};
+
 export function useI18nOptional(): I18nContextValue {
-  const ctx = useContext(I18nContext);
-  if (ctx) return ctx;
-  const messages = catalogs["zh-CN"];
-  const t = createTranslator(messages);
-  return {
-    locale: "zh-CN",
-    setLocale: () => undefined,
-    t,
-    messages,
-  };
+  return useContext(I18nContext) ?? fallbackContextValue;
 }

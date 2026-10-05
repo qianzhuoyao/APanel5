@@ -146,27 +146,33 @@ function onOptionJsonChange(v: string) {
     </ConfigFieldGroup>
     <ConfigFieldGroup :title="t('panel.config.groupData')">
       <label class="block space-y-1" data-config-field="chart.labelsText">
-        <div>{{ t("panel.config.labelsCsv") }}</div>
+        <div class="flex items-center gap-1">
+          {{ t("panel.config.labelsCsv") }}
+          <ConfigHintIcon :label="t('panel.config.labelsCsv')">
+            {{ t("panel.config.scopeTemplateHint") }}
+          </ConfigHintIcon>
+        </div>
         <Input
           size="small"
           :value="getChartLabelsDisplayText(element.chart)"
           :disabled="!isEditable"
           :placeholder="t('panel.config.labelsCsvPlaceholder')"
           @update:value="(v: string) => updateChart({ labelsText: v })"
-        />
-        <p class="text-[10px] text-gray-500">{{ t("panel.config.scopeTemplateHint") }}</p>
-      </label>
+        />      </label>
       <label class="block space-y-1" data-config-field="chart.valuesText">
-        <div>{{ t("panel.config.valuesCsv") }}</div>
+        <div class="flex items-center gap-1">
+          {{ t("panel.config.valuesCsv") }}
+          <ConfigHintIcon :label="t('panel.config.valuesCsv')">
+            {{ t("panel.config.scopeTemplateHint") }}
+          </ConfigHintIcon>
+        </div>
         <Input
           size="small"
           :value="getChartValuesDisplayText(element.chart)"
           :disabled="!isEditable"
           :placeholder="t('panel.config.valuesCsvPlaceholder')"
           @update:value="(v: string) => updateChart({ valuesText: v })"
-        />
-        <p class="text-[10px] text-gray-500">{{ t("panel.config.scopeTemplateHint") }}</p>
-      </label>
+        />      </label>
     </ConfigFieldGroup>
 
     <ConfigFieldGroup

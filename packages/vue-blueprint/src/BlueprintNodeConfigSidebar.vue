@@ -281,15 +281,17 @@ function toggleEventType(eventType: ViewEventType, checked: boolean) {
         <p v-if="!node.libraryBlueprintId" class="text-[11px] text-muted-foreground">
           {{ t("blueprint.config.selectLibraryFirst") }}
         </p>
-        <label class="flex items-start gap-2 pt-1">
+        <label class="flex items-center gap-2 pt-1">
           <Checkbox
             :checked="allowFalseSignalPropagation"
-            class="mt-0.5"
             @update:checked="(v) => onUpdateAllowFalseSignalPropagation?.(Boolean(v))"
           />
-          <span class="text-[11px] leading-relaxed text-muted-foreground">
-            {{ t("blueprint.config.allowFalsePropagateBlueprint") }}
+          <span class="text-[11px] text-muted-foreground">
+            {{ t("blueprint.config.allowFalsePropagate") }}
           </span>
+          <ConfigHintIcon :label="t('blueprint.config.allowFalsePropagate')">
+            {{ t("blueprint.config.allowFalsePropagateBlueprint") }}
+          </ConfigHintIcon>
         </label>
       </div>
 
@@ -426,15 +428,17 @@ function toggleEventType(eventType: ViewEventType, checked: boolean) {
         class="space-y-2 rounded-md border border-border/70 bg-muted/20 p-2.5"
       >
         <div class="font-medium text-foreground">{{ t("blueprint.config.taskChain") }}</div>
-        <label class="flex items-start gap-2">
+        <label class="flex items-center gap-2">
           <Checkbox
             :checked="allowFalseSignalPropagation"
-            class="mt-0.5"
             @update:checked="(v) => onUpdateAllowFalseSignalPropagation?.(Boolean(v))"
           />
-          <span class="text-[11px] leading-relaxed text-muted-foreground">
-            {{ t("blueprint.config.allowFalsePropagateDefault") }}
+          <span class="text-[11px] text-muted-foreground">
+            {{ t("blueprint.config.allowFalsePropagate") }}
           </span>
+          <ConfigHintIcon :label="t('blueprint.config.allowFalsePropagate')">
+            {{ t("blueprint.config.allowFalsePropagateDefault") }}
+          </ConfigHintIcon>
         </label>
       </div>
     </div>

@@ -29,13 +29,13 @@ export function LogicNodeConfigPanel({
   node,
   onUpdateNode,
 }: LogicNodeConfigPanelProps) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const logicConfig = resolveNodeLogicConfig(node);
   const [draftError, setDraftError] = useState<string | null>(null);
 
   const storedValidation = useMemo(
     () => validateLogicSourceCode(logicConfig.sourceCode),
-    [logicConfig.sourceCode]
+    [logicConfig.sourceCode, locale]
   );
 
   const parseError =

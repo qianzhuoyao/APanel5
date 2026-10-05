@@ -118,7 +118,12 @@ export function PanelConfigChartSection({
                     t("panel.config.groupData"),
                     <>
                       <label className="block space-y-1" data-config-field="chart.labelsText">
-                        <div>{t("panel.config.labelsCsv")}</div>
+                        <div className="flex items-center gap-1">
+                          {t("panel.config.labelsCsv")}
+                          <ConfigHintIcon label={t("panel.config.labelsCsv")}>
+                            {t("panel.config.scopeTemplateHint")}
+                          </ConfigHintIcon>
+                        </div>
                         <Input
                           value={getChartLabelsDisplayText(selectedElement.chart)}
                           onChange={(e) =>
@@ -129,13 +134,15 @@ export function PanelConfigChartSection({
                           placeholder={t("panel.config.labelsCsvPlaceholder")}
                           className="h-7"
                         />
-                        <p className="text-[10px] text-muted-foreground">
-                          {t("panel.config.scopeTemplateHint")}
-                        </p>
                       </label>
 
                       <label className="block space-y-1" data-config-field="chart.valuesText">
-                        <div>{t("panel.config.valuesCsv")}</div>
+                        <div className="flex items-center gap-1">
+                          {t("panel.config.valuesCsv")}
+                          <ConfigHintIcon label={t("panel.config.valuesCsv")}>
+                            {t("panel.config.scopeTemplateHint")}
+                          </ConfigHintIcon>
+                        </div>
                         <Input
                           value={getChartValuesDisplayText(selectedElement.chart)}
                           onChange={(e) =>
@@ -146,9 +153,6 @@ export function PanelConfigChartSection({
                           placeholder={t("panel.config.valuesCsvPlaceholder")}
                           className="h-7"
                         />
-                        <p className="text-[10px] text-muted-foreground">
-                          {t("panel.config.scopeTemplateHint")}
-                        </p>
                       </label>
                     </>
                   )}

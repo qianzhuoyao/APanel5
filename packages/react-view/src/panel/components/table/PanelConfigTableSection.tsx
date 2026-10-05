@@ -427,10 +427,16 @@ export function PanelConfigTableSection({
         </div>
         <details className="rounded-md border border-border/50 bg-muted/10 px-2 py-1.5">
           <summary className="cursor-pointer text-[11px] font-medium text-muted-foreground">
-            {t("panel.config.tableAdvancedData")}
+            <span className="inline-flex items-center gap-1 align-middle">
+              {t("panel.config.tableAdvancedData")}
+              <span className="inline-flex" onClick={(e) => e.preventDefault()}>
+                <ConfigHintIcon label={t("panel.config.tableAdvancedData")}>
+                  {t("panel.config.tableAdvancedDataHint")}
+                </ConfigHintIcon>
+              </span>
+            </span>
           </summary>
           <div className="mt-2 space-y-2 border-t border-border/40 pt-2">
-            <p className="text-[10px] text-muted-foreground">{t("panel.config.tableAdvancedDataHint")}</p>
             <div className="grid grid-cols-2 gap-2">
               <label className={fieldClass}>
                 {fieldLabel("panel.config.tableTransformMode", "panel.config.tableTransformModeHint")}
@@ -1000,7 +1006,7 @@ export function PanelConfigTableSection({
                               imageUrlPrefix: e.target.value || undefined,
                             })
                           }
-                          placeholder="https://cdn.example.com/ 或 {scope?.cdn}/"
+                          placeholder={t("panel.config.tableImageUrlPrefixPlaceholder")}
                           className={inputClass}
                         />
                       </label>
@@ -1292,7 +1298,7 @@ export function PanelConfigTableSection({
                             progressStatic: e.target.value || undefined,
                           })
                         }
-                        placeholder="80 或 {scope?.pct}"
+                        placeholder={t("panel.config.tableProgressStaticPlaceholder")}
                         className={inputClass}
                       />
                     </label>
@@ -1724,7 +1730,7 @@ export function PanelConfigTableSection({
                     displayTemplate: e.target.value.trim() ? e.target.value : undefined,
                   })
                 }
-                placeholder="{current}分"
+                placeholder={t("panel.config.tableDisplayTemplatePlaceholder")}
                 className={inputClass}
               />
             </label>

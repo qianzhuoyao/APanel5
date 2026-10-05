@@ -2,8 +2,9 @@
 import { useI18n } from "@arronqzy/i18n/vue";
 import { computed } from "vue";
 import { cn } from "../utils/cn";
+import { localizeBlueprintNodeLabel } from "../graph/document";
 
-const { t } = useI18n();
+const { t, locale } = useI18n();
 
 export type BlueprintNodeCardProps = {
   nodeId: string;
@@ -26,7 +27,11 @@ const emit = defineEmits<{
   select: [nodeId: string];
 }>();
 
-const showMeta = computed(() => Boolean(props.meta && props.meta !== props.label));
+const displayLabel = computed(() => {
+  void locale.value;
+  return localizeBlueprintNodeLabel(props.label, t);
+});
+const showMeta = computed(() => Boolean(props.meta && props.meta !== displayLabel.value));
 </script>
 
 <template>
@@ -108,7 +113,7 @@ const showMeta = computed(() => Boolean(props.meta && props.meta !== props.label
       </span>
       <div class="bp-node-card__content">
         <div class="bp-node-card__title-row">
-          <div class="bp-node-card__title">{{ label }}</div>
+          <div class="bp-node-card__title">{{ displayLabel }}</div>
           <span
             v-if="progressLabel"
             :class="cn('bp-node-card__badge', `bp-node-card__badge--${variant}`)"

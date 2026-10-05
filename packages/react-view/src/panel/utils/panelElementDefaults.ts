@@ -1,5 +1,5 @@
 import type { TranslateFn } from "@arronqzy/i18n";
-import { tForLocale } from "@arronqzy/i18n";
+import { relocalizeMessage, tForLocale } from "@arronqzy/i18n";
 import { createDefaultScene3dConfig } from "@arronqzy/view-scene3d";
 import type { PanelChartConfig, PanelLayer, PanelElement } from "../types";
 import { createDefaultTableConfig, type PanelTableConfig } from "@arronqzy/view-table";
@@ -32,6 +32,52 @@ export const DEFAULT_LAYER_ID = "layer-1";
 export function getDefaultNodeName(materialType: string, t: TranslateFn = tFallback): string {
   const key = DEFAULT_NODE_NAME_KEYS[materialType];
   return key ? t(key) : materialType;
+}
+
+const DEFAULT_LAYER_NAME_KEYS = [
+  "panel.defaults.layer1",
+  "panel.defaults.layerN",
+  "panel.defaults.mappingLayerN",
+  "panel.defaults.layerRandom",
+];
+
+/** Persisted default layer names ("图层1" / "Layer 2") follow the current locale. */
+export function localizeLayerName(name: string, t: TranslateFn): string {
+  return relocalizeMessage(name, DEFAULT_LAYER_NAME_KEYS, t);
+}
+
+export function localizeLayers(layers: PanelLayer[], t: TranslateFn): PanelLayer[] {
+  return layers.map((layer) => {
+    const name = localizeLayerName(layer.name, t);
+    return name === layer.name ? layer : { ...layer, name };
+  });
+}
+
+const DEFAULT_TEXT_HTML_RE = /^<p>(.*)<\/p>$/s;
+
+/**
+ * Default node name, chart title and text content are stored in the creation locale;
+ * re-render them in the current one. Returns the same object when nothing changes.
+ */
+export function localizePanelElement(element: PanelElement, t: TranslateFn): PanelElement {
+  const key = DEFAULT_NODE_NAME_KEYS[element.materialType ?? ""];
+  if (!key) return element;
+  const name = element.name ? relocalizeMessage(element.name, key, t) : element.name;
+  const title = element.chart?.title ? relocalizeMessage(element.chart.title, key, t) : undefined;
+  let textHtml = element.textHtml;
+  const textInner = textHtml ? DEFAULT_TEXT_HTML_RE.exec(textHtml)?.[1] : undefined;
+  if (textInner) {
+    const localized = relocalizeMessage(textInner, "panel.defaults.doubleClickTextHtml", t);
+    if (localized !== textInner) textHtml = `<p>${localized}</p>`;
+  }
+  const titleChanged = title !== undefined && title !== element.chart?.title;
+  if (name === element.name && !titleChanged && textHtml === element.textHtml) return element;
+  return {
+    ...element,
+    name,
+    textHtml,
+    ...(titleChanged && element.chart ? { chart: { ...element.chart, title } } : null),
+  };
 }
 
 export function getDefaultLayer(t: TranslateFn = tFallback): PanelLayer {

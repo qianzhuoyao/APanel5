@@ -141,7 +141,12 @@ function onPosterFileChange(e: Event) {
   >
     <ConfigFieldGroup :title="t('panel.config.groupAudioSource')">
       <label class="block space-y-1" data-config-field="audioRemoteUrl">
-        <div>{{ t("panel.config.audioUrl") }}</div>
+        <div class="flex items-center gap-1">
+          {{ t("panel.config.audioUrl") }}
+          <ConfigHintIcon :label="t('panel.config.audioUrl')">
+            {{ t("panel.config.urlScopeHint") }}
+          </ConfigHintIcon>
+        </div>
         <Input
           size="small"
           class="font-mono text-[11px]"
@@ -152,9 +157,7 @@ function onPosterFileChange(e: Event) {
             audioRemoteUrl: v || undefined,
             audioSrc: v || element.audioSrc,
           })"
-        />
-        <p class="text-[10px] text-gray-500">{{ t("panel.config.urlScopeHint") }}</p>
-      </label>
+        />      </label>
       <div class="flex items-center gap-2">
         <label
           class="inline-flex cursor-pointer items-center rounded border border-gray-200 px-2 py-1 text-[11px] hover:bg-gray-50"

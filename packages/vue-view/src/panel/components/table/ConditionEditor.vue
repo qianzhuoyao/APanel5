@@ -13,6 +13,7 @@ import {
 import { useI18n } from "@arronqzy/i18n/vue";
 import { Button, Input, Select } from "ant-design-vue";
 import { computed } from "vue";
+import ConfigHintIcon from "../ConfigHintIcon.vue";
 
 const props = withDefaults(
   defineProps<{
@@ -92,7 +93,12 @@ function patchLeaf(index: number, patch: Partial<ConditionLeaf>) {
   <div class="space-y-2">
     <div class="flex items-center justify-between gap-2">
       <label class="min-w-0 flex-1 space-y-1">
-        <div class="text-[11px] text-gray-500">{{ t("panel.config.tableConditionLogic") }}</div>
+        <div class="flex items-center gap-1 text-[11px] text-gray-500">
+          {{ t("panel.config.tableConditionLogic") }}
+          <ConfigHintIcon :label="t('panel.config.tableConditionLogic')">
+            {{ t("panel.config.tableConditionLogicHint") }}
+          </ConfigHintIcon>
+        </div>
         <Select
           size="small"
           class="w-full"
@@ -114,7 +120,6 @@ function patchLeaf(index: number, patch: Partial<ConditionLeaf>) {
         {{ t("panel.config.tableConditionAddItem") }}
       </Button>
     </div>
-    <div class="text-[10px] text-gray-500">{{ t("panel.config.tableConditionLogicHint") }}</div>
     <div
       v-for="(item, index) in items"
       :key="index"

@@ -1,3 +1,5 @@
+import { dslMessage } from "./messages.js";
+
 export type LogicNodeConfig = {
   /** 用户手写的 update(input) 函数脚本 */
   sourceCode: string;
@@ -15,7 +17,7 @@ function compileLogicRunner(sourceCode: string): (input: unknown) => unknown {
     `"use strict";
 ${sourceCode}
 if (typeof update !== "function") {
-  throw new TypeError("需要定义 update(input) 函数");
+  throw new TypeError(dslMessage("logicUpdateRequired"));
 }
 return update(input);`
   ) as (input: unknown) => unknown;
@@ -26,7 +28,7 @@ export function validateLogicSourceCode(
 ): { ok: true } | { ok: false; error: string } {
   const raw = sourceCode?.trim();
   if (!raw) {
-    return { ok: false, error: "代码不能为空" };
+    return { ok: false, error: dslMessage("codeRequired") };
   }
 
   try {
@@ -35,7 +37,7 @@ export function validateLogicSourceCode(
   } catch (error) {
     return {
       ok: false,
-      error: error instanceof Error ? error.message : "JavaScript 语法错误",
+      error: error instanceof Error ? error.message : dslMessage("javascriptSyntaxError"),
     };
   }
 }

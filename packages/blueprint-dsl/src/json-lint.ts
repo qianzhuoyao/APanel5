@@ -1,3 +1,5 @@
+import { dslMessage } from "./messages.js";
+
 /**
  * JSON 文本静态检查：解析失败位置 + 常见全角/中文标点嫌疑字符。
  */
@@ -282,7 +284,7 @@ export function lintJsonString(jsonString: string): JsonLintResult {
   const raw = jsonString ?? "";
   const trimmed = raw.trim();
   if (!trimmed) {
-    return { ok: false, error: "JSON 不能为空", ranges: [] };
+    return { ok: false, error: dslMessage("jsonEmpty"), ranges: [] };
   }
 
   const suspectRanges = findSuspectCharRanges(raw);
@@ -294,14 +296,14 @@ export function lintJsonString(jsonString: string): JsonLintResult {
     if (value === null || typeof value !== "object") {
       return {
         ok: false,
-        error: "JSON 根节点必须是 object 或 array",
+        error: dslMessage("jsonRootMustBeContainer"),
         ranges: mergeRanges(suspectRanges),
       };
     }
     return { ok: true, value };
   } catch (error) {
     const message =
-      error instanceof Error ? error.message : "JSON 格式无效";
+      error instanceof Error ? error.message : dslMessage("jsonInvalid");
     const ranges = [...suspectRanges];
 
     const fromEngine = extractJsonErrorPosition(message, trimmed);

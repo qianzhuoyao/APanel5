@@ -90,6 +90,7 @@ import {
   detectRuntimeBlueprintCycle,
   resolveBlueprintCallStack,
 } from "./blueprint-cycle.js";
+import { dslMessage } from "../messages.js";
 
 export type RunnableGraphNode = {
   id: string;
@@ -570,7 +571,7 @@ export class BlueprintGraphRunner {
     stopAllClockSchedules();
     const node = this.requireNode(lifecycleNodeId);
     if (node.nodeType !== LIFECYCLE_NODE_TYPE) {
-      throw new Error("调试会话只能从生命周期节点开始");
+      throw new Error(dslMessage("debugMustStartFromLifecycle"));
     }
 
     this.outputs.clear();
@@ -840,7 +841,7 @@ export class BlueprintGraphRunner {
 
     if (!this.syncTokenFromGraph(token)) {
       return this.appendDebugTraceEntry(token, nodeLabelById, startedAt, {
-        error: "节点已从蓝图中移除",
+        error: dslMessage("nodeRemoved"),
       });
     }
 
@@ -914,7 +915,7 @@ export class BlueprintGraphRunner {
 
       if (!isTrueSignal(input)) {
         return finishWithOutput(
-          createFalseSignal("时钟节点需要收到真信号后才会启动")
+          createFalseSignal(dslMessage("clockNeedsTrue"))
         );
       }
 
@@ -1010,7 +1011,7 @@ export class BlueprintGraphRunner {
         if (!isTrueSignal(input)) {
           io.setOutput(
             "out",
-            createFalseSignal("蓝图节点需要收到真信号后才会执行")
+            createFalseSignal(dslMessage("blueprintNeedsTrue"))
           );
           io.emitFlow("out");
           return;
@@ -1018,13 +1019,13 @@ export class BlueprintGraphRunner {
 
         const libraryId = node.libraryBlueprintId;
         if (!libraryId) {
-          io.setOutput("out", createFalseSignal("未选择蓝图库中的蓝图"));
+          io.setOutput("out", createFalseSignal(dslMessage("blueprintNotSelected")));
           io.emitFlow("out");
           return;
         }
 
         if (!runner.resolveLibraryBlueprint) {
-          io.setOutput("out", createFalseSignal("蓝图库解析器未配置"));
+          io.setOutput("out", createFalseSignal(dslMessage("blueprintResolverMissing")));
           io.emitFlow("out");
           return;
         }
@@ -1051,7 +1052,7 @@ export class BlueprintGraphRunner {
         if (!nestedGraph) {
           io.setOutput(
             "out",
-            createFalseSignal(`蓝图库记录不存在: ${libraryId}`)
+            createFalseSignal(dslMessage("blueprintRecordMissing", { id: libraryId }))
           );
           io.emitFlow("out");
           return;
@@ -1111,8 +1112,8 @@ export class BlueprintGraphRunner {
             "out",
             createFalseSignal(
               input === undefined
-                ? "数据源节点未收到上游输出，请确认连线与上游节点已执行"
-                : "数据源节点需要收到真信号后才会发起请求"
+                ? dslMessage("fetchNoUpstream")
+                : dslMessage("fetchNeedsTrue")
             )
           );
           io.emitFlow("out");
@@ -1134,7 +1135,7 @@ export class BlueprintGraphRunner {
         }
         const bodyError = getFetchBodyValidationError(config.body, config.body);
         if (bodyError) {
-          throw new Error(`请求体不是有效 JSON：${bodyError}`);
+          throw new Error(dslMessage("fetchBodyInvalidJson", { reason: bodyError }));
         }
         resolveFetchRequestUrl(config);
 
@@ -1196,7 +1197,7 @@ export class BlueprintGraphRunner {
         if (!isTrueSignal(input)) {
           io.setOutput(
             "out",
-            createFalseSignal("JSON 节点需要收到真信号后才会解析")
+            createFalseSignal(dslMessage("jsonNeedsTrue"))
           );
           io.emitFlow("out");
           return;
@@ -1241,7 +1242,7 @@ export class BlueprintGraphRunner {
         if (!isTrueSignal(input)) {
           io.setOutput(
             "out",
-            createFalseSignal("存储节点需要收到真信号后才会读写缓存")
+            createFalseSignal(dslMessage("storageNeedsTrue"))
           );
           io.emitFlow("out");
           return;
@@ -1289,7 +1290,7 @@ export class BlueprintGraphRunner {
         if (!isTrueSignal(input)) {
           io.setOutput(
             "out",
-            createFalseSignal("时钟节点需要收到真信号后才会启动")
+            createFalseSignal(dslMessage("clockNeedsTrue"))
           );
           io.emitFlow("out");
           return;
@@ -1332,7 +1333,7 @@ export class BlueprintGraphRunner {
       } else {
         io.setOutput(
           "out",
-          createFalseSignal("并运算：两个输入须均为真信号")
+          createFalseSignal(dslMessage("andNeedsBothTrue"))
         );
       }
       io.emitFlow("out");

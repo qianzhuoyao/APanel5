@@ -1,4 +1,5 @@
 import type { FetchHttpMethod } from "./fetch-config.js";
+import { dslMessage } from "./messages.js";
 
 export type SwaggerApiEndpoint = {
   method: FetchHttpMethod;
@@ -123,7 +124,7 @@ export function parseSwaggerDocument(
   docsUrl: string
 ): ParsedSwaggerDocument {
   if (!spec || typeof spec !== "object") {
-    throw new Error("Swagger 文档格式无效");
+    throw new Error(dslMessage("swaggerInvalid"));
   }
 
   const document = spec as Record<string, unknown>;
@@ -131,7 +132,7 @@ export function parseSwaggerDocument(
   if (typeof document.openapi === "string") {
     const parsed = parseOpenApiV3(document, docsUrl);
     if (parsed.endpoints.length === 0) {
-      throw new Error("未在 OpenAPI 文档中找到接口");
+      throw new Error(dslMessage("openApiNoOperations"));
     }
     return parsed;
   }
@@ -139,12 +140,12 @@ export function parseSwaggerDocument(
   if (document.swagger === "2.0" || document.swagger === 2) {
     const parsed = parseSwaggerV2(document, docsUrl);
     if (parsed.endpoints.length === 0) {
-      throw new Error("未在 Swagger 2.0 文档中找到接口");
+      throw new Error(dslMessage("swagger2NoOperations"));
     }
     return parsed;
   }
 
-  throw new Error("仅支持 OpenAPI 3.x 与 Swagger 2.0 文档");
+  throw new Error(dslMessage("swaggerUnsupported"));
 }
 
 export function buildEndpointFullUrl(
