@@ -5,14 +5,17 @@ import type { BlueprintDocument, BlueprintMetaDraft } from "@arronqzy/react-blue
 import type { State } from "@arronqzy/rx-store";
 import {
   createWorkspaceProjectId,
-  deleteWorkspaceProject,
   getWorkspaceProject,
   listWorkspaceProjects,
   putWorkspaceProject,
   type WorkspaceProjectListItem,
   type WorkspaceProjectRecord,
 } from "../library/workspace-project-db";
-import { broadcastWorkspaceProjectUpdate } from "../library/workspace-project-sync";
+import { deleteWorkspaceProject } from "../library/workspace-storage";
+import {
+  broadcastWorkspaceProjectUpdate,
+  subscribeWorkspaceProjectsChanged,
+} from "../library/workspace-project-sync";
 import { writeWorkspacePreviewCache, readWorkspacePreviewCache } from "../library/workspace-project-cache";
 import {
   cloneWorkspaceSnapshot,
@@ -158,6 +161,20 @@ export function useWorkspaceProjects({
   useEffect(() => {
     void refreshProjects();
   }, [refreshProjects]);
+
+  useEffect(() => {
+    return subscribeWorkspaceProjectsChanged((message) => {
+      const removedActive =
+        message.type === "cleared" ||
+        (activeProjectId !== null && message.projectIds.includes(activeProjectId));
+      if (removedActive) {
+        setActiveProjectId(null);
+        setActiveProjectName(null);
+        syncedSnapshotRef.current = null;
+      }
+      void refreshProjects();
+    }, nameSpace);
+  }, [activeProjectId, nameSpace, refreshProjects]);
 
   useEffect(() => {
     if (!pendingRevisionSyncRef.current) return;

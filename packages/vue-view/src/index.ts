@@ -14,6 +14,12 @@ export {
 } from "./panel/library/parse-workspace-data";
 export { createWorkspaceProjectId } from "./panel/library/workspace-project-db";
 export {
+  listWorkspaceProjects,
+  deleteWorkspaceProject,
+  clearWorkspaceProjects,
+} from "./panel/library/workspace-storage";
+export type { WorkspaceProjectListItem } from "./panel/library/workspace-storage";
+export {
   addEventSubscription,
   AbuilderEvents,
 } from "./panel/library/event-subscription";

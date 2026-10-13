@@ -154,6 +154,7 @@ const dataUrl = await getPreviewSnapshot({
 | `addEventSubscription` / `AbuilderEvents` | 工作区事件 |
 | `getPreviewSnapshot` | 预览截图 data URL |
 | `parseWorkspaceData` 等 | 校验 / 解析 / 空工作区 |
+| `listWorkspaceProjects` / `deleteWorkspaceProject` / `clearWorkspaceProjects` | 列出 / 删除 / 清空浏览器 IndexedDB 中保存的工作区（参数 `nameSpace`） |
 | `createView` / `createAction` | 视图 DSL 扩展点（`src/core`） |
 
 ## 样式

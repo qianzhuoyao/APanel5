@@ -9,14 +9,17 @@ import type { State } from "@arronqzy/rx-store";
 import { useI18nOptional } from "@arronqzy/i18n/vue";
 import {
   createWorkspaceProjectId,
-  deleteWorkspaceProject,
   getWorkspaceProject,
   listWorkspaceProjects,
   putWorkspaceProject,
   type WorkspaceProjectListItem,
   type WorkspaceProjectRecord,
 } from "../library/workspace-project-db";
-import { broadcastWorkspaceProjectUpdate } from "../library/workspace-project-sync";
+import { deleteWorkspaceProject } from "../library/workspace-storage";
+import {
+  broadcastWorkspaceProjectUpdate,
+  subscribeWorkspaceProjectsChanged,
+} from "../library/workspace-project-sync";
 import { writeWorkspacePreviewCache, readWorkspacePreviewCache } from "../library/workspace-project-cache";
 import {
   cloneWorkspaceSnapshot,
@@ -138,6 +141,26 @@ export function useWorkspaceProjects(options: UseWorkspaceProjectsOptions) {
     () => {
       void refreshProjects();
     }
+  );
+
+  watch(
+    () => nameSpace(),
+    (ns, _prev, onCleanup) => {
+      const unsubscribe = subscribeWorkspaceProjectsChanged((message) => {
+        const active = activeProjectId.value;
+        const removedActive =
+          message.type === "cleared" ||
+          (active !== null && message.projectIds.includes(active));
+        if (removedActive) {
+          activeProjectId.value = null;
+          activeProjectName.value = null;
+          syncedSnapshotRef.value = null;
+        }
+        void refreshProjects();
+      }, ns);
+      onCleanup(unsubscribe);
+    },
+    { immediate: true }
   );
 
   onUnmounted(() => {

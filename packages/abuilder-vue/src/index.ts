@@ -15,12 +15,16 @@ export {
   parseWorkspaceData,
   createEmptyWorkspace,
   createWorkspaceProjectId,
+  listWorkspaceProjects,
+  deleteWorkspaceProject,
+  clearWorkspaceProjects,
   addEventSubscription,
   AbuilderEvents,
 } from "@arronqzy/vue-view";
 export type {
   ParseCheckResult,
   WorkspaceParseCheckResult,
+  WorkspaceProjectListItem,
   AbuilderEventName,
   AbuilderEventPayloadMap,
   WorkspaceAddEventPayload,

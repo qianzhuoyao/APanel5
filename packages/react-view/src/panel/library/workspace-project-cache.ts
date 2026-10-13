@@ -36,3 +36,30 @@ export function readWorkspacePreviewCache(
     return null;
   }
 }
+
+export function removeWorkspacePreviewCache(
+  projectId: string,
+  nameSpace?: string | null
+): void {
+  try {
+    localStorage.removeItem(previewCacheKey(projectId, nameSpace));
+  } catch {
+    // ignore private mode
+  }
+}
+
+export function clearWorkspacePreviewCaches(nameSpace?: string | null): void {
+  try {
+    const suffix = appStorageKey("", nameSpace);
+    const keys: string[] = [];
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i);
+      if (!key || !key.startsWith(CACHE_PREFIX)) continue;
+      // 无 nameSpace 时 key 不带 "__<ns>" 后缀，避免误删其他 nameSpace 的标记
+      if (suffix ? key.endsWith(suffix) : !key.includes("__")) keys.push(key);
+    }
+    keys.forEach((key) => localStorage.removeItem(key));
+  } catch {
+    // ignore private mode
+  }
+}

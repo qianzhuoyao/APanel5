@@ -283,3 +283,7 @@ export async function deleteWorkspaceProject(
 ): Promise<void> {
   await runTransaction<undefined>("readwrite", (store) => store.delete(id), nameSpace);
 }
+
+export async function clearWorkspaceProjectStore(nameSpace?: string | null): Promise<void> {
+  await runTransaction<undefined>("readwrite", (store) => store.clear(), nameSpace);
+}

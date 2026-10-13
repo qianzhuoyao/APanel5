@@ -100,6 +100,24 @@ validateWorkspaceData(workspace);
 
 `WorkspaceData` 字段与 React 版相同：`id`、`name`、`createdAt`、`updatedAt`、`panelState`、`blueprintDocument`、`blueprintMeta`、`productName`、`titleIconDataUrl`。
 
+### 清理浏览器里保存的工作区
+
+工作区以后端为准时，可以清理 IndexedDB 里的本地副本，避免堆积：
+
+```ts
+import {
+  listWorkspaceProjects,
+  deleteWorkspaceProject,
+  clearWorkspaceProjects,
+} from "@arronqzy/abuilder-vue";
+
+const items = await listWorkspaceProjects(nameSpace);
+await deleteWorkspaceProject(items[0].id, nameSpace);
+const removed = await clearWorkspaceProjects(nameSpace); // 返回删除数量
+```
+
+`nameSpace` 要和 `<App :name-space>` 一致。已挂载的编辑器会自动刷新「已保存工作区」列表；只清理工作区，不动蓝图库、执行日志、接口集合。
+
 ## 和 React 版的差别
 
 - **没有** `getPreviewSnapshot`。要缩略图就自己截预览 DOM，不要假设有同名导出。

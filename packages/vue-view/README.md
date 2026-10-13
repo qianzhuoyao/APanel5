@@ -51,7 +51,7 @@ import {
 
 创建 / 同步发出 `workspace:add` / `workspace:sync`。`parseWorkspaceData` 的 `value` 可作 `initialWorkspace`。
 
-IndexedDB CRUD 与 `getPreviewSnapshot` **不导出**。缩略图只在 React 包实现。
+本地保存的工作区可用 `listWorkspaceProjects` / `deleteWorkspaceProject` / `clearWorkspaceProjects`（参数为 `nameSpace`）列出和清理。其余 IndexedDB 读写与 `getPreviewSnapshot` **不导出**，缩略图只在 React 包实现。
 
 ## 和 React 版的差别
 

@@ -19,6 +19,9 @@ export {
   parseWorkspaceData,
   createEmptyWorkspace,
   createWorkspaceProjectId,
+  listWorkspaceProjects,
+  deleteWorkspaceProject,
+  clearWorkspaceProjects,
 } from "@arronqzy/react-view";
 
 export type {
@@ -31,6 +34,7 @@ export type {
   ApiCollectionUploadSuccessEventPayload,
   WorkspaceData,
   WorkspaceProjectRecord,
+  WorkspaceProjectListItem,
   GetPreviewSnapshotOptions,
   ParseCheckResult,
   WorkspaceParseCheckResult,

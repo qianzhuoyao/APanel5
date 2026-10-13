@@ -19,5 +19,11 @@ export type {
   WorkspaceData,
 } from "./panel/library/event-subscription";
 export type { WorkspaceProjectRecord } from "./panel/library/workspace-project-db";
+export {
+  listWorkspaceProjects,
+  deleteWorkspaceProject,
+  clearWorkspaceProjects,
+} from "./panel/library/workspace-storage";
+export type { WorkspaceProjectListItem } from "./panel/library/workspace-storage";
 export { getPreviewSnapshot } from "./panel/library/preview-snapshot";
 export type { GetPreviewSnapshotOptions } from "./panel/library/preview-snapshot";

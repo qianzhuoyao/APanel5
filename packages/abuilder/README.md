@@ -4,7 +4,7 @@ React 一站式编辑器。安装后渲染 `<App />`，就是完整的 Abuilder�
 
 ![安装后直接得到的编辑器](https://github.com/qianzhuoyao/APanel5/raw/v5/docs/guide-assets/live-zh/01-overview.png)
 
-当前版本见本包 `package.json`（设置菜单「关于」里显示的就是这个版本号）。本包 **1.1.37** 起配套 chroma.js 主题配色、全系统国际化修复与问号图标式字段说明；**1.1.36** 起配套蓝图 Soft UI 节点样式；**1.1.35** 起配套接口集合、`{system?...}` 模版、JSON 节点错误高亮。完整中文手册见仓库 `docs/Abuilder使用文档与功能说明.docx`（适用版本表写在文首）。
+当前版本见本包 `package.json`（设置菜单「关于」里显示的就是这个版本号）。本包 **1.1.38** 起提供本地工作区清理接口（`listWorkspaceProjects` / `deleteWorkspaceProject` / `clearWorkspaceProjects`）；**1.1.37** 起配套 chroma.js 主题配色、全系统国际化修复与问号图标式字段说明；**1.1.36** 起配套蓝图 Soft UI 节点样式；**1.1.35** 起配套接口集合、`{system?...}` 模版、JSON 节点错误高亮。完整中文手册见仓库 `docs/Abuilder使用文档与功能说明.docx`（适用版本表写在文首）。
 
 ## 安装
 
@@ -184,6 +184,26 @@ createEmptyWorkspace({ name: "未命名", id: createWorkspaceProjectId() });
 
 `initialWorkspace` 为空时，首次是空画布和空蓝图。侧栏仍可列出已保存项目，但要用户手动打开。
 
+## 清理浏览器里保存的工作区
+
+「创建工作区 / 同步」会把整份工作区写进浏览器 IndexedDB。如果工作区以后端为准，可以定期清理本地副本，避免越积越多：
+
+```ts
+import {
+  listWorkspaceProjects,
+  deleteWorkspaceProject,
+  clearWorkspaceProjects,
+} from "@arronqzy/abuilder";
+
+const items = await listWorkspaceProjects(nameSpace); // [{ id, name, createdAt, updatedAt }]，按更新时间倒序
+await deleteWorkspaceProject(items[0].id, nameSpace);
+const removed = await clearWorkspaceProjects(nameSpace); // 返回删除数量
+```
+
+- `nameSpace` 要和 `<App nameSpace>` 一致；省略时操作默认库。
+- 删除后，同页和其他标签页里已挂载的编辑器会自动刷新「已保存工作区」列表；若删掉的是当前打开的工作区，编辑器内容保留，但不再关联该记录。
+- 只清理工作区，不动蓝图库、执行日志、接口集合。
+
 ## 预览缩略图
 
 画布已经渲染且有内容时：
@@ -224,7 +244,7 @@ import {
 } from "@arronqzy/abuilder";
 ```
 
-类型：`WorkspaceData`、`WorkspaceProjectRecord`、`AbuilderEventName`、`GetPreviewSnapshotOptions`、`ParseCheckResult`、`WorkspaceParseCheckResult`。
+类型：`WorkspaceData`、`WorkspaceProjectRecord`、`WorkspaceProjectListItem`、`AbuilderEventName`、`GetPreviewSnapshotOptions`、`ParseCheckResult`、`WorkspaceParseCheckResult`。
 
 ## 本仓库里怎么预览
 

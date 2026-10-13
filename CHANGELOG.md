@@ -4,6 +4,19 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)，版本号遵循 [SemVer](https://semver.org/lang/zh-CN/)。
 
+## [1.1.38] - 2026-10-13
+
+配套：`react-view@1.0.37` · `vue-view@0.1.23` · `abuilder-vue@0.1.22`
+
+### Added
+
+- 导出 `listWorkspaceProjects` / `deleteWorkspaceProject` / `clearWorkspaceProjects`，宿主可按 `nameSpace` 列出、删除、清空浏览器 IndexedDB 中保存的工作区，避免本地副本持续堆积（React / Vue 主包同步导出）
+- 外部删除或清空工作区后，同页与其他标签页中已挂载的编辑器自动刷新「已保存工作区」列表；删除的是当前工作区时自动解除关联
+
+### Fixed
+
+- 删除工作区时一并清理 localStorage 中残留的预览标记
+
 ## [1.1.37] - 2026-10-05
 
 配套：`ui@1.0.10` · `i18n@0.1.17` · `blueprint-dsl@1.0.17` · `react-blueprint@1.0.22` · `vue-blueprint@0.1.17` · `react-view@1.0.36` · `vue-view@0.1.22` · `abuilder-vue@0.1.21`
