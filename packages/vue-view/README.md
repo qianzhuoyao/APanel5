@@ -49,9 +49,17 @@ import {
 } from "@arronqzy/vue-view";
 ```
 
-创建 / 同步发出 `workspace:add` / `workspace:sync`。`parseWorkspaceData` 的 `value` 可作 `initialWorkspace`。
+创建 / 同步发出 `workspace:add` / `workspace:sync`，删除工作区发出 `workspace:delete`（参数 `{ ids, nameSpace }`）。`parseWorkspaceData` 的 `value` 可作 `initialWorkspace`。
 
-本地保存的工作区可用 `listWorkspaceProjects` / `deleteWorkspaceProject` / `clearWorkspaceProjects`（参数为 `nameSpace`）列出和清理。其余 IndexedDB 读写与 `getPreviewSnapshot` **不导出**，缩略图只在 React 包实现。
+浏览器里的本地数据可以读取和清理，最后一个参数都是 `nameSpace`：
+
+- 工作区：`listWorkspaceProjects` / `getWorkspaceProject` / `deleteWorkspaceProject` / `clearWorkspaceProjects`
+- 蓝图库：`listBlueprintLibrary` / `getBlueprintLibraryRecord` / `deleteBlueprintLibraryRecord` / `clearBlueprintLibrary`
+- 蓝图执行日志：`listExecutionRunRecords` / `getExecutionRunRecord` / `deleteExecutionRunRecord` / `clearAllExecutionRunRecords` / `purgeExecutionRunsOlderThan` / `trimExecutionRunRecordsToMax`，保留策略用 `readExecutionLogSettings` / `writeExecutionLogSettings`
+- 接口集合：`listApiCollectionRecords` / `deleteApiCollection` / `clearApiCollections`
+- `clearAbuilderStorage`：一次清空以上四类，返回各自删除数量
+
+工作区、蓝图库的写入接口不导出（由编辑器自己维护）。`getPreviewSnapshot` 只在 React 包实现。
 
 ## 和 React 版的差别
 

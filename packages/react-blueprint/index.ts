@@ -22,12 +22,19 @@ export type {
 } from "./src/hooks/useBlueprintDebugSession";
 export {
   listExecutionRunRecords,
+  getExecutionRunRecord,
   putExecutionRunRecord,
+  deleteExecutionRunRecord,
   purgeExecutionRunsOlderThan,
   clearAllExecutionRunRecords,
   trimExecutionRunRecordsToMax,
   downloadExecutionRunExport,
 } from "./src/library/execution-log-db";
+export {
+  DEFAULT_EXECUTION_LOG_SETTINGS,
+  readExecutionLogSettings,
+  writeExecutionLogSettings,
+} from "./src/library/execution-log-settings";
 export type { UseBlueprintPageLifecycleOptions } from "./src/hooks/useBlueprintPageLifecycle";
 export { useBlueprintPageLifecycle } from "./src/hooks/useBlueprintPageLifecycle";
 export { stopAllClockSchedules } from "@arronqzy/blueprint-dsl";
@@ -50,15 +57,22 @@ export {
   getApiCollectionListItems,
   upsertApiCollectionFromJson,
   removeApiCollection,
+  deleteApiCollection,
+  clearApiCollections,
   subscribeApiCollections,
   useApiCollections,
   useApiCollectionListItems,
+} from "./src/library/api-collection-store";
+export type {
+  UpsertApiCollectionInput,
+  UpsertApiCollectionResult,
 } from "./src/library/api-collection-store";
 export {
   listApiCollectionRecords,
   getApiCollectionRecord,
   putApiCollectionRecord,
   deleteApiCollectionRecord,
+  clearApiCollectionRecords,
 } from "./src/library/api-collection-db";
 export { BlueprintLibrarySelect } from "./src/components/BlueprintLibrarySelect";
 export type { BlueprintLibrarySelectProps } from "./src/components/BlueprintLibrarySelect";
@@ -87,6 +101,7 @@ export {
   parseBlueprintImportFile,
 } from "./src/library/blueprint-io";
 export {
+  clearBlueprintLibrary,
   deleteBlueprintLibraryRecord,
   getBlueprintLibraryRecord,
   listBlueprintLibrary,

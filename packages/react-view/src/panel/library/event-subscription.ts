@@ -5,6 +5,8 @@ export const AbuilderEvents = {
   workspaceAdd: "workspace:add",
   /** 同步工作区 */
   workspaceSync: "workspace:sync",
+  /** 删除工作区（界面删除，或调用 deleteWorkspaceProject / clearWorkspaceProjects） */
+  workspaceDelete: "workspace:delete",
   /** 开始上传接口集合 */
   apiCollectionUploadStart: "api-collection:upload-start",
   /** 上传接口集合成功 */
@@ -18,6 +20,12 @@ export type WorkspaceData = WorkspaceProjectRecord;
 
 export type WorkspaceAddEventPayload = WorkspaceData;
 export type WorkspaceSyncEventPayload = WorkspaceData;
+export type WorkspaceDeleteEventPayload = {
+  /** 被删除的工作区 id */
+  ids: string[];
+  /** 所属 nameSpace，默认库为 null */
+  nameSpace: string | null;
+};
 
 export type ApiCollectionUploadStartEventPayload = {
   fileNames: string[];
@@ -36,6 +44,7 @@ export type ApiCollectionUploadSuccessEventPayload = {
 export type AbuilderEventPayloadMap = {
   [AbuilderEvents.workspaceAdd]: WorkspaceAddEventPayload;
   [AbuilderEvents.workspaceSync]: WorkspaceSyncEventPayload;
+  [AbuilderEvents.workspaceDelete]: WorkspaceDeleteEventPayload;
   [AbuilderEvents.apiCollectionUploadStart]: ApiCollectionUploadStartEventPayload;
   [AbuilderEvents.apiCollectionUploadSuccess]: ApiCollectionUploadSuccessEventPayload;
 };

@@ -7,6 +7,7 @@ import type { PanelElement } from "./types";
 import { usePanelElements } from "./hooks/usePanelElements";
 import { useWorkspaceProjects } from "./hooks/useWorkspaceProjects";
 import type { WorkspaceProjectRecord } from "./library/workspace-project-db";
+import { subscribeBlueprintLibraryChanged } from "./library/blueprint-library-sync";
 import { WorkspaceProjectNav } from "./components/WorkspaceProjectNav";
 import { BusyOverlay } from "./components/BusyOverlay";
 import { PanelCanvas } from "./components/PanelCanvas";
@@ -802,6 +803,11 @@ function ReactViewPanelInner({
   useEffect(() => {
     void refreshBlueprintLibrary();
   }, [refreshBlueprintLibrary]);
+
+  useEffect(
+    () => subscribeBlueprintLibraryChanged(() => void refreshBlueprintLibrary(), nameSpace),
+    [nameSpace, refreshBlueprintLibrary]
+  );
 
   const loadBlueprintFromLibrary = useCallback(
     async (id: string) => {

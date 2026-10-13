@@ -53,6 +53,7 @@ import {
 } from "./hooks/useWorkspaceProjects";
 import type { WorkspaceProjectRecord } from "./library/workspace-project-db";
 import { AbuilderEvents, emitAbuilderEvent } from "./library/event-subscription";
+import { subscribeBlueprintLibraryChanged } from "./library/blueprint-library-sync";
 import { type ViewportZoom } from "./viewportZoom";
 import PanelCanvas from "./components/PanelCanvas.vue";
 import ElementsLayer from "./components/ElementsLayer.vue";
@@ -423,6 +424,14 @@ watch(
 onMounted(() => {
   void refreshBlueprintLibrary();
 });
+
+watch(
+  () => props.nameSpace,
+  (nameSpace, _prev, onCleanup) => {
+    onCleanup(subscribeBlueprintLibraryChanged(() => void refreshBlueprintLibrary(), nameSpace));
+  },
+  { immediate: true }
+);
 
 function handleWorkspaceProjectApplied(record: WorkspaceProjectRecord) {
   workspaceBlueprintRef.value = {

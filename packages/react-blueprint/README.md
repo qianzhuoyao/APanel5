@@ -104,6 +104,19 @@ useBlueprintPageLifecycle({
 | `BlueprintPanelToolbar` | 库、保存、同步、调试按钮 |
 | `BlueprintExecutionLogPanel` | 执行日志 |
 
+## 本地存储
+
+蓝图库、执行日志、接口集合存在 IndexedDB，函数最后一个参数都是 `nameSpace`：
+
+| 数据 | 函数 |
+|------|------|
+| 蓝图库 | `listBlueprintLibrary` / `getBlueprintLibraryRecord` / `putBlueprintLibraryRecord` / `deleteBlueprintLibraryRecord` / `clearBlueprintLibrary` |
+| 执行日志 | `listExecutionRunRecords` / `getExecutionRunRecord` / `putExecutionRunRecord` / `deleteExecutionRunRecord` / `clearAllExecutionRunRecords` / `purgeExecutionRunsOlderThan` / `trimExecutionRunRecordsToMax` / `downloadExecutionRunExport` |
+| 执行日志保留策略 | `readExecutionLogSettings` / `writeExecutionLogSettings` / `DEFAULT_EXECUTION_LOG_SETTINGS` |
+| 接口集合 | `listApiCollectionRecords` / `deleteApiCollection` / `clearApiCollections`（同时更新内存中的接口列表） |
+
+这一层不负责通知已挂载的视图面板。宿主清理数据请用 `@arronqzy/abuilder` / `@arronqzy/abuilder-vue` 导出的同名函数，删除蓝图库后面板会自动刷新。
+
 ## 依赖
 
 `@arronqzy/blueprint-dsl`、`@arronqzy/i18n`、`@arronqzy/react-rx-store`、`@arronqzy/ui`、`@xyflow/react`。

@@ -95,28 +95,38 @@ validateWorkspaceData(workspace);
 |------|------|----------|
 | `workspace:add` | `AbuilderEvents.workspaceAdd` | 创建成功 |
 | `workspace:sync` | `AbuilderEvents.workspaceSync` | 同步成功 |
+| `workspace:delete` | `AbuilderEvents.workspaceDelete` | 删除工作区（界面删除，或调用 `deleteWorkspaceProject` / `clearWorkspaceProjects`），参数 `{ ids, nameSpace }` |
 
 `validate*` 只检查。`parseWorkspaceData` 会补齐 `id`、时间戳和空字段。只检查视图用 `validateViewData` / `parseViewData`；只检查蓝图用 `validateBlueprintData` / `parseBlueprintData`。
 
 `WorkspaceData` 字段与 React 版相同：`id`、`name`、`createdAt`、`updatedAt`、`panelState`、`blueprintDocument`、`blueprintMeta`、`productName`、`titleIconDataUrl`。
 
-### 清理浏览器里保存的工作区
+### 清理浏览器里的本地数据
 
-工作区以后端为准时，可以清理 IndexedDB 里的本地副本，避免堆积：
+编辑器把工作区、蓝图库、蓝图执行日志、接口集合四类数据存在 IndexedDB 里，按 `nameSpace` 隔离。以后端为准时，可以清理本地副本，避免堆积：
+
+| 数据 | 列出 / 读取 | 删除单条 | 清空 |
+|------|-------------|----------|------|
+| 工作区 | `listWorkspaceProjects` / `getWorkspaceProject` | `deleteWorkspaceProject` | `clearWorkspaceProjects` |
+| 蓝图库 | `listBlueprintLibrary` / `getBlueprintLibraryRecord` | `deleteBlueprintLibraryRecord` | `clearBlueprintLibrary` |
+| 蓝图执行日志 | `listExecutionRunRecords` / `getExecutionRunRecord` | `deleteExecutionRunRecord` | `clearAllExecutionRunRecords` |
+| 接口集合 | `listApiCollectionRecords` | `deleteApiCollection` | `clearApiCollections` |
 
 ```ts
 import {
   listWorkspaceProjects,
   deleteWorkspaceProject,
   clearWorkspaceProjects,
+  clearAbuilderStorage,
 } from "@arronqzy/abuilder-vue";
 
 const items = await listWorkspaceProjects(nameSpace);
 await deleteWorkspaceProject(items[0].id, nameSpace);
 const removed = await clearWorkspaceProjects(nameSpace); // 返回删除数量
+const result = await clearAbuilderStorage(nameSpace); // { workspaces, blueprints, executionRuns, apiCollections }
 ```
 
-`nameSpace` 要和 `<App :name-space>` 一致。已挂载的编辑器会自动刷新「已保存工作区」列表；只清理工作区，不动蓝图库、执行日志、接口集合。
+`nameSpace` 要和 `<App :name-space>` 一致。清空函数返回删除数量；`clearAbuilderStorage` 不动主题、字号等偏好设置。删除工作区或蓝图库后，已挂载的编辑器会自动刷新列表，删除工作区还会发出 `workspace:delete` 事件。执行日志可用 `purgeExecutionRunsOlderThan` / `trimExecutionRunRecordsToMax` 按时间或条数清理，保留策略用 `readExecutionLogSettings` / `writeExecutionLogSettings` 读写。
 
 ## 和 React 版的差别
 

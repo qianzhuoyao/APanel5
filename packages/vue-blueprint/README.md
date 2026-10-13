@@ -47,6 +47,19 @@ const selectedNodeId = ref<string | null>(null);
 import "@arronqzy/vue-blueprint/blueprint.css";
 ```
 
+## 本地存储
+
+蓝图库、执行日志、接口集合存在 IndexedDB，函数最后一个参数都是 `nameSpace`：
+
+| 数据 | 函数 |
+|------|------|
+| 蓝图库 | `listBlueprintLibrary` / `getBlueprintLibraryRecord` / `putBlueprintLibraryRecord` / `deleteBlueprintLibraryRecord` / `clearBlueprintLibrary` |
+| 执行日志 | `listExecutionRunRecords` / `getExecutionRunRecord` / `putExecutionRunRecord` / `deleteExecutionRunRecord` / `clearAllExecutionRunRecords` / `purgeExecutionRunsOlderThan` / `trimExecutionRunRecordsToMax` / `downloadExecutionRunExport` |
+| 执行日志保留策略 | `readExecutionLogSettings` / `writeExecutionLogSettings` / `DEFAULT_EXECUTION_LOG_SETTINGS` |
+| 接口集合 | `listApiCollectionRecords` / `deleteApiCollection` / `clearApiCollections`（同时更新内存中的接口列表） |
+
+这一层不负责通知已挂载的视图面板。宿主清理数据请用 `@arronqzy/abuilder` / `@arronqzy/abuilder-vue` 导出的同名函数，删除蓝图库后面板会自动刷新。
+
 ## 和 React 版
 
 图数据结构（`BlueprintGraph`、文档同步）是独立 TypeScript 实现，形状与 `react-blueprint` 对齐，所以同一份蓝图 JSON 两边都能打开。画布实现不共享。长期可以抽一层 `blueprint-core`，目前还没有。

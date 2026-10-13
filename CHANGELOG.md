@@ -4,6 +4,18 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)，版本号遵循 [SemVer](https://semver.org/lang/zh-CN/)。
 
+## [1.1.39] - 2026-10-13
+
+配套：`react-view@1.0.38` · `vue-view@0.1.24` · `abuilder-vue@0.1.23` · `react-blueprint@1.0.23` · `vue-blueprint@0.1.18`
+
+### Added
+
+- 主包补齐本地数据接口（React / Vue 一致）：蓝图库 `listBlueprintLibrary` / `getBlueprintLibraryRecord` / `deleteBlueprintLibraryRecord` / `clearBlueprintLibrary`；执行日志 `listExecutionRunRecords` / `getExecutionRunRecord` / `deleteExecutionRunRecord` / `clearAllExecutionRunRecords` / `purgeExecutionRunsOlderThan` / `trimExecutionRunRecordsToMax`，保留策略 `readExecutionLogSettings` / `writeExecutionLogSettings`；接口集合 `listApiCollectionRecords` / `deleteApiCollection` / `clearApiCollections`；工作区 `getWorkspaceProject`
+- `clearAbuilderStorage(nameSpace)` 一次清空工作区、蓝图库、执行日志、接口集合，返回各自删除数量，不动偏好设置
+- 新事件 `workspace:delete`（`AbuilderEvents.workspaceDelete`），参数 `{ ids, nameSpace }`
+- 外部删除或清空蓝图库后，同页与其他标签页中已挂载的编辑器自动刷新蓝图库列表
+- `vue-blueprint` 补齐执行日志与保留策略导出，与 `react-blueprint` 一致
+
 ## [1.1.38] - 2026-10-13
 
 配套：`react-view@1.0.37` · `vue-view@0.1.23` · `abuilder-vue@0.1.22`

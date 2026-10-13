@@ -6,9 +6,11 @@ import {
   type ApiCollectionDocument,
   type ApiCollectionListItem,
   type ApiCollectionRecord,
+  normalizeAppNameSpace,
 } from "@arronqzy/blueprint-dsl";
 
 import {
+  clearApiCollectionRecords,
   deleteApiCollectionRecord,
   listApiCollectionRecords,
   putApiCollectionRecord,
@@ -125,6 +127,34 @@ export async function removeApiCollection(id: string): Promise<void> {
   }
   records = records.filter((item) => item.id !== id);
   emit();
+}
+
+function isCurrentNameSpace(nameSpace?: string | null): boolean {
+  return normalizeAppNameSpace(nameSpace) === normalizeAppNameSpace(nameSpaceRef);
+}
+
+/** 按 nameSpace 删除接口集合；若该 nameSpace 正在被编辑器使用，内存列表同步移除 */
+export async function deleteApiCollection(
+  id: string,
+  nameSpace?: string | null
+): Promise<void> {
+  await deleteApiCollectionRecord(id, nameSpace);
+  if (!isCurrentNameSpace(nameSpace)) return;
+  records = records.filter((item) => item.id !== id);
+  emit();
+}
+
+/** 清空该 nameSpace 下的接口集合（含仅存内存的集合），返回删除数量 */
+export async function clearApiCollections(nameSpace?: string | null): Promise<number> {
+  const persisted = await listApiCollectionRecords(nameSpace);
+  await clearApiCollectionRecords(nameSpace);
+  const removedIds = new Set(persisted.map((item) => item.id));
+  if (isCurrentNameSpace(nameSpace)) {
+    records.forEach((item) => removedIds.add(item.id));
+    records = [];
+    emit();
+  }
+  return removedIds.size;
 }
 
 export function useApiCollections(): ApiCollectionRecord[] {

@@ -112,8 +112,9 @@ syncSub.unsubscribe();
 |------|------|----------|
 | `workspace:add` | `AbuilderEvents.workspaceAdd` | 创建成功 |
 | `workspace:sync` | `AbuilderEvents.workspaceSync` | 同步成功 |
+| `workspace:delete` | `AbuilderEvents.workspaceDelete` | 删除工作区，参数 `{ ids, nameSpace }` |
 
-字段：`id`、`name`、`createdAt`、`updatedAt`、`panelState`、`blueprintDocument`、`blueprintMeta`、`productName`、`titleIconDataUrl`。
+`workspace:add` / `workspace:sync` 的参数字段：`id`、`name`、`createdAt`、`updatedAt`、`panelState`、`blueprintDocument`、`blueprintMeta`、`productName`、`titleIconDataUrl`。
 
 校验：
 
@@ -154,7 +155,14 @@ const dataUrl = await getPreviewSnapshot({
 | `addEventSubscription` / `AbuilderEvents` | 工作区事件 |
 | `getPreviewSnapshot` | 预览截图 data URL |
 | `parseWorkspaceData` 等 | 校验 / 解析 / 空工作区 |
-| `listWorkspaceProjects` / `deleteWorkspaceProject` / `clearWorkspaceProjects` | 列出 / 删除 / 清空浏览器 IndexedDB 中保存的工作区（参数 `nameSpace`） |
+| `listWorkspaceProjects` / `getWorkspaceProject` / `deleteWorkspaceProject` / `clearWorkspaceProjects` | 浏览器 IndexedDB 中保存的工作区 |
+| `listBlueprintLibrary` / `getBlueprintLibraryRecord` / `deleteBlueprintLibraryRecord` / `clearBlueprintLibrary` | 蓝图库；删除后已挂载的面板自动刷新 |
+| `listExecutionRunRecords` / `getExecutionRunRecord` / `deleteExecutionRunRecord` / `clearAllExecutionRunRecords` / `purgeExecutionRunsOlderThan` / `trimExecutionRunRecordsToMax` | 蓝图执行日志 |
+| `readExecutionLogSettings` / `writeExecutionLogSettings` | 执行日志保留策略 |
+| `listApiCollectionRecords` / `deleteApiCollection` / `clearApiCollections` | 接口集合 |
+| `clearAbuilderStorage` | 一次清空以上四类数据，返回各自删除数量；不动偏好设置 |
+
+本地数据函数的最后一个参数都是 `nameSpace`，要和面板的 `nameSpace` 一致。
 | `createView` / `createAction` | 视图 DSL 扩展点（`src/core`） |
 
 ## 样式

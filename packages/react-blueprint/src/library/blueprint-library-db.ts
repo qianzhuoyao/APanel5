@@ -124,3 +124,10 @@ export async function deleteBlueprintLibraryRecord(
 ): Promise<void> {
   await runTransaction<undefined>("readwrite", (store) => store.delete(id), nameSpace);
 }
+
+/** 清空该 nameSpace 下的蓝图库，返回删除数量 */
+export async function clearBlueprintLibrary(nameSpace?: string | null): Promise<number> {
+  const count = await runTransaction<number>("readonly", (store) => store.count(), nameSpace);
+  await runTransaction<undefined>("readwrite", (store) => store.clear(), nameSpace);
+  return count;
+}

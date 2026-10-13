@@ -125,7 +125,7 @@ createApp(App).use(Antd).mount("#app");
 3. 执行结果写入 Scope。
 4. 节点属性里的 `{scope.xxx}` 在预览和编辑预览里展开。
 
-宿主如果要自己存工作区：订阅 `workspace:add` / `workspace:sync`，把回调里的完整 `WorkspaceData` 写到后端。打开时用 `parseWorkspaceData` 校验后再传给 `initialWorkspace`。不要直接读写编辑器内部的 IndexedDB，那是浏览器缓存，和宿主双写会打架。
+宿主如果要自己存工作区：订阅 `workspace:add` / `workspace:sync`，把回调里的完整 `WorkspaceData` 写到后端。打开时用 `parseWorkspaceData` 校验后再传给 `initialWorkspace`。不要直接读写编辑器内部的 IndexedDB，那是浏览器缓存，和宿主双写会打架。本地副本需要清理时，用主包导出的 `deleteWorkspaceProject` / `clearWorkspaceProjects` 等函数，或 `clearAbuilderStorage(nameSpace)` 一次清空工作区、蓝图库、执行日志和接口集合（订阅 `workspace:delete` 可得知工作区被删）。
 
 ## 仓库结构
 

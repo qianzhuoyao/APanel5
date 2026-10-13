@@ -96,3 +96,7 @@ export async function deleteApiCollectionRecord(
     nameSpace
   );
 }
+
+export async function clearApiCollectionRecords(nameSpace?: string | null): Promise<void> {
+  await runTransaction<undefined>("readwrite", (store) => store.clear(), nameSpace);
+}

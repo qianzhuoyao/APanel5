@@ -29,6 +29,8 @@ export {
   getApiCollectionListItems,
   upsertApiCollectionFromJson,
   removeApiCollection,
+  deleteApiCollection,
+  clearApiCollections,
   subscribeApiCollections,
   useApiCollections,
   useApiCollectionListItems,
@@ -42,7 +44,23 @@ export {
   getApiCollectionRecord,
   putApiCollectionRecord,
   deleteApiCollectionRecord,
+  clearApiCollectionRecords,
 } from "./library/api-collection-db";
+export {
+  listExecutionRunRecords,
+  getExecutionRunRecord,
+  putExecutionRunRecord,
+  deleteExecutionRunRecord,
+  purgeExecutionRunsOlderThan,
+  clearAllExecutionRunRecords,
+  trimExecutionRunRecordsToMax,
+  downloadExecutionRunExport,
+} from "./library/execution-log-db";
+export {
+  DEFAULT_EXECUTION_LOG_SETTINGS,
+  readExecutionLogSettings,
+  writeExecutionLogSettings,
+} from "./library/execution-log-settings";
 export { default as BlueprintNodeSwitchTaskDialog } from "./components/BlueprintNodeSwitchTaskDialog.vue";
 export type { BlueprintNodeSwitchTaskDialogProps } from "./components/BlueprintNodeSwitchTaskDialog.vue";
 export type { ExecutionLogSettings } from "./library/execution-log-settings";

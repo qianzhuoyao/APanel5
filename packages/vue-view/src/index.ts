@@ -15,10 +15,37 @@ export {
 export { createWorkspaceProjectId } from "./panel/library/workspace-project-db";
 export {
   listWorkspaceProjects,
+  getWorkspaceProject,
   deleteWorkspaceProject,
   clearWorkspaceProjects,
 } from "./panel/library/workspace-storage";
 export type { WorkspaceProjectListItem } from "./panel/library/workspace-storage";
+export {
+  listBlueprintLibrary,
+  getBlueprintLibraryRecord,
+  deleteBlueprintLibraryRecord,
+  clearBlueprintLibrary,
+  listExecutionRunRecords,
+  getExecutionRunRecord,
+  deleteExecutionRunRecord,
+  clearAllExecutionRunRecords,
+  purgeExecutionRunsOlderThan,
+  trimExecutionRunRecordsToMax,
+  readExecutionLogSettings,
+  writeExecutionLogSettings,
+  listApiCollectionRecords,
+  deleteApiCollection,
+  clearApiCollections,
+  clearAbuilderStorage,
+} from "./panel/library/abuilder-storage";
+export type {
+  AbuilderStorageClearResult,
+  BlueprintLibraryListItem,
+  BlueprintLibraryRecord,
+  ExecutionRunRecord,
+  ExecutionLogSettings,
+  ApiCollectionRecord,
+} from "./panel/library/abuilder-storage";
 export {
   addEventSubscription,
   AbuilderEvents,
@@ -28,6 +55,7 @@ export type {
   AbuilderEventPayloadMap,
   WorkspaceAddEventPayload,
   WorkspaceSyncEventPayload,
+  WorkspaceDeleteEventPayload,
   ApiCollectionUploadStartEventPayload,
   ApiCollectionUploadSuccessEventPayload,
   WorkspaceData,

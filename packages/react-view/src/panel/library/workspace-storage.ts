@@ -1,6 +1,8 @@
+import { normalizeAppNameSpace } from "@arronqzy/blueprint-dsl";
 import {
   clearWorkspaceProjectStore,
   deleteWorkspaceProject as deleteWorkspaceProjectRecord,
+  getWorkspaceProject,
   listWorkspaceProjects,
 } from "./workspace-project-db";
 import {
@@ -8,8 +10,9 @@ import {
   removeWorkspacePreviewCache,
 } from "./workspace-project-cache";
 import { broadcastWorkspaceProjectsChanged } from "./workspace-project-sync";
+import { AbuilderEvents, emitAbuilderEvent } from "./event-subscription";
 
-export { listWorkspaceProjects };
+export { listWorkspaceProjects, getWorkspaceProject };
 export type { WorkspaceProjectListItem } from "./workspace-project-db";
 
 /**
@@ -23,6 +26,10 @@ export async function deleteWorkspaceProject(
   await deleteWorkspaceProjectRecord(id, nameSpace);
   removeWorkspacePreviewCache(id, nameSpace);
   broadcastWorkspaceProjectsChanged({ type: "deleted", projectIds: [id] }, nameSpace);
+  emitAbuilderEvent(AbuilderEvents.workspaceDelete, {
+    ids: [id],
+    nameSpace: normalizeAppNameSpace(nameSpace) || null,
+  });
 }
 
 /**
@@ -34,5 +41,11 @@ export async function clearWorkspaceProjects(nameSpace?: string | null): Promise
   await clearWorkspaceProjectStore(nameSpace);
   clearWorkspacePreviewCaches(nameSpace);
   broadcastWorkspaceProjectsChanged({ type: "cleared" }, nameSpace);
+  if (items.length > 0) {
+    emitAbuilderEvent(AbuilderEvents.workspaceDelete, {
+      ids: items.map((item) => item.id),
+      nameSpace: normalizeAppNameSpace(nameSpace) || null,
+    });
+  }
   return items.length;
 }
