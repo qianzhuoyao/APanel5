@@ -4,6 +4,16 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)，版本号遵循 [SemVer](https://semver.org/lang/zh-CN/)。
 
+## [1.1.41] - 2026-10-26
+
+配套：`ui@1.0.11` · `react-view@1.0.40` · `vue-view@0.1.26` · `abuilder-vue@0.1.25` · `react-blueprint@1.0.25` · `vue-blueprint@0.1.20`
+
+### Changed
+
+- Soft UI 面板：刻度尺、物料侧栏换行、图层数量靠右、配置窄栏单列等布局与视觉打磨（React / Vue）
+- 画布缩放时节点选中框 / Moveable / 框选线宽保持屏幕像素恒定
+- 接口集合新建 / 编辑弹窗：操作按钮置顶、透明蒙层、更窄更高的 JSON 编辑区
+
 ## [1.1.40] - 2026-10-26
 
 配套：`react-view@1.0.39` · `vue-view@0.1.25` · `abuilder-vue@0.1.24` · `react-blueprint@1.0.24` · `vue-blueprint@0.1.19`
