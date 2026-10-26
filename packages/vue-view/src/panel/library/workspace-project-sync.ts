@@ -11,6 +11,7 @@ export type WorkspaceProjectSyncMessage = {
 
 export type WorkspaceProjectsChangedMessage =
   | { type: "deleted"; projectIds: string[] }
+  | { type: "upserted"; projectIds: string[] }
   | { type: "cleared" };
 
 export function broadcastWorkspaceProjectsChanged(
@@ -33,7 +34,12 @@ export function subscribeWorkspaceProjectsChanged(
   const channel = new BroadcastChannel(appStorageKey(LIST_CHANNEL, nameSpace));
   channel.onmessage = (event: MessageEvent<WorkspaceProjectsChangedMessage>) => {
     const data = event.data;
-    if (!data || (data.type !== "deleted" && data.type !== "cleared")) return;
+    if (
+      !data ||
+      (data.type !== "deleted" && data.type !== "cleared" && data.type !== "upserted")
+    ) {
+      return;
+    }
     onChange(data);
   };
   return () => channel.close();

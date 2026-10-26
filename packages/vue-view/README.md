@@ -49,17 +49,7 @@ import {
 } from "@arronqzy/vue-view";
 ```
 
-创建 / 同步发出 `workspace:add` / `workspace:sync`，删除工作区发出 `workspace:delete`（参数 `{ ids, nameSpace }`）。`parseWorkspaceData` 的 `value` 可作 `initialWorkspace`。
-
-浏览器里的本地数据可以读取和清理，最后一个参数都是 `nameSpace`：
-
-- 工作区：`listWorkspaceProjects` / `getWorkspaceProject` / `deleteWorkspaceProject` / `clearWorkspaceProjects`
-- 蓝图库：`listBlueprintLibrary` / `getBlueprintLibraryRecord` / `deleteBlueprintLibraryRecord` / `clearBlueprintLibrary`
-- 蓝图执行日志：`listExecutionRunRecords` / `getExecutionRunRecord` / `deleteExecutionRunRecord` / `clearAllExecutionRunRecords` / `purgeExecutionRunsOlderThan` / `trimExecutionRunRecordsToMax`，保留策略用 `readExecutionLogSettings` / `writeExecutionLogSettings`
-- 接口集合：`listApiCollectionRecords` / `deleteApiCollection` / `clearApiCollections`
-- `clearAbuilderStorage`：一次清空以上四类，返回各自删除数量
-
-工作区、蓝图库的写入接口不导出（由编辑器自己维护）。`getPreviewSnapshot` 只在 React 包实现。
+创建 / 同步发出 `workspace:add` / `workspace:sync`（载荷含 `nameSpace`），删除发出 `workspace:delete`。另有 `blueprint-library:changed` / `api-collection:changed`。`parseWorkspaceData` 的 `value` 可作 `initialWorkspace`；带 `id` 时默认同步进 IndexedDB。也支持 `workspaceId` prop、`ref`（`AbuilderViewHandle`）以及 `put*` / `openWorkspace` / `getCurrentWorkspace` / `getPreviewSnapshot` 等与 React 对齐的公开 API。
 
 ## 和 React 版的差别
 

@@ -28,6 +28,7 @@ export {
   getApiCollectionById,
   getApiCollectionListItems,
   upsertApiCollectionFromJson,
+  putApiCollection,
   removeApiCollection,
   deleteApiCollection,
   clearApiCollections,

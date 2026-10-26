@@ -46,9 +46,10 @@ createApp(App).use(Antd).mount("#app");
 | `nameSpace` | 隔离 IndexedDB；同一页多个 App 必须不同 | — |
 | `previewSearch` | 覆盖预览 URL 查询串 | 当前 `location.search` |
 | `preview` | `true` 为预览页 | `false` |
-| `initialWorkspace` | 完整工作区。空则空白画布，不会自动打开 IndexedDB 记录 | — |
+| `initialWorkspace` | 完整工作区。空则空白画布，不会自动打开 IndexedDB 记录。传入且带 `id` 时默认同步写入 IndexedDB（本地已有更新的记录不会被旧数据覆盖），以便预览与「同步」可用 | — |
+| `workspaceId` | 按 IndexedDB id 打开（不 remount）。与 `initialWorkspace` 同时存在时：首次优先完整记录；之后 id 变化从 IndexedDB 打开 | — |
 
-顶栏可切换中文 / English（`abuilder.locale`）。
+顶栏可切换中文 / English（`abuilder.locale`）。可用 `ref` 拿到 `AbuilderViewHandle`（`openWorkspace` / `syncWorkspace` / `getCurrentWorkspace` 等）。
 
 ## 编辑和预览
 
@@ -61,78 +62,58 @@ createApp(App).use(Antd).mount("#app");
 
 ## 自己存工作区
 
-不要读写编辑器内部 IndexedDB。订阅事件，把完整对象交给自己的后端：
+以自己的后端为准：订阅 `workspace:add` / `workspace:sync`（载荷含 `nameSpace`），把完整对象交给后端；打开时校验后再传 `initialWorkspace`（会默认同步进 IndexedDB）。也可用 `putWorkspaceProject` 在不挂载编辑器时预热本地库，或用 `openWorkspace` / `workspaceId` / `ref` 命令式打开。
 
 ```ts
 import {
   addEventSubscription,
   AbuilderEvents,
   parseWorkspaceData,
-  createEmptyWorkspace,
-  createWorkspaceProjectId,
-  validateWorkspaceData,
+  putWorkspaceProject,
+  openWorkspace,
+  getCurrentWorkspace,
+  getPreviewSnapshot,
   type WorkspaceData,
 } from "@arronqzy/abuilder-vue";
 
-const syncSub = addEventSubscription(
+addEventSubscription(
   AbuilderEvents.workspaceSync,
-  async (workspace: WorkspaceData) => {
+  async (workspace) => {
     await saveToServer(workspace);
-  }
+  },
+  { nameSpace: "my-app" }
 );
-syncSub.unsubscribe();
 
 const parsed = parseWorkspaceData(jsonFromBackend);
 if (parsed.ok && parsed.value) {
-  // <App :initial-workspace="parsed.value" />
+  await putWorkspaceProject(parsed.value, "my-app");
+  // <App name-space="my-app" :workspace-id="parsed.value.id" />
 }
-
-createEmptyWorkspace({ name: "未命名", id: createWorkspaceProjectId() });
-validateWorkspaceData(workspace);
 ```
 
-| 事件 | 常量 | 何时触发 |
-|------|------|----------|
-| `workspace:add` | `AbuilderEvents.workspaceAdd` | 创建成功 |
-| `workspace:sync` | `AbuilderEvents.workspaceSync` | 同步成功 |
-| `workspace:delete` | `AbuilderEvents.workspaceDelete` | 删除工作区（界面删除，或调用 `deleteWorkspaceProject` / `clearWorkspaceProjects`），参数 `{ ids, nameSpace }` |
+| 事件 | 常量 | 说明 |
+|------|------|------|
+| `workspace:add` / `workspace:sync` | `workspaceAdd` / `workspaceSync` | 载荷为 `WorkspaceData & { nameSpace }` |
+| `workspace:delete` | `workspaceDelete` | `{ ids, nameSpace }` |
+| `blueprint-library:changed` | `blueprintLibraryChanged` | 蓝图库 put / delete / clear |
+| `api-collection:changed` | `apiCollectionChanged` | 接口集合 put / delete / clear |
 
-`validate*` 只检查。`parseWorkspaceData` 会补齐 `id`、时间戳和空字段。只检查视图用 `validateViewData` / `parseViewData`；只检查蓝图用 `validateBlueprintData` / `parseBlueprintData`。
+### 本地数据完整 CRUD
 
-`WorkspaceData` 字段与 React 版相同：`id`、`name`、`createdAt`、`updatedAt`、`panelState`、`blueprintDocument`、`blueprintMeta`、`productName`、`titleIconDataUrl`。
+| 数据 | Create / Update | Read | Delete |
+|------|-----------------|------|--------|
+| 工作区 | `putWorkspaceProject` / `upsertWorkspaceProject` | `list` / `get` | `delete` / `clear` |
+| 蓝图库 | `putBlueprintLibraryRecord` | `list` / `get` | `delete` / `clear` |
+| 执行日志 | `putExecutionRunRecord` | `list` / `get` | `delete` / `clear` / `purge*` / `trim*` |
+| 接口集合 | `putApiCollection` / `upsertApiCollectionFromJson` | `list` | `delete` / `clear` |
 
-### 清理浏览器里的本地数据
-
-编辑器把工作区、蓝图库、蓝图执行日志、接口集合四类数据存在 IndexedDB 里，按 `nameSpace` 隔离。以后端为准时，可以清理本地副本，避免堆积：
-
-| 数据 | 列出 / 读取 | 删除单条 | 清空 |
-|------|-------------|----------|------|
-| 工作区 | `listWorkspaceProjects` / `getWorkspaceProject` | `deleteWorkspaceProject` | `clearWorkspaceProjects` |
-| 蓝图库 | `listBlueprintLibrary` / `getBlueprintLibraryRecord` | `deleteBlueprintLibraryRecord` | `clearBlueprintLibrary` |
-| 蓝图执行日志 | `listExecutionRunRecords` / `getExecutionRunRecord` | `deleteExecutionRunRecord` | `clearAllExecutionRunRecords` |
-| 接口集合 | `listApiCollectionRecords` | `deleteApiCollection` | `clearApiCollections` |
-
-```ts
-import {
-  listWorkspaceProjects,
-  deleteWorkspaceProject,
-  clearWorkspaceProjects,
-  clearAbuilderStorage,
-} from "@arronqzy/abuilder-vue";
-
-const items = await listWorkspaceProjects(nameSpace);
-await deleteWorkspaceProject(items[0].id, nameSpace);
-const removed = await clearWorkspaceProjects(nameSpace); // 返回删除数量
-const result = await clearAbuilderStorage(nameSpace); // { workspaces, blueprints, executionRuns, apiCollections }
-```
-
-`nameSpace` 要和 `<App :name-space>` 一致。清空函数返回删除数量；`clearAbuilderStorage` 不动主题、字号等偏好设置。删除工作区或蓝图库后，已挂载的编辑器会自动刷新列表，删除工作区还会发出 `workspace:delete` 事件。执行日志可用 `purgeExecutionRunsOlderThan` / `trimExecutionRunRecordsToMax` 按时间或条数清理，保留策略用 `readExecutionLogSettings` / `writeExecutionLogSettings` 读写。
+`clearAbuilderStorage(nameSpace)` 一次清空四类。`getPreviewSnapshot` 与 React 版同名。
 
 ## 和 React 版的差别
 
-- **没有** `getPreviewSnapshot`。要缩略图就自己截预览 DOM，不要假设有同名导出。
 - 组件是 Ant Design Vue，不是 `@arronqzy/ui`。
 - 本包以源码发布（`exports` 指向 `src/`），宿主需要能编译 Vue SFC。
+- 存储 / 事件 / 命令式 API / `getPreviewSnapshot` 与 React 版对齐。
 
 本仓库演示：
 

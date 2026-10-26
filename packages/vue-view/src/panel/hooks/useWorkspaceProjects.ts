@@ -11,16 +11,16 @@ import {
   createWorkspaceProjectId,
   getWorkspaceProject,
   listWorkspaceProjects,
-  putWorkspaceProject,
   type WorkspaceProjectListItem,
   type WorkspaceProjectRecord,
 } from "../library/workspace-project-db";
-import { deleteWorkspaceProject } from "../library/workspace-storage";
 import {
-  broadcastWorkspaceProjectUpdate,
-  subscribeWorkspaceProjectsChanged,
-} from "../library/workspace-project-sync";
+  deleteWorkspaceProject,
+  putWorkspaceProject,
+} from "../library/workspace-storage";
+import { subscribeWorkspaceProjectsChanged } from "../library/workspace-project-sync";
 import { writeWorkspacePreviewCache, readWorkspacePreviewCache } from "../library/workspace-project-cache";
+import { normalizeAppNameSpace } from "@arronqzy/blueprint-dsl";
 import {
   cloneWorkspaceSnapshot,
   workspaceSnapshotsEqual,
@@ -48,6 +48,11 @@ export type UseWorkspaceProjectsOptions = {
   onProjectApplied?: (record: WorkspaceProjectRecord) => void;
   /** 外部传入的初始工作区，挂载后自动加载（不触发 onProjectApplied） */
   initialWorkspace?: MaybeRefOrGetter<WorkspaceProjectRecord | null | undefined>;
+  /**
+   * 按 IndexedDB id 打开工作区。与 initialWorkspace 同时存在时：
+   * 首次优先 initialWorkspace；之后 workspaceId 变化会从 IndexedDB 打开。
+   */
+  workspaceId?: MaybeRefOrGetter<string | null | undefined>;
   nameSpace?: MaybeRefOrGetter<string | null | undefined>;
 };
 
@@ -94,9 +99,11 @@ function workspaceApplyKey(record: WorkspaceProjectRecord): string {
 export function useWorkspaceProjects(options: UseWorkspaceProjectsOptions) {
   const { t, locale } = useI18nOptional();
   const nameSpace = () => toValue(options.nameSpace) ?? null;
+  const eventNameSpace = () => normalizeAppNameSpace(nameSpace()) || null;
   const projects = ref<WorkspaceProjectListItem[]>([]);
   const activeProjectId = ref<string | null>(null);
   const activeProjectName = ref<string | null>(null);
+  let activeCreatedAt: number | null = null;
   const syncedSnapshotRef = shallowRef<WorkspaceSnapshot | null>(null);
   let syncedPanelRevision: unknown = null;
   let pendingRevisionSync = false;
@@ -150,7 +157,9 @@ export function useWorkspaceProjects(options: UseWorkspaceProjectsOptions) {
         const active = activeProjectId.value;
         const removedActive =
           message.type === "cleared" ||
-          (active !== null && message.projectIds.includes(active));
+          (message.type === "deleted" &&
+            active !== null &&
+            message.projectIds.includes(active));
         if (removedActive) {
           activeProjectId.value = null;
           activeProjectName.value = null;
@@ -187,9 +196,61 @@ export function useWorkspaceProjects(options: UseWorkspaceProjectsOptions) {
     return !workspaceSnapshotsEqual(buildCurrentSnapshot(), syncedSnapshotRef.value);
   });
 
+  async function ensureWorkspaceInIndexedDb(record: WorkspaceProjectRecord) {
+    const id = typeof record.id === "string" ? record.id.trim() : "";
+    if (!id) return;
+    try {
+      const existing = await getWorkspaceProject(id, nameSpace());
+      const incomingUpdatedAt =
+        typeof record.updatedAt === "number" && Number.isFinite(record.updatedAt)
+          ? record.updatedAt
+          : 0;
+      if (existing && existing.updatedAt >= incomingUpdatedAt) {
+        return;
+      }
+      const now = Date.now();
+      const name =
+        (typeof record.name === "string" && record.name.trim()) ||
+        (typeof record.productName === "string" && record.productName.trim()) ||
+        t("panel.defaults.unnamedProduct");
+      const toStore: WorkspaceProjectRecord = {
+        ...record,
+        id,
+        name,
+        createdAt: existing?.createdAt ?? record.createdAt ?? now,
+        updatedAt: incomingUpdatedAt || now,
+        panelState:
+          normalizeImportedPanelState(record.panelState) ??
+          existing?.panelState ??
+          createEmptyPanelState(),
+        blueprintDocument:
+          parseBlueprintData(record.blueprintDocument).value ??
+          existing?.blueprintDocument ??
+          BlueprintGraph.empty().document,
+        blueprintMeta: {
+          name:
+            record.blueprintMeta?.name ??
+            existing?.blueprintMeta?.name ??
+            t("panel.defaults.unnamedBlueprint"),
+          remark:
+            record.blueprintMeta?.remark ?? existing?.blueprintMeta?.remark ?? "",
+        },
+        productName:
+          typeof record.productName === "string" && record.productName.trim()
+            ? record.productName
+            : existing?.productName ?? t("panel.defaults.unnamedProduct"),
+        titleIconDataUrl: record.titleIconDataUrl ?? existing?.titleIconDataUrl,
+      };
+      await putWorkspaceProject(toStore, nameSpace());
+      await refreshProjects();
+    } catch (error) {
+      console.warn("[abuilder] ensureWorkspaceInIndexedDb failed", error);
+    }
+  }
+
   function applyProjectRecord(
     record: WorkspaceProjectRecord,
-    applyOptions?: { notifyApplied?: boolean }
+    applyOptions?: { notifyApplied?: boolean; persistToIndexedDb?: boolean }
   ) {
     const parsedBlueprint = parseBlueprintData(record.blueprintDocument);
     const blueprintDocument =
@@ -213,6 +274,10 @@ export function useWorkspaceProjects(options: UseWorkspaceProjectsOptions) {
     options.setTitleIconDataUrl(titleIconDataUrl);
     activeProjectId.value = record.id || null;
     activeProjectName.value = record.name ?? null;
+    activeCreatedAt =
+      typeof record.createdAt === "number" && Number.isFinite(record.createdAt)
+        ? record.createdAt
+        : Date.now();
     syncedSnapshotRef.value = cloneWorkspaceSnapshot({
       blueprintDocument,
       blueprintMeta,
@@ -221,15 +286,23 @@ export function useWorkspaceProjects(options: UseWorkspaceProjectsOptions) {
     });
     syncedPanelRevision = toValue(options.panelRevision);
     pendingRevisionSync = true;
+    const normalized: WorkspaceProjectRecord = {
+      ...record,
+      id: record.id,
+      name: record.name ?? productName,
+      createdAt: activeCreatedAt,
+      updatedAt: record.updatedAt ?? Date.now(),
+      blueprintDocument,
+      blueprintMeta,
+      panelState,
+      productName,
+      titleIconDataUrl: titleIconDataUrl || undefined,
+    };
     if (applyOptions?.notifyApplied !== false) {
-      options.onProjectApplied?.({
-        ...record,
-        blueprintDocument,
-        blueprintMeta,
-        panelState,
-        productName,
-        titleIconDataUrl: titleIconDataUrl || undefined,
-      });
+      options.onProjectApplied?.(normalized);
+    }
+    if (applyOptions?.persistToIndexedDb) {
+      void ensureWorkspaceInIndexedDb(normalized);
     }
   }
 
@@ -244,46 +317,13 @@ export function useWorkspaceProjects(options: UseWorkspaceProjectsOptions) {
     options.setTitleIconDataUrl("");
     activeProjectId.value = null;
     activeProjectName.value = null;
+    activeCreatedAt = null;
     syncedSnapshotRef.value = null;
   }
 
   let bootstrapped = false;
   let appliedWorkspaceKey: string | null = null;
-
-  function bootstrapInitialWorkspace() {
-    const initialWorkspace = toValue(options.initialWorkspace) ?? null;
-    if (!bootstrapped) {
-      bootstrapped = true;
-      if (hasWorkspacePayload(initialWorkspace)) {
-        applyProjectRecord(initialWorkspace, { notifyApplied: false });
-        appliedWorkspaceKey = workspaceApplyKey(initialWorkspace);
-      } else {
-        applyEmptyWorkspace();
-      }
-      return;
-    }
-    if (!hasWorkspacePayload(initialWorkspace)) return;
-    const key = workspaceApplyKey(initialWorkspace);
-    if (appliedWorkspaceKey === key) return;
-    appliedWorkspaceKey = key;
-    applyProjectRecord(initialWorkspace, { notifyApplied: false });
-  }
-
-  onMounted(() => {
-    bootstrapInitialWorkspace();
-    void refreshProjects();
-    previewPollTimer = window.setInterval(refreshPreviewing, 2000);
-  });
-
-  watch(
-    () => {
-      const record = toValue(options.initialWorkspace);
-      return record ? workspaceApplyKey(record) : "";
-    },
-    () => {
-      bootstrapInitialWorkspace();
-    }
-  );
+  let workspaceIdApplied: string | null = null;
 
   async function persistProject(persistOptions: {
     id?: string;
@@ -294,7 +334,7 @@ export function useWorkspaceProjects(options: UseWorkspaceProjectsOptions) {
       const snapshot = cloneWorkspaceSnapshot(buildCurrentSnapshot());
       const now = Date.now();
       const id = persistOptions.id ?? createWorkspaceProjectId();
-      const createdAt = persistOptions.createdAt ?? now;
+      const createdAt = persistOptions.createdAt ?? activeCreatedAt ?? now;
       const name = (persistOptions.name ?? "").trim() || resolveProjectName();
 
       let panelState: State;
@@ -320,10 +360,9 @@ export function useWorkspaceProjects(options: UseWorkspaceProjectsOptions) {
       };
 
       await putWorkspaceProject(record, nameSpace());
-      writeWorkspacePreviewCache(record, nameSpace());
-      broadcastWorkspaceProjectUpdate(id, now, nameSpace());
       activeProjectId.value = id;
       activeProjectName.value = name;
+      activeCreatedAt = createdAt;
       syncedSnapshotRef.value = snapshot;
       syncedPanelRevision = toValue(options.panelRevision);
       pendingRevisionSync = false;
@@ -334,11 +373,40 @@ export function useWorkspaceProjects(options: UseWorkspaceProjectsOptions) {
     }
   }
 
+  function getCurrentWorkspaceRecord(): WorkspaceProjectRecord | null {
+    if (!activeProjectId.value) return null;
+    try {
+      const snapshot = buildCurrentSnapshot();
+      const panelState = options.exportPanelData();
+      const now = Date.now();
+      return {
+        id: activeProjectId.value,
+        name: activeProjectName.value || resolveProjectName(),
+        createdAt: activeCreatedAt ?? now,
+        updatedAt: now,
+        panelState,
+        blueprintDocument: snapshot.blueprintDocument,
+        blueprintMeta: snapshot.blueprintMeta,
+        productName:
+          typeof snapshot.productName === "string"
+            ? snapshot.productName
+            : resolveProjectName(),
+        titleIconDataUrl: snapshot.titleIconDataUrl || undefined,
+      };
+    } catch (error) {
+      console.warn("[abuilder] getCurrentWorkspace failed", error);
+      return null;
+    }
+  }
+
   async function handleCreateProject() {
     return runBusyTask(t("common.savingWorkspace"), async () => {
       const name = resolveProjectName();
       const record = await persistProject({ name });
-      emitAbuilderEvent(AbuilderEvents.workspaceAdd, record);
+      emitAbuilderEvent(AbuilderEvents.workspaceAdd, {
+        ...record,
+        nameSpace: eventNameSpace(),
+      });
       return { name, id: record.id };
     });
   }
@@ -354,16 +422,24 @@ export function useWorkspaceProjects(options: UseWorkspaceProjectsOptions) {
       const record = await persistProject({
         id: projectId,
         name,
-        createdAt: existing?.createdAt,
+        createdAt: existing?.createdAt ?? activeCreatedAt ?? undefined,
+      });
+      emitAbuilderEvent(AbuilderEvents.workspaceSync, {
+        ...record,
+        nameSpace: eventNameSpace(),
       });
       return { name, id: record.id };
     });
   }
 
-  async function handleOpenProject(id: string) {
+  async function handleOpenProject(idOrRecord: string | WorkspaceProjectRecord) {
     try {
       await runBusyTask(t("common.loadingWorkspace"), async () => {
-        const record = await getWorkspaceProject(id, nameSpace());
+        if (typeof idOrRecord !== "string") {
+          applyProjectRecord(idOrRecord, { persistToIndexedDb: true });
+          return;
+        }
+        const record = await getWorkspaceProject(idOrRecord, nameSpace());
         if (!record) {
           await refreshProjects();
           throw new Error(t("panel.messages.workspaceNotFound"));
@@ -381,20 +457,17 @@ export function useWorkspaceProjects(options: UseWorkspaceProjectsOptions) {
         throw new Error(t("panel.messages.saveWorkspaceFirst"));
       }
       const existing = await getWorkspaceProject(activeProjectId.value, nameSpace());
-      if (!existing) {
-        activeProjectId.value = null;
-        activeProjectName.value = null;
-        syncedSnapshotRef.value = null;
-        await refreshProjects();
-        throw new Error(t("panel.messages.workspaceNotFound"));
-      }
-      const name = resolveProjectName() || existing.name;
+      const name =
+        resolveProjectName() || existing?.name || activeProjectName.value || "";
       const record = await persistProject({
         id: activeProjectId.value,
         name,
-        createdAt: existing.createdAt,
+        createdAt: existing?.createdAt ?? activeCreatedAt ?? undefined,
       });
-      emitAbuilderEvent(AbuilderEvents.workspaceSync, record);
+      emitAbuilderEvent(AbuilderEvents.workspaceSync, {
+        ...record,
+        nameSpace: eventNameSpace(),
+      });
       return name;
     });
   }
@@ -406,6 +479,7 @@ export function useWorkspaceProjects(options: UseWorkspaceProjectsOptions) {
         if (activeProjectId.value === id) {
           activeProjectId.value = null;
           activeProjectName.value = null;
+          activeCreatedAt = null;
           syncedSnapshotRef.value = null;
         }
         previewWindows.delete(id);
@@ -456,6 +530,73 @@ export function useWorkspaceProjects(options: UseWorkspaceProjectsOptions) {
     });
   }
 
+  function bootstrapInitialWorkspace() {
+    const initialWorkspace = toValue(options.initialWorkspace) ?? null;
+    const workspaceIdRaw = toValue(options.workspaceId);
+    const workspaceId =
+      typeof workspaceIdRaw === "string" ? workspaceIdRaw.trim() : "";
+    if (!bootstrapped) {
+      bootstrapped = true;
+      if (hasWorkspacePayload(initialWorkspace)) {
+        applyProjectRecord(initialWorkspace, {
+          notifyApplied: false,
+          persistToIndexedDb: true,
+        });
+        appliedWorkspaceKey = workspaceApplyKey(initialWorkspace);
+        if (initialWorkspace.id) workspaceIdApplied = initialWorkspace.id;
+      } else if (workspaceId) {
+        workspaceIdApplied = workspaceId;
+        void handleOpenProject(workspaceId);
+      } else {
+        applyEmptyWorkspace();
+      }
+      return;
+    }
+    if (!hasWorkspacePayload(initialWorkspace)) return;
+    const key = workspaceApplyKey(initialWorkspace);
+    if (appliedWorkspaceKey === key) return;
+    appliedWorkspaceKey = key;
+    if (initialWorkspace.id) workspaceIdApplied = initialWorkspace.id;
+    applyProjectRecord(initialWorkspace, {
+      notifyApplied: false,
+      persistToIndexedDb: true,
+    });
+  }
+
+  onMounted(() => {
+    bootstrapInitialWorkspace();
+    void refreshProjects();
+    previewPollTimer = window.setInterval(refreshPreviewing, 2000);
+  });
+
+  watch(
+    () => {
+      const record = toValue(options.initialWorkspace);
+      return record ? workspaceApplyKey(record) : "";
+    },
+    () => {
+      bootstrapInitialWorkspace();
+    }
+  );
+
+  watch(
+    () => {
+      const raw = toValue(options.workspaceId);
+      return typeof raw === "string" ? raw.trim() : "";
+    },
+    (id) => {
+      if (!bootstrapped) return;
+      if (!id) return;
+      if (workspaceIdApplied === id) return;
+      if (activeProjectId.value === id) {
+        workspaceIdApplied = id;
+        return;
+      }
+      workspaceIdApplied = id;
+      void handleOpenProject(id);
+    }
+  );
+
   return {
     projects,
     activeProjectId,
@@ -468,6 +609,7 @@ export function useWorkspaceProjects(options: UseWorkspaceProjectsOptions) {
     handleSyncProject,
     handleDeleteProject,
     handlePreviewProject,
+    getCurrentWorkspaceRecord,
     refreshProjects,
   };
 }

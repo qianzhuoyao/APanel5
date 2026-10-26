@@ -4,16 +4,70 @@ import {
   deleteWorkspaceProject as deleteWorkspaceProjectRecord,
   getWorkspaceProject,
   listWorkspaceProjects,
+  putWorkspaceProject as putWorkspaceProjectRecord,
+  type WorkspaceProjectRecord,
 } from "./workspace-project-db";
 import {
   clearWorkspacePreviewCaches,
   removeWorkspacePreviewCache,
+  writeWorkspacePreviewCache,
 } from "./workspace-project-cache";
-import { broadcastWorkspaceProjectsChanged } from "./workspace-project-sync";
+import {
+  broadcastWorkspaceProjectUpdate,
+  broadcastWorkspaceProjectsChanged,
+} from "./workspace-project-sync";
 import { AbuilderEvents, emitAbuilderEvent } from "./event-subscription";
 
 export { listWorkspaceProjects, getWorkspaceProject };
-export type { WorkspaceProjectListItem } from "./workspace-project-db";
+export type { WorkspaceProjectListItem, WorkspaceProjectRecord } from "./workspace-project-db";
+
+export type PutWorkspaceProjectOptions = {
+  /**
+   * 写入后是否发出工作区事件。
+   * - `false` / 省略：只写 IndexedDB（宿主自己管后端时常用）
+   * - `"add"`：发出 `workspace:add`
+   * - `"sync"`：发出 `workspace:sync`
+   */
+  emitEvent?: false | "add" | "sync";
+};
+
+function resolvedNameSpace(nameSpace?: string | null): string | null {
+  return normalizeAppNameSpace(nameSpace) || null;
+}
+
+/**
+ * 写入 / 覆盖 IndexedDB 中的工作区（upsert），并更新预览缓存、通知其他标签页。
+ * `nameSpace` 需与面板的 `nameSpace` 一致。
+ */
+export async function putWorkspaceProject(
+  record: WorkspaceProjectRecord,
+  nameSpace?: string | null,
+  options?: PutWorkspaceProjectOptions
+): Promise<WorkspaceProjectRecord> {
+  const saved = await putWorkspaceProjectRecord(record, nameSpace);
+  writeWorkspacePreviewCache(saved, nameSpace);
+  broadcastWorkspaceProjectUpdate(saved.id, saved.updatedAt, nameSpace);
+  broadcastWorkspaceProjectsChanged(
+    { type: "upserted", projectIds: [saved.id] },
+    nameSpace
+  );
+  const ns = resolvedNameSpace(nameSpace);
+  if (options?.emitEvent === "add") {
+    emitAbuilderEvent(AbuilderEvents.workspaceAdd, { ...saved, nameSpace: ns });
+  } else if (options?.emitEvent === "sync") {
+    emitAbuilderEvent(AbuilderEvents.workspaceSync, { ...saved, nameSpace: ns });
+  }
+  return saved;
+}
+
+/** `putWorkspaceProject` 的别名 */
+export async function upsertWorkspaceProject(
+  record: WorkspaceProjectRecord,
+  nameSpace?: string | null,
+  options?: PutWorkspaceProjectOptions
+): Promise<WorkspaceProjectRecord> {
+  return putWorkspaceProject(record, nameSpace, options);
+}
 
 /**
  * 删除 IndexedDB 中保存的单个工作区（及其 localStorage 预览标记）。
@@ -28,7 +82,7 @@ export async function deleteWorkspaceProject(
   broadcastWorkspaceProjectsChanged({ type: "deleted", projectIds: [id] }, nameSpace);
   emitAbuilderEvent(AbuilderEvents.workspaceDelete, {
     ids: [id],
-    nameSpace: normalizeAppNameSpace(nameSpace) || null,
+    nameSpace: resolvedNameSpace(nameSpace),
   });
 }
 
@@ -44,7 +98,7 @@ export async function clearWorkspaceProjects(nameSpace?: string | null): Promise
   if (items.length > 0) {
     emitAbuilderEvent(AbuilderEvents.workspaceDelete, {
       ids: items.map((item) => item.id),
-      nameSpace: normalizeAppNameSpace(nameSpace) || null,
+      nameSpace: resolvedNameSpace(nameSpace),
     });
   }
   return items.length;

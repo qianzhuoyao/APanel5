@@ -57,7 +57,8 @@ export function Editor({ workspace }: { workspace?: WorkspaceProjectRecord | nul
 |------|------|------|
 | `className` | 根节点 class | — |
 | `initialZoom` | 初始缩放 | `1` |
-| `initialWorkspace` | 挂载后加载的完整工作区。空则空白画布 | — |
+| `initialWorkspace` | 挂载后加载的完整工作区。空则空白画布。带 `id` 时默认同步进 IndexedDB | — |
+| `workspaceId` | 按 IndexedDB id 打开（不 remount） | — |
 
 ## 在线预览
 
@@ -89,7 +90,7 @@ parseOnlinePreviewSearchParams("?preview=online&projectId=xxx");
 
 ## 工作区事件
 
-回调带完整工作区，用来写自己的后端。IndexedDB 的增删改查不导出。
+回调带完整工作区，用来写自己的后端。`initialWorkspace` 会默认同步进 IndexedDB；本地副本可用导出的 list / get / delete / clear 清理。
 
 ```ts
 import {
@@ -111,10 +112,12 @@ syncSub.unsubscribe();
 | 事件 | 常量 | 何时触发 |
 |------|------|----------|
 | `workspace:add` | `AbuilderEvents.workspaceAdd` | 创建成功 |
-| `workspace:sync` | `AbuilderEvents.workspaceSync` | 同步成功 |
+| `workspace:sync` | `AbuilderEvents.workspaceSync` | 同步成功（载荷含 `nameSpace`） |
 | `workspace:delete` | `AbuilderEvents.workspaceDelete` | 删除工作区，参数 `{ ids, nameSpace }` |
+| `blueprint-library:changed` | `AbuilderEvents.blueprintLibraryChanged` | 蓝图库变更 |
+| `api-collection:changed` | `AbuilderEvents.apiCollectionChanged` | 接口集合变更 |
 
-`workspace:add` / `workspace:sync` 的参数字段：`id`、`name`、`createdAt`、`updatedAt`、`panelState`、`blueprintDocument`、`blueprintMeta`、`productName`、`titleIconDataUrl`。
+`workspace:add` / `workspace:sync` 的参数字段：上述工作区字段 + `nameSpace`。可用 `addEventSubscription(event, cb, { nameSpace })` 过滤。
 
 校验：
 
@@ -155,14 +158,14 @@ const dataUrl = await getPreviewSnapshot({
 | `addEventSubscription` / `AbuilderEvents` | 工作区事件 |
 | `getPreviewSnapshot` | 预览截图 data URL |
 | `parseWorkspaceData` 等 | 校验 / 解析 / 空工作区 |
-| `listWorkspaceProjects` / `getWorkspaceProject` / `deleteWorkspaceProject` / `clearWorkspaceProjects` | 浏览器 IndexedDB 中保存的工作区 |
-| `listBlueprintLibrary` / `getBlueprintLibraryRecord` / `deleteBlueprintLibraryRecord` / `clearBlueprintLibrary` | 蓝图库；删除后已挂载的面板自动刷新 |
-| `listExecutionRunRecords` / `getExecutionRunRecord` / `deleteExecutionRunRecord` / `clearAllExecutionRunRecords` / `purgeExecutionRunsOlderThan` / `trimExecutionRunRecordsToMax` | 蓝图执行日志 |
-| `readExecutionLogSettings` / `writeExecutionLogSettings` | 执行日志保留策略 |
-| `listApiCollectionRecords` / `deleteApiCollection` / `clearApiCollections` | 接口集合 |
-| `clearAbuilderStorage` | 一次清空以上四类数据，返回各自删除数量；不动偏好设置 |
+| `putWorkspaceProject` / `upsertWorkspaceProject` / `list` / `get` / `delete` / `clear` | 工作区完整 CRUD |
+| `putBlueprintLibraryRecord` / `list` / `get` / `delete` / `clear` | 蓝图库完整 CRUD |
+| `putExecutionRunRecord` / `list` / `get` / `delete` / `clear` / `purge*` / `trim*` | 执行日志 |
+| `putApiCollection` / `upsertApiCollectionFromJson` / `list` / `delete` / `clear` | 接口集合 |
+| `getCurrentWorkspace` / `openWorkspace` / `createWorkspace` / `saveWorkspace` / `syncWorkspace` | 命令式操作已挂载面板 |
+| `clearAbuilderStorage` | 一次清空四类数据 |
 
-本地数据函数的最后一个参数都是 `nameSpace`，要和面板的 `nameSpace` 一致。
+本地数据函数的 `nameSpace` 要和面板一致。面板 `ref` 类型为 `AbuilderViewHandle`。
 | `createView` / `createAction` | 视图 DSL 扩展点（`src/core`） |
 
 ## 样式

@@ -4,7 +4,7 @@ React 一站式编辑器。安装后渲染 `<App />`，就是完整的 Abuilder�
 
 ![安装后直接得到的编辑器](https://github.com/qianzhuoyao/APanel5/raw/v5/docs/guide-assets/live-zh/01-overview.png)
 
-当前版本见本包 `package.json`（设置菜单「关于」里显示的就是这个版本号）。本包 **1.1.39** 起补齐本地数据接口（蓝图库、执行日志、接口集合的读取与清理，`clearAbuilderStorage` 一次清空，`workspace:delete` 事件）；**1.1.38** 起提供本地工作区清理接口（`listWorkspaceProjects` / `deleteWorkspaceProject` / `clearWorkspaceProjects`）；**1.1.37** 起配套 chroma.js 主题配色、全系统国际化修复与问号图标式字段说明；**1.1.36** 起配套蓝图 Soft UI 节点样式；**1.1.35** 起配套接口集合、`{system?...}` 模版、JSON 节点错误高亮。完整中文手册见仓库 `docs/Abuilder使用文档与功能说明.docx`（适用版本表写在文首）。
+当前版本见本包 `package.json`（设置菜单「关于」里显示的就是这个版本号）。本包 **1.1.40** 起补齐宿主侧完整 CRUD（put / 命令式打开 / 事件 nameSpace / Vue 预览截图）；**1.1.39** 起补齐本地数据接口（蓝图库、执行日志、接口集合的读取与清理，`clearAbuilderStorage` 一次清空，`workspace:delete` 事件）；**1.1.38** 起提供本地工作区清理接口（`listWorkspaceProjects` / `deleteWorkspaceProject` / `clearWorkspaceProjects`）；**1.1.37** 起配套 chroma.js 主题配色、全系统国际化修复与问号图标式字段说明；**1.1.36** 起配套蓝图 Soft UI 节点样式；**1.1.35** 起配套接口集合、`{system?...}` 模版、JSON 节点错误高亮。完整中文手册见仓库 `docs/Abuilder使用文档与功能说明.docx`（适用版本表写在文首）。
 
 ## 安装
 
@@ -64,7 +64,8 @@ createRoot(document.getElementById("root")!).render(<App locale="zh-CN" />);
 | `nameSpace` | 隔离 IndexedDB；同一页多个 App 必须不同 | — |
 | `previewSearch` | 预览 URL 查询串 | `window.location.search` |
 | `preview` | `true` 只渲染预览页 | `false` |
-| `initialWorkspace` | 完整工作区。不传则空白画布，**不会**自动打开 IndexedDB 里已有项目 | — |
+| `initialWorkspace` | 完整工作区。不传则空白画布，**不会**自动打开 IndexedDB 里已有项目。传入且带 `id` 时，会默认同步写入 IndexedDB（本地已有更新的记录不会被旧数据覆盖），以便预览与「同步」可用 | — |
+| `workspaceId` | 按 IndexedDB id 打开（不 remount）。与 `initialWorkspace` 同时存在时：首次优先完整记录；之后 id 变化从 IndexedDB 打开 | — |
 
 ```tsx
 <App
@@ -95,10 +96,11 @@ URL 带 `?preview=online&projectId=<id>` 时进入预览，从 IndexedDB 读。�
 
 ## 把工作区交给自己的后端
 
-IndexedDB 是编辑器自己的浏览器缓存，**不导出** list / get / put / delete。宿主应：
+IndexedDB 是编辑器自己的浏览器缓存。宿主仍应以自己的后端为准：
 
-1. 订阅创建和同步事件，把回调里的完整对象写到自己的存储。
-2. 下次打开时校验 JSON，再交给 `initialWorkspace`。
+1. 订阅创建和同步事件（`workspace:add` / `workspace:sync`），把回调里的完整对象写到自己的存储。
+2. 下次打开时校验 JSON，再交给 `initialWorkspace`；编辑器会把这份工作区默认同步进 IndexedDB，之后「同步 / 预览」不会因本地缺记录报错。
+3. 需要清理本地副本时，用导出的 `listWorkspaceProjects` / `deleteWorkspaceProject` / `clearWorkspaceProjects` / `clearAbuilderStorage`，不要直接操作 IndexedDB。
 
 ```tsx
 import { useEffect, useState } from "react";
@@ -139,9 +141,13 @@ function HostApp() {
 |------|------|----------|
 | `workspace:add` | `AbuilderEvents.workspaceAdd` | 创建工作区成功 |
 | `workspace:sync` | `AbuilderEvents.workspaceSync` | 同步工作区成功 |
-| `workspace:delete` | `AbuilderEvents.workspaceDelete` | 删除工作区（界面删除，或调用 `deleteWorkspaceProject` / `clearWorkspaceProjects`），参数 `{ ids, nameSpace }` |
+| `workspace:delete` | `AbuilderEvents.workspaceDelete` | 删除工作区（界面删除，或调用 `deleteWorkspaceProject` / `clearWorkspaceProjects`） |
+| `blueprint-library:changed` | `AbuilderEvents.blueprintLibraryChanged` | 蓝图库 put / delete / clear |
+| `api-collection:upload-start` | `AbuilderEvents.apiCollectionUploadStart` | 开始上传接口集合 |
+| `api-collection:upload-success` | `AbuilderEvents.apiCollectionUploadSuccess` | 上传接口集合成功 |
+| `api-collection:changed` | `AbuilderEvents.apiCollectionChanged` | 接口集合 put / delete / clear |
 
-`workspace:add` / `workspace:sync` 的回调参数是完整 `WorkspaceData`（即 `WorkspaceProjectRecord`）：
+`workspace:add` / `workspace:sync` 的回调是 `WorkspaceData & { nameSpace }`：
 
 | 字段 | 说明 |
 |------|------|
@@ -153,8 +159,9 @@ function HostApp() {
 | `blueprintMeta` | 蓝图名称、备注 |
 | `productName` | 产物名称 |
 | `titleIconDataUrl` | 标题图标（可选） |
+| `nameSpace` | 所属命名空间；默认库为 `null` |
 
-也可以用字符串：`addEventSubscription("workspace:add", callback)`。
+同页多个 App 时，用第三个参数过滤：`addEventSubscription(AbuilderEvents.workspaceSync, cb, { nameSpace: "my-app" })`。
 
 ## 校验和空工作区
 
@@ -185,42 +192,67 @@ createEmptyWorkspace({ name: "未命名", id: createWorkspaceProjectId() });
 
 `initialWorkspace` 为空时，首次是空画布和空蓝图。侧栏仍可列出已保存项目，但要用户手动打开。
 
-## 清理浏览器里的本地数据
+## 本地数据完整 CRUD
 
-编辑器会把四类数据存进浏览器 IndexedDB，并按 `nameSpace` 隔离。如果这些数据以后端为准，可以定期清理本地副本，避免越积越多。
+编辑器把四类数据存进 IndexedDB，按 `nameSpace` 隔离。公开 API 覆盖读写删清：
 
-| 数据 | 列出 / 读取 | 删除单条 | 清空 |
-|------|-------------|----------|------|
-| 工作区 | `listWorkspaceProjects` / `getWorkspaceProject` | `deleteWorkspaceProject` | `clearWorkspaceProjects` |
-| 蓝图库 | `listBlueprintLibrary` / `getBlueprintLibraryRecord` | `deleteBlueprintLibraryRecord` | `clearBlueprintLibrary` |
-| 蓝图执行日志 | `listExecutionRunRecords` / `getExecutionRunRecord` | `deleteExecutionRunRecord` | `clearAllExecutionRunRecords` |
-| 接口集合 | `listApiCollectionRecords` | `deleteApiCollection` | `clearApiCollections` |
+| 数据 | Create / Update | Read | Delete |
+|------|-----------------|------|--------|
+| 工作区 | `putWorkspaceProject` / `upsertWorkspaceProject`（可选 `emitEvent: "add"\|"sync"`）；或 UI 创建/同步 | `listWorkspaceProjects` / `getWorkspaceProject` | `deleteWorkspaceProject` / `clearWorkspaceProjects` |
+| 蓝图库 | `putBlueprintLibraryRecord` | `listBlueprintLibrary` / `getBlueprintLibraryRecord` | `deleteBlueprintLibraryRecord` / `clearBlueprintLibrary` |
+| 执行日志 | `putExecutionRunRecord` | `listExecutionRunRecords` / `getExecutionRunRecord` | `deleteExecutionRunRecord` / `clearAllExecutionRunRecords` / `purge*` / `trim*` |
+| 接口集合 | `putApiCollection` / `upsertApiCollectionFromJson` | `listApiCollectionRecords` | `deleteApiCollection` / `clearApiCollections` |
 
 ```ts
 import {
+  putWorkspaceProject,
   listWorkspaceProjects,
   deleteWorkspaceProject,
-  clearWorkspaceProjects,
   clearAbuilderStorage,
+  putBlueprintLibraryRecord,
+  putApiCollection,
 } from "@arronqzy/abuilder";
 
-const items = await listWorkspaceProjects(nameSpace); // [{ id, name, createdAt, updatedAt }]，按更新时间倒序
-await deleteWorkspaceProject(items[0].id, nameSpace);
-const removed = await clearWorkspaceProjects(nameSpace); // 返回删除数量
+// 不挂载编辑器也能预热 IndexedDB（例如后台同步后端数据）
+await putWorkspaceProject(parsedWorkspace, nameSpace);
+// 需要顺带通知宿主后端时：
+await putWorkspaceProject(parsedWorkspace, nameSpace, { emitEvent: "sync" });
 
-// 一次清空四类数据，返回 { workspaces, blueprints, executionRuns, apiCollections } 各自的删除数量
 const result = await clearAbuilderStorage(nameSpace);
 ```
 
-- 所有函数最后一个参数都是 `nameSpace`，要和 `<App nameSpace>` 一致；省略时操作默认库。
-- 清空函数返回删除数量。`clearAbuilderStorage` 不动主题、字号、执行日志保留策略等偏好设置。
-- 删除工作区或蓝图库后，同页和其他标签页里已挂载的编辑器会自动刷新列表；若删掉的是当前打开的工作区，编辑器内容保留，但不再关联该记录。删除工作区还会发出 `workspace:delete` 事件。
-- 执行日志还可以按策略清理：`purgeExecutionRunsOlderThan(cutoffMs, nameSpace)` 删除早于某时间的记录，`trimExecutionRunRecordsToMax(max, nameSpace)` 只保留最近 N 条。编辑器里设置的保留策略用 `readExecutionLogSettings` / `writeExecutionLogSettings` 读写。
-- 接口集合的 `deleteApiCollection` / `clearApiCollections` 会同时更新已挂载编辑器里的接口列表（仅限同一 `nameSpace`）。
+- 所有存储函数的 `nameSpace` 要和 `<App nameSpace>` 一致；省略时操作默认库。
+- `clearAbuilderStorage` 不动主题、字号、执行日志保留策略等偏好设置。
+- 写入 / 删除工作区或蓝图库后，已挂载编辑器会自动刷新列表。
+
+## 命令式打开 / 保存（不 remount）
+
+挂载编辑器后，可用模块函数或 `ref`：
+
+```tsx
+import { useRef } from "react";
+import {
+  App,
+  openWorkspace,
+  getCurrentWorkspace,
+  syncWorkspace,
+  type AbuilderViewHandle,
+} from "@arronqzy/abuilder";
+
+const ref = useRef<AbuilderViewHandle>(null);
+
+<App ref={ref} nameSpace="my-app" workspaceId={selectedId} />;
+
+await openWorkspace(selectedId, "my-app");          // 或 ref.current.openWorkspace(selectedId)
+await syncWorkspace("my-app");                      // 把当前编辑内容写入 IndexedDB + 发 workspace:sync
+const draft = getCurrentWorkspace("my-app");        // 导出当前脏状态；无 active 时为 null
+```
+
+同页多个实例时务必传同一个 `nameSpace`。
 
 ## 预览缩略图
 
-画布已经渲染且有内容时：
+画布已经渲染且有内容时（React / Vue 均支持）：
 
 ```ts
 import { getPreviewSnapshot } from "@arronqzy/abuilder";
@@ -240,8 +272,6 @@ const thumbnail = await getPreviewSnapshot({
 | `quality` | JPEG 0–1 | `0.92` |
 | `backgroundColor` | 背景色 | `"#ffffff"` |
 
-Vue 包没有这个函数。
-
 ## 还导出什么
 
 一般宿主只用 `App`。需要拆开时：
@@ -255,10 +285,12 @@ import {
   getPreviewSnapshot,
   parseWorkspaceData,
   createEmptyWorkspace,
+  openWorkspace,
+  getCurrentWorkspace,
 } from "@arronqzy/abuilder";
 ```
 
-类型：`WorkspaceData`、`WorkspaceProjectRecord`、`WorkspaceProjectListItem`、`WorkspaceDeleteEventPayload`、`AbuilderStorageClearResult`、`BlueprintLibraryListItem`、`BlueprintLibraryRecord`、`ExecutionRunRecord`、`ExecutionLogSettings`、`ApiCollectionRecord`、`AbuilderEventName`、`GetPreviewSnapshotOptions`、`ParseCheckResult`、`WorkspaceParseCheckResult`。
+类型：`AbuilderViewHandle`、`WorkspaceData`、`WorkspaceProjectRecord`、`WorkspaceProjectListItem`、`WorkspaceDeleteEventPayload`、`AbuilderStorageClearResult`、`BlueprintLibraryListItem`、`BlueprintLibraryRecord`、`ExecutionRunRecord`、`ExecutionLogSettings`、`ApiCollectionRecord`、`UpsertApiCollectionInput`、`AbuilderEventName`、`GetPreviewSnapshotOptions`、`ParseCheckResult`、`WorkspaceParseCheckResult`。
 
 ## 本仓库里怎么预览
 

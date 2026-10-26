@@ -16,17 +16,24 @@ export { createWorkspaceProjectId } from "./panel/library/workspace-project-db";
 export {
   listWorkspaceProjects,
   getWorkspaceProject,
+  putWorkspaceProject,
+  upsertWorkspaceProject,
   deleteWorkspaceProject,
   clearWorkspaceProjects,
 } from "./panel/library/workspace-storage";
-export type { WorkspaceProjectListItem } from "./panel/library/workspace-storage";
+export type {
+  WorkspaceProjectListItem,
+  PutWorkspaceProjectOptions,
+} from "./panel/library/workspace-storage";
 export {
   listBlueprintLibrary,
   getBlueprintLibraryRecord,
+  putBlueprintLibraryRecord,
   deleteBlueprintLibraryRecord,
   clearBlueprintLibrary,
   listExecutionRunRecords,
   getExecutionRunRecord,
+  putExecutionRunRecord,
   deleteExecutionRunRecord,
   clearAllExecutionRunRecords,
   purgeExecutionRunsOlderThan,
@@ -34,6 +41,8 @@ export {
   readExecutionLogSettings,
   writeExecutionLogSettings,
   listApiCollectionRecords,
+  putApiCollection,
+  upsertApiCollectionFromJson,
   deleteApiCollection,
   clearApiCollections,
   clearAbuilderStorage,
@@ -45,6 +54,8 @@ export type {
   ExecutionRunRecord,
   ExecutionLogSettings,
   ApiCollectionRecord,
+  UpsertApiCollectionInput,
+  UpsertApiCollectionResult,
 } from "./panel/library/abuilder-storage";
 export {
   addEventSubscription,
@@ -53,14 +64,27 @@ export {
 export type {
   AbuilderEventName,
   AbuilderEventPayloadMap,
+  AddEventSubscriptionOptions,
   WorkspaceAddEventPayload,
   WorkspaceSyncEventPayload,
   WorkspaceDeleteEventPayload,
+  BlueprintLibraryChangedEventPayload,
   ApiCollectionUploadStartEventPayload,
   ApiCollectionUploadSuccessEventPayload,
+  ApiCollectionChangedEventPayload,
   WorkspaceData,
 } from "./panel/library/event-subscription";
+export {
+  getCurrentWorkspace,
+  openWorkspace,
+  createWorkspace,
+  saveWorkspace,
+  syncWorkspace,
+} from "./panel/library/abuilder-view-handle";
+export type { AbuilderViewHandle } from "./panel/library/abuilder-view-handle";
 export type {
   ParseCheckResult,
   WorkspaceParseCheckResult,
 } from "./panel/library/parse-workspace-data";
+export { getPreviewSnapshot } from "./panel/library/preview-snapshot";
+export type { GetPreviewSnapshotOptions } from "./panel/library/preview-snapshot";

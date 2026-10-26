@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, watch } from "vue";
+import { computed, ref, watch } from "vue";
 import { ConfigProvider, theme } from "ant-design-vue";
 import zhCN from "ant-design-vue/es/locale/zh_CN";
 import enUS from "ant-design-vue/es/locale/en_US";
@@ -7,6 +7,7 @@ import {
   VueViewPanel,
   VueViewOnlinePreview,
   parseOnlinePreviewSearchParams,
+  type AbuilderViewHandle,
 } from "@arronqzy/vue-view";
 import { provideI18n } from "@arronqzy/i18n/vue";
 import { isLocale, LOCALE_STORAGE_KEY } from "@arronqzy/i18n";
@@ -18,8 +19,27 @@ const props = withDefaults(defineProps<AbuilderVueAppProps>(), {
   defaultTheme: "dark",
   locale: null,
   nameSpace: null,
+  workspaceId: null,
   preview: false,
 });
+
+const panelRef = ref<AbuilderViewHandle | null>(null);
+defineExpose({
+  getNameSpace: () => panelRef.value?.getNameSpace() ?? props.nameSpace ?? null,
+  getCurrentWorkspace: () => panelRef.value?.getCurrentWorkspace() ?? null,
+  openWorkspace: (idOrRecord: Parameters<AbuilderViewHandle["openWorkspace"]>[0]) =>
+    panelRef.value?.openWorkspace(idOrRecord) ??
+    Promise.reject(new Error("Abuilder panel is not mounted")),
+  createWorkspace: () =>
+    panelRef.value?.createWorkspace() ??
+    Promise.reject(new Error("Abuilder panel is not mounted")),
+  saveWorkspace: () =>
+    panelRef.value?.saveWorkspace() ??
+    Promise.reject(new Error("Abuilder panel is not mounted")),
+  syncWorkspace: () =>
+    panelRef.value?.syncWorkspace() ??
+    Promise.reject(new Error("Abuilder panel is not mounted")),
+} satisfies AbuilderViewHandle);
 
 const localeStorageKey = (() => {
   const ns = (props.nameSpace ?? "").trim();
@@ -72,10 +92,12 @@ const antdLocale = computed(() =>
     />
     <VueViewPanel
       v-else
+      ref="panelRef"
       :class="props.class"
       :initial-zoom="props.initialZoom"
       :name-space="props.nameSpace"
       :initial-workspace="props.initialWorkspace"
+      :workspace-id="props.workspaceId"
       :package-name="ABUILDER_VUE_PACKAGE_NAME"
       :package-version="ABUILDER_VUE_VERSION"
     />

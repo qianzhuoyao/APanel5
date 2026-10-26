@@ -70,11 +70,39 @@ export type UpsertApiCollectionInput = {
   persistLocal: boolean;
   /** 未写 document.name 时用文件名 */
   fallbackName?: string;
+  /** 省略时写入当前已 hydrate 的 nameSpace */
+  nameSpace?: string | null;
 };
 
 export type UpsertApiCollectionResult =
   | { ok: true; record: ApiCollectionRecord }
   | { ok: false; error: string };
+
+function isCurrentNameSpace(nameSpace?: string | null): boolean {
+  return normalizeAppNameSpace(nameSpace) === normalizeAppNameSpace(nameSpaceRef);
+}
+
+/** 写入接口集合；persistLocal 时落 IndexedDB，同一 nameSpace 下刷新内存列表 */
+export async function putApiCollection(
+  record: ApiCollectionRecord,
+  nameSpace?: string | null
+): Promise<ApiCollectionRecord> {
+  if (record.persistLocal) {
+    await putApiCollectionRecord(record, nameSpace);
+  } else if (isCurrentNameSpace(nameSpace)) {
+    const existing = records.find((item) => item.id === record.id);
+    if (existing?.persistLocal) {
+      await deleteApiCollectionRecord(record.id, nameSpace);
+    }
+  }
+  if (isCurrentNameSpace(nameSpace)) {
+    const next = records.filter((item) => item.id !== record.id);
+    next.push(record);
+    records = sortRecords(next);
+    emit();
+  }
+  return record;
+}
 
 export async function upsertApiCollectionFromJson(
   input: UpsertApiCollectionInput
@@ -82,6 +110,8 @@ export async function upsertApiCollectionFromJson(
   const parsed = parseApiCollectionJson(input.rawJson);
   if (!parsed.ok) return parsed;
 
+  const targetNameSpace =
+    input.nameSpace !== undefined ? input.nameSpace : nameSpaceRef;
   const document: ApiCollectionDocument = {
     ...parsed.document,
     name:
@@ -90,11 +120,18 @@ export async function upsertApiCollectionFromJson(
       parsed.document.name,
   };
   const now = Date.now();
-  const existing = input.id
+  const existingInMemory = input.id
     ? records.find((item) => item.id === input.id) ?? null
     : null;
+  const existingPersisted =
+    input.id && !isCurrentNameSpace(targetNameSpace)
+      ? await listApiCollectionRecords(targetNameSpace).then(
+          (list) => list.find((item) => item.id === input.id) ?? null
+        )
+      : null;
+  const existing = existingInMemory ?? existingPersisted;
   const record: ApiCollectionRecord = {
-    id: existing?.id ?? createApiCollectionId(),
+    id: existing?.id ?? input.id ?? createApiCollectionId(),
     name: document.name,
     persistLocal: input.persistLocal,
     document,
@@ -103,16 +140,7 @@ export async function upsertApiCollectionFromJson(
     updatedAt: now,
   };
 
-  if (record.persistLocal) {
-    await putApiCollectionRecord(record, nameSpaceRef);
-  } else if (existing?.persistLocal) {
-    await deleteApiCollectionRecord(record.id, nameSpaceRef);
-  }
-
-  const next = records.filter((item) => item.id !== record.id);
-  next.push(record);
-  records = sortRecords(next);
-  emit();
+  await putApiCollection(record, targetNameSpace);
   return { ok: true, record };
 }
 
@@ -127,10 +155,6 @@ export async function removeApiCollection(id: string): Promise<void> {
   }
   records = records.filter((item) => item.id !== id);
   emit();
-}
-
-function isCurrentNameSpace(nameSpace?: string | null): boolean {
-  return normalizeAppNameSpace(nameSpace) === normalizeAppNameSpace(nameSpaceRef);
 }
 
 /** 按 nameSpace 删除接口集合；若该 nameSpace 正在被编辑器使用，内存列表同步移除 */

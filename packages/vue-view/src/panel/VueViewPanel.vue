@@ -1,5 +1,14 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, shallowRef, watch } from "vue";
+import {
+  registerAbuilderViewHandle,
+  type AbuilderViewHandle,
+} from "./library/abuilder-view-handle";
+import {
+  captureEditorPreviewSnapshot,
+  registerPreviewSnapshotProvider,
+} from "./library/preview-snapshot";
+import { readOutputScale } from "./utils/outputScale";
 import type { State } from "@arronqzy/rx-store";
 import {
   useBlueprintDslLocaleSync,
@@ -90,6 +99,11 @@ const props = withDefaults(
     initialZoom?: number;
     nameSpace?: string | null;
     initialWorkspace?: WorkspaceProjectRecord | null;
+    /**
+     * 按 IndexedDB id 打开工作区（不 remount）。
+     * 与 initialWorkspace 同时存在时：首次优先完整记录；之后 id 变化从 IndexedDB 打开。
+     */
+    workspaceId?: string | null;
     /** 顶栏「设置 → 关于」展示的 npm 包名 */
     packageName?: string | null;
     /** 顶栏「设置 → 关于」展示的包版本号 */
@@ -99,6 +113,7 @@ const props = withDefaults(
     initialZoom: 1,
     nameSpace: null,
     initialWorkspace: null,
+    workspaceId: null,
     packageName: null,
     packageVersion: null,
   }
@@ -470,8 +485,38 @@ const workspaceProjects = useWorkspaceProjects({
   panelRevision: computed(() => `${historyCursor.value}|${allElements.value.length}`),
   onProjectApplied: handleWorkspaceProjectApplied,
   initialWorkspace: () => props.initialWorkspace,
+  workspaceId: () => props.workspaceId,
   nameSpace: () => props.nameSpace,
 });
+
+const viewHandle: AbuilderViewHandle = {
+  getNameSpace: () => props.nameSpace ?? null,
+  getCurrentWorkspace: () => workspaceProjects.getCurrentWorkspaceRecord(),
+  openWorkspace: (idOrRecord) => workspaceProjects.handleOpenProject(idOrRecord),
+  createWorkspace: () => workspaceProjects.handleCreateProject(),
+  saveWorkspace: () => workspaceProjects.handleSaveProject(),
+  syncWorkspace: () => workspaceProjects.handleSyncProject(),
+};
+
+defineExpose(viewHandle);
+onUnmounted(registerAbuilderViewHandle(viewHandle));
+
+watch(
+  [canvasEl, allElements, layers, activeLayerId, () => props.nameSpace],
+  () => {
+    registerPreviewSnapshotProvider(async () =>
+      captureEditorPreviewSnapshot({
+        canvasRoot: canvasEl.value,
+        allElements: allElements.value,
+        layers: layers.value,
+        activeLayerId: activeLayerId.value,
+        outputScale: readOutputScale(props.nameSpace),
+      })
+    );
+  },
+  { immediate: true }
+);
+onUnmounted(() => registerPreviewSnapshotProvider(null));
 
 const blueprintLifecycleToken = computed(() => {
   const doc = blueprintGraph.value.document;
@@ -646,7 +691,10 @@ function handleApiCollectionUploadStart(info: {
   fileNames: string[];
   count: number;
 }) {
-  emitAbuilderEvent(AbuilderEvents.apiCollectionUploadStart, info);
+  emitAbuilderEvent(AbuilderEvents.apiCollectionUploadStart, {
+    ...info,
+    nameSpace: props.nameSpace ?? null,
+  });
 }
 
 function handleApiCollectionUploadSuccess(info: {
@@ -657,7 +705,10 @@ function handleApiCollectionUploadSuccess(info: {
     persistLocal: boolean;
   }>;
 }) {
-  emitAbuilderEvent(AbuilderEvents.apiCollectionUploadSuccess, info);
+  emitAbuilderEvent(AbuilderEvents.apiCollectionUploadSuccess, {
+    ...info,
+    nameSpace: props.nameSpace ?? null,
+  });
 }
 
 function handleApiCollectionSync(record: {

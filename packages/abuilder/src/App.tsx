@@ -1,10 +1,11 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { forwardRef, useMemo, useState, type ReactNode } from "react";
 import { ThemeProvider } from "@arronqzy/ui";
 import type { Locale } from "@arronqzy/i18n";
 import {
   ReactViewOnlinePreview,
   ReactViewPanel,
   parseOnlinePreviewSearchParams,
+  type AbuilderViewHandle,
 } from "@arronqzy/react-view";
 import type { WorkspaceProjectRecord } from "@arronqzy/react-view";
 import { ABUILDER_PACKAGE_NAME, ABUILDER_VERSION } from "./version";
@@ -35,6 +36,11 @@ export type AbuilderAppProps = {
    */
   initialWorkspace?: WorkspaceProjectRecord | null;
   /**
+   * 按 IndexedDB id 打开工作区（不 remount）。
+   * 与 `initialWorkspace` 同时存在时：首次优先完整记录；之后 id 变化从 IndexedDB 打开。
+   */
+  workspaceId?: string | null;
+  /**
    * 隔离 IndexedDB / localStorage / BroadcastChannel。
    * 同一页面挂多个 App 时传入不同值，避免工作区、蓝图库、预览缓存互相覆盖。
    * 省略或空字符串保持历史全局库名。
@@ -59,16 +65,20 @@ function PreviewShell({ children }: { children: ReactNode }) {
   );
 }
 
-export function App({
-  className,
-  initialZoom,
-  defaultTheme = "dark",
-  locale = null,
-  previewSearch,
-  preview = false,
-  initialWorkspace = null,
-  nameSpace = null,
-}: AbuilderAppProps) {
+export const App = forwardRef<AbuilderViewHandle, AbuilderAppProps>(function App(
+  {
+    className,
+    initialZoom,
+    defaultTheme = "dark",
+    locale = null,
+    previewSearch,
+    preview = false,
+    initialWorkspace = null,
+    workspaceId = null,
+    nameSpace = null,
+  },
+  ref
+) {
   const [localeState, setLocaleState] = useState<Locale | null>(locale);
   const effectiveLocale = locale ?? localeState;
 
@@ -112,9 +122,11 @@ export function App({
   return (
     <ThemeProvider defaultTheme={defaultTheme} enableSystem={false}>
       <ReactViewPanel
+        ref={ref}
         className={className}
         initialZoom={initialZoom}
         initialWorkspace={initialWorkspace}
+        workspaceId={workspaceId}
         locale={effectiveLocale}
         onLocaleChange={setLocaleState}
         nameSpace={nameSpace}
@@ -123,4 +135,4 @@ export function App({
       />
     </ThemeProvider>
   );
-}
+});

@@ -1,4 +1,16 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import {
+  registerAbuilderViewHandle,
+  type AbuilderViewHandle,
+} from "./library/abuilder-view-handle";
 import { useI18n } from "@arronqzy/i18n/react";
 import { relocalizeMessage, type Locale } from "@arronqzy/i18n";
 import type { State } from "@arronqzy/rx-store";
@@ -141,6 +153,11 @@ export type ReactViewPanelProps = {
   className?: string;
   /** 外部传入的完整工作区数据，挂载后按这份数据完整渲染；空则显示空白，不自动打开 IndexedDB 记录 */
   initialWorkspace?: WorkspaceProjectRecord | null;
+  /**
+   * 按 IndexedDB id 打开工作区（不 remount）。
+   * 与 `initialWorkspace` 同时存在时：首次优先完整记录；之后 id 变化从 IndexedDB 打开。
+   */
+  workspaceId?: string | null;
   /** 界面语言；省略时按 localStorage / 浏览器语言解析 */
   locale?: Locale | null;
   onLocaleChange?: (locale: Locale) => void;
@@ -156,14 +173,18 @@ export type ReactViewPanelProps = {
   packageVersion?: string | null;
 };
 
-function ReactViewPanelInner({
+const ReactViewPanelInner = forwardRef<AbuilderViewHandle, ReactViewPanelProps>(function ReactViewPanelInner(
+  {
   initialZoom = 1,
   className,
   initialWorkspace = null,
+  workspaceId = null,
   nameSpace = null,
   packageName = null,
   packageVersion = null,
-}: ReactViewPanelProps) {
+}: ReactViewPanelProps,
+  ref
+) {
   const { t, locale, setLocale } = useI18n();
   const messages = useMemo(() => getPanelMessages(t), [t]);
   const THEME_STORAGE_KEY = appStorageKey("panel:theme", nameSpace);
@@ -1076,8 +1097,25 @@ function ReactViewPanelInner({
     panelRevision: `${historyCursor}|${allElements.length}`,
     onProjectApplied: handleWorkspaceProjectApplied,
     initialWorkspace,
+    workspaceId,
     nameSpace,
   });
+
+  const viewHandle = useMemo<AbuilderViewHandle>(
+    () => ({
+      getNameSpace: () => nameSpace ?? null,
+      getCurrentWorkspace: () => workspaceProjects.getCurrentWorkspaceRecord(),
+      openWorkspace: (idOrRecord) => workspaceProjects.handleOpenProject(idOrRecord),
+      createWorkspace: () => workspaceProjects.handleCreateProject(),
+      saveWorkspace: () => workspaceProjects.handleSaveProject(),
+      syncWorkspace: () => workspaceProjects.handleSyncProject(),
+    }),
+    [nameSpace, workspaceProjects]
+  );
+
+  useImperativeHandle(ref, () => viewHandle, [viewHandle]);
+
+  useEffect(() => registerAbuilderViewHandle(viewHandle), [viewHandle]);
 
   useEffect(() => {
     registerPreviewSnapshotProvider(async () => {
@@ -2798,10 +2836,16 @@ function ReactViewPanelInner({
         open={apiCollectionManagerOpen}
         onOpenChange={setApiCollectionManagerOpen}
         onUploadStart={(info) => {
-          emitAbuilderEvent(AbuilderEvents.apiCollectionUploadStart, info);
+          emitAbuilderEvent(AbuilderEvents.apiCollectionUploadStart, {
+            ...info,
+            nameSpace: nameSpace ?? null,
+          });
         }}
         onUploadSuccess={(info) => {
-          emitAbuilderEvent(AbuilderEvents.apiCollectionUploadSuccess, info);
+          emitAbuilderEvent(AbuilderEvents.apiCollectionUploadSuccess, {
+            ...info,
+            nameSpace: nameSpace ?? null,
+          });
         }}
         onSyncCollection={(record) => {
           const patches = buildApiCollectionSyncPatches({
@@ -2846,17 +2890,14 @@ function ReactViewPanelInner({
       <Toaster />
     </div>
   );
-}
+});
 
-export function ReactViewPanel({
-  locale,
-  onLocaleChange,
-  nameSpace,
-  ...rest
-}: ReactViewPanelProps) {
-  return (
-    <I18nRoot locale={locale} onLocaleChange={onLocaleChange} nameSpace={nameSpace}>
-      <ReactViewPanelInner nameSpace={nameSpace} {...rest} />
-    </I18nRoot>
-  );
-}
+export const ReactViewPanel = forwardRef<AbuilderViewHandle, ReactViewPanelProps>(
+  function ReactViewPanel({ locale, onLocaleChange, nameSpace, ...rest }, ref) {
+    return (
+      <I18nRoot locale={locale} onLocaleChange={onLocaleChange} nameSpace={nameSpace}>
+        <ReactViewPanelInner ref={ref} nameSpace={nameSpace} {...rest} />
+      </I18nRoot>
+    );
+  }
+);

@@ -24,5 +24,10 @@ export type AbuilderVueAppProps = {
    * 外部传入的完整工作区。省略或空则首次渲染空画布 / 空蓝图，不会自动打开 IndexedDB 中的记录。
    */
   initialWorkspace?: WorkspaceProjectRecord | null;
+  /**
+   * 按 IndexedDB id 打开工作区（不 remount）。
+   * 与 `initialWorkspace` 同时存在时：首次优先完整记录；之后 id 变化从 IndexedDB 打开。
+   */
+  workspaceId?: string | null;
 };
 

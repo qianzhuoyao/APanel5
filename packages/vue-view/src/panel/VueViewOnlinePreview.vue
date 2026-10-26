@@ -40,6 +40,8 @@ import {
   resolvePreviewLayerElements,
 } from "./utils/panelStateIO";
 import { applyPreviewSceneFill, readOutputScale } from "./utils/outputScale";
+import { registerPreviewSnapshotProvider } from "./library/preview-snapshot";
+import { capturePreviewSceneElement } from "./library/capture-preview-snapshot";
 
 const { t, locale } = useI18n();
 useBlueprintDslLocaleSync();
@@ -291,6 +293,29 @@ onMounted(() => {
   window.addEventListener("resize", onResize);
   onUnmounted(() => window.removeEventListener("resize", onResize));
 });
+
+watch(
+  [layoutReady, sceneRef, sceneBounds, fillScale, outputScale],
+  () => {
+    if (!layoutReady.value || !sceneRef.value) {
+      registerPreviewSnapshotProvider(null);
+      return;
+    }
+    registerPreviewSnapshotProvider(async () => {
+      const scene = sceneRef.value;
+      if (!scene) return null;
+      const width = outputScale.value
+        ? sceneBounds.value.width
+        : sceneBounds.value.width * fillScale.value.scaleX;
+      const height = outputScale.value
+        ? sceneBounds.value.height
+        : sceneBounds.value.height * fillScale.value.scaleY;
+      return capturePreviewSceneElement(scene, width, height);
+    });
+  },
+  { immediate: true }
+);
+onUnmounted(() => registerPreviewSnapshotProvider(null));
 
 function noopUpdate() {}
 function noopSelect() {}

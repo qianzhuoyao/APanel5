@@ -4,6 +4,23 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)，版本号遵循 [SemVer](https://semver.org/lang/zh-CN/)。
 
+## [1.1.40] - 2026-10-26
+
+配套：`react-view@1.0.39` · `vue-view@0.1.25` · `abuilder-vue@0.1.24` · `react-blueprint@1.0.24` · `vue-blueprint@0.1.19`
+
+### Added
+
+- 宿主侧完整 CRUD：`putWorkspaceProject` / `upsertWorkspaceProject`（可选 `emitEvent: "add"|"sync"`）、蓝图库 `putBlueprintLibraryRecord`、接口集合 `putApiCollection` / `upsertApiCollectionFromJson`、执行日志 `putExecutionRunRecord`
+- 命令式 API：`getCurrentWorkspace` / `openWorkspace` / `createWorkspace` / `saveWorkspace` / `syncWorkspace`；`App` / 面板支持 `ref`（`AbuilderViewHandle`）与 `workspaceId` prop（不 remount 打开）
+- 事件载荷补 `nameSpace`：`workspace:add` / `workspace:sync` / 接口上传事件；新增 `blueprint-library:changed`、`api-collection:changed`
+- `addEventSubscription(event, cb, { nameSpace })` 可按命名空间过滤
+- `initialWorkspace` 默认同步进 IndexedDB；「同步」在本地缺记录时改为 upsert
+- Vue 包对齐 `getPreviewSnapshot`
+
+### Changed
+
+- `workspace:add` / `workspace:sync` 回调类型为 `WorkspaceData & { nameSpace }`（多一个字段，原有字段用法兼容）
+
 ## [1.1.39] - 2026-10-13
 
 配套：`react-view@1.0.38` · `vue-view@0.1.24` · `abuilder-vue@0.1.23` · `react-blueprint@1.0.23` · `vue-blueprint@0.1.18`
