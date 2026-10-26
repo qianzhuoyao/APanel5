@@ -119,16 +119,20 @@ export class PanelRuler {
         ctx.moveTo(px + 0.5, height);
         ctx.lineTo(px + 0.5, height - lineLen);
         if (isMajor) {
-          const label = String(Math.round((i * unit) / segment));
-          ctx.fillText(label, px + 2, 2);
+          // 主刻度标签：世界坐标 = i * (unit/segment)
+          const label = String(Math.round(i * (unit / segment)));
+          ctx.fillText(label, px + 3, 1);
         }
       } else {
         ctx.moveTo(width, px + 0.5);
         ctx.lineTo(width - lineLen, px + 0.5);
         if (isMajor) {
-          const label = String(Math.round((i * unit) / segment));
+          const label = String(Math.round(i * (unit / segment)));
           ctx.save();
-          ctx.translate(2, px + 2);
+          ctx.translate(1, px + 3);
+          ctx.rotate(-Math.PI / 2);
+          ctx.textAlign = "right";
+          ctx.textBaseline = "top";
           ctx.fillText(label, 0, 0);
           ctx.restore();
         }

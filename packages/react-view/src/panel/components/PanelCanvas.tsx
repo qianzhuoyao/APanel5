@@ -83,6 +83,7 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
     el.style.transform = `scale(${scale})`;
     el.style.transformOrigin = "0 0";
     el.dataset.canvasScale = String(scale);
+    el.style.setProperty("--rv-canvas-scale", String(scale));
   }, []);
 
   const commitScroll = useCallback(

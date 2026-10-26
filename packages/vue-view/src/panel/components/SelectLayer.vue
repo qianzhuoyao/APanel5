@@ -44,7 +44,8 @@ function createSelecto() {
 
   const selectedIdSet = new Set(props.selectedIds);
   const selecto = new Selecto({
-    container: props.container,
+    // 框选层挂在未 scale 的视口上，避免选区宽高被画布 transform 放大、线宽视觉变粗
+    container: dragRoot,
     rootContainer: dragRoot,
     portalContainer: document.body,
     dragContainer: dragRoot,

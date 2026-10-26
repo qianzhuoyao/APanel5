@@ -51,8 +51,8 @@ function toggle() {
 </script>
 
 <template>
-  <div class="space-y-2.5 rounded-lg border border-gray-200/80 bg-white/80 p-2.5">
-    <div class="flex items-center gap-1.5">
+  <div class="space-y-1.5 rounded-md border border-border/50 bg-background/70 p-2">
+    <div class="flex items-center gap-1">
       <button
         v-if="collapsible"
         type="button"
@@ -66,7 +66,7 @@ function toggle() {
         <slot name="hint" />
       </ConfigHintIcon>
     </div>
-    <div v-show="isOpen" class="space-y-2.5">
+    <div v-show="isOpen" class="space-y-1.5">
       <slot />
     </div>
   </div>

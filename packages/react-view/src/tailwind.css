@@ -27,6 +27,70 @@
 }
 
 /*
+ * 物料侧栏：容器查询写在源 CSS 里（JIT 的 @[Npx] 经常未进 dist）
+ * 窄：单列、卡片最多 112px；宽：auto-fill 换行，单卡约 88–104px
+ */
+.rv-material-sidebar {
+  container-type: inline-size;
+  container-name: rv-material;
+}
+
+.rv-material-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: stretch;
+  gap: 0.375rem;
+}
+
+.rv-material-card {
+  width: 100%;
+  max-width: 112px;
+  justify-self: center;
+}
+
+@container rv-material (min-width: 200px) {
+  .rv-material-grid {
+    grid-template-columns: repeat(auto-fill, minmax(88px, 104px));
+  }
+
+  .rv-material-card {
+    max-width: none;
+    justify-self: stretch;
+  }
+}
+
+/*
+ * 配置侧栏：窄时多列表单改单列，避免挤成一团
+ */
+.scope-config-sidebar {
+  container-type: inline-size;
+  container-name: rv-config;
+}
+
+@container rv-config (max-width: 260px) {
+  .scope-config-sidebar .grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .scope-config-sidebar .grid > * {
+    min-width: 0;
+  }
+}
+
+/*
+ * 节点选中描边：用倒数抵消画布 scale，屏幕上始终约 2px（勿用 ring/border，会随缩放变粗）
+ */
+.rv-node-selected {
+  box-shadow: 0 0 0 calc(2px / var(--rv-canvas-scale, 1)) rgb(59 130 246 / 0.9);
+}
+
+/* Selecto 框选：渲染在 body，线宽保持屏幕 1px */
+.selecto-selection {
+  border-width: 1px !important;
+  box-sizing: border-box !important;
+}
+
+/*
  * Moveable 控制框：
  * - 根节点必须高于画布元素 zIndex（节点默认 ≥1），否则多选组框线会被节点盖住，只剩锚点可见
  * - 勿把 .moveable-group 压到 z-index:1（会覆盖根节点的 9999）
@@ -65,14 +129,11 @@
   background: transparent !important;
 }
 
+/* 锚点尺寸交给 Moveable 的 scale(zoom) 补偿，勿写死 px 覆盖，否则放大后会偏粗 */
 .rv-moveable-layer .moveable-control {
-  width: 14px !important;
-  height: 14px !important;
-  margin-top: -7px !important;
-  margin-left: -7px !important;
   border-radius: 50% !important;
   box-sizing: border-box !important;
-  border: 2px solid hsl(var(--background)) !important;
+  border-color: hsl(var(--background)) !important;
   background: #1990ff !important;
   background: var(--moveable-color) !important;
   z-index: 10 !important;

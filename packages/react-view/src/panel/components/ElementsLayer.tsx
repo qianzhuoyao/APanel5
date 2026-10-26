@@ -957,7 +957,7 @@ const PanelElementNode = React.memo(function PanelElementNode({
       className={[
         "absolute select-none",
         previewMode ? "" : "rv-selectable",
-        !previewMode && isSelected ? "ring-2 ring-blue-500/90 ring-offset-0" : "",
+        !previewMode && isSelected ? "rv-node-selected" : "",
         hasViewEvent ? "cursor-pointer" : "",
       ].join(" ")}
       data-element-id={el.id}

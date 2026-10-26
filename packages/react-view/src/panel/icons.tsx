@@ -158,3 +158,120 @@ export function IconImage() {
     </svg>
   );
 }
+
+export function IconFolder() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z" />
+    </svg>
+  );
+}
+
+export function IconGrid() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
+      <rect x="3" y="3" width="7" height="7" rx="1" />
+      <rect x="14" y="3" width="7" height="7" rx="1" />
+      <rect x="3" y="14" width="7" height="7" rx="1" />
+      <rect x="14" y="14" width="7" height="7" rx="1" />
+    </svg>
+  );
+}
+
+export function IconTree() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M12 4v8" />
+      <path d="M6 20v-4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v4" />
+      <circle cx="12" cy="4" r="2" />
+      <circle cx="6" cy="20" r="2" />
+      <circle cx="18" cy="20" r="2" />
+    </svg>
+  );
+}
+
+export function IconSearch() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
+      <circle cx="11" cy="11" r="7" />
+      <path d="m20 20-3.5-3.5" />
+    </svg>
+  );
+}
+
+export function IconStar({ filled }: { filled?: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-3.5 w-3.5"
+      fill={filled ? "currentColor" : "none"}
+      stroke="currentColor"
+      strokeWidth="2"
+    >
+      <path d="m12 3 2.7 5.5 6 .9-4.4 4.3 1 6L12 16.8 6.7 19.7l1-6L3.3 9.4l6-.9L12 3Z" />
+    </svg>
+  );
+}
+
+export function IconEyeOff() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M3 3l18 18" />
+      <path d="M10.6 10.6a2 2 0 0 0 2.8 2.8" />
+      <path d="M9.9 5.1A10.6 10.6 0 0 1 12 5c5 0 9.3 3.1 11 7-.5 1.2-1.2 2.3-2.1 3.2" />
+      <path d="M6.1 6.1C4.2 7.3 2.7 9 1.9 11c1.7 3.9 6 7 10.1 7 1.4 0 2.7-.3 3.9-.7" />
+    </svg>
+  );
+}
+
+/** 仅看引用子树 */
+export function IconRefFilter({ active }: { active?: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-3.5 w-3.5"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={active ? 2.2 : 2}
+    >
+      <path d="M4 5h16l-5.5 6.5V18l-5 2.5v-9L4 5Z" fill={active ? "currentColor" : "none"} fillOpacity={active ? 0.2 : 0} />
+      <circle cx="16.5" cy="16.5" r="2.2" />
+      <path d="M14.8 15.2 12 12.5" />
+    </svg>
+  );
+}
+
+export function IconBlueprint({ active }: { active?: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-3.5 w-3.5"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={active ? 2.2 : 2}
+    >
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <circle cx="8" cy="10" r="1.5" fill={active ? "currentColor" : "none"} />
+      <circle cx="16" cy="10" r="1.5" fill={active ? "currentColor" : "none"} />
+      <circle cx="12" cy="16" r="1.5" fill={active ? "currentColor" : "none"} />
+      <path d="M9.2 10.8 10.8 14.2M14.8 10.8 13.2 14.2" />
+    </svg>
+  );
+}
+
+export function IconSun() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 2v2.5M12 19.5V22M4.93 4.93l1.77 1.77M17.3 17.3l1.77 1.77M2 12h2.5M19.5 12H22M4.93 19.07 6.7 17.3M17.3 6.7l1.77-1.77" />
+    </svg>
+  );
+}
+
+export function IconMoon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3c0 .66.08 1.3.22 1.92A7 7 0 0 0 19.08 12c.62.14 1.26.22 1.92.22Z" />
+    </svg>
+  );
+}

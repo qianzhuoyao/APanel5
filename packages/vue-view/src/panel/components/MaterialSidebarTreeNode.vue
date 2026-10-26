@@ -121,24 +121,27 @@ function onDragStart(e: DragEvent) {
   <template v-if="visible">
     <div
       :class="[
-        'mb-1 flex items-center gap-1 rounded py-1',
-        selected ? 'bg-primary/15 text-foreground' : 'text-muted-foreground hover:bg-accent/60',
+        'group/node flex min-w-0 items-center gap-0.5 rounded-sm py-0.5 pr-1',
+        selected ? 'bg-primary/15 text-foreground' : 'text-foreground/85 hover:bg-accent/55',
       ]"
-      :style="{ paddingLeft: `${6 + level * 14}px`, paddingRight: '6px' }"
+      style="padding-left: 2px"
     >
       <button
         v-if="hasChildren"
         type="button"
-        class="flex h-7 w-7 items-center justify-center rounded text-sm hover:bg-accent"
+        class="flex h-5 w-4 shrink-0 items-center justify-center rounded text-[11px] text-muted-foreground hover:bg-accent"
         @click="emit('toggleExpanded', nodeKey, !isExpanded)"
       >
         {{ isExpanded ? "▾" : "▸" }}
       </button>
-      <span v-else class="inline-flex h-7 w-7 items-center justify-center text-sm opacity-40">•</span>
+      <span v-else class="inline-flex h-5 w-4 shrink-0 items-center justify-center text-[10px] text-border">
+        <span class="h-px w-2 bg-border" />
+      </span>
 
+      <div class="relative min-w-0 flex-1">
       <button
         type="button"
-        class="min-w-0 flex-1 truncate text-left"
+        class="block w-full truncate pr-1 text-left text-[12px] font-medium"
         :title="getNodeDisplayName(node)"
         :draggable="!node.locked"
         @click="emit('selectNode', node.id, node.layerId)"
@@ -156,6 +159,7 @@ function onDragStart(e: DragEvent) {
         {{ getNodeDisplayName(node, t) }}
       </button>
 
+      <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center gap-0.5 bg-gradient-to-l from-background via-background to-transparent pl-3 opacity-0 transition-opacity group-hover/node:pointer-events-auto group-hover/node:opacity-100 group-focus-within/node:pointer-events-auto group-focus-within/node:opacity-100">
       <span
         v-if="nodeHomeLayer?.isMapping"
         class="inline-flex shrink-0 items-center rounded-md border-2 border-violet-600 bg-violet-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-violet-950 shadow-sm dark:border-violet-400 dark:bg-violet-500/35 dark:text-violet-50"
@@ -261,14 +265,15 @@ function onDragStart(e: DragEvent) {
           </svg>
         </button>
       </Tooltip>
+      </div>
+      </div>
     </div>
 
-    <template v-if="hasChildren && isExpanded">
+    <div v-if="hasChildren && isExpanded" class="ml-[7px] border-l border-border/45 pl-1.5">
       <template v-for="child in children" :key="`${path}->${child.id}`">
         <div
           v-if="nextVisited.has(child.id)"
-          class="py-1 text-[10px] text-muted-foreground/80"
-          :style="{ paddingLeft: `${6 + (level + 1) * 14}px` }"
+          class="py-0.5 pl-1 text-[10px] text-muted-foreground/80"
           :title="t('panel.material.circularRefStopped')"
         >
           {{ getNodeDisplayName(child, t) }}{{ t("panel.material.circularRefSuffix") }}
@@ -297,7 +302,7 @@ function onDragStart(e: DragEvent) {
           @drag-end="emit('dragEnd')"
         />
       </template>
-    </template>
+    </div>
   </template>
 </template>
 

@@ -87,6 +87,7 @@ function applyCanvasTransform(scale: number) {
   el.style.transform = `scale(${scale})`;
   el.style.transformOrigin = "0 0";
   el.dataset.canvasScale = String(scale);
+  el.style.setProperty("--rv-canvas-scale", String(scale));
 }
 
 function notifyViewportSync() {

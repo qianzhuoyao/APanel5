@@ -50,9 +50,9 @@ import {
   Modal,
   Slider,
   Space,
-  Switch,
   Tabs,
   Tag,
+  Tooltip,
   message,
 } from "ant-design-vue";
 import { usePanelElements } from "./hooks/usePanelElements";
@@ -188,8 +188,8 @@ const editingLayerId = ref<string | null>(null);
 const editingLayerName = ref("");
 const isMergingLayers = ref(false);
 const mergeLayerName = ref("");
-const leftWidth = ref(240);
-const rightWidth = ref(300);
+const leftWidth = ref(220);
+const rightWidth = ref(280);
 const importInputRef = ref<HTMLInputElement | null>(null);
 const blueprintImportInputRef = ref<HTMLInputElement | null>(null);
 const apiCollectionManagerOpen = ref(false);
@@ -858,9 +858,9 @@ onUnmounted(() => window.removeEventListener("keydown", onKeyDown));
 
 <template>
   <Layout class="vue-view-panel h-screen overflow-hidden" :class="props.class" :key="locale">
-    <Layout.Header class="flex h-auto flex-wrap items-center gap-2 bg-[#001529] px-3 py-2">
+    <Layout.Header class="flex h-10 flex-wrap items-center gap-2 border-b border-border/70 !bg-background/80 px-3 py-0 leading-none backdrop-blur-md">
       <Dropdown :trigger="['click']">
-        <Button type="text" class="!text-white">{{ t("panel.menubar.file") }}</Button>
+        <Button type="text" class="!text-foreground">{{ t("panel.menubar.file") }}</Button>
         <template #overlay>
           <Menu>
             <Menu.Item @click="handleExport">{{ t("panel.menubar.exportPanelJson") }}</Menu.Item>
@@ -869,7 +869,7 @@ onUnmounted(() => window.removeEventListener("keydown", onKeyDown));
         </template>
       </Dropdown>
       <Dropdown :trigger="['click']">
-        <Button type="text" class="!text-white">{{ t("panel.menubar.edit") }}</Button>
+        <Button type="text" class="!text-foreground">{{ t("panel.menubar.edit") }}</Button>
         <template #overlay>
           <Menu>
             <Menu.Item :disabled="!canUndo" @click="undo">{{ t("panel.menubar.undo") }}</Menu.Item>
@@ -885,7 +885,7 @@ onUnmounted(() => window.removeEventListener("keydown", onKeyDown));
         </template>
       </Dropdown>
       <Dropdown :trigger="['click']">
-        <Button type="text" class="!text-white">{{ t("panel.menubar.blueprint") }}</Button>
+        <Button type="text" class="!text-foreground">{{ t("panel.menubar.blueprint") }}</Button>
         <template #overlay>
           <Menu>
             <Menu.Item @click="openBlueprintExport">{{ t("panel.menubar.exportBlueprint") }}</Menu.Item>
@@ -908,7 +908,7 @@ onUnmounted(() => window.removeEventListener("keydown", onKeyDown));
         @preview-project="openOnlinePreviewForProject"
       />
       <Dropdown :trigger="['click']">
-        <Button type="text" class="!text-white">{{ t("panel.menubar.settings") }}</Button>
+        <Button type="text" class="!text-foreground">{{ t("panel.menubar.settings") }}</Button>
         <template #overlay>
           <Menu>
             <Menu.ItemGroup :title="t('panel.theme.language')">
@@ -930,7 +930,7 @@ onUnmounted(() => window.removeEventListener("keydown", onKeyDown));
         </template>
       </Dropdown>
       <Dropdown :trigger="['click']">
-        <Button type="text" class="!text-white">{{ t("panel.theme.language") }}</Button>
+        <Button type="text" class="!text-foreground">{{ t("panel.theme.language") }}</Button>
         <template #overlay>
           <Menu>
             <Menu.Item :class="{ 'ant-menu-item-selected': locale === 'zh-CN' }" @click="setLocale('zh-CN')">{{ t("panel.theme.zhCN") }}</Menu.Item>
@@ -965,12 +965,12 @@ onUnmounted(() => window.removeEventListener("keydown", onKeyDown));
 
       <Layout.Content class="relative min-h-0 min-w-0">
         <div class="flex h-full min-h-0 flex-col">
-          <div class="flex flex-wrap items-center gap-2 border-b bg-white px-3 py-2">
+          <div class="flex flex-wrap items-center gap-2 border-b border-border/60 bg-muted/15 px-3 py-1.5">
             <Input
               :value="displayProductName"
               size="small"
               @update:value="(value: string) => (productName = value)"
-              class="w-[200px]"
+              class="w-[180px]"
               :placeholder="t('panel.menubar.productName')"
             />
             <span class="text-xs text-gray-500">{{ t("panel.menubar.zoom") }}</span>
@@ -984,10 +984,35 @@ onUnmounted(() => window.removeEventListener("keydown", onKeyDown));
             />
             <Tag v-if="activeLayer">{{ activeLayer.name }}</Tag>
             <Tag color="blue">{{ t("panel.menubar.selectedCount", { count: selectedIds.length }) }}</Tag>
-            <div data-blueprint-toggle class="ml-auto flex items-center gap-2">
-              <span class="text-xs text-gray-500">{{ t("panel.menubar.blueprint") }}</span>
-              <Switch v-model:checked="blueprintOpen" size="small" />
-            </div>
+            <Tooltip :title="t('panel.menubar.showBlueprintPanel')">
+              <button
+                type="button"
+                data-blueprint-toggle
+                class="ml-auto inline-flex h-7 w-7 items-center justify-center rounded-md border transition-colors"
+                :class="
+                  blueprintOpen
+                    ? 'border-primary/50 bg-primary/15 text-primary'
+                    : 'border-border/70 bg-background/80 text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                "
+                :aria-pressed="blueprintOpen"
+                :aria-label="t('panel.menubar.showBlueprintPanel')"
+                @click="blueprintOpen = !blueprintOpen"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  class="h-3.5 w-3.5"
+                  fill="none"
+                  stroke="currentColor"
+                  :stroke-width="blueprintOpen ? 2.2 : 2"
+                >
+                  <rect x="3" y="4" width="18" height="16" rx="2" />
+                  <circle cx="8" cy="10" r="1.5" :fill="blueprintOpen ? 'currentColor' : 'none'" />
+                  <circle cx="16" cy="10" r="1.5" :fill="blueprintOpen ? 'currentColor' : 'none'" />
+                  <circle cx="12" cy="16" r="1.5" :fill="blueprintOpen ? 'currentColor' : 'none'" />
+                  <path d="M9.2 10.8 10.8 14.2M14.8 10.8 13.2 14.2" />
+                </svg>
+              </button>
+            </Tooltip>
           </div>
 
           <WorkspaceStageSplit
@@ -1056,63 +1081,112 @@ onUnmounted(() => window.removeEventListener("keydown", onKeyDown));
             </PanelCanvas>
           </WorkspaceStageSplit>
 
-          <div class="border-t bg-white px-2 py-2">
-            <div class="mb-2 flex flex-wrap items-center gap-2">
-              <span class="text-xs font-semibold text-gray-500">{{ t("panel.layers.title") }}</span>
-              <Button size="small" @click="addLayer()">{{ t("panel.layers.addShort") }}</Button>
-              <Button size="small" :disabled="!canMergeLayers" @click="isMergingLayers = true">{{ t("panel.layers.mergeShort") }}</Button>
+          <div class="border-t border-border/50 bg-muted/5 px-1.5 py-0.5">
+            <div class="flex min-w-0 flex-wrap items-center gap-1">
+              <Tooltip :title="t('panel.layers.title')">
+                <span class="inline-flex h-6 items-center px-1 text-[11px] font-semibold text-muted-foreground">
+                  {{ t("panel.layers.title") }}
+                </span>
+              </Tooltip>
+              <Tooltip :title="t('panel.layers.add')">
+                <Button size="small" class="!h-6 !px-2 !text-[11px]" @click="addLayer()">
+                  {{ t("panel.layers.addShort") }}
+                </Button>
+              </Tooltip>
+              <Tooltip :title="canMergeLayers ? t('panel.layers.merge') : t('panel.layers.mergeNeedTwo')">
+                <Button
+                  size="small"
+                  class="!h-6 !px-2 !text-[11px]"
+                  :disabled="!canMergeLayers"
+                  @click="isMergingLayers = true"
+                >
+                  {{ t("panel.layers.mergeShort") }}
+                </Button>
+              </Tooltip>
+              <Tabs
+                size="small"
+                class="min-w-0 flex-1"
+                :active-key="activeLayerId"
+                type="card"
+                @update:active-key="(k: string | number) => setActiveLayer(String(k))"
+              >
+                <Tabs.TabPane v-for="layer in layers" :key="layer.id">
+                  <template #tab>
+                    <span class="inline-flex max-w-[110px] items-center gap-1 text-[11px] font-medium">
+                      <span class="truncate">{{ layer.name }}</span>
+                      <Tag v-if="layer.isPrimary" color="green" class="!m-0 !px-1 !text-[10px]">
+                        {{ t("panel.layers.primary") }}
+                      </Tag>
+                    </span>
+                  </template>
+                </Tabs.TabPane>
+              </Tabs>
             </div>
-            <Tabs
-              size="small"
-              :active-key="activeLayerId"
-              type="card"
-              @update:active-key="(k: string | number) => setActiveLayer(String(k))"
-            >
-              <Tabs.TabPane v-for="layer in layers" :key="layer.id">
-                <template #tab>
-                  <span class="inline-flex items-center gap-1">
-                    {{ layer.name }}
-                    <Tag v-if="layer.isMapping" color="blue" class="!m-0">{{ t("panel.layers.mapping") }}</Tag>
-                    <Tag v-if="layer.isPrimary" color="green" class="!m-0">{{ t("panel.layers.primary") }}</Tag>
-                  </span>
-                </template>
-              </Tabs.TabPane>
-            </Tabs>
 
-            <div v-if="activeLayer" class="mt-2 flex flex-wrap items-center gap-2 rounded border px-2 py-1.5 text-xs">
+            <div
+              v-if="activeLayer"
+              class="mt-1 flex flex-wrap items-center gap-1 rounded-md border border-border/50 bg-card/80 px-1.5 py-0.5 text-[11px]"
+            >
               <template v-if="editingLayerId === activeLayer.id">
                 <Input
                   v-model:value="editingLayerName"
                   size="small"
-                  class="w-40"
+                  class="!h-6 w-28"
                   @press-enter="commitRenameLayer"
                 />
-                <Button size="small" type="primary" @click="commitRenameLayer">{{ t("common.ok") }}</Button>
+                <Tooltip :title="t('common.ok')">
+                  <Button size="small" type="primary" class="!h-6 !px-2" @click="commitRenameLayer">
+                    {{ t("common.ok") }}
+                  </Button>
+                </Tooltip>
               </template>
               <template v-else>
-                <span class="font-medium">{{ activeLayer.name }}</span>
-                <Button size="small" type="link" @click="startRenameLayer(activeLayer.id, activeLayer.name)">{{ t("panel.layers.renameShort") }}</Button>
+                <span class="max-w-[100px] truncate font-semibold">{{ activeLayer.name }}</span>
+                <Tooltip :title="t('panel.layers.rename')">
+                  <Button
+                    size="small"
+                    type="link"
+                    class="!h-6 !px-1 !text-[11px]"
+                    @click="startRenameLayer(activeLayer.id, activeLayer.name)"
+                  >
+                    {{ t("panel.layers.renameShort") }}
+                  </Button>
+                </Tooltip>
               </template>
-              <Button size="small" @click="toggleLayerLock(activeLayer.id)">
-                {{ activeLayer.locked ? t("panel.layers.unlockShort") : t("panel.layers.lockShort") }}
-              </Button>
-              <Checkbox
-                :checked="Boolean(activeLayer.mergeSelected)"
-                @change="() => toggleLayerMergeSelected(activeLayer!.id)"
-              >
-                {{ t("panel.layers.joinMerge") }}
-              </Checkbox>
-              <Button size="small" :disabled="activeLayer.isPrimary" @click="setPrimaryLayer(activeLayer.id)">
-                {{ t("panel.layers.setPrimary") }}
-              </Button>
-              <Button
-                size="small"
-                danger
-                :disabled="!activeLayer.editable"
-                @click="deleteLayer(activeLayer.id)"
-              >
-                {{ t("panel.layers.delete") }}
-              </Button>
+              <Tooltip :title="activeLayer.locked ? t('panel.layers.unlock') : t('panel.layers.lock')">
+                <Button size="small" class="!h-6 !px-2 !text-[11px]" @click="toggleLayerLock(activeLayer.id)">
+                  {{ activeLayer.locked ? t("panel.layers.unlockShort") : t("panel.layers.lockShort") }}
+                </Button>
+              </Tooltip>
+              <Tooltip :title="t('panel.layers.joinMerge')">
+                <Checkbox
+                  :checked="Boolean(activeLayer.mergeSelected)"
+                  @change="() => toggleLayerMergeSelected(activeLayer!.id)"
+                >
+                  <span class="text-[11px]">{{ t("panel.layers.joinMerge") }}</span>
+                </Checkbox>
+              </Tooltip>
+              <Tooltip :title="t('panel.layers.setPrimaryHint')">
+                <Button
+                  size="small"
+                  class="!h-6 !px-2 !text-[11px]"
+                  :disabled="activeLayer.isPrimary"
+                  @click="setPrimaryLayer(activeLayer.id)"
+                >
+                  {{ t("panel.layers.setPrimary") }}
+                </Button>
+              </Tooltip>
+              <Tooltip :title="t('panel.layers.delete')">
+                <Button
+                  size="small"
+                  danger
+                  class="!h-6 !px-2 !text-[11px]"
+                  :disabled="!activeLayer.editable"
+                  @click="deleteLayer(activeLayer.id)"
+                >
+                  {{ t("panel.layers.delete") }}
+                </Button>
+              </Tooltip>
             </div>
           </div>
         </div>

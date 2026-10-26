@@ -304,14 +304,22 @@ export function MoveableLayer({
     });
   }, [lockedSelected, pointerRoot, selectedTargets]);
 
+  const applyLiveMoveableZoom = useCallback(() => {
+    const moveable = moveableRef.current;
+    if (!moveable) return;
+    const liveScale = readLiveCanvasScale(canvasContainer, propCanvasScale);
+    moveable.zoom = 1 / Math.max(0.0001, liveScale);
+  }, [canvasContainer, propCanvasScale]);
+
   const scheduleViewportSync = useCallback(() => {
     if (syncRafRef.current != null) return;
     syncRafRef.current = requestAnimationFrame(() => {
       syncRafRef.current = null;
+      applyLiveMoveableZoom();
       moveableRef.current?.updateRect?.();
       syncLockBadge();
     });
-  }, [syncLockBadge]);
+  }, [applyLiveMoveableZoom, syncLockBadge]);
 
   useEffect(() => {
     if (!viewportSyncRef) return;
@@ -322,9 +330,10 @@ export function MoveableLayer({
   }, [scheduleViewportSync, viewportSyncRef]);
 
   useLayoutEffect(() => {
+    applyLiveMoveableZoom();
     moveableRef.current?.updateRect?.();
     syncLockBadge();
-  }, [canvasScale, syncLockBadge]);
+  }, [applyLiveMoveableZoom, canvasScale, syncLockBadge]);
 
   const updateRectNextFrame = scheduleViewportSync;
   const getGridDirectChildren = useCallback(

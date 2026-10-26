@@ -1,9 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { useI18n } from "@arronqzy/i18n/react";
 import {
-  Card,
-  CardContent,
-  CardHeader,
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
@@ -12,7 +9,11 @@ import {
   EmptyIcon,
   EmptyTitle,
   Input,
-  Switch,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
   Tabs,
   TabsContent,
   TabsList,
@@ -22,6 +23,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@arronqzy/ui";
+import { IconFolder, IconGrid, IconRefFilter, IconSearch, IconTree } from "../icons";
 import type { PanelElement, ReferenceCopyMode } from "../types";
 import type { PanelLayer } from "../types";
 import { getPanelMessages } from "../constants/messages";
@@ -143,25 +145,26 @@ function IconDeepCopy({ className = "h-3.5 w-3.5" }: { className?: string }) {
 function MaterialPreview({ id }: { id: string }) {
   const { t } = useI18n();
   const common =
-    "relative aspect-[4/3] w-full shrink-0 overflow-hidden rounded-md border border-border bg-gradient-to-br from-card to-muted/40";
+    "relative mx-auto aspect-[4/3] w-full shrink-0 overflow-hidden rounded-md border border-border/60 bg-gradient-to-br from-card to-muted/35";
+  const previewStyle = { maxWidth: 88, maxHeight: 64 } as const;
 
   if (id === "bar") {
     return (
-      <div className={common}>
-        <div className="absolute inset-0 grid grid-cols-5 items-end gap-1 px-2 pb-2 pt-1.5">
-          <div className="h-2 rounded-sm bg-primary/55" />
-          <div className="h-4 rounded-sm bg-primary/65" />
-          <div className="h-7 rounded-sm bg-primary/80" />
-          <div className="h-5 rounded-sm bg-primary/70" />
-          <div className="h-3 rounded-sm bg-primary/60" />
-        </div>
+      <div className={common} style={previewStyle}>
+        <svg viewBox="0 0 80 60" className="h-full w-full" aria-hidden="true">
+          <rect x="8" y="40" width="8" height="12" rx="1.5" className="fill-primary/55" />
+          <rect x="22" y="30" width="8" height="22" rx="1.5" className="fill-primary/65" />
+          <rect x="36" y="16" width="8" height="36" rx="1.5" className="fill-primary/80" />
+          <rect x="50" y="24" width="8" height="28" rx="1.5" className="fill-primary/70" />
+          <rect x="64" y="34" width="8" height="18" rx="1.5" className="fill-primary/60" />
+        </svg>
       </div>
     );
   }
 
   if (id === "line" || id === "area") {
     return (
-      <div className={common}>
+      <div className={common} style={previewStyle}>
         <svg viewBox="0 0 80 60" className="h-full w-full">
           {id === "area" ? (
             <polygon
@@ -184,7 +187,7 @@ function MaterialPreview({ id }: { id: string }) {
 
   if (id === "pie") {
     return (
-      <div className={common}>
+      <div className={common} style={previewStyle}>
         <svg viewBox="0 0 80 60" className="h-full w-full">
           <circle cx="40" cy="30" r="16" className="fill-primary/20" />
           <path d="M40 30 L40 14 A16 16 0 0 1 55 39 Z" className="fill-primary/75" />
@@ -196,7 +199,7 @@ function MaterialPreview({ id }: { id: string }) {
 
   if (id === "scatter") {
     return (
-      <div className={common}>
+      <div className={common} style={previewStyle}>
         <svg viewBox="0 0 80 60" className="h-full w-full">
           <circle cx="14" cy="42" r="2.5" className="fill-primary/80" />
           <circle cx="24" cy="34" r="2.5" className="fill-primary/70" />
@@ -210,7 +213,7 @@ function MaterialPreview({ id }: { id: string }) {
 
   if (id === "radar") {
     return (
-      <div className={common}>
+      <div className={common} style={previewStyle}>
         <svg viewBox="0 0 80 60" className="h-full w-full">
           <polygon points="40,10 58,20 54,40 26,40 22,20" className="fill-primary/20 stroke-primary/60" />
           <polygon points="40,16 52,23 49,36 31,36 28,24" className="fill-primary/45 stroke-primary/80" />
@@ -221,7 +224,7 @@ function MaterialPreview({ id }: { id: string }) {
 
   if (id === "gauge") {
     return (
-      <div className={common}>
+      <div className={common} style={previewStyle}>
         <svg viewBox="0 0 80 60" className="h-full w-full">
           <path d="M12 44a28 28 0 0 1 56 0" className="fill-none stroke-primary/35" strokeWidth="6" />
           <path d="M12 44a28 28 0 0 1 40-24" className="fill-none stroke-primary/80" strokeWidth="6" />
@@ -233,7 +236,7 @@ function MaterialPreview({ id }: { id: string }) {
 
   if (id === "funnel") {
     return (
-      <div className={common}>
+      <div className={common} style={previewStyle}>
         <svg viewBox="0 0 80 60" className="h-full w-full">
           <polygon points="10,10 70,10 58,22 22,22" className="fill-primary/80" />
           <polygon points="22,24 58,24 50,34 30,34" className="fill-primary/65" />
@@ -245,7 +248,7 @@ function MaterialPreview({ id }: { id: string }) {
 
   if (id === "text") {
     return (
-      <div className={common}>
+      <div className={common} style={previewStyle}>
         <div className="space-y-1.5 px-2 py-2">
           <div className="h-2 w-10 rounded bg-primary/70" />
           <div className="h-1.5 w-full rounded bg-muted-foreground/45" />
@@ -258,7 +261,7 @@ function MaterialPreview({ id }: { id: string }) {
 
   if (id === "table") {
     return (
-      <div className={common}>
+      <div className={common} style={previewStyle}>
         <div className="absolute inset-0 flex flex-col gap-1 p-2">
           <div className="grid h-3 flex-none grid-cols-3 gap-1">
             <div className="rounded-sm bg-primary/75" />
@@ -280,7 +283,7 @@ function MaterialPreview({ id }: { id: string }) {
 
   if (id === "rect") {
     return (
-      <div className={common}>
+      <div className={common} style={previewStyle}>
         <div className="absolute inset-2 rounded-md border-2 border-primary/80 bg-primary/15" />
       </div>
     );
@@ -288,7 +291,7 @@ function MaterialPreview({ id }: { id: string }) {
 
   if (id === "geometry") {
     return (
-      <div className={common}>
+      <div className={common} style={previewStyle}>
         <svg viewBox="0 0 80 60" className="h-full w-full">
           <circle cx="22" cy="18" r="8" className="fill-primary/75" />
           <rect x="36" y="10" width="16" height="16" rx="3" className="fill-primary/55" />
@@ -302,7 +305,7 @@ function MaterialPreview({ id }: { id: string }) {
 
   if (id === "scene3d") {
     return (
-      <div className={common}>
+      <div className={common} style={previewStyle}>
         <svg viewBox="0 0 80 60" className="h-full w-full">
           <polygon points="40,8 62,22 62,44 40,56 18,44 18,22" className="fill-primary/20 stroke-primary/80" strokeWidth="1.5" />
           <polygon points="40,8 62,22 40,32 18,22" className="fill-primary/45" />
@@ -315,7 +318,7 @@ function MaterialPreview({ id }: { id: string }) {
 
   if (id === "reference") {
     return (
-      <div className={common}>
+      <div className={common} style={previewStyle}>
         <div className="absolute inset-2 rounded-md border border-dashed border-primary/70 bg-primary/10" />
         <div className="absolute inset-0 flex items-center justify-center text-[10px] text-primary/80">
           {t("panel.material.reference")}
@@ -326,7 +329,7 @@ function MaterialPreview({ id }: { id: string }) {
 
   if (id === "image") {
     return (
-      <div className={common}>
+      <div className={common} style={previewStyle}>
         <div className="absolute inset-0 bg-gradient-to-br from-primary/25 via-muted/60 to-card" />
         <svg viewBox="0 0 80 60" className="absolute inset-0 h-full w-full">
           <circle cx="16" cy="14" r="5" className="fill-primary/70" />
@@ -339,7 +342,7 @@ function MaterialPreview({ id }: { id: string }) {
 
   if (id === "video") {
     return (
-      <div className={common}>
+      <div className={common} style={previewStyle}>
         <div className="absolute inset-0 bg-primary/12" />
         <div className="absolute left-2 right-2 top-2 h-1.5 rounded bg-primary/35" />
         <div className="absolute inset-0 flex items-center justify-center">
@@ -353,7 +356,7 @@ function MaterialPreview({ id }: { id: string }) {
 
   if (id === "audio") {
     return (
-      <div className={common}>
+      <div className={common} style={previewStyle}>
         <div className="absolute inset-0 flex items-center justify-center gap-1">
           <div className="h-3 w-1.5 rounded bg-primary/50" />
           <div className="h-6 w-1.5 rounded bg-primary/75" />
@@ -366,7 +369,7 @@ function MaterialPreview({ id }: { id: string }) {
   }
   if (id === "grid") {
     return (
-      <div className={common}>
+      <div className={common} style={previewStyle}>
         <div className="absolute inset-0 grid grid-cols-3 grid-rows-2 gap-1.5 p-2">
           {Array.from({ length: 6 }).map((_, idx) => (
             <div key={idx} className="rounded-sm border border-dashed border-primary/55 bg-primary/10" />
@@ -377,7 +380,7 @@ function MaterialPreview({ id }: { id: string }) {
   }
   if (id === "viewport") {
     return (
-      <div className={common}>
+      <div className={common} style={previewStyle}>
         <div className="absolute inset-1.5 overflow-hidden rounded-sm border border-primary/70 bg-primary/10">
           <div className="absolute left-1 top-1 h-6 w-8 rounded-[2px] bg-primary/45" />
           <div className="absolute left-6 top-4 h-7 w-10 rounded-[2px] bg-primary/30" />
@@ -466,7 +469,6 @@ export function MaterialSidebar({
   const [activeCategoryId, setActiveCategoryId] =
     useState<MaterialCategoryId>("charts");
   const [keyword, setKeyword] = useState("");
-  const [treeKeyword, setTreeKeyword] = useState("");
   const [referenceOnlyTree, setReferenceOnlyTree] = useState(false);
   const [draggingTreeNodeId, setDraggingTreeNodeId] = useState<string | null>(null);
   const [dragOverLayerId, setDragOverLayerId] = useState<string | null>(null);
@@ -474,14 +476,14 @@ export function MaterialSidebar({
     root: true,
   });
 
-  const activeCategory = useMemo(
-    () => categories.find((c) => c.id === activeCategoryId) ?? categories[0],
-    [activeCategoryId, categories]
-  );
   const normalizedKeyword = keyword.trim().toLowerCase();
-  const isSearching = normalizedKeyword.length > 0;
-  const normalizedTreeKeyword = treeKeyword.trim().toLowerCase();
-  const isTreeSearching = normalizedTreeKeyword.length > 0;
+  const isSearching = leftTab === "materials" && normalizedKeyword.length > 0;
+  const isTreeSearching = leftTab === "tree" && normalizedKeyword.length > 0;
+  const normalizedTreeKeyword = isTreeSearching ? normalizedKeyword : "";
+  const searchPlaceholder =
+    leftTab === "tree"
+      ? t("panel.material.treeSearchPlaceholder")
+      : t("panel.material.searchPlaceholder");
 
   const matchedItems = useMemo(() => {
     if (!isSearching) return [];
@@ -496,6 +498,10 @@ export function MaterialSidebar({
     });
     return result;
   }, [categories, isSearching, normalizedKeyword]);
+
+  const activeCategory =
+    categories.find((c) => c.id === activeCategoryId) ?? categories[0];
+  const displayItems = isSearching ? matchedItems : (activeCategory?.items ?? []);
 
   const themedScrollbarClass =
     "scrollbar-thin [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-muted/40 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border/80 [&::-webkit-scrollbar-thumb]:hover:bg-border";
@@ -641,26 +647,31 @@ export function MaterialSidebar({
       >
         <div
           className={[
-            "mb-1 flex items-center gap-1 rounded py-1",
-            selected ? "bg-primary/15 text-foreground" : "text-muted-foreground hover:bg-accent/60",
+            "group/node flex min-w-0 items-center gap-0.5 rounded-sm py-0.5 pr-1",
+            selected
+              ? "bg-primary/15 text-foreground"
+              : "text-foreground/85 hover:bg-accent/55",
           ].join(" ")}
-          style={{ paddingLeft: 6 + level * 14, paddingRight: 6 }}
+          style={{ paddingLeft: 2 }}
         >
           {hasChildren ? (
             <CollapsibleTrigger asChild>
               <button
                 type="button"
-                className="flex h-7 w-7 items-center justify-center rounded text-sm hover:bg-accent"
+                className="flex h-5 w-4 shrink-0 items-center justify-center rounded text-[11px] text-muted-foreground hover:bg-accent"
               >
                 {isExpanded(nodeKey, true) ? "▾" : "▸"}
               </button>
             </CollapsibleTrigger>
           ) : (
-            <span className="inline-flex h-7 w-7 items-center justify-center text-sm opacity-40">•</span>
+            <span className="inline-flex h-5 w-4 shrink-0 items-center justify-center text-[10px] text-border">
+              <span className="h-px w-2 bg-border" />
+            </span>
           )}
+          <div className="relative min-w-0 flex-1">
           <button
             type="button"
-            className="min-w-0 flex-1 truncate text-left"
+            className="block w-full truncate pr-1 text-left text-[12px] font-medium"
             onClick={() => onSelectNode?.(node.id, node.layerId)}
             onContextMenu={(e) => {
               e.preventDefault();
@@ -694,9 +705,10 @@ export function MaterialSidebar({
           >
             {getNodeDisplayName(node)}
           </button>
+          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center gap-0.5 bg-gradient-to-l from-background via-background to-transparent pl-3 opacity-0 transition-opacity group-hover/node:pointer-events-auto group-hover/node:opacity-100 group-focus-within/node:pointer-events-auto group-focus-within/node:opacity-100">
           {nodeHomeLayer?.isMapping ? (
             <span
-              className="inline-flex shrink-0 items-center rounded-md border-2 border-violet-600 bg-violet-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-violet-950 shadow-sm dark:border-violet-400 dark:bg-violet-500/35 dark:text-violet-50 dark:shadow-[0_0_14px_-3px_rgba(167,139,250,0.65)]"
+              className="inline-flex shrink-0 items-center rounded border border-violet-600/70 bg-violet-500/15 px-1 py-0.5 text-[10px] font-medium text-violet-900 dark:border-violet-400/70 dark:bg-violet-500/25 dark:text-violet-100"
               title={
                 nodeHomeLayer.mappingBaseLayerId
                   ? t("panel.material.mappingLayerWithBase", {
@@ -815,26 +827,29 @@ export function MaterialSidebar({
             </TooltipTrigger>
             <TooltipContent>{node.locked ? t("panel.material.lockedNodeCannotDelete") : t("panel.material.deleteNode")}</TooltipContent>
           </Tooltip>
+          </div>
+          </div>
         </div>
         {hasChildren ? (
           <CollapsibleContent>
-            {children.map((child) => {
-              const childPath = `${path}->${child.id}`;
-              if (nextVisited.has(child.id)) {
-                return (
-                  <div
-                    key={`cycle:${childPath}`}
-                    className="py-1 text-[10px] text-muted-foreground/80"
-                    style={{ paddingLeft: 6 + (level + 1) * 14 }}
-                    title={t("panel.material.circularRefStopped")}
-                  >
-                    {getNodeDisplayName(child)}
-                    {t("panel.material.circularRefSuffix")}
-                  </div>
-                );
-              }
-              return renderTreeNode(child, level + 1, childPath, nextVisited, node.refSnapshot);
-            })}
+            <div className="ml-[7px] border-l border-border/45 pl-1.5">
+              {children.map((child) => {
+                const childPath = `${path}->${child.id}`;
+                if (nextVisited.has(child.id)) {
+                  return (
+                    <div
+                      key={`cycle:${childPath}`}
+                      className="py-0.5 pl-1 text-[10px] text-muted-foreground/80"
+                      title={t("panel.material.circularRefStopped")}
+                    >
+                      {getNodeDisplayName(child)}
+                      {t("panel.material.circularRefSuffix")}
+                    </div>
+                  );
+                }
+                return renderTreeNode(child, level + 1, childPath, nextVisited, node.refSnapshot);
+              })}
+            </div>
           </CollapsibleContent>
         ) : null}
       </Collapsible>
@@ -854,67 +869,112 @@ export function MaterialSidebar({
     <TooltipProvider delayDuration={120}>
     <aside
       className={[
-        "grid h-full w-full border-r border-border bg-muted/30 text-foreground",
+        "rv-material-sidebar grid h-full min-h-0 w-full overflow-hidden border-r border-border/60 bg-muted/20 text-foreground",
         className ?? "",
       ].join(" ")}
       style={{ gridTemplateRows: "auto 1fr" }}
     >
-      <div className="border-b border-border bg-background/80 px-3 py-2 backdrop-blur-sm">
-        <Input
-          value={keyword}
-          onChange={(e) => setKeyword(e.target.value)}
-          placeholder={t("panel.material.searchPlaceholder")}
-          className="h-8 text-xs"
-        />
+      <div className="border-b border-border/50 bg-background/70 px-2.5 py-1.5 backdrop-blur-sm">
+        <div className="relative">
+          <span
+            className="pointer-events-none absolute top-1/2 z-[1] -translate-y-1/2 text-muted-foreground"
+            style={{ left: 12 }}
+          >
+            <IconSearch />
+          </span>
+          <Input
+            value={keyword}
+            onChange={(e) => setKeyword(e.target.value)}
+            placeholder={searchPlaceholder}
+            className="h-7 rounded-md border-border/60 bg-background/90 text-[12px] shadow-none"
+            style={{ paddingLeft: 34, paddingRight: 10 }}
+            aria-label={searchPlaceholder}
+          />
+        </div>
       </div>
 
       <Tabs
         value={leftTab}
-        onValueChange={(v) => setLeftTab(v as "materials" | "tree")}
-        className="flex min-h-0 h-full flex-col"
+        onValueChange={(v) => {
+          setLeftTab(v as "materials" | "tree");
+          setKeyword("");
+        }}
+        className="flex h-full min-h-0 flex-col overflow-hidden"
       >
-        <div className="border-b border-border px-2 pb-2 pt-2">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="materials">{t("panel.material.tabMaterials")}</TabsTrigger>
-            <TabsTrigger value="tree">{t("panel.material.tabTree")}</TabsTrigger>
+        <div className="border-b border-border/50 px-2 py-1.5">
+          <TabsList className="grid h-7 w-full grid-cols-2 rounded-md bg-muted/40 p-0.5">
+            <TabsTrigger
+              value="materials"
+              className="gap-1 rounded px-1 text-[11px] font-medium data-[state=active]:font-semibold"
+              title={t("panel.material.tabMaterials")}
+            >
+              <IconGrid />
+              <span className="truncate @[200px]:inline hidden">{t("panel.material.tabMaterials")}</span>
+            </TabsTrigger>
+            <TabsTrigger
+              value="tree"
+              className="gap-1 rounded px-1 text-[11px] font-medium data-[state=active]:font-semibold"
+              title={t("panel.material.tabTree")}
+            >
+              <IconTree />
+              <span className="truncate @[200px]:inline hidden">{t("panel.material.tabTree")}</span>
+            </TabsTrigger>
           </TabsList>
         </div>
-        <TabsContent value="materials" className="mt-0 min-h-0 flex-1 overflow-hidden">
-          <div className="grid h-full min-h-0 grid-cols-[110px_1fr]">
-            <div className={`overflow-auto border-r border-border ${themedScrollbarClass}`}>
-              {categories.map((c) => {
-                const active = c.id === activeCategoryId;
-                return (
-                  <button
-                    key={c.id}
-                    type="button"
-                    onClick={() => setActiveCategoryId(c.id)}
-                    className={[
-                      "w-full cursor-pointer border-b border-border/40 px-2.5 py-2.5 text-left text-xs",
-                      active
-                        ? "bg-accent text-accent-foreground"
-                        : "text-muted-foreground hover:bg-accent/60 hover:text-accent-foreground",
-                    ].join(" ")}
-                  >
-                    {c.title}
-                  </button>
-                );
-              })}
+        <TabsContent
+          value="materials"
+          forceMount
+          className="mt-0 min-h-0 flex-1 flex-col overflow-hidden"
+          style={{ display: leftTab === "materials" ? "flex" : "none" }}
+        >
+          {!isSearching ? (
+            <div className="shrink-0 border-b border-border/40 bg-background/80 px-2 py-1.5">
+              <Select
+                value={activeCategoryId}
+                onValueChange={(v) => setActiveCategoryId(v as MaterialCategoryId)}
+              >
+                <SelectTrigger
+                  className="h-7 w-full flex-nowrap gap-1 whitespace-nowrap rounded-md border-border/60 bg-muted/25 px-2 text-[12px] font-semibold shadow-none [&>span]:line-clamp-none [&>span]:min-w-0 [&>span]:overflow-hidden [&>span]:text-ellipsis [&>span]:whitespace-nowrap"
+                  aria-label={activeCategory?.title}
+                >
+                  <IconFolder />
+                  <SelectValue placeholder={activeCategory?.title} />
+                </SelectTrigger>
+                <SelectContent className="z-[10100]">
+                  {categories.map((category) => (
+                    <SelectItem
+                      key={category.id}
+                      value={category.id}
+                      className="whitespace-nowrap text-[12px]"
+                    >
+                      {`${category.title} · ${category.items.length}`}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-
-            <div className={`overflow-auto ${themedScrollbarClass}`}>
-              <div className="px-2.5 py-2.5 text-xs font-semibold">
-                {isSearching
-                  ? t("panel.material.searchResults", { count: matchedItems.length })
-                  : activeCategory.title}
+          ) : null}
+          <div className={`min-h-0 flex-1 overflow-auto ${themedScrollbarClass}`}>
+            <div className="px-2 pb-2.5 pt-1.5">
+              <div className="mb-1.5 flex items-baseline justify-between gap-2 px-0.5">
+                <div data-typo="label" className="truncate text-[12px] font-semibold text-foreground/90">
+                  {isSearching
+                    ? t("panel.material.searchResults", { count: matchedItems.length })
+                    : activeCategory?.title}
+                </div>
+                {!isSearching ? (
+                  <div data-typo="caption" className="tabular-nums text-[11px] text-muted-foreground">
+                    {activeCategory?.items.length ?? 0}
+                  </div>
+                ) : null}
               </div>
-              <div className="grid gap-2 px-2.5 pb-3">
-                {(isSearching ? matchedItems : activeCategory.items).map((it) => (
+              <div className="rv-material-grid">
+                {displayItems.map((it) => (
                   <button
                     key={isSearching ? `${it.id}-${(it as any).categoryTitle}` : it.id}
                     type="button"
                     draggable
-                    className="cursor-pointer rounded-xl border border-border bg-card px-2 py-2 text-left text-xs text-card-foreground hover:bg-accent/60"
+                    className="rv-material-card cursor-pointer rounded-lg border border-border/50 bg-card px-1.5 py-1.5 text-left text-card-foreground shadow-[0_1px_1px_hsl(var(--foreground)/0.03)] transition-colors hover:border-border hover:bg-accent/40"
                     onDragStart={(e) => {
                       e.dataTransfer.setData(
                         "application/x-arronqzy-material",
@@ -924,12 +984,20 @@ export function MaterialSidebar({
                       onDragMaterialStart?.(it);
                     }}
                   >
-                    <div className="flex flex-col items-stretch gap-2">
+                    <div className="flex flex-col gap-1">
                       <MaterialPreview id={it.id} />
-                      <div className="min-w-0">
-                        <div className="truncate">{it.title}</div>
+                      <div className="min-w-0 px-0.5">
+                        <div
+                          data-typo="caption"
+                          className="truncate text-center text-[11px] font-normal text-muted-foreground"
+                        >
+                          {it.title}
+                        </div>
                         {isSearching ? (
-                          <div className="mt-1 text-[11px] text-muted-foreground">
+                          <div
+                            data-typo="caption"
+                            className="mt-0.5 truncate text-center text-[10px] text-muted-foreground"
+                          >
                             {(it as any).categoryTitle}
                           </div>
                         ) : null}
@@ -940,63 +1008,70 @@ export function MaterialSidebar({
                 {isSearching && matchedItems.length === 0 ? (
                   <Empty className="py-5">
                     <EmptyIcon className="h-8 w-8">
-                      <svg
-                        viewBox="0 0 24 24"
-                        className="h-4 w-4"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="1.8"
-                        aria-hidden="true"
-                      >
-                        <circle cx="11" cy="11" r="7" />
-                        <path d="m20 20-3.5-3.5" />
-                      </svg>
+                      <IconSearch />
                     </EmptyIcon>
-                    <EmptyTitle className="text-xs">{t("panel.material.emptyMaterialsTitle")}</EmptyTitle>
-                    <EmptyDescription className="text-[11px]">
+                    <EmptyTitle data-typo="label" className="text-[12px]">
+                      {t("panel.material.emptyMaterialsTitle")}
+                    </EmptyTitle>
+                    <EmptyDescription data-typo="caption" className="text-[11px]">
                       {t("panel.material.emptyMaterialsDesc")}
                     </EmptyDescription>
                   </Empty>
+                ) : null}
+                {!isSearching && (activeCategory?.items.length ?? 0) === 0 ? (
+                  <div data-typo="caption" className="px-1 py-3 text-[11px] text-muted-foreground">
+                    {t("panel.material.emptyMaterialsTitle")}
+                  </div>
                 ) : null}
               </div>
             </div>
           </div>
         </TabsContent>
-        <TabsContent value="tree" className="mt-0 min-h-0 flex-1 overflow-hidden">
-          <div className={`h-full overflow-auto px-2 py-2 text-xs ${themedScrollbarClass}`}>
-            <div className="mb-2">
-              <Input
-                value={treeKeyword}
-                onChange={(e) => setTreeKeyword(e.target.value)}
-                placeholder={t("panel.material.treeSearchPlaceholder")}
-                className="h-8 text-xs"
-              />
-            </div>
-            <div className="mb-2 flex items-center justify-between rounded border border-border bg-card px-2 py-1.5">
-              <span className="text-[11px] text-muted-foreground">{t("panel.material.referenceOnlyTree")}</span>
-              <Switch
-                checked={referenceOnlyTree}
-                onCheckedChange={setReferenceOnlyTree}
-                aria-label={t("panel.material.referenceOnlyTree")}
-              />
-            </div>
+        <TabsContent
+          value="tree"
+          forceMount
+          className="mt-0 min-h-0 flex-1 flex-col overflow-hidden"
+          style={{ display: leftTab === "tree" ? "flex" : "none" }}
+        >
+          <div className={`min-h-0 flex-1 overflow-auto px-1.5 py-1.5 text-xs ${themedScrollbarClass}`}>
             <Collapsible
               open={isExpanded("root", true)}
               onOpenChange={(open) => setExpanded("root", open)}
-              className="rounded border border-border bg-card"
             >
-              <div className="flex items-center gap-1 px-2 py-1.5 font-medium">
+              <div className="flex items-center gap-0.5 rounded-sm px-0.5 py-0.5 font-medium hover:bg-accent/40">
                 <CollapsibleTrigger asChild>
                   <button
                     type="button"
-                    className="flex h-7 w-7 items-center justify-center rounded text-sm hover:bg-accent"
+                    className="flex h-5 w-4 shrink-0 items-center justify-center rounded text-[11px] text-muted-foreground hover:bg-accent"
                   >
                     {isExpanded("root", true) ? "▾" : "▸"}
                   </button>
                 </CollapsibleTrigger>
-                <span>root</span>
+                <span className="min-w-0 flex-1 truncate text-[12px]">root</span>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={() => setReferenceOnlyTree((v) => !v)}
+                      aria-label={t("panel.material.referenceOnlyTree")}
+                      aria-pressed={referenceOnlyTree}
+                      className={[
+                        "inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md border transition-colors",
+                        referenceOnlyTree
+                          ? "border-primary/50 bg-primary/15 text-primary"
+                          : "border-border/70 bg-background/80 text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                      ].join(" ")}
+                    >
+                      <IconRefFilter active={referenceOnlyTree} />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent className="z-[10100]">
+                    {t("panel.material.referenceOnlyTree")}
+                  </TooltipContent>
+                </Tooltip>
               </div>
-              <CollapsibleContent className="space-y-1 border-t border-border/60 py-1">
+              <CollapsibleContent>
+                <div className="ml-[7px] border-l border-border/45 pl-1.5">
                 {layers.map((layer) => {
                   const layerNodes = elementsByLayer.get(layer.id) ?? [];
                   const draggingNode = draggingTreeNodeId ? elementsById.get(draggingTreeNodeId) ?? null : null;
@@ -1028,52 +1103,77 @@ export function MaterialSidebar({
                       open={isExpanded(layerKey, true)}
                       onOpenChange={(open) => setExpanded(layerKey, open)}
                     >
-                      <Card
+                      <div
                         className={[
-                          "mb-2 overflow-hidden transition-shadow",
-                          layer.isMapping
-                            ? "border-2 border-violet-500/70 bg-gradient-to-br from-violet-500/14 via-violet-600/10 to-fuchsia-500/12 shadow-[inset_0_1px_0_0_rgba(139,92,246,0.22)] dark:border-violet-400/65 dark:from-violet-500/20 dark:via-violet-950/35 dark:to-fuchsia-950/25 dark:shadow-[inset_0_0_0_1px_rgba(167,139,250,0.12),0_0_20px_-8px_rgba(139,92,246,0.35)]"
-                            : "",
+                          "flex min-w-0 items-center gap-0.5 rounded-sm py-0.5 pr-0.5 transition-colors",
+                          layer.isMapping ? "text-violet-800 dark:text-violet-200" : "text-foreground",
                           isCurrentDropLayer
                             ? canDropIntoLayer
-                              ? "ring-2 ring-primary/45 ring-offset-2 ring-offset-background"
-                              : "ring-2 ring-destructive/45 ring-offset-2 ring-offset-background"
-                            : "",
-                        ]
-                          .filter(Boolean)
-                          .join(" ")}
+                              ? "bg-primary/12 ring-1 ring-inset ring-primary/35"
+                              : "bg-destructive/10 ring-1 ring-inset ring-destructive/35"
+                            : "hover:bg-accent/50",
+                        ].join(" ")}
+                        onDragOver={(e) => {
+                          const hasNodeData =
+                            e.dataTransfer.types.includes("application/x-arronqzy-tree-node");
+                          if (!hasNodeData) return;
+                          if (canDropIntoLayer) {
+                            e.preventDefault();
+                            e.dataTransfer.dropEffect = "move";
+                          } else {
+                            e.dataTransfer.dropEffect = "none";
+                          }
+                          if (dragOverLayerId !== layer.id) setDragOverLayerId(layer.id);
+                        }}
+                        onDragLeave={() => {
+                          if (dragOverLayerId === layer.id) setDragOverLayerId(null);
+                        }}
+                        onDrop={(e) => {
+                          const payload = e.dataTransfer.getData("application/x-arronqzy-tree-node");
+                          if (!payload) return;
+                          e.preventDefault();
+                          try {
+                            const data = JSON.parse(payload) as {
+                              nodeId?: string;
+                              sourceLayerId?: string;
+                            };
+                            if (!data.nodeId || !layer.id) return;
+                            if (!canDropIntoLayer) return;
+                            if (data.sourceLayerId === layer.id) return;
+                            onMoveNodeToLayer?.(data.nodeId, layer.id);
+                          } catch {
+                            // ignore invalid payload
+                          } finally {
+                            setDraggingTreeNodeId(null);
+                            setDragOverLayerId(null);
+                          }
+                        }}
+                        title={
+                          isCurrentDropLayer
+                            ? canDropIntoLayer
+                              ? t("panel.material.releaseToMove")
+                              : dropBlockReason || t("panel.material.cannotMoveToLayer")
+                            : t("panel.material.dragToThisLayer")
+                        }
                       >
-                        <CardHeader className="flex flex-row flex-wrap items-center gap-1 space-y-0 p-2.5 pb-1.5">
-                          {isCurrentDropLayer ? (
-                            <span
-                              className={[
-                                "inline-flex h-5 w-5 shrink-0 items-center justify-center rounded text-[11px]",
-                                canDropIntoLayer
-                                  ? "bg-primary/15 text-primary"
-                                  : "bg-destructive/15 text-destructive",
-                              ].join(" ")}
-                              title={canDropIntoLayer ? t("panel.material.targetLayer") : dropBlockReason}
-                            >
-                              ➜
-                            </span>
-                          ) : null}
-                          <CollapsibleTrigger asChild>
-                            <button
-                              type="button"
-                              className="flex h-7 w-7 shrink-0 items-center justify-center rounded text-sm text-muted-foreground hover:bg-accent"
-                            >
-                              {isExpanded(layerKey, true) ? "▾" : "▸"}
-                            </button>
-                          </CollapsibleTrigger>
-                          <span className="min-w-0 flex-1 truncate text-xs font-medium text-foreground">
+                        <CollapsibleTrigger asChild>
+                          <button
+                            type="button"
+                            className="flex h-5 w-4 shrink-0 items-center justify-center rounded text-[11px] text-muted-foreground hover:bg-accent"
+                          >
+                            {isExpanded(layerKey, true) ? "▾" : "▸"}
+                          </button>
+                        </CollapsibleTrigger>
+                        <span className="shrink-0 text-muted-foreground">
+                          <IconFolder />
+                        </span>
+                        <div className="flex min-w-0 flex-1 items-center gap-0.5">
+                          <span className="min-w-0 truncate text-[12px] font-medium">
                             {layer.name}
-                            <span className="font-normal text-muted-foreground">
-                              （{rootNodes.length}）
-                            </span>
                           </span>
                           {layer.isMapping ? (
                             <span
-                              className="shrink-0 rounded-md border-2 border-violet-600 bg-violet-500/22 px-1.5 py-0.5 text-[10px] font-semibold text-violet-950 shadow-sm dark:border-violet-400 dark:bg-violet-500/35 dark:text-violet-50 dark:shadow-[0_0_12px_-2px_rgba(167,139,250,0.55)]"
+                              className="shrink-0 rounded border border-violet-500/60 bg-violet-500/15 px-1 text-[10px] font-medium"
                               title={
                                 layer.mappingBaseLayerId
                                   ? t("panel.material.mappingLayerWithBaseShort", {
@@ -1087,85 +1187,24 @@ export function MaterialSidebar({
                               {t("panel.material.mappingLayer")}
                             </span>
                           ) : null}
-                          {isCurrentDropLayer ? (
-                            <span
-                              className={[
-                                "ml-auto shrink-0 rounded px-1.5 py-0.5 text-[10px]",
-                                canDropIntoLayer
-                                  ? "bg-primary/15 text-primary"
-                                  : "bg-destructive/15 text-destructive",
-                              ].join(" ")}
-                            >
-                              {canDropIntoLayer ? t("panel.material.willMoveToLayer") : dropBlockReason}
-                            </span>
-                          ) : null}
-                        </CardHeader>
-                        <CardContent className="space-y-1.5 p-2.5 pt-0">
-                          <div
-                            className={[
-                              "rounded-md border border-dashed px-2 py-1.5 text-[10px] transition-colors",
-                              isCurrentDropLayer
-                                ? canDropIntoLayer
-                                  ? "border-primary/50 bg-primary/10 text-primary"
-                                  : "border-destructive/50 bg-destructive/10 text-destructive"
-                                : "border-border/50 bg-muted/20 text-muted-foreground hover:border-border hover:bg-muted/35",
-                            ].join(" ")}
-                            onDragOver={(e) => {
-                              const hasNodeData =
-                                e.dataTransfer.types.includes("application/x-arronqzy-tree-node");
-                              if (!hasNodeData) return;
-                              if (canDropIntoLayer) {
-                                e.preventDefault();
-                                e.dataTransfer.dropEffect = "move";
-                              } else {
-                                e.dataTransfer.dropEffect = "none";
-                              }
-                              if (dragOverLayerId !== layer.id) setDragOverLayerId(layer.id);
-                            }}
-                            onDragLeave={() => {
-                              if (dragOverLayerId === layer.id) setDragOverLayerId(null);
-                            }}
-                            onDrop={(e) => {
-                              const payload = e.dataTransfer.getData("application/x-arronqzy-tree-node");
-                              if (!payload) return;
-                              e.preventDefault();
-                              try {
-                                const data = JSON.parse(payload) as {
-                                  nodeId?: string;
-                                  sourceLayerId?: string;
-                                };
-                                if (!data.nodeId || !layer.id) return;
-                                if (!canDropIntoLayer) return;
-                                if (data.sourceLayerId === layer.id) return;
-                                onMoveNodeToLayer?.(data.nodeId, layer.id);
-                              } catch {
-                                // ignore invalid payload
-                              } finally {
-                                setDraggingTreeNodeId(null);
-                                setDragOverLayerId(null);
-                              }
-                            }}
-                            title={t("panel.material.dragToThisLayer")}
-                          >
-                            {draggingTreeNodeId
-                              ? canDropIntoLayer
-                                ? t("panel.material.releaseToMove")
-                                : dropBlockReason || t("panel.material.cannotMoveToLayer")
-                              : t("panel.material.dragToLayer")}
-                          </div>
-                          <CollapsibleContent>
-                            {rootNodes.length === 0 ? (
-                              <div className="rounded border border-border/40 bg-muted/15 py-2 pl-3 text-[11px] text-muted-foreground">
-                                {t("panel.material.emptyLayer")}
-                              </div>
-                            ) : (
-                              rootNodes.map((node) =>
-                                renderTreeNode(node, 2, `${layer.id}/${node.id}`, new Set<string>())
-                              )
-                            )}
-                          </CollapsibleContent>
-                        </CardContent>
-                      </Card>
+                        </div>
+                        <span className="ml-auto shrink-0 pl-1 tabular-nums text-[11px] text-muted-foreground">
+                          {rootNodes.length}
+                        </span>
+                      </div>
+                      <CollapsibleContent>
+                        <div className="ml-[7px] border-l border-border/45 pl-1.5">
+                          {rootNodes.length === 0 ? (
+                            <div className="py-1 pl-1 text-[11px] text-muted-foreground">
+                              {t("panel.material.emptyLayer")}
+                            </div>
+                          ) : (
+                            rootNodes.map((node) =>
+                              renderTreeNode(node, 0, `${layer.id}/${node.id}`, new Set<string>())
+                            )
+                          )}
+                        </div>
+                      </CollapsibleContent>
                     </Collapsible>
                   );
                 })}
@@ -1178,7 +1217,7 @@ export function MaterialSidebar({
                     .filter((node) => nodeMatchesTreeSearch(node, new Set<string>()));
                   return rootNodes.length === 0;
                 }) ? (
-                  <div className="mx-2 my-2">
+                  <div className="my-2">
                     <Empty className="py-5">
                       <EmptyIcon className="h-8 w-8">
                         <svg
@@ -1200,6 +1239,7 @@ export function MaterialSidebar({
                     </Empty>
                   </div>
                 ) : null}
+                </div>
               </CollapsibleContent>
             </Collapsible>
           </div>

@@ -29,8 +29,6 @@ import PanelConfigTableSection from "./table/PanelConfigTableSection.vue";
 
 const { t, locale } = useI18n();
 const msgs = () => getPanelMessages(t);
-const SEARCH_COLLAPSE_STORAGE_KEY = "panel:config-search-collapsed";
-
 const props = withDefaults(
   defineProps<{
     selectedElement: PanelElement | null;
@@ -58,7 +56,6 @@ const props = withDefaults(
 );
 
 const configSearch = ref("");
-const isSearchCollapsed = ref(false);
 const sidebarScrollRef = ref<HTMLElement | null>(null);
 const configScrollPosById = new Map<string, number>();
 const activeConfigScrollKey = ref<string | null>(null);
@@ -258,14 +255,6 @@ const visibleSectionCount = computed(() => {
   return count;
 });
 
-onMounted(() => {
-  const saved = window.localStorage.getItem(SEARCH_COLLAPSE_STORAGE_KEY);
-  if (saved === "1") isSearchCollapsed.value = true;
-});
-
-watch(isSearchCollapsed, (next) => {
-  window.localStorage.setItem(SEARCH_COLLAPSE_STORAGE_KEY, next ? "1" : "0");
-});
 </script>
 
 <template>
@@ -276,37 +265,29 @@ watch(isSearchCollapsed, (next) => {
     :scroll-container-ref="sidebarScrollRef"
   >
     <aside
-      ref="sidebarScrollRef"
-      class="scope-config-sidebar h-full overflow-auto border-l border-gray-200 bg-gray-50/30 px-3 py-3 text-gray-900 [&_.scope-field--highlight]:rounded-md [&_.scope-field--highlight]:ring-2 [&_.scope-field--highlight]:ring-amber-400/80"
+      class="scope-config-sidebar grid h-full min-h-0 w-full overflow-hidden border-l border-border/60 bg-muted/[0.12] text-foreground [&_.scope-field--highlight]:rounded-md [&_.scope-field--highlight]:ring-2 [&_.scope-field--highlight]:ring-amber-400/80"
+      style="grid-template-rows: auto 1fr"
     >
-      <div class="sticky top-0 z-20 mb-3 rounded-lg border border-gray-200/80 bg-white px-2.5 py-2 shadow-sm">
-        <div class="text-xs font-semibold tracking-wide">{{ t("panel.config.panelTitle") }}</div>
+      <div class="border-b border-border/50 bg-background/70 px-2.5 py-1.5 backdrop-blur-sm">
+        <Input
+          v-model:value="configSearch"
+          size="small"
+          :placeholder="t('panel.config.searchPlaceholder')"
+          :aria-label="t('panel.config.searchPlaceholder')"
+          class="text-[12px]"
+          data-scope-autocomplete="off"
+        />
+        <div v-if="hasSearch" class="mt-1 px-0.5 text-[11px] text-muted-foreground">
+          {{ t("panel.config.searching", { query: configSearch }) }}
+        </div>
+      </div>
+      <div
+        ref="sidebarScrollRef"
+        class="min-h-0 overflow-auto px-2 py-1.5 text-foreground"
+      >
+      <div v-if="showScopePanel || scopeWarnings.length > 0" class="mb-2 space-y-1.5">
         <ViewElementScopePanel v-if="showScopePanel" :scope="viewElementScope!" />
         <ScopeTemplateWarningsPanel />
-        <div
-          :class="showScopePanel || scopeWarnings.length > 0 ? 'mt-2 border-t border-gray-200/50 pt-2' : 'mt-2'"
-        >
-          <div class="flex items-center justify-end gap-2">
-            <button
-              type="button"
-              class="rounded border border-gray-200 px-1.5 py-0.5 text-[11px] text-gray-500 hover:bg-gray-50"
-              @click="isSearchCollapsed = !isSearchCollapsed"
-            >
-              {{ isSearchCollapsed ? t("panel.config.expandSearch") : t("panel.config.collapseSearch") }}
-            </button>
-          </div>
-          <div v-if="!isSearchCollapsed" class="mt-2">
-            <Input
-              v-model:value="configSearch"
-              size="small"
-              :placeholder="t('panel.config.searchPlaceholder')"
-              data-scope-autocomplete="off"
-            />
-            <div v-if="hasSearch" class="mt-1 text-[11px] text-gray-500">
-              {{ t("panel.config.searching", { query: configSearch }) }}
-            </div>
-          </div>
-        </div>
       </div>
 
       <PanelConfigMultiSelect
@@ -327,9 +308,9 @@ watch(isSearchCollapsed, (next) => {
         :description="t('panel.config.emptyNoNodeDesc')"
       />
 
-      <div v-else class="space-y-3">
+      <div v-else class="space-y-2">
         <fieldset :disabled="!isNodeEditable" :class="!isNodeEditable ? 'opacity-60' : ''">
-          <div class="space-y-3.5 text-xs">
+          <div class="space-y-2 text-xs">
             <PanelConfigNodeInfo
               v-if="shouldShowSection('nodeInfo', t('panel.config.sectionNodeInfo'), [t('panel.config.name'), 'id', t('panel.config.type'), t('panel.layers.lockShort')])"
               :element="selectedElement"
@@ -516,6 +497,7 @@ watch(isSearchCollapsed, (next) => {
         >
           {{ msgs().nodeConfigLayerLocked }}
         </div>
+      </div>
       </div>
     </aside>
   </ScopeConfigProvider>

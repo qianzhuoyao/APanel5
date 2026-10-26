@@ -394,10 +394,18 @@ function syncLockBadge() {
   };
 }
 
+function applyLiveMoveableZoom() {
+  const moveable = moveableRef.value;
+  if (!moveable) return;
+  const liveScale = readLiveCanvasScale(props.canvasContainer, propCanvasScale.value);
+  moveable.zoom = 1 / Math.max(0.0001, liveScale);
+}
+
 function scheduleViewportSync() {
   if (syncRafRef.value != null) return;
   syncRafRef.value = requestAnimationFrame(() => {
     syncRafRef.value = null;
+    applyLiveMoveableZoom();
     moveableRef.value?.updateRect?.();
     syncLockBadge();
   });

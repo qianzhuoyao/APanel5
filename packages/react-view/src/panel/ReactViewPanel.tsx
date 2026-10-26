@@ -111,13 +111,16 @@ import { PANEL_Z_INDEX } from "./constants/zIndex";
 import { useRafThrottledScroll } from "./hooks/useRafThrottledScroll";
 import {
   IconBackward,
+  IconBlueprint,
   IconBringFront,
   IconClose,
   IconForward,
   IconImage,
   IconLayers,
+  IconMoon,
   IconRedo,
   IconSendBack,
+  IconSun,
   IconUndo,
 } from "./icons";
 import {
@@ -138,7 +141,6 @@ import {
   ResizableHandle,
   ResizablePanel,
   ResizablePanelGroup,
-  Switch,
   Toaster,
   Tooltip,
   TooltipContent,
@@ -1907,13 +1909,37 @@ const ReactViewPanelInner = forwardRef<AbuilderViewHandle, ReactViewPanelProps>(
         </Tooltip>
       </TooltipProvider>
       <style>{`
-        .panel-font-root :is(span, label, p, strong, button, input, textarea, select, option, a, li) {
+        /* 功能说明视觉层次：主标签醒目、辅助说明更轻（类苹果） */
+        .panel-font-root {
+          font-size: var(--panel-font-px);
+          font-weight: 400;
+          letter-spacing: -0.011em;
+        }
+        .panel-font-root [data-typo="title"] {
+          font-size: calc(var(--panel-font-px) * 1.08) !important;
+          font-weight: 600 !important;
+          letter-spacing: -0.022em;
+        }
+        .panel-font-root [data-typo="label"] {
           font-size: var(--panel-font-px) !important;
+          font-weight: 510 !important;
+          letter-spacing: -0.015em;
+        }
+        .panel-font-root [data-typo="caption"] {
+          font-size: calc(var(--panel-font-px) * 0.85) !important;
+          font-weight: 400 !important;
+          letter-spacing: -0.008em;
+        }
+        .panel-font-root [data-typo="micro"] {
+          font-size: calc(var(--panel-font-px) * 0.77) !important;
+          font-weight: 400 !important;
         }
         /* 画布节点、富文本内容使用各自的字号，不被编辑器 UI 字号强制覆盖 */
         .panel-font-root [data-workspace-region="view"] :is(span, label, p, strong, button, input, textarea, select, option, a, li),
         .panel-font-root [data-panel-user-text] :is(span, label, p, strong, button, input, textarea, select, option, a, li) {
           font-size: inherit !important;
+          font-weight: inherit !important;
+          letter-spacing: inherit !important;
         }
         .panel-font-root :is(input, textarea):focus,
         .panel-font-root :is(input, textarea):focus-visible {
@@ -1947,7 +1973,7 @@ const ReactViewPanelInner = forwardRef<AbuilderViewHandle, ReactViewPanelProps>(
           box-shadow: 0 0 0 1px hsl(var(--primary) / 0.45) inset !important;
         }
       `}</style>
-      <nav className="panel-font-root relative z-30 flex items-center gap-2 border-b border-border bg-background/95 px-2 text-foreground">
+      <nav className="panel-font-root relative z-30 flex h-10 shrink-0 items-center gap-2.5 border-b border-border/70 bg-background/80 px-3 text-foreground backdrop-blur-md supports-[backdrop-filter]:bg-background/70">
         <PanelMenubar
           t={t}
           handleExport={handleExport}
@@ -2001,8 +2027,8 @@ const ReactViewPanelInner = forwardRef<AbuilderViewHandle, ReactViewPanelProps>(
         </Button>
       </nav>
       <ResizablePanelGroup direction="horizontal" className="min-h-0 w-full flex-1">
-        <ResizablePanel defaultSize={15} minSize={15}>
-          <div className="panel-font-root h-full">
+        <ResizablePanel defaultSize={16} minSize={12} maxSize={28}>
+          <div className="panel-font-root h-full min-w-0">
             <MaterialSidebar
               layers={layers}
               allElements={allElements}
@@ -2073,8 +2099,8 @@ const ReactViewPanelInner = forwardRef<AbuilderViewHandle, ReactViewPanelProps>(
             />
           </div>
         </ResizablePanel>
-        <ResizableHandle withHandle />
-        <ResizablePanel defaultSize={65} minSize={10}>
+        <ResizableHandle withHandle className="opacity-70 transition-opacity hover:opacity-100" />
+        <ResizablePanel defaultSize={68} minSize={40}>
           {/* Center workspace */}
           <div
             className="panel-font-root min-w-0 h-full"
@@ -2092,18 +2118,18 @@ const ReactViewPanelInner = forwardRef<AbuilderViewHandle, ReactViewPanelProps>(
               clearSelection();
             }}
           >
-            <div className="relative flex h-full flex-col overflow-hidden border border-border bg-background">
+            <div className="relative flex h-full flex-col overflow-hidden bg-background">
               <div
-                className="relative flex items-center gap-2 border-b border-border bg-background/90 px-3 py-1.5 text-foreground"
+                className="relative flex items-center gap-2 border-b border-border/60 bg-muted/15 px-3 py-1.5 text-foreground"
                 style={{ zIndex: PANEL_Z_INDEX.toolbar }}
               >
                 <Input
                   value={displayProductName}
                   onChange={(e) => setProductName(e.target.value)}
                   placeholder={t("panel.menubar.productNamePlaceholder")}
-                  className="h-7 w-[220px] text-xs focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none"
+                  className="h-7 w-[200px] rounded-md border-border/70 bg-background/80 text-xs shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none"
                 />
-                <span className="text-[11px] text-muted-foreground">{t("panel.menubar.productName")}</span>
+                <span className="hidden text-[11px] text-muted-foreground sm:inline">{t("panel.menubar.productName")}</span>
                 <TooltipProvider delayDuration={150}>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -2238,60 +2264,45 @@ const ReactViewPanelInner = forwardRef<AbuilderViewHandle, ReactViewPanelProps>(
                   </DropdownMenuContent>
                 </DropdownMenu>
                 <div className="flex-1" />
-                <div
-                  data-blueprint-toggle
-                  className="flex shrink-0 items-center gap-2 rounded-md border border-border bg-muted/30 px-2 py-1"
-                >
-                  <span className="text-[11px] text-muted-foreground">{t("panel.menubar.blueprint")}</span>
-                  <Switch
-                    checked={blueprintOpen}
-                    onCheckedChange={setBlueprintOpen}
-                    aria-label={t("panel.menubar.showBlueprintPanel")}
-                  />
-                </div>
                 <TooltipProvider delayDuration={150}>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div className="relative">
-                        <Switch
-                          checked={isDark}
-                          onCheckedChange={applyTheme}
-                          aria-label={t("panel.menubar.toggleTheme")}
-                          className="data-[state=checked]:bg-primary/80 data-[state=unchecked]:bg-secondary"
-                        />
-                        <div
+                  <div className="inline-flex items-center gap-1">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          data-blueprint-toggle
+                          onClick={() => setBlueprintOpen((v) => !v)}
+                          aria-label={t("panel.menubar.showBlueprintPanel")}
+                          aria-pressed={blueprintOpen}
                           className={[
-                            "pointer-events-none absolute left-0.5 top-0.5 flex h-5 w-5 items-center justify-center transition-transform duration-200",
-                            isDark ? "translate-x-5" : "translate-x-0",
+                            "inline-flex h-7 w-7 items-center justify-center rounded-md border transition-colors",
+                            blueprintOpen
+                              ? "border-primary/50 bg-primary/15 text-primary"
+                              : "border-border/70 bg-background/80 text-muted-foreground hover:bg-accent hover:text-accent-foreground",
                           ].join(" ")}
                         >
-                          {isDark ? (
-                            <svg
-                              viewBox="0 0 24 24"
-                              className="h-3 w-3 text-foreground"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="1.8"
-                            >
-                              <path d="M21 12.79A9 9 0 1 1 11.21 3c0 .66.08 1.3.22 1.92A7 7 0 0 0 19.08 12c.62.14 1.26.22 1.92.22Z" />
-                            </svg>
-                          ) : (
-                            <svg
-                              viewBox="0 0 24 24"
-                              className="h-3 w-3 text-foreground"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="1.8"
-                            >
-                              <circle cx="12" cy="12" r="4" />
-                              <path d="M12 2v2.5M12 19.5V22M4.93 4.93l1.77 1.77M17.3 17.3l1.77 1.77M2 12h2.5M19.5 12H22M4.93 19.07 6.7 17.3M17.3 6.7l1.77-1.77" />
-                            </svg>
-                          )}
-                        </div>
-                      </div>
-                    </TooltipTrigger>
-                    <TooltipContent className="z-[10000]">{t("panel.menubar.toggleThemeHint")}</TooltipContent>
-                  </Tooltip>
+                          <IconBlueprint active={blueprintOpen} />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent className="z-[10000]">
+                        {t("panel.menubar.showBlueprintPanel")}
+                      </TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          onClick={() => applyTheme(!isDark)}
+                          aria-label={t("panel.menubar.toggleTheme")}
+                          aria-pressed={isDark}
+                          className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border/70 bg-background/80 text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+                        >
+                          {isDark ? <IconMoon /> : <IconSun />}
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent className="z-[10000]">{t("panel.menubar.toggleThemeHint")}</TooltipContent>
+                    </Tooltip>
+                  </div>
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <button
@@ -2304,13 +2315,11 @@ const ReactViewPanelInner = forwardRef<AbuilderViewHandle, ReactViewPanelProps>(
                     </TooltipTrigger>
                     <TooltipContent className="z-[10000]">{t("panel.menubar.zoomOutCanvas")}</TooltipContent>
                   </Tooltip>
-                </TooltipProvider>
-                <span className="w-20 text-center text-xs">
-                  {zoom.x === zoom.y
-                    ? `${(zoom.x * 100).toFixed(0)}%`
-                    : `${(zoom.x * 100).toFixed(0)}%×${(zoom.y * 100).toFixed(0)}%`}
-                </span>
-                <TooltipProvider delayDuration={150}>
+                  <span className="w-20 text-center text-xs">
+                    {zoom.x === zoom.y
+                      ? `${(zoom.x * 100).toFixed(0)}%`
+                      : `${(zoom.x * 100).toFixed(0)}%×${(zoom.y * 100).toFixed(0)}%`}
+                  </span>
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <button
@@ -2742,9 +2751,9 @@ const ReactViewPanelInner = forwardRef<AbuilderViewHandle, ReactViewPanelProps>(
             </div>
           </div>
         </ResizablePanel>
-        <ResizableHandle withHandle />
-        <ResizablePanel defaultSize={20} minSize={20}>
-          <div className="panel-font-root h-full">
+        <ResizableHandle withHandle className="opacity-70 transition-opacity hover:opacity-100" />
+        <ResizablePanel defaultSize={20} minSize={16} maxSize={32}>
+          <div className="panel-font-root h-full min-w-0">
             <WorkspaceConfigSidebar
               configFocus={sidebarConfigFocus}
               executionLog={executionLogView}

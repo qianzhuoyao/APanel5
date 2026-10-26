@@ -49,6 +49,7 @@ import {
   OPTION_INPUT_CLASS,
   OPTION_SELECT_TRIGGER_CLASS,
 } from "./config/helpers";
+import { IconSearch } from "../icons";
 
 export type PanelConfigSidebarProps = {
   selectedElement: PanelElement | null;
@@ -101,9 +102,7 @@ export function PanelConfigSidebar({
   const messages = React.useMemo(() => getPanelMessages(t), [t]);
 
   const [configSearch, setConfigSearch] = useState("");
-  const [isSearchCollapsed, setIsSearchCollapsed] = useState(false);
-  const SEARCH_COLLAPSE_STORAGE_KEY = "panel:config-search-collapsed";
-  const sidebarScrollRef = useRef<HTMLElement | null>(null);
+  const sidebarScrollRef = useRef<HTMLDivElement | null>(null);
   const matchCountRef = useRef(0);
   const themedScrollbarClass =
     "scrollbar-thin [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-muted/40 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border/80 [&::-webkit-scrollbar-thumb]:hover:bg-border";
@@ -208,16 +207,6 @@ export function PanelConfigSidebar({
     setExpandedSections(initial);
   }, [configScrollKey]);
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const saved = window.localStorage.getItem(SEARCH_COLLAPSE_STORAGE_KEY);
-    if (saved === "1") setIsSearchCollapsed(true);
-  }, []);
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(SEARCH_COLLAPSE_STORAGE_KEY, isSearchCollapsed ? "1" : "0");
-  }, [isSearchCollapsed]);
-
   const isSectionExpanded = (key: string, defaultValue = true) =>
     expandedSections[key] ?? defaultValue;
 
@@ -275,14 +264,14 @@ export function PanelConfigSidebar({
     <Collapsible
       open={hasSearch ? true : isSectionExpanded(key, defaultOpen)}
       onOpenChange={(open) => setSectionExpanded(key, open)}
-      className="rounded-xl border border-border/70 bg-card/95 shadow-sm"
+      className="rounded-lg border border-border/60 bg-card/90 shadow-[0_1px_1px_hsl(var(--foreground)/0.03)]"
       data-config-section={key}
     >
-      <div className="flex items-center gap-1.5 px-3 py-2">
+      <div className="flex items-center gap-1 px-2 py-1.5">
         <CollapsibleTrigger asChild>
           <button
             type="button"
-            className="flex h-6 w-6 items-center justify-center rounded-md text-xs hover:bg-accent"
+            className="flex h-5 w-5 items-center justify-center rounded text-xs hover:bg-accent"
           >
             {isSectionExpanded(key, defaultOpen) ? "▾" : "▸"}
           </button>
@@ -292,7 +281,7 @@ export function PanelConfigSidebar({
           {hint ? <ConfigHintIcon label={title}>{hint}</ConfigHintIcon> : null}
         </div>
       </div>
-      <CollapsibleContent className="space-y-3 border-t border-border/60 bg-muted/[0.1] px-3 pb-3 pt-2.5">
+      <CollapsibleContent className="space-y-2 border-t border-border/50 bg-muted/[0.08] px-2 pb-2 pt-1.5">
         {children}
       </CollapsibleContent>
     </Collapsible>
@@ -315,7 +304,7 @@ export function PanelConfigSidebar({
     );
     if (!groupKey) {
       return (
-        <div className="space-y-2.5 rounded-lg border border-border/55 bg-background/80 p-2.5">
+        <div className="space-y-1.5 rounded-md border border-border/50 bg-background/70 p-2">
           <div className="flex items-center gap-1">{header}</div>
           {children}
         </div>
@@ -326,9 +315,9 @@ export function PanelConfigSidebar({
       <Collapsible
         open={open}
         onOpenChange={(next) => setSectionExpanded(groupKey, next)}
-        className="space-y-2.5 rounded-lg border border-border/55 bg-background/80 p-2.5"
+        className="space-y-1.5 rounded-md border border-border/50 bg-background/70 p-2"
       >
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1">
           <CollapsibleTrigger asChild>
             <button
               type="button"
@@ -340,7 +329,7 @@ export function PanelConfigSidebar({
           </CollapsibleTrigger>
           {header}
         </div>
-        <CollapsibleContent className="space-y-2.5">{children}</CollapsibleContent>
+        <CollapsibleContent className="space-y-1.5">{children}</CollapsibleContent>
       </Collapsible>
     );
   };
@@ -420,49 +409,43 @@ export function PanelConfigSidebar({
       scrollContainerRef={sidebarScrollRef}
     >
     <aside
-      ref={sidebarScrollRef}
-      className={`scope-config-sidebar h-full overflow-auto border-l border-border bg-muted/[0.14] px-3 py-3 text-foreground [&_.config-field--highlight]:rounded-md [&_.config-field--highlight]:ring-2 [&_.config-field--highlight]:ring-sky-400/80 [&_.scope-field--highlight]:rounded-md [&_.scope-field--highlight]:ring-2 [&_.scope-field--highlight]:ring-amber-400/80 [&_button[role=checkbox]]:border-2 [&_button[role=checkbox]]:border-foreground/80 [&_button[role=checkbox]]:bg-background [&_button[role=checkbox]]:ring-1 [&_button[role=checkbox]]:ring-foreground/40 [&_button[role=checkbox][data-state=checked]]:border-primary [&_button[role=checkbox][data-state=checked]]:ring-primary/40 ${themedScrollbarClass}`}
+      className="scope-config-sidebar grid h-full min-h-0 w-full overflow-hidden border-l border-border/60 bg-muted/[0.12] text-foreground [&_.config-field--highlight]:rounded-md [&_.config-field--highlight]:ring-2 [&_.config-field--highlight]:ring-sky-400/80 [&_.scope-field--highlight]:rounded-md [&_.scope-field--highlight]:ring-2 [&_.scope-field--highlight]:ring-amber-400/80 [&_button[role=checkbox]]:border-2 [&_button[role=checkbox]]:border-foreground/80 [&_button[role=checkbox]]:bg-background [&_button[role=checkbox]]:ring-1 [&_button[role=checkbox]]:ring-foreground/40 [&_button[role=checkbox][data-state=checked]]:border-primary [&_button[role=checkbox][data-state=checked]]:ring-primary/40"
+      style={{ gridTemplateRows: "auto 1fr" }}
     >
-      <div className="sticky top-0 z-20 mb-3 rounded-lg border border-border/70 bg-card/95 px-2.5 py-2 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/80">
-        <div className="flex items-center justify-between gap-2">
-          <div className="text-xs font-semibold tracking-wide">{t("panel.config.panelTitle")}</div>
+      <div className="border-b border-border/50 bg-background/70 px-2.5 py-1.5 backdrop-blur-sm">
+        <div className="relative">
+          <span
+            className="pointer-events-none absolute top-1/2 z-[1] -translate-y-1/2 text-muted-foreground"
+            style={{ left: 12 }}
+          >
+            <IconSearch />
+          </span>
+          <Input
+            value={configSearch}
+            onChange={(e) => setConfigSearch(e.target.value)}
+            placeholder={t("panel.config.searchPlaceholder")}
+            className="h-7 rounded-md border-border/60 bg-background/90 text-[12px] shadow-none"
+            style={{ paddingLeft: 34, paddingRight: 10 }}
+            aria-label={t("panel.config.searchPlaceholder")}
+            data-scope-autocomplete="off"
+          />
         </div>
-          {showScopePanel ? <ViewElementScopePanel scope={viewElementScope} /> : null}
-        <ScopeTemplateWarningsPanel />
-        <div
-          className={
-            showScopePanel || scopeWarnings.length > 0
-              ? "mt-2 border-t border-border/50 pt-2"
-              : "mt-0"
-          }
-        >
-          <div className="flex items-center justify-end gap-2">
-            <button
-              type="button"
-              className="rounded border border-border px-1.5 py-0.5 text-[11px] text-muted-foreground hover:bg-accent"
-              onClick={() => setIsSearchCollapsed((prev) => !prev)}
-            >
-              {isSearchCollapsed ? t("panel.config.expandSearch") : t("panel.config.collapseSearch")}
-            </button>
+        {hasSearch ? (
+          <div className="mt-1 px-0.5 text-[11px] text-muted-foreground">
+            {t("panel.config.searching", { query: configSearch })}
           </div>
-          {!isSearchCollapsed ? (
-            <div className="mt-2">
-              <Input
-                value={configSearch}
-                onChange={(e) => setConfigSearch(e.target.value)}
-                placeholder={t("panel.config.searchPlaceholder")}
-                className="h-7"
-                data-scope-autocomplete="off"
-              />
-              {hasSearch ? (
-                <div className="mt-1 text-[11px] text-muted-foreground">
-                  {t("panel.config.searching", { query: configSearch })}
-                </div>
-              ) : null}
-            </div>
-          ) : null}
-        </div>
+        ) : null}
       </div>
+      <div
+        ref={sidebarScrollRef}
+        className={`min-h-0 overflow-auto px-2 py-1.5 ${themedScrollbarClass}`}
+      >
+      {showScopePanel || scopeWarnings.length > 0 ? (
+        <div className="mb-2 space-y-1.5">
+          {showScopePanel ? <ViewElementScopePanel scope={viewElementScope} /> : null}
+          <ScopeTemplateWarningsPanel />
+        </div>
+      ) : null}
       {isMultiSelectMode ? (
           <PanelConfigMultiSelect
             elements={effectiveSelectedElements}
@@ -475,7 +458,7 @@ export function PanelConfigSidebar({
           />
       ) : null}
       {!isMultiSelectMode && !selectedElement ? (
-        <Empty className="py-7">
+        <Empty className="py-5">
           <EmptyIcon>
             <svg
               viewBox="0 0 24 24"
@@ -493,14 +476,14 @@ export function PanelConfigSidebar({
           <EmptyDescription>{t("panel.config.emptyNoNodeDesc")}</EmptyDescription>
         </Empty>
       ) : !isMultiSelectMode && selectedElement ? (
-        <div className="space-y-3">
+        <div className="space-y-2">
           {!isNodeEditable ? (
             <div className="rounded border border-amber-500/40 bg-amber-500/10 px-2 py-1.5 text-[11px] text-amber-700 dark:text-amber-300">
               {readonlyReason}
             </div>
           ) : null}
           <fieldset disabled={!isNodeEditable} className={!isNodeEditable ? "opacity-60" : ""}>
-            <div className="space-y-3.5 text-xs">
+            <div className="space-y-2 text-xs">
                 <PanelConfigNodeInfo
                   element={selectedElement}
                   helpers={helpers}
@@ -510,7 +493,7 @@ export function PanelConfigSidebar({
                 />
             </div>
           </fieldset>
-          <div className="rounded-lg border border-border/60 bg-card/80 px-2.5 py-2 text-xs">
+          <div className="rounded-md border border-border/50 bg-card/80 px-2 py-1.5 text-xs">
             <label className="flex items-center gap-2">
               <Checkbox
                 checked={selectedElement.locked === true}
@@ -526,7 +509,7 @@ export function PanelConfigSidebar({
             </label>
           </div>
           <fieldset disabled={!isNodeEditable} className={!isNodeEditable ? "opacity-60" : ""}>
-            <div className="space-y-3.5 text-xs">
+            <div className="space-y-2 text-xs">
           {isChartElement ? (
                   <PanelConfigChartSection
                     element={selectedElement}
@@ -641,6 +624,7 @@ export function PanelConfigSidebar({
           </fieldset>
         </div>
       ) : null}
+      </div>
     </aside>
     </ScopeConfigProvider>
   );

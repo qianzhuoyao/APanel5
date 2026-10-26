@@ -189,7 +189,7 @@ function hasViewEvent(el: PanelElement) {
     :class="[
       'absolute select-none',
       previewMode ? '' : 'rv-selectable',
-      !previewMode && selectedIds.includes(el.id) ? 'ring-2 ring-blue-500/90 ring-offset-0' : '',
+      !previewMode && selectedIds.includes(el.id) ? 'rv-node-selected' : '',
       hasViewEvent(el) ? 'cursor-pointer' : '',
     ]"
     :data-element-id="el.id"

@@ -44,8 +44,8 @@ export function SelectLayer({
 
   return (
     <Selecto
-      // container 可以是 transform 过的画布；rootContainer 必须是未 transform 的真实坐标系容器
-      container={container}
+      // 框选层挂在未 scale 的视口上，避免选区宽高被画布 transform 放大、线宽视觉变粗
+      container={dragRoot}
       rootContainer={dragRoot}
       // 选择框渲染到 body，避免受滚动/缩放影响产生偏移
       portalContainer={overlayContainer}

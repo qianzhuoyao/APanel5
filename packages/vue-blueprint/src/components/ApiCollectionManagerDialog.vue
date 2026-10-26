@@ -244,6 +244,7 @@ async function handleFiles(files: FileList | null) {
     :title="t('blueprint.apiCollection.managerTitle')"
     :footer="null"
     width="960px"
+    :mask-style="{ background: 'transparent' }"
     :body-style="{ maxHeight: '90vh', display: 'flex', flexDirection: 'column' }"
     @update:open="onOpenChange"
   >
@@ -350,47 +351,48 @@ async function handleFiles(files: FileList | null) {
         : t('blueprint.apiCollection.createTitle')
     "
     :footer="null"
-    width="1100px"
+    width="620px"
     :style="{ top: '4vh' }"
+    :mask-style="{ background: 'transparent' }"
+    destroy-on-close
     @update:open="(v) => (editorOpen = v)"
   >
-    <p class="mb-3 text-xs text-muted-foreground">
+    <p class="mb-2 text-xs text-muted-foreground">
       {{ t("blueprint.apiCollection.editorDescription") }}
     </p>
 
-    <div class="space-y-2">
-      <div class="flex items-center justify-between gap-2">
-        <span class="text-xs">{{ t("blueprint.apiCollection.jsonEditor") }}</span>
-        <label class="flex cursor-pointer items-center gap-2 text-[11px] text-muted-foreground">
-          <Checkbox v-model:checked="editorPersistLocal" />
-          {{ t("blueprint.apiCollection.persistLocal") }}
-        </label>
-      </div>
-      <Input.TextArea
-        v-model:value="editorJson"
-        :rows="28"
-        :spellcheck="false"
-        class="!min-h-[62vh] font-mono text-[12px] leading-relaxed"
-        :status="editorError ? 'error' : undefined"
-      />
-      <p v-if="editorError" class="text-[11px] text-destructive">{{ editorError }}</p>
-    </div>
-
-    <div class="mt-4 flex flex-wrap justify-end gap-2">
-      <Button @click="downloadApiCollectionTemplate()">
+    <div class="mb-2 flex flex-wrap items-center gap-1.5 border-b border-border/60 pb-2">
+      <Button size="small" @click="downloadApiCollectionTemplate()">
         {{ t("blueprint.apiCollection.downloadTemplate") }}
       </Button>
       <Button
+        size="small"
         :disabled="busy || !onSyncCollection"
         :title="t('blueprint.apiCollection.syncHint')"
         @click="void handleSyncFromEditor()"
       >
         {{ t("blueprint.apiCollection.sync") }}
       </Button>
-      <Button @click="editorOpen = false">{{ t("common.cancel") }}</Button>
-      <Button type="primary" :disabled="busy" @click="void handleSaveEditor()">
+      <Button size="small" @click="editorOpen = false">{{ t("common.cancel") }}</Button>
+      <Button size="small" type="primary" :disabled="busy" @click="void handleSaveEditor()">
         {{ t("common.save") }}
       </Button>
+      <label class="ml-auto flex cursor-pointer items-center gap-1.5 text-[11px] text-muted-foreground">
+        <Checkbox v-model:checked="editorPersistLocal" />
+        {{ t("blueprint.apiCollection.persistLocal") }}
+      </label>
+    </div>
+
+    <div class="flex flex-col gap-2">
+      <span class="text-xs">{{ t("blueprint.apiCollection.jsonEditor") }}</span>
+      <Input.TextArea
+        v-model:value="editorJson"
+        :rows="16"
+        :spellcheck="false"
+        class="!h-[min(68vh,640px)] !min-h-[320px] font-mono text-[12px] leading-relaxed"
+        :status="editorError ? 'error' : undefined"
+      />
+      <p v-if="editorError" class="text-[11px] text-destructive">{{ editorError }}</p>
     </div>
   </Modal>
 </template>

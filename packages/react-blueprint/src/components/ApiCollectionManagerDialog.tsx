@@ -241,7 +241,10 @@ export function ApiCollectionManagerDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="flex max-h-[90vh] w-[min(96vw,960px)] flex-col sm:max-w-[960px]">
+        <DialogContent
+          overlayClassName="bg-transparent"
+          className="flex max-h-[90vh] w-[min(96vw,960px)] flex-col sm:max-w-[960px]"
+        >
           <DialogHeader>
             <DialogTitle>{t("blueprint.apiCollection.managerTitle")}</DialogTitle>
             <DialogDescription>
@@ -376,8 +379,12 @@ export function ApiCollectionManagerDialog({
       </Dialog>
 
       <Dialog open={editorOpen} onOpenChange={setEditorOpen}>
-        <DialogContent className="flex max-h-[90vh] w-[min(96vw,1100px)] flex-col sm:max-w-[1100px]">
-          <DialogHeader>
+        <DialogContent
+          overlayClassName="bg-transparent"
+          className="flex w-[min(92vw,620px)] flex-col gap-3 overflow-hidden sm:max-w-[620px]"
+          resizable={false}
+        >
+          <DialogHeader className="shrink-0 space-y-1">
             <DialogTitle>
               {editingId
                 ? t("blueprint.apiCollection.editTitle")
@@ -388,26 +395,63 @@ export function ApiCollectionManagerDialog({
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-2">
-            <div className="flex items-center justify-between gap-2">
-              <Label className="text-xs">
-                {t("blueprint.apiCollection.jsonEditor")}
-              </Label>
-              <label className="flex cursor-pointer items-center gap-2 text-[11px] text-muted-foreground">
-                <input
-                  type="checkbox"
-                  className="h-3.5 w-3.5 rounded border border-input"
-                  checked={editorPersistLocal}
-                  onChange={(e) => setEditorPersistLocal(e.target.checked)}
-                />
-                {t("blueprint.apiCollection.persistLocal")}
-              </label>
-            </div>
+          <div className="flex shrink-0 flex-wrap items-center gap-1.5 border-b border-border/60 pb-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-7 px-2 text-[11px]"
+              onClick={() => downloadApiCollectionTemplate()}
+            >
+              {t("blueprint.apiCollection.downloadTemplate")}
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-7 px-2 text-[11px]"
+              disabled={busy || !onSyncCollection}
+              title={t("blueprint.apiCollection.syncHint")}
+              onClick={() => void handleSyncFromEditor()}
+            >
+              {t("blueprint.apiCollection.sync")}
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-7 px-2 text-[11px]"
+              onClick={() => setEditorOpen(false)}
+            >
+              {t("common.cancel")}
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              className="h-7 px-2.5 text-[11px]"
+              disabled={busy}
+              onClick={() => void handleSaveEditor()}
+            >
+              {t("common.save")}
+            </Button>
+            <label className="ml-auto flex cursor-pointer items-center gap-1.5 text-[11px] text-muted-foreground">
+              <input
+                type="checkbox"
+                className="h-3.5 w-3.5 rounded border border-input"
+                checked={editorPersistLocal}
+                onChange={(e) => setEditorPersistLocal(e.target.checked)}
+              />
+              {t("blueprint.apiCollection.persistLocal")}
+            </label>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <Label className="text-xs">{t("blueprint.apiCollection.jsonEditor")}</Label>
             <Textarea
               value={editorJson}
               onChange={(e) => setEditorJson(e.target.value)}
               className={cn(
-                "min-h-[min(62vh,640px)] flex-1 font-mono text-[12px] leading-relaxed",
+                "h-[min(68vh,640px)] min-h-[320px] w-full resize-y overflow-auto font-mono text-[12px] leading-relaxed",
                 editorError && "border-destructive"
               )}
               spellCheck={false}
@@ -416,31 +460,6 @@ export function ApiCollectionManagerDialog({
               <p className="text-[11px] text-destructive">{editorError}</p>
             ) : null}
           </div>
-
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => downloadApiCollectionTemplate()}
-            >
-              {t("blueprint.apiCollection.downloadTemplate")}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              disabled={busy || !onSyncCollection}
-              title={t("blueprint.apiCollection.syncHint")}
-              onClick={() => void handleSyncFromEditor()}
-            >
-              {t("blueprint.apiCollection.sync")}
-            </Button>
-            <Button type="button" variant="outline" onClick={() => setEditorOpen(false)}>
-              {t("common.cancel")}
-            </Button>
-            <Button type="button" disabled={busy} onClick={() => void handleSaveEditor()}>
-              {t("common.save")}
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
     </>
