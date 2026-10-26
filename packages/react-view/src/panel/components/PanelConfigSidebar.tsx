@@ -420,22 +420,22 @@ export function PanelConfigSidebar({
           >
             <IconSearch />
           </span>
-          <Input
-            value={configSearch}
-            onChange={(e) => setConfigSearch(e.target.value)}
-            placeholder={t("panel.config.searchPlaceholder")}
+              <Input
+                value={configSearch}
+                onChange={(e) => setConfigSearch(e.target.value)}
+                placeholder={t("panel.config.searchPlaceholder")}
             className="h-7 rounded-md border-border/60 bg-background/90 text-[12px] shadow-none"
             style={{ paddingLeft: 34, paddingRight: 10 }}
             aria-label={t("panel.config.searchPlaceholder")}
-            data-scope-autocomplete="off"
-          />
+                data-scope-autocomplete="off"
+              />
         </div>
-        {hasSearch ? (
+              {hasSearch ? (
           <div className="mt-1 px-0.5 text-[11px] text-muted-foreground">
-            {t("panel.config.searching", { query: configSearch })}
-          </div>
-        ) : null}
-      </div>
+                  {t("panel.config.searching", { query: configSearch })}
+                </div>
+              ) : null}
+            </div>
       <div
         ref={sidebarScrollRef}
         className={`min-h-0 overflow-auto px-2 py-1.5 ${themedScrollbarClass}`}
@@ -444,8 +444,8 @@ export function PanelConfigSidebar({
         <div className="mb-2 space-y-1.5">
           {showScopePanel ? <ViewElementScopePanel scope={viewElementScope} /> : null}
           <ScopeTemplateWarningsPanel />
-        </div>
-      ) : null}
+                    </div>
+                      ) : null}
       {isMultiSelectMode ? (
           <PanelConfigMultiSelect
             elements={effectiveSelectedElements}

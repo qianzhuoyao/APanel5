@@ -4,6 +4,18 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)，版本号遵循 [SemVer](https://semver.org/lang/zh-CN/)。
 
+## [1.1.42] - 2026-10-26
+
+配套：`react-view@1.0.41` · `vue-view@0.1.27` · `abuilder-vue@0.1.26`
+
+### Fixed
+
+- 物料侧栏宽度 ≥160px 时按 90px 列宽换行：改用 ResizeObserver + `data-material-wrap`，并确保规则打入 abuilder 打包 CSS（React / Vue）
+
+### Changed
+
+- 物料预览与配置窄栏布局继续对齐 Soft UI（React / Vue）
+
 ## [1.1.41] - 2026-10-26
 
 配套：`ui@1.0.11` · `react-view@1.0.40` · `vue-view@0.1.26` · `abuilder-vue@0.1.25` · `react-blueprint@1.0.25` · `vue-blueprint@0.1.20`

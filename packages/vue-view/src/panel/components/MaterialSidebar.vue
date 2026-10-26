@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from "@arronqzy/i18n/vue";
-import { computed, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { Empty, Input, Select, Tabs, Tooltip } from "ant-design-vue";
 import type { PanelElement, PanelLayer, ReferenceCopyMode } from "../types";
 import { getPanelMessages } from "../constants/messages";
@@ -52,6 +52,25 @@ const referenceOnlyTree = ref(false);
 const draggingTreeNodeId = ref<string | null>(null);
 const dragOverLayerId = ref<string | null>(null);
 const expandedKeys = ref<Record<string, boolean>>({ root: true });
+const sidebarRef = ref<HTMLElement | null>(null);
+const materialWrap = ref(false);
+let sidebarResizeObserver: ResizeObserver | null = null;
+
+onMounted(() => {
+  const el = sidebarRef.value;
+  if (!el) return;
+  const update = () => {
+    materialWrap.value = el.getBoundingClientRect().width >= 160;
+  };
+  update();
+  sidebarResizeObserver = new ResizeObserver(update);
+  sidebarResizeObserver.observe(el);
+});
+
+onBeforeUnmount(() => {
+  sidebarResizeObserver?.disconnect();
+  sidebarResizeObserver = null;
+});
 
 const categories = computed(() => { void locale.value; return getDefaultCategories(t); });
 const normalizedKeyword = computed(() => keyword.value.trim().toLowerCase());
@@ -289,6 +308,8 @@ const treeSearchEmpty = computed(
 
 <template>
   <aside
+    ref="sidebarRef"
+    :data-material-wrap="materialWrap ? 'true' : 'false'"
     :class="[
       'rv-material-sidebar grid h-full min-h-0 w-full overflow-hidden border-r border-border/60 bg-muted/20 text-foreground',
       props.class ?? '',

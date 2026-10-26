@@ -1,12 +1,7 @@
 /*
- * 物料侧栏：容器查询写在源 CSS 里（JIT 的 @[Npx] 经常未进 dist）
- * 窄：单列、卡片最多 112px；宽：auto-fill 换行，单卡约 88–104px
+ * 物料侧栏：由 data-material-wrap 切换（ResizeObserver）
+ * <160px：单列铺满；≥160px：90px 列宽 auto-fill 换行
  */
-.rv-material-sidebar {
-  container-type: inline-size;
-  container-name: rv-material;
-}
-
 .rv-material-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -16,19 +11,26 @@
 
 .rv-material-card {
   width: 100%;
-  max-width: 112px;
-  justify-self: center;
+  max-width: none;
+  justify-self: stretch;
+  box-sizing: border-box;
 }
 
-@container rv-material (min-width: 200px) {
-  .rv-material-grid {
-    grid-template-columns: repeat(auto-fill, minmax(88px, 104px));
-  }
+.rv-material-preview {
+  width: 100%;
+  max-width: none;
+  max-height: none;
+}
 
-  .rv-material-card {
-    max-width: none;
-    justify-self: stretch;
-  }
+.rv-material-sidebar[data-material-wrap="true"] .rv-material-grid {
+  grid-template-columns: repeat(auto-fill, 90px);
+  justify-content: start;
+}
+
+.rv-material-sidebar[data-material-wrap="true"] .rv-material-card {
+  width: 90px;
+  max-width: 90px;
+  justify-self: start;
 }
 
 /*
