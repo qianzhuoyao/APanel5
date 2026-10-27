@@ -471,18 +471,27 @@ const ReactViewPanelInner = forwardRef<AbuilderViewHandle, ReactViewPanelProps>(
 
     schedule();
     const mutationObserver = new MutationObserver(schedule);
-    mutationObserver.observe(root, {
-      childList: true,
-      subtree: true,
-      characterData: true,
-      attributes: true,
-      attributeFilter: ["class", "style"],
-    });
+    const observeMutations = () => {
+      mutationObserver.observe(root, {
+        childList: true,
+        subtree: true,
+        characterData: true,
+        attributes: true,
+        attributeFilter: ["class", "style"],
+      });
+    };
+    observeMutations();
     const resizeObserver = new ResizeObserver(schedule);
     resizeObserver.observe(root);
     window.addEventListener("resize", schedule);
+    // 拖动时每帧改 style，断开观察避免 MutationObserver 空转
     const unsubscribeBusy = subscribeCanvasInteractionBusy(() => {
-      if (!isCanvasInteractionBusy()) schedule();
+      if (isCanvasInteractionBusy()) {
+        mutationObserver.disconnect();
+        return;
+      }
+      observeMutations();
+      schedule();
     });
     return () => {
       if (rafId) window.cancelAnimationFrame(rafId);

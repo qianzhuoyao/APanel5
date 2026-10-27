@@ -44,6 +44,75 @@ function readLiveCanvasScale(canvasContainer: HTMLElement | null, fallback: numb
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
+type GridChildDragStart = { el: HTMLElement; x: number; y: number; rotate: number };
+
+function composeLiveTransform(tx: number, ty: number, rotate: number) {
+  return `translate(${tx}px, ${ty}px) rotate(${rotate}deg)`;
+}
+
+function applyLiveTranslate(target: HTMLElement, tx: number, ty: number, rotate: number) {
+  target.style.transform = composeLiveTransform(tx, ty, rotate);
+}
+
+function commitLivePosition(
+  target: HTMLElement,
+  x: number,
+  y: number,
+  rotate: number
+) {
+  target.style.left = `${x}px`;
+  target.style.top = `${y}px`;
+  target.style.transform = `rotate(${rotate}deg)`;
+  target.style.willChange = "";
+}
+
+function collectGridDescendantDragStarts(
+  canvasContainer: HTMLElement | null,
+  elementsById: Map<string, PanelElement>,
+  gridId: string
+): GridChildDragStart[] {
+  if (!canvasContainer) return [];
+  const result: GridChildDragStart[] = [];
+  const queue = [gridId];
+  const seen = new Set<string>();
+  while (queue.length > 0) {
+    const parentId = queue.shift()!;
+    for (const el of elementsById.values()) {
+      if (el.parentGridId !== parentId || seen.has(el.id)) continue;
+      seen.add(el.id);
+      const dom = canvasContainer.querySelector<HTMLElement>(
+        `.rv-selectable[data-element-id="${CSS.escape(el.id)}"]`
+      );
+      if (dom) {
+        result.push({ el: dom, x: el.x, y: el.y, rotate: el.rotate ?? 0 });
+      }
+      if (el.materialType === "grid") queue.push(el.id);
+    }
+  }
+  return result;
+}
+
+function applyLiveTranslateToGridChildren(
+  children: GridChildDragStart[] | undefined,
+  tx: number,
+  ty: number
+) {
+  if (!children?.length) return;
+  for (let i = 0; i < children.length; i++) {
+    const child = children[i]!;
+    applyLiveTranslate(child.el, tx, ty, child.rotate);
+  }
+}
+
+function clearLiveTranslateOnGridChildren(children: GridChildDragStart[] | undefined) {
+  if (!children?.length) return;
+  for (let i = 0; i < children.length; i++) {
+    const child = children[i]!;
+    child.el.style.transform = `rotate(${child.rotate}deg)`;
+    child.el.style.willChange = "";
+  }
+}
+
 const moveableRef = shallowRef<Moveable | null>(null);
 const lockBadgeScreen = ref<{ x: number; y: number } | null>(null);
 const syncRafRef = ref<number | null>(null);
@@ -225,8 +294,8 @@ function createMoveable() {
     resizable: true,
     rotatable: true,
     origin: false,
-    throttleDrag: 0,
-    throttleResize: 0,
+    throttleDrag: 1,
+    throttleResize: 1,
     throttleRotate: 0,
   });
 
@@ -238,17 +307,25 @@ function createMoveable() {
     e.set([0, 0]);
     e.datas.__startX = data.x;
     e.datas.__startY = data.y;
+    e.datas.__rotate = data.rotate ?? 0;
     const point = readClientPoint(e);
     e.datas.__startClientX = point?.x ?? null;
     e.datas.__startClientY = point?.y ?? null;
+    e.datas.__gridChildren =
+      data.materialType === "grid"
+        ? collectGridDescendantDragStarts(props.canvasContainer, props.elementsById, id)
+        : undefined;
+    if (e.target?.style) {
+      e.target.style.left = `${data.x}px`;
+      e.target.style.top = `${data.y}px`;
+      e.target.style.willChange = "transform";
+    }
     setCanvasInteractionBusy(true);
   });
 
   moveable.on("drag", (e: any) => {
     if (!e?.target?.style) return;
     if (e.datas.__startX === undefined || e.datas.__startY === undefined) return;
-    const sx = e.datas.__startX ?? 0;
-    const sy = e.datas.__startY ?? 0;
     const point = readClientPoint(e);
     const hasClient =
       typeof e.datas.__startClientX === "number" &&
@@ -260,8 +337,8 @@ function createMoveable() {
     const ty = hasClient
       ? toCanvasDeltaY(point.y - e.datas.__startClientY)
       : toCanvasDeltaY(e.beforeTranslate?.[1] ?? 0);
-    e.target.style.left = `${sx + tx}px`;
-    e.target.style.top = `${sy + ty}px`;
+    applyLiveTranslate(e.target, tx, ty, e.datas.__rotate ?? 0);
+    applyLiveTranslateToGridChildren(e.datas.__gridChildren, tx, ty);
   });
 
   moveable.on("dragGroupStart", (e: any) => {
@@ -273,9 +350,19 @@ function createMoveable() {
       ev.set([0, 0]);
       ev.datas.__startX = data.x;
       ev.datas.__startY = data.y;
+      ev.datas.__rotate = data.rotate ?? 0;
       const point = readClientPoint(ev) ?? readClientPoint(e);
       ev.datas.__startClientX = point?.x ?? null;
       ev.datas.__startClientY = point?.y ?? null;
+      ev.datas.__gridChildren =
+        data.materialType === "grid"
+          ? collectGridDescendantDragStarts(props.canvasContainer, props.elementsById, id)
+          : undefined;
+      if (ev.target?.style) {
+        ev.target.style.left = `${data.x}px`;
+        ev.target.style.top = `${data.y}px`;
+        ev.target.style.willChange = "transform";
+      }
     });
     setCanvasInteractionBusy(true);
   });
@@ -283,8 +370,6 @@ function createMoveable() {
   moveable.on("dragGroup", (e: any) => {
     e.events.forEach((ev: any) => {
       if (!ev?.target?.style) return;
-      const sx = ev.datas.__startX ?? 0;
-      const sy = ev.datas.__startY ?? 0;
       const point = readClientPoint(ev) ?? readClientPoint(e);
       const hasClient =
         typeof ev.datas.__startClientX === "number" &&
@@ -296,8 +381,8 @@ function createMoveable() {
       const ty = hasClient
         ? toCanvasDeltaY(point.y - ev.datas.__startClientY)
         : toCanvasDeltaY(ev.beforeTranslate?.[1] ?? 0);
-      ev.target.style.left = `${sx + tx}px`;
-      ev.target.style.top = `${sy + ty}px`;
+      applyLiveTranslate(ev.target, tx, ty, ev.datas.__rotate ?? 0);
+      applyLiveTranslateToGridChildren(ev.datas.__gridChildren, tx, ty);
     });
   });
 
@@ -310,8 +395,14 @@ function createMoveable() {
     e.dragStart?.set([0, 0]);
     e.datas.__startX = data.x;
     e.datas.__startY = data.y;
+    e.datas.__rotate = data.rotate ?? 0;
     e.datas.__startClientX = e.inputEvent?.clientX ?? null;
     e.datas.__startClientY = e.inputEvent?.clientY ?? null;
+    if (e.target?.style) {
+      e.target.style.left = `${data.x}px`;
+      e.target.style.top = `${data.y}px`;
+      e.target.style.willChange = "transform, width, height";
+    }
     setCanvasInteractionBusy(true);
   });
 
@@ -320,12 +411,9 @@ function createMoveable() {
     if (e.datas.__startX === undefined || e.datas.__startY === undefined) return;
     e.target.style.width = `${e.width}px`;
     e.target.style.height = `${e.height}px`;
-    const sx = e.datas.__startX ?? 0;
-    const sy = e.datas.__startY ?? 0;
     const tx = toCanvasDeltaX(e.drag.beforeTranslate?.[0] ?? 0);
     const ty = toCanvasDeltaY(e.drag.beforeTranslate?.[1] ?? 0);
-    e.target.style.left = `${sx + tx}px`;
-    e.target.style.top = `${sy + ty}px`;
+    applyLiveTranslate(e.target, tx, ty, e.datas.__rotate ?? 0);
   });
 
   moveable.on("resizeGroupStart", (e: any) => {
@@ -338,9 +426,15 @@ function createMoveable() {
       ev.dragStart?.set([0, 0]);
       ev.datas.__startX = data.x;
       ev.datas.__startY = data.y;
+      ev.datas.__rotate = data.rotate ?? 0;
       const input = ev.inputEvent ?? e.inputEvent;
       ev.datas.__startClientX = input?.clientX ?? null;
       ev.datas.__startClientY = input?.clientY ?? null;
+      if (ev.target?.style) {
+        ev.target.style.left = `${data.x}px`;
+        ev.target.style.top = `${data.y}px`;
+        ev.target.style.willChange = "transform, width, height";
+      }
     });
     setCanvasInteractionBusy(true);
   });
@@ -350,12 +444,9 @@ function createMoveable() {
       if (!ev?.target?.style) return;
       ev.target.style.width = `${ev.width}px`;
       ev.target.style.height = `${ev.height}px`;
-      const sx = ev.datas.__startX ?? 0;
-      const sy = ev.datas.__startY ?? 0;
       const tx = toCanvasDeltaX(ev.drag.beforeTranslate?.[0] ?? 0);
       const ty = toCanvasDeltaY(ev.drag.beforeTranslate?.[1] ?? 0);
-      ev.target.style.left = `${sx + tx}px`;
-      ev.target.style.top = `${sy + ty}px`;
+      applyLiveTranslate(ev.target, tx, ty, ev.datas.__rotate ?? 0);
     });
   });
 
@@ -365,6 +456,8 @@ function createMoveable() {
     const data = props.elementsById.get(id);
     if (!data) return;
     e.set(data.rotate ?? 0);
+    e.datas.__rotate = data.rotate ?? 0;
+    if (e.target?.style) e.target.style.willChange = "transform";
     setCanvasInteractionBusy(true);
   });
 
@@ -380,6 +473,7 @@ function createMoveable() {
       const data = props.elementsById.get(id);
       if (!data) return;
       ev.set(data.rotate ?? 0);
+      if (ev.target?.style) ev.target.style.willChange = "transform";
     });
     setCanvasInteractionBusy(true);
   });
@@ -399,6 +493,7 @@ function createMoveable() {
       if (!data) return;
       const sx = e.datas.__startX ?? data.x;
       const sy = e.datas.__startY ?? data.y;
+      const rotate = e.datas.__rotate ?? data.rotate ?? 0;
       const point = readClientPoint(e);
       const hasClient =
         typeof e.datas.__startClientX === "number" &&
@@ -412,12 +507,13 @@ function createMoveable() {
         : toCanvasDeltaY(e.lastEvent?.beforeTranslate?.[1] ?? 0);
       const nextX = sx + tx;
       const nextY = sy + ty;
+      if (e.target) commitLivePosition(e.target, nextX, nextY, rotate);
+      clearLiveTranslateOnGridChildren(e.datas.__gridChildren);
       const size = readTargetCanvasSize(e.target as HTMLElement | null, {
         width: data.width,
         height: data.height,
       });
       const patch = getSnapPatch(id, nextX, nextY, size.width, size.height);
-      // 网格子节点由 layout reflow 按槽位重算，勿再 +dx 二次平移
       props.updateElement(id, { x: nextX, y: nextY, ...patch });
       scheduleViewportSync();
     } finally {
@@ -457,9 +553,16 @@ function createMoveable() {
         if (!id) return;
         const data = props.elementsById.get(id);
         if (!data) return;
-        if (selectedGridIds.size > 0 && isUnderSelectedGrid(data)) return;
+        if (selectedGridIds.size > 0 && isUnderSelectedGrid(data)) {
+          if (ev.target?.style) {
+            ev.target.style.transform = `rotate(${ev.datas.__rotate ?? data.rotate ?? 0}deg)`;
+            ev.target.style.willChange = "";
+          }
+          return;
+        }
         const sx = ev.datas.__startX ?? data.x;
         const sy = ev.datas.__startY ?? data.y;
+        const rotate = ev.datas.__rotate ?? data.rotate ?? 0;
         const point = readClientPoint(ev) ?? readClientPoint(e);
         const hasClient =
           typeof ev.datas.__startClientX === "number" &&
@@ -473,6 +576,8 @@ function createMoveable() {
           : toCanvasDeltaY(ev.lastEvent?.beforeTranslate?.[1] ?? 0);
         const nextX = sx + tx;
         const nextY = sy + ty;
+        if (ev.target) commitLivePosition(ev.target, nextX, nextY, rotate);
+        clearLiveTranslateOnGridChildren(ev.datas.__gridChildren);
         const size = readTargetCanvasSize(ev.target as HTMLElement | null, {
           width: data.width,
           height: data.height,
@@ -502,8 +607,14 @@ function createMoveable() {
       const ty = toCanvasDeltaY(e.lastEvent?.drag?.beforeTranslate?.[1] ?? 0);
       const sx = e.datas.__startX ?? data.x;
       const sy = e.datas.__startY ?? data.y;
+      const rotate = e.datas.__rotate ?? data.rotate ?? 0;
       const nextX = sx + tx;
       const nextY = sy + ty;
+      if (e.target) {
+        e.target.style.width = `${width}px`;
+        e.target.style.height = `${height}px`;
+        commitLivePosition(e.target, nextX, nextY, rotate);
+      }
       const size = readTargetCanvasSize(e.target as HTMLElement | null, { width, height });
       const snapPatch = getSnapPatch(id, nextX, nextY, size.width, size.height);
       props.updateElement(id, { width, height, x: nextX, y: nextY, ...snapPatch });
@@ -527,8 +638,14 @@ function createMoveable() {
         const ty = toCanvasDeltaY(ev.lastEvent?.drag?.beforeTranslate?.[1] ?? 0);
         const sx = ev.datas.__startX ?? data.x;
         const sy = ev.datas.__startY ?? data.y;
+        const rotate = ev.datas.__rotate ?? data.rotate ?? 0;
         const nextX = sx + tx;
         const nextY = sy + ty;
+        if (ev.target) {
+          ev.target.style.width = `${width}px`;
+          ev.target.style.height = `${height}px`;
+          commitLivePosition(ev.target, nextX, nextY, rotate);
+        }
         const size = readTargetCanvasSize(ev.target as HTMLElement | null, { width, height });
         const snapPatch = getSnapPatch(id, nextX, nextY, size.width, size.height);
         props.updateElement(
@@ -550,6 +667,10 @@ function createMoveable() {
       const data = props.elementsById.get(id);
       if (!data) return;
       const rotate = e.lastEvent?.beforeRotate ?? data.rotate ?? 0;
+      if (e.target?.style) {
+        e.target.style.transform = `rotate(${rotate}deg)`;
+        e.target.style.willChange = "";
+      }
       props.updateElement(id, { rotate });
       scheduleViewportSync();
     } finally {
@@ -566,6 +687,10 @@ function createMoveable() {
         const data = props.elementsById.get(id);
         if (!data) return;
         const rotate = ev.lastEvent?.beforeRotate ?? data.rotate ?? 0;
+        if (ev.target?.style) {
+          ev.target.style.transform = `rotate(${rotate}deg)`;
+          ev.target.style.willChange = "";
+        }
         props.updateElement(id, { rotate }, { batchId, meta: { type: "node.group-rotate" } });
       });
       scheduleViewportSync();

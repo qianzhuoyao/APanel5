@@ -1,6 +1,6 @@
 import {
   Primitive
-} from "./chunk-BLNW7ZEQ.js";
+} from "./chunk-KIK3VUGU.js";
 import {
   useLayoutEffect2
 } from "./chunk-QKEJEBMJ.js";
@@ -35,4 +35,4 @@ Portal.displayName = PORTAL_NAME;
 export {
   Portal
 };
-//# sourceMappingURL=chunk-QBYQAW7B.js.map
+//# sourceMappingURL=chunk-DPHTVXST.js.map

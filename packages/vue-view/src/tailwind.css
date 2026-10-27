@@ -69,6 +69,13 @@
  * - 根节点必须高于画布元素 zIndex（节点默认 ≥1），否则多选组框线会被节点盖住，只剩锚点可见
  * - 勿把 .moveable-group 压到 z-index:1（会覆盖根节点的 9999）
  */
+/*
+ * 拖拽/缩放期间关闭 content-visibility，避免每帧改 left/top 触发跳过渲染重算掉帧
+ */
+html[data-rv-interacting="1"] [data-panel-canvas] .rv-selectable {
+  content-visibility: visible !important;
+}
+
 .rv-moveable-layer {
   --moveable-color: #1990ff;
   z-index: 9999 !important;
