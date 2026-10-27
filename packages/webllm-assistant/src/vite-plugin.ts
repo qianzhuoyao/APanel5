@@ -1,10 +1,20 @@
 import fs from "node:fs";
 import type { IncomingMessage, ServerResponse } from "node:http";
 
+interface WebllmPluginThis {
+  meta: { watchMode: boolean };
+  resolve: (
+    id: string,
+    importer?: string,
+    opts?: { skipSelf?: boolean }
+  ) => Promise<{ id: string } | null>;
+}
+
 interface WebllmVitePlugin {
   name: string;
   enforce?: "pre" | "post";
   config: () => {
+    define: Record<string, string>;
     optimizeDeps: { exclude: string[] };
     build: {
       commonjsOptions: { exclude: RegExp[] };
@@ -26,7 +36,10 @@ interface WebllmVitePlugin {
     importer: string | undefined,
     options: { skipSelf?: boolean }
   ) => Promise<{ id: string; external?: boolean } | string | null>;
-  load?: (id: string) => string | null | Promise<string | null>;
+  load?: (
+    this: WebllmPluginThis,
+    id: string
+  ) => string | null | Promise<string | null>;
   buildStart?: () => void | Promise<void>;
 }
 
@@ -158,18 +171,10 @@ export function webllmAssistant(): WebllmVitePlugin {
 
       return null;
     },
-    async load(id) {
+    async load(this: WebllmPluginThis, id) {
       if (id !== RESOLVED_WEBLLM_VITE_ENTRY) return null;
 
-      const file = await resolveWebLlmFile(
-        this as unknown as {
-          resolve: (
-            id: string,
-            importer?: string,
-            opts?: { skipSelf?: boolean }
-          ) => Promise<{ id: string } | null>;
-        }
-      );
+      const file = await resolveWebLlmFile(this);
 
       // Dev server: raw middleware URL so dynamic import gets real ESM bytes.
       if (this.meta.watchMode) {
