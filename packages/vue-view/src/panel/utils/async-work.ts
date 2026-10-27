@@ -12,6 +12,8 @@ export const FILE_SIZE_LIMITS: Record<MediaFileKind, number> = {
 };
 
 const JSON_WORKER_THRESHOLD = 128 * 1024;
+/** 短于这个时间的任务不铺全屏遮罩，避免同步这类瞬时操作闪一下。 */
+const BUSY_OVERLAY_DELAY_MS = 180;
 
 export const busyOverlayMessage = shallowRef<string | null>(null);
 let busyDepth = 0;
@@ -38,13 +40,25 @@ export async function runBusyTask<T>(
 ): Promise<T> {
   const previous = busyOverlayMessage.value;
   busyDepth += 1;
-  setBusyMessage(message);
-  await yieldToPaint();
+  const alreadyVisible = previous !== null;
+  let revealed = alreadyVisible;
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  if (alreadyVisible) {
+    setBusyMessage(message);
+  } else {
+    timer = setTimeout(() => {
+      revealed = true;
+      setBusyMessage(message);
+    }, BUSY_OVERLAY_DELAY_MS);
+  }
   try {
     return await task();
   } finally {
+    if (timer) clearTimeout(timer);
     busyDepth = Math.max(0, busyDepth - 1);
-    setBusyMessage(busyDepth === 0 ? null : previous);
+    if (revealed) {
+      setBusyMessage(busyDepth === 0 ? null : previous);
+    }
   }
 }
 

@@ -424,7 +424,7 @@ export function PanelConfigSidebar({
                 value={configSearch}
                 onChange={(e) => setConfigSearch(e.target.value)}
                 placeholder={t("panel.config.searchPlaceholder")}
-            className="h-7 rounded-md border-border/60 bg-background/90 text-[12px] shadow-none"
+            className="rv-pill-search h-8 rounded-full border-border/50 bg-background/70 text-[12px] shadow-none"
             style={{ paddingLeft: 34, paddingRight: 10 }}
             aria-label={t("panel.config.searchPlaceholder")}
                 data-scope-autocomplete="off"
@@ -458,7 +458,7 @@ export function PanelConfigSidebar({
           />
       ) : null}
       {!isMultiSelectMode && !selectedElement ? (
-        <Empty className="py-5">
+        <Empty className="rv-empty py-8">
           <EmptyIcon>
             <svg
               viewBox="0 0 24 24"

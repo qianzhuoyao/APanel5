@@ -61,16 +61,40 @@ function usesViteLoader(): boolean {
 const VITE_PLUGIN_HINT =
   "Add webllmAssistant() from @arronqzy/abuilder/vite to your Vite plugins.";
 
+async function unwrapLoaded(value: unknown): Promise<unknown> {
+  let current = value;
+  // Virtual entry may nest `{ default }` / Promise from earlier plugin shapes.
+  for (let i = 0; i < 4; i += 1) {
+    if (current && typeof (current as Promise<unknown>).then === "function") {
+      current = await (current as Promise<unknown>);
+      continue;
+    }
+    if (current && typeof current === "object" && "default" in (current as object)) {
+      const nested = (current as { default: unknown }).default;
+      if (nested !== current) {
+        current = nested;
+        continue;
+      }
+    }
+    break;
+  }
+  return current;
+}
+
+async function importAssetHref(assetHref: string): Promise<unknown> {
+  return import(/* @vite-ignore */ assetHref);
+}
+
 async function loadViaVite(): Promise<WebLLMModule> {
   const viteLoader = await import("./load-web-llm.vite");
-  const loaded = await viteLoader.importWebLlm();
+  const loaded = await unwrapLoaded(await viteLoader.importWebLlm());
   const asModule = moduleFromUnknown(loaded);
   if (asModule) return asModule;
 
-  const assetHref = urlFromUnknown(loaded);
+  const assetHref = typeof loaded === "string" ? loaded : urlFromUnknown(loaded);
   if (assetHref) {
     const fromUrl = moduleFromUnknown(
-      await import(/* @vite-ignore */ assetHref)
+      await unwrapLoaded(await importAssetHref(assetHref))
     );
     if (fromUrl) return fromUrl;
   }

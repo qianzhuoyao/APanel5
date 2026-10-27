@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { useI18n } from "@arronqzy/i18n/react";
+import { TemplateDocHost, linkifyTemplateDocNode } from "@arronqzy/react-blueprint";
 import {
   Tooltip,
   TooltipContent,
@@ -55,9 +56,10 @@ export function ConfigHintIcon({
           side="top"
           className={`z-[10120] max-w-[360px] text-[11px] leading-5 ${contentClassName ?? ""}`}
         >
-          {children}
+          {linkifyTemplateDocNode(children)}
         </TooltipContent>
       </Tooltip>
+      <TemplateDocHost />
     </TooltipProvider>
   );
 }

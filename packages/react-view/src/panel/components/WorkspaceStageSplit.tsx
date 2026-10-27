@@ -85,9 +85,9 @@ function BlueprintPanel({
   return (
     <div
       data-workspace-region="blueprint"
-      className="flex h-full min-h-0 flex-col overflow-hidden bg-background"
+      className="rv-blueprint flex h-full min-h-0 flex-col overflow-hidden"
     >
-      <div className="flex shrink-0 items-center border-b border-border bg-background/90 px-2 py-1">
+      <div className="rv-blueprint-toolbar flex shrink-0 items-center px-2 py-1">
         <BlueprintPanelToolbar
           items={blueprintLibraryItems}
           activeId={activeBlueprintLibraryId}
@@ -135,8 +135,9 @@ export function WorkspaceStageSplit({
     const panel = blueprintPanelRef.current;
     if (!panel) return;
     if (blueprintOpen) {
-      panel.expand();
-    } else {
+      if (panel.isCollapsed()) panel.expand();
+      if (panel.getSize() < 28) panel.resize(42);
+    } else if (!panel.isCollapsed()) {
       panel.collapse();
     }
   }, [blueprintOpen]);
@@ -151,7 +152,8 @@ export function WorkspaceStageSplit({
       </ResizablePanel>
       <ResizableHandle
         withHandle
-        className={blueprintOpen ? undefined : "hidden"}
+        data-panel-resize-handle
+        className={blueprintOpen ? "h-px" : "hidden"}
       />
       <ResizablePanel
         ref={blueprintPanelRef}

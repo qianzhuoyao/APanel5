@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, useSlots } from "vue";
 import { useI18n } from "@arronqzy/i18n/vue";
+import { LinkifiedSlot, TemplateDocHost } from "@arronqzy/vue-blueprint";
 import { Tooltip } from "ant-design-vue";
 
 const { t } = useI18n();
@@ -9,6 +10,7 @@ const props = defineProps<{
   contentClass?: string;
   buttonClass?: string;
 }>();
+const slots = useSlots();
 
 const resolvedLabel = computed(() => props.label || t("common.hint"));
 </script>
@@ -20,7 +22,7 @@ const resolvedLabel = computed(() => props.label || t("common.hint"));
     :mouse-enter-delay="0.12"
   >
     <template #title>
-      <slot />
+      <LinkifiedSlot :render="slots.default" />
     </template>
     <button
       type="button"
@@ -46,4 +48,5 @@ const resolvedLabel = computed(() => props.label || t("common.hint"));
       </svg>
     </button>
   </Tooltip>
+  <TemplateDocHost />
 </template>

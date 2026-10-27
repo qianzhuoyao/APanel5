@@ -1,4 +1,4 @@
-import { forwardRef, useMemo, useState, type ReactNode } from "react";
+import { forwardRef, useEffect, useMemo, useState, type ReactNode } from "react";
 import { ThemeProvider } from "@arronqzy/ui";
 import type { Locale } from "@arronqzy/i18n";
 import {
@@ -9,6 +9,9 @@ import {
 } from "@arronqzy/react-view";
 import type { WorkspaceProjectRecord } from "@arronqzy/react-view";
 import { ABUILDER_PACKAGE_NAME, ABUILDER_VERSION } from "./version";
+
+/** 可选功能插件。目前仅 `ai`（离线 WebLLM 助手）。 */
+export type AbuilderPlugin = "ai";
 
 export type AbuilderAppProps = {
   className?: string;
@@ -46,7 +49,81 @@ export type AbuilderAppProps = {
    * 省略或空字符串保持历史全局库名。
    */
   nameSpace?: string | null;
+  /**
+   * 启用的可选插件。例如 `plugins={['ai']}` 开启离线 AI 助手。
+   * 默认不启用任何插件。
+   */
+  plugins?: AbuilderPlugin[];
+  /**
+   * 当前项目图标。URL、打包后的资源地址，或一段 `<svg>` 标记。
+   * 显示在编辑器左上角，并作为浏览器标签页图标。
+   * 省略或空字符串则不显示、不改标签页图标。
+   */
+  pIcon?: string | null;
+  /**
+   * 当前项目名称，写入浏览器标签页标题。
+   * 省略或空字符串则不改 `document.title`。
+   */
+  pTitle?: string | null;
 };
+
+function isSvgMarkup(value: string): boolean {
+  const trimmed = value.trim();
+  return trimmed.startsWith("<svg") || trimmed.startsWith("<?xml");
+}
+
+function useProjectChrome(pTitle?: string | null, pIcon?: string | null) {
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const title = pTitle?.trim();
+    if (!title) return;
+    const previous = document.title;
+    document.title = title;
+    return () => {
+      document.title = previous;
+    };
+  }, [pTitle]);
+
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const icon = pIcon?.trim();
+    if (!icon) return;
+
+    let href = icon;
+    let revoke: (() => void) | undefined;
+    if (isSvgMarkup(icon)) {
+      const blob = new Blob([icon], { type: "image/svg+xml" });
+      href = URL.createObjectURL(blob);
+      revoke = () => URL.revokeObjectURL(href);
+    }
+
+    const stashed = [
+      ...document.querySelectorAll<HTMLLinkElement>(
+        "link[rel='icon'], link[rel='shortcut icon'], link[rel='apple-touch-icon']"
+      ),
+    ].map((el) => ({ el, rel: el.rel }));
+    stashed.forEach(({ el }) => {
+      el.rel = "abuilder-icon-stash";
+    });
+
+    const link = document.createElement("link");
+    link.rel = "icon";
+    link.href = href;
+    if (isSvgMarkup(icon) || /\.svg($|\?)/i.test(href)) {
+      link.type = "image/svg+xml";
+    }
+    link.dataset.abuilderPicon = "true";
+    document.head.appendChild(link);
+
+    return () => {
+      link.remove();
+      stashed.forEach(({ el, rel }) => {
+        el.rel = rel;
+      });
+      revoke?.();
+    };
+  }, [pIcon]);
+}
 
 function PreviewShell({ children }: { children: ReactNode }) {
   if (typeof document !== "undefined") {
@@ -76,11 +153,17 @@ export const App = forwardRef<AbuilderViewHandle, AbuilderAppProps>(function App
     initialWorkspace = null,
     workspaceId = null,
     nameSpace = null,
+    plugins = [],
+    pIcon = null,
+    pTitle = null,
   },
   ref
 ) {
   const [localeState, setLocaleState] = useState<Locale | null>(locale);
   const effectiveLocale = locale ?? localeState;
+  const enableAi = plugins.includes("ai");
+  const projectIcon = pIcon?.trim() || null;
+  useProjectChrome(pTitle, projectIcon);
 
   const search =
     previewSearch ??
@@ -132,6 +215,8 @@ export const App = forwardRef<AbuilderViewHandle, AbuilderAppProps>(function App
         nameSpace={nameSpace}
         packageName={ABUILDER_PACKAGE_NAME}
         packageVersion={ABUILDER_VERSION}
+        enableAi={enableAi}
+        projectIcon={projectIcon}
       />
     </ThemeProvider>
   );

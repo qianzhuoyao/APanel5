@@ -1,7 +1,10 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, useSlots } from "vue";
 import { useI18n } from "@arronqzy/i18n/vue";
 import { Tooltip } from "ant-design-vue";
+
+import LinkifiedSlot from "./LinkifiedSlot.vue";
+import TemplateDocHost from "./TemplateDocHost.vue";
 
 const { t } = useI18n();
 const props = defineProps<{
@@ -9,6 +12,7 @@ const props = defineProps<{
   contentClass?: string;
   buttonClass?: string;
 }>();
+const slots = useSlots();
 
 const resolvedLabel = computed(() => props.label || t("common.hint"));
 </script>
@@ -21,7 +25,7 @@ const resolvedLabel = computed(() => props.label || t("common.hint"));
   >
     <template #title>
       <div class="space-y-1.5">
-        <slot />
+        <LinkifiedSlot :render="slots.default" />
       </div>
     </template>
     <button
@@ -48,4 +52,5 @@ const resolvedLabel = computed(() => props.label || t("common.hint"));
       </svg>
     </button>
   </Tooltip>
+  <TemplateDocHost />
 </template>

@@ -43,6 +43,11 @@ export type { BlueprintNodeSwitchTaskDialogProps } from "./src/components/Bluepr
 export { useBlueprintNodeSelectionGuard } from "./src/hooks/useBlueprintNodeSelectionGuard";
 export type { PendingBlueprintNodeSwitch } from "./src/hooks/useBlueprintNodeSelectionGuard";
 export { BlueprintMetaDialog } from "./src/components/BlueprintMetaDialog";
+export {
+  TemplateConceptText,
+  TemplateDocHost,
+  linkifyTemplateDocNode,
+} from "./src/components/TemplateConceptText";
 export type { BlueprintMetaDialogProps } from "./src/components/BlueprintMetaDialog";
 export { ApiCollectionManagerDialog } from "./src/components/ApiCollectionManagerDialog";
 export type {

@@ -4,6 +4,25 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)，版本号遵循 [SemVer](https://semver.org/lang/zh-CN/)。
 
+## [1.1.44] - 2026-10-27
+
+配套：`react-view@1.0.43` · `vue-view@0.1.29` · `abuilder-vue@0.1.28` · `react-blueprint@1.0.26` · `vue-blueprint@0.1.21` · `blueprint-dsl@1.0.18` · `webllm-assistant@0.1.17`
+
+### Added
+
+- `App` 增加 `plugins`（目前 `ai`）、`pIcon`、`pTitle`：默认不启用 AI、不改标签页标题和图标
+- 提示文案里的 `{system?...}` / `{scope?...}` 变为可点击说明，弹窗可搜索 time / math / location 与 scope 用法
+
+### Changed
+
+- 编辑器浅色选中态（标签、节点、蓝图选中）改为可见的蓝色；物料图标在浅色下加深
+- 物料区按行铺满，不再留空列；刻度框与蓝图面板高度分开
+- 快速同步不再闪全屏遮罩
+
+### Fixed
+
+- 修复 Vite 下 WebLLM 虚拟模块 `Failed to fetch dynamically imported module`
+
 ## [1.1.43] - 2026-10-27
 
 配套：`react-view@1.0.42` · `vue-view@0.1.28` · `abuilder-vue@0.1.27`

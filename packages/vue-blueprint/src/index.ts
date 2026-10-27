@@ -15,6 +15,9 @@ export type {
 export { default as BlueprintExecutionLogPanel } from "./components/BlueprintExecutionLogPanel.vue";
 export type { BlueprintExecutionLogPanelProps } from "./components/BlueprintExecutionLogPanel.vue";
 export { default as BlueprintMetaDialog } from "./components/BlueprintMetaDialog.vue";
+export { default as TemplateConceptText } from "./components/TemplateConceptText.vue";
+export { default as TemplateDocHost } from "./components/TemplateDocHost.vue";
+export { default as LinkifiedSlot } from "./components/LinkifiedSlot.vue";
 export type { BlueprintMetaDialogProps } from "./components/BlueprintMetaDialog.vue";
 export { default as ApiCollectionManagerDialog } from "./components/ApiCollectionManagerDialog.vue";
 export type {

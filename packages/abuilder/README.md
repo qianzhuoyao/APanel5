@@ -1,10 +1,10 @@
 # @arronqzy/abuilder
 
-React 一站式编辑器。安装后渲染 `<App />`，就是完整的 Abuilder：物料画布、蓝图、工作区、在线预览和浏览器内 AI 助手。
+React 一站式编辑器。安装后渲染 `<App />`，就是完整的 Abuilder：物料画布、蓝图、工作区、在线预览；可选 `plugins={['ai']}` 开启浏览器内离线 AI 助手。
 
 ![安装后直接得到的编辑器](https://github.com/qianzhuoyao/APanel5/raw/v5/docs/guide-assets/live-zh/01-overview.png)
 
-当前版本见本包 `package.json`（设置菜单「关于」里显示的就是这个版本号）。本包 **1.1.43** 起修复网格布局吸附、占位格与 membership 同步；**1.1.42** 起修复物料侧栏 ≥160px 按 90px 列宽换行；**1.1.41** 起配套 Soft UI 面板打磨、缩放恒定选框线宽与接口集合弹窗体验；**1.1.40** 起补齐宿主侧完整 CRUD（put / 命令式打开 / 事件 nameSpace / Vue 预览截图）；**1.1.39** 起补齐本地数据接口（蓝图库、执行日志、接口集合的读取与清理，`clearAbuilderStorage` 一次清空，`workspace:delete` 事件）；**1.1.38** 起提供本地工作区清理接口（`listWorkspaceProjects` / `deleteWorkspaceProject` / `clearWorkspaceProjects`）；**1.1.37** 起配套 chroma.js 主题配色、全系统国际化修复与问号图标式字段说明；**1.1.36** 起配套蓝图 Soft UI 节点样式；**1.1.35** 起配套接口集合、`{system?...}` 模版、JSON 节点错误高亮。完整中文手册见仓库 `docs/Abuilder使用文档与功能说明.docx`（适用版本表写在文首）。
+当前版本见本包 `package.json`（设置菜单「关于」里显示的就是这个版本号）。本包 **1.1.44** 起支持 `plugins` / `pIcon` / `pTitle`，浅色选中态可读，提示里的 `{system?...}` / `{scope?...}` 可点开说明；**1.1.43** 起修复网格布局吸附、占位格与 membership 同步；**1.1.42** 起修复物料侧栏 ≥160px 按 90px 列宽换行；**1.1.41** 起配套 Soft UI 面板打磨、缩放恒定选框线宽与接口集合弹窗体验；**1.1.40** 起补齐宿主侧完整 CRUD（put / 命令式打开 / 事件 nameSpace / Vue 预览截图）；**1.1.39** 起补齐本地数据接口（蓝图库、执行日志、接口集合的读取与清理，`clearAbuilderStorage` 一次清空，`workspace:delete` 事件）；**1.1.38** 起提供本地工作区清理接口（`listWorkspaceProjects` / `deleteWorkspaceProject` / `clearWorkspaceProjects`）；**1.1.37** 起配套 chroma.js 主题配色、全系统国际化修复与问号图标式字段说明；**1.1.36** 起配套蓝图 Soft UI 节点样式；**1.1.35** 起配套接口集合、`{system?...}` 模版、JSON 节点错误高亮。完整中文手册见仓库 `docs/Abuilder使用文档与功能说明.docx`（适用版本表写在文首）。
 
 ## 安装
 
@@ -14,9 +14,9 @@ pnpm add @arronqzy/abuilder react react-dom
 
 需要 React 18+。容器建议撑满高度（样式里已经处理 `#root` / `#app`）。
 
-### Vite 必须加插件
+### Vite：启用 AI 时必须加插件
 
-宿主用 Vite 打包 `<App />` 时，在 `vite.config.ts` 注册：
+宿主用 Vite 打包且传入 `plugins={['ai']}` 时，在 `vite.config.ts` 注册：
 
 ```ts
 import { defineConfig } from "vite";
@@ -38,12 +38,14 @@ import { createRoot } from "react-dom/client";
 import { App } from "@arronqzy/abuilder";
 import "@arronqzy/abuilder/styles.css";
 
-createRoot(document.getElementById("root")!).render(<App locale="zh-CN" />);
+createRoot(document.getElementById("root")!).render(
+  <App locale="zh-CN" plugins={["ai"]} />
+);
 ```
 
 用户打开后会看到：
 
-- 顶栏：文件、编辑、视图、蓝图、设置、创建/保存工作区、AI 助手
+- 顶栏：文件、编辑、视图、蓝图、设置、创建/保存工作区；含 `ai` 插件时还有 AI 助手
 - 左侧：物料（图表、文本、表格、几何、三维、媒体）和节点树
 - 中间：无限画布，带标尺、缩放、多选
 - 右侧：选中节点的配置；没选中时是空状态
@@ -66,6 +68,9 @@ createRoot(document.getElementById("root")!).render(<App locale="zh-CN" />);
 | `preview` | `true` 只渲染预览页 | `false` |
 | `initialWorkspace` | 完整工作区。不传则空白画布，**不会**自动打开 IndexedDB 里已有项目。传入且带 `id` 时，会默认同步写入 IndexedDB（本地已有更新的记录不会被旧数据覆盖），以便预览与「同步」可用 | — |
 | `workspaceId` | 按 IndexedDB id 打开（不 remount）。与 `initialWorkspace` 同时存在时：首次优先完整记录；之后 id 变化从 IndexedDB 打开 | — |
+| `plugins` | 可选功能插件数组。目前仅 `"ai"`（离线 WebLLM 助手）。默认不启用 | `[]` |
+| `pIcon` | 项目图标。URL、资源地址或 `<svg>` 标记。左上角和标签页图标。空则不显示 | — |
+| `pTitle` | 项目名称，写入标签页标题。空则不改 `document.title` | — |
 
 ```tsx
 <App
@@ -73,6 +78,9 @@ createRoot(document.getElementById("root")!).render(<App locale="zh-CN" />);
   defaultTheme="dark"
   locale="zh-CN"
   nameSpace="my-app"
+  plugins={["ai"]}
+  pTitle="ABUILDER"
+  pIcon="/favicon.svg"
   initialWorkspace={savedWorkspace}
 />
 ```

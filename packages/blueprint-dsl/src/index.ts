@@ -10,6 +10,7 @@ export * from "./behaviors/default.js";
 export * from "./fetch-config.js";
 export * from "./scope-template.js";
 export * from "./system-root.js";
+export * from "./template-docs.js";
 export * from "./scope-autocomplete.js";
 export * from "./incoming-node-scope.js";
 export * from "./json-config.js";

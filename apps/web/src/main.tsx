@@ -25,7 +25,7 @@ const Main = () => {
   //   };
   // }, []);
 
-  return <App />;
+  return <App plugins={["ai"]} pTitle="ABUILDER" pIcon="/favicon.svg" />;
 };
 
 createRoot(document.getElementById("app")!).render(<Main />);

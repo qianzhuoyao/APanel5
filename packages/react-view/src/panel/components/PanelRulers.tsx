@@ -84,10 +84,10 @@ export function PanelRulers({
   const size = typeof sizeProp === "number" ? sizeProp : autoSize;
   const s = `${size}px`;
   const fontPx = Math.max(10, Math.min(11, Math.round(size * 0.38)));
-  const bg = isDark ? "rgba(15,23,42,0.98)" : "rgba(255,255,255,0.98)";
-  const lineColor = isDark ? "rgba(226,232,240,0.85)" : "rgba(15,23,42,0.55)";
-  const textColor = isDark ? "#f8fafc" : "#0f172a";
-  const seam = isDark ? "rgba(226,232,240,0.45)" : "rgba(15,23,42,0.28)";
+  const bg = isDark ? "rgba(22,22,26,0.96)" : "rgba(255,255,255,0.96)";
+  const lineColor = isDark ? "rgba(244,246,248,0.38)" : "rgba(24,24,28,0.38)";
+  const textColor = isDark ? "rgba(244,246,248,0.72)" : "rgba(24,24,28,0.62)";
+  const seam = isDark ? "rgba(244,246,248,0.12)" : "rgba(24,24,28,0.12)";
 
   // 刻度线只占内侧约 30%，数字在外侧，互不遮挡
   const longLineSize = Math.max(4, Math.min(Math.round(size * 0.3), size - fontPx - 4));

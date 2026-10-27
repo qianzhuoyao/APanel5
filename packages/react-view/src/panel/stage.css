@@ -1,0 +1,232 @@
+/* Stage chrome: neutral surfaces, accent #44aaff (hsl 207 100% 63.3%). */
+
+.abuilder-stage {
+  --radius: 0.75rem;
+}
+
+html:not(.dark) .abuilder-stage {
+  --background: 240 20% 97%;
+  --foreground: 240 10% 12%;
+  --card: 0 0% 100%;
+  --card-foreground: 240 10% 12%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 240 10% 12%;
+  --primary: 207 100% 40%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 240 16% 94%;
+  --secondary-foreground: 240 10% 16%;
+  --muted: 240 16% 94%;
+  --muted-foreground: 240 6% 42%;
+  --accent: 207 80% 90%;
+  --accent-foreground: 207 90% 26%;
+  --border: 240 10% 88%;
+  --input: 240 10% 86%;
+  --ring: 207 100% 63.3%;
+}
+
+.dark .abuilder-stage {
+  --background: 240 8% 6%;
+  --foreground: 240 10% 96%;
+  --card: 240 6% 10%;
+  --card-foreground: 240 10% 96%;
+  --popover: 240 7% 9%;
+  --popover-foreground: 240 10% 96%;
+  --primary: 207 100% 63.3%;
+  --primary-foreground: 207 80% 10%;
+  --secondary: 240 5% 14%;
+  --secondary-foreground: 240 10% 96%;
+  --muted: 240 5% 14%;
+  --muted-foreground: 240 6% 64%;
+  --accent: 207 30% 16%;
+  --accent-foreground: 207 80% 88%;
+  --border: 240 5% 18%;
+  --input: 240 5% 20%;
+  --ring: 207 100% 63.3%;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+
+.rv-doc-link {
+  color: #0070cc;
+  text-decoration-color: rgb(0 112 204 / 45%);
+}
+
+.rv-doc-link:hover {
+  color: #005ea8;
+}
+
+html.dark .rv-doc-link {
+  color: #44aaff;
+  text-decoration-color: rgb(68 170 255 / 45%);
+}
+
+html.dark .rv-doc-link:hover {
+  color: #8cc8ff;
+}
+
+/* 浅色选中：实心蓝标签、更深的选中底，避免白底上几乎看不见。 */
+html:not(.dark) .abuilder-stage [role="tab"][data-state="active"] {
+  background-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  box-shadow: none;
+}
+
+html:not(.dark) .abuilder-stage [role="menuitem"][data-state="open"],
+html:not(.dark) .abuilder-stage [data-state="on"] {
+  background-color: hsl(207 85% 88%);
+  color: hsl(207 90% 24%);
+}
+
+html:not(.dark) .abuilder-stage :is(.bg-primary\/5, .bg-primary\/10, .bg-primary\/12, .bg-primary\/15) {
+  background-color: hsl(var(--primary) / 0.2);
+}
+
+html:not(.dark) .abuilder-stage .bp-node-card.bp-node-card--selected {
+  border-color: hsl(var(--primary));
+  box-shadow:
+    0 0 0 2px hsl(var(--primary) / 0.55),
+    0 10px 28px hsl(var(--primary) / 0.16);
+}
+
+.abuilder-stage .rv-mark {
+  display: inline-flex;
+  height: 22px;
+  width: 22px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 7px;
+  background: transparent;
+  box-shadow: inset 0 0 0 1px hsl(var(--foreground) / 0.08);
+}
+
+.abuilder-stage .rv-mark img,
+.abuilder-stage .rv-mark svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.abuilder-stage .rv-topbar {
+  height: 44px;
+  border-bottom: 1px solid hsl(var(--foreground) / 0.06);
+  background: hsl(var(--card) / 0.78);
+  backdrop-filter: blur(18px);
+}
+
+.abuilder-stage .rv-material-sidebar,
+.abuilder-stage .scope-config-sidebar {
+  background: hsl(var(--card) / 0.96);
+  border-color: hsl(var(--foreground) / 0.06);
+}
+
+.abuilder-stage .rv-stage {
+  background: hsl(var(--background));
+}
+
+.abuilder-stage .rv-canvas-toolbar {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  border-bottom: 1px solid hsl(var(--foreground) / 0.06);
+  background: hsl(var(--card) / 0.92);
+}
+
+.abuilder-stage .rv-viewport {
+  background-color: hsl(var(--background)) !important;
+  background-image: radial-gradient(circle, hsl(var(--foreground) / 0.16) 0.7px, transparent 0.85px) !important;
+  background-size: 22px 22px !important;
+  box-shadow: none;
+}
+
+html:not(.dark) .abuilder-stage .rv-viewport {
+  background-image: radial-gradient(circle, hsl(240 8% 40% / 0.14) 0.7px, transparent 0.85px) !important;
+  box-shadow: none;
+}
+
+.abuilder-stage .rv-layer-dock {
+  position: relative;
+  z-index: 30;
+  flex: none;
+  border-top: 1px solid hsl(var(--foreground) / 0.06);
+  background: hsl(var(--card) / 0.96);
+}
+
+.abuilder-stage .rv-blueprint {
+  background:
+    radial-gradient(circle, hsl(var(--foreground) / 0.12) 0.7px, transparent 0.85px),
+    hsl(var(--background));
+  background-size: 22px 22px, auto;
+  border-top: 1px solid hsl(var(--foreground) / 0.08);
+}
+
+.abuilder-stage .rv-blueprint-toolbar {
+  border-bottom: 1px solid hsl(var(--foreground) / 0.06);
+  background: hsl(var(--card) / 0.94);
+}
+
+.abuilder-stage .rv-layer-dock > div {
+  border: 0;
+  background: transparent;
+}
+
+/* 浅底上半透明蓝会发灰，预览图单独用更深的蓝，按钮强调色仍是 #44aaff。 */
+html:not(.dark) .abuilder-stage .rv-material-preview {
+  --primary: 207 100% 36%;
+  background-image: linear-gradient(to bottom right, hsl(207 70% 97%), hsl(207 45% 90%));
+  border-color: hsl(207 40% 78%);
+}
+
+.abuilder-stage .rv-material-card {
+  border-color: transparent;
+  border-radius: 12px;
+  background: hsl(var(--background) / 0.45);
+  box-shadow: inset 0 0 0 1px hsl(var(--foreground) / 0.06);
+  transition: transform 160ms ease, background 160ms ease, box-shadow 160ms ease;
+}
+
+.abuilder-stage .rv-material-card:hover {
+  background: hsl(var(--accent));
+  box-shadow: inset 0 0 0 1px hsl(var(--primary) / 0.45);
+  transform: translateY(-1px);
+}
+
+.abuilder-stage .rv-pill-search {
+  border-radius: 999px !important;
+  background: hsl(var(--background) / 0.55) !important;
+}
+
+.abuilder-stage .rv-empty {
+  margin-top: 18%;
+  border-radius: 16px;
+  padding: 28px 16px;
+}
+
+.abuilder-stage.panel-font-root button[role="combobox"] {
+  border-color: hsl(var(--foreground) / 0.1) !important;
+  border-radius: 8px !important;
+  background: hsl(var(--muted) / 0.55) !important;
+  box-shadow: none !important;
+}
+
+.abuilder-stage.panel-font-root button[role="checkbox"] {
+  border-width: 1px !important;
+  border-color: hsl(var(--foreground) / 0.28) !important;
+  box-shadow: none !important;
+}
+
+.abuilder-stage [data-panel-resize-handle] {
+  width: 1px;
+  background: hsl(var(--foreground) / 0.06);
+  opacity: 1;
+}
+
+.abuilder-stage [data-panel-resize-handle][data-panel-group-direction="vertical"] {
+  width: 100%;
+  height: 1px;
+}
+
+.abuilder-stage [data-panel-resize-handle]:hover {
+  background: hsl(var(--primary) / 0.7);
+}

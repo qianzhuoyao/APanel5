@@ -1,36 +1,29 @@
 /*
- * 物料侧栏：由 data-material-wrap 切换（ResizeObserver）
- * <160px：单列铺满；≥160px：90px 列宽 auto-fill 换行
+ * 物料侧栏：窄时单列铺满，宽时按约 90px 换行，行内剩余宽度分给卡片，不留空列。
  */
 .rv-material-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  justify-items: stretch;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
   gap: 0.375rem;
 }
 
 .rv-material-card {
-  width: 100%;
-  max-width: none;
-  justify-self: stretch;
+  flex: 1 1 5.5rem;
+  width: auto;
+  min-width: 0;
+  max-width: 100%;
   box-sizing: border-box;
+}
+
+.rv-material-grid > :not(.rv-material-card) {
+  flex: 1 1 100%;
 }
 
 .rv-material-preview {
   width: 100%;
   max-width: none;
   max-height: none;
-}
-
-.rv-material-sidebar[data-material-wrap="true"] .rv-material-grid {
-  grid-template-columns: repeat(auto-fill, 90px);
-  justify-content: start;
-}
-
-.rv-material-sidebar[data-material-wrap="true"] .rv-material-card {
-  width: 90px;
-  max-width: 90px;
-  justify-self: start;
 }
 
 /*

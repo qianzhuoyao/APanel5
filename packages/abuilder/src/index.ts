@@ -1,5 +1,5 @@
 export { App } from "./App";
-export type { AbuilderAppProps } from "./App";
+export type { AbuilderAppProps, AbuilderPlugin } from "./App";
 export { ABUILDER_PACKAGE_NAME, ABUILDER_VERSION } from "./version";
 export type { Locale } from "@arronqzy/i18n";
 

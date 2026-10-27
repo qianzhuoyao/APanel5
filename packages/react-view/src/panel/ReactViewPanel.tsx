@@ -108,6 +108,7 @@ import { resolvePanelElementScope } from "./utils/scope-template";
 import { I18nRoot } from "./I18nRoot";
 import { getPanelMessages } from "./constants/messages";
 import { PANEL_Z_INDEX } from "./constants/zIndex";
+import "./stage.css";
 import { useRafThrottledScroll } from "./hooks/useRafThrottledScroll";
 import {
   IconBackward,
@@ -173,7 +174,34 @@ export type ReactViewPanelProps = {
   packageName?: string | null;
   /** 顶栏「设置 → 关于」展示的包版本号 */
   packageVersion?: string | null;
+  /**
+   * 是否启用离线 AI 助手（顶栏按钮 + 侧栏）。
+   * 由宿主 `App` 的 `plugins={['ai']}` 开启；默认关闭。
+   */
+  enableAi?: boolean;
+  /**
+   * 项目图标。URL / 资源地址，或 `<svg>` 标记。空则不显示左上角图标。
+   */
+  projectIcon?: string | null;
 };
+
+function ProjectMark({ icon }: { icon?: string | null }) {
+  const value = icon?.trim();
+  if (!value) return null;
+  const markup = value.startsWith("<svg") || value.startsWith("<?xml");
+  return (
+    <span className="rv-mark" aria-hidden="true">
+      {markup ? (
+        <span
+          className="block h-full w-full [&_svg]:h-full [&_svg]:w-full"
+          dangerouslySetInnerHTML={{ __html: value }}
+        />
+      ) : (
+        <img src={value} alt="" />
+      )}
+    </span>
+  );
+}
 
 const ReactViewPanelInner = forwardRef<AbuilderViewHandle, ReactViewPanelProps>(function ReactViewPanelInner(
   {
@@ -184,6 +212,8 @@ const ReactViewPanelInner = forwardRef<AbuilderViewHandle, ReactViewPanelProps>(
   nameSpace = null,
   packageName = null,
   packageVersion = null,
+  enableAi = false,
+  projectIcon = null,
 }: ReactViewPanelProps,
   ref
 ) {
@@ -1897,7 +1927,7 @@ const ReactViewPanelInner = forwardRef<AbuilderViewHandle, ReactViewPanelProps>(
     <div
       ref={panelRootRef}
       className={[
-        "relative flex h-full min-h-0 w-full flex-col overflow-hidden bg-background text-foreground",
+        "abuilder-stage relative flex h-full min-h-0 w-full flex-col overflow-hidden bg-background text-foreground",
         className ?? "",
       ].join(" ")}
       style={{ ["--panel-font-px" as string]: `${panelFontPx}px` }}
@@ -1982,7 +2012,8 @@ const ReactViewPanelInner = forwardRef<AbuilderViewHandle, ReactViewPanelProps>(
           box-shadow: 0 0 0 1px hsl(var(--primary) / 0.45) inset !important;
         }
       `}</style>
-      <nav className="panel-font-root relative z-30 flex h-10 shrink-0 items-center gap-2.5 border-b border-border/70 bg-background/80 px-3 text-foreground backdrop-blur-md supports-[backdrop-filter]:bg-background/70">
+      <nav className="rv-topbar panel-font-root relative z-30 flex h-11 shrink-0 items-center gap-2 px-3 text-foreground">
+        <ProjectMark icon={projectIcon} />
         <PanelMenubar
           t={t}
           handleExport={handleExport}
@@ -2025,18 +2056,20 @@ const ReactViewPanelInner = forwardRef<AbuilderViewHandle, ReactViewPanelProps>(
           onPreviewProject={openOnlinePreviewForProject}
         />
         <div className="flex-1" />
-        <Button
-          type="button"
-          variant={assistantOpen ? "secondary" : "outline"}
-          size="sm"
-          className="h-7 shrink-0 px-2 text-xs"
-          onClick={() => setAssistantOpen((v) => !v)}
-        >
-          {assistantOpen ? t("panel.ai.hide") : t("panel.ai.open")}
-        </Button>
+        {enableAi ? (
+          <Button
+            type="button"
+            variant={assistantOpen ? "secondary" : "outline"}
+            size="sm"
+            className="h-7 shrink-0 rounded-full border-foreground/10 bg-background/40 px-3 text-xs"
+            onClick={() => setAssistantOpen((v) => !v)}
+          >
+            {assistantOpen ? t("panel.ai.hide") : t("panel.ai.open")}
+          </Button>
+        ) : null}
       </nav>
       <ResizablePanelGroup direction="horizontal" className="min-h-0 w-full flex-1">
-        <ResizablePanel defaultSize={16} minSize={12} maxSize={28}>
+        <ResizablePanel defaultSize={18} minSize={14} maxSize={30}>
           <div className="panel-font-root h-full min-w-0">
             <MaterialSidebar
               layers={layers}
@@ -2108,8 +2141,8 @@ const ReactViewPanelInner = forwardRef<AbuilderViewHandle, ReactViewPanelProps>(
             />
           </div>
         </ResizablePanel>
-        <ResizableHandle withHandle className="opacity-70 transition-opacity hover:opacity-100" />
-        <ResizablePanel defaultSize={68} minSize={40}>
+        <ResizableHandle withHandle data-panel-resize-handle className="w-px bg-transparent" />
+        <ResizablePanel defaultSize={64} minSize={40}>
           {/* Center workspace */}
           <div
             className="panel-font-root min-w-0 h-full"
@@ -2127,9 +2160,9 @@ const ReactViewPanelInner = forwardRef<AbuilderViewHandle, ReactViewPanelProps>(
               clearSelection();
             }}
           >
-            <div className="relative flex h-full flex-col overflow-hidden bg-background">
+            <div className="rv-stage relative flex h-full flex-col overflow-hidden bg-background">
               <div
-                className="relative flex items-center gap-2 border-b border-border/60 bg-muted/15 px-3 py-1.5 text-foreground"
+                className="rv-canvas-toolbar relative flex items-center gap-2 px-3 py-1.5 text-foreground"
                 style={{ zIndex: PANEL_Z_INDEX.toolbar }}
               >
                 <Input
@@ -2138,7 +2171,7 @@ const ReactViewPanelInner = forwardRef<AbuilderViewHandle, ReactViewPanelProps>(
                   placeholder={t("panel.menubar.productNamePlaceholder")}
                   className="h-7 w-[200px] rounded-md border-border/70 bg-background/80 text-xs shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none"
                 />
-                <span className="hidden text-[11px] text-muted-foreground sm:inline">{t("panel.menubar.productName")}</span>
+                <span className="sr-only">{t("panel.menubar.productName")}</span>
                 <TooltipProvider delayDuration={150}>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -2419,8 +2452,9 @@ const ReactViewPanelInner = forwardRef<AbuilderViewHandle, ReactViewPanelProps>(
                 viewStage={
               <div
                 data-workspace-region="view"
-                className="relative h-full min-h-0 flex-1"
+                className="flex h-full min-h-0 flex-col"
               >
+                <div className="relative min-h-0 flex-1">
                 <PanelRulers
                   zoomX={zoom.x}
                   zoomY={zoom.y}
@@ -2538,6 +2572,7 @@ const ReactViewPanelInner = forwardRef<AbuilderViewHandle, ReactViewPanelProps>(
                     />
 
                   </PanelCanvas>
+                </div>
                 </div>
                 <DropdownMenu
                   key={dropdownEpoch}
@@ -2723,10 +2758,7 @@ const ReactViewPanelInner = forwardRef<AbuilderViewHandle, ReactViewPanelProps>(
                     )}
                   </DropdownMenuContent>
                 </DropdownMenu>
-              </div>
-                }
-              />
-
+                <div className="rv-layer-dock">
               <PanelLayerDock
                 t={t}
                 isLayerPanelExpanded={isLayerPanelExpanded}
@@ -2757,11 +2789,15 @@ const ReactViewPanelInner = forwardRef<AbuilderViewHandle, ReactViewPanelProps>(
                 setMergeLayerName={setMergeLayerName}
                 mergeSelectedLayers={mergeSelectedLayers}
               />
+              </div>
+              </div>
+                }
+              />
             </div>
           </div>
         </ResizablePanel>
-        <ResizableHandle withHandle className="opacity-70 transition-opacity hover:opacity-100" />
-        <ResizablePanel defaultSize={20} minSize={16} maxSize={32}>
+        <ResizableHandle withHandle data-panel-resize-handle className="w-px bg-transparent" />
+        <ResizablePanel defaultSize={18} minSize={16} maxSize={32}>
           <div className="panel-font-root h-full min-w-0">
             <WorkspaceConfigSidebar
               configFocus={sidebarConfigFocus}
@@ -2815,11 +2851,13 @@ const ReactViewPanelInner = forwardRef<AbuilderViewHandle, ReactViewPanelProps>(
           </div>
         </ResizablePanel>
       </ResizablePanelGroup>
-      <AssistantChatPanel
-        deps={assistantDeps}
-        open={assistantOpen}
-        onOpenChange={setAssistantOpen}
-      />
+      {enableAi ? (
+        <AssistantChatPanel
+          deps={assistantDeps}
+          open={assistantOpen}
+          onOpenChange={setAssistantOpen}
+        />
+      ) : null}
       <PanelWorkspaceDialogs
         t={t}
         mappingDeleteConfirmOpen={mappingDeleteConfirmOpen}

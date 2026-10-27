@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { useI18n } from "@arronqzy/i18n/react";
 import {
   Collapsible,
@@ -535,19 +535,6 @@ export function MaterialSidebar({
     root: true,
   });
   const sidebarRef = useRef<HTMLElement>(null);
-  const [materialWrap, setMaterialWrap] = useState(false);
-
-  useEffect(() => {
-    const el = sidebarRef.current;
-    if (!el) return;
-    const update = () => {
-      setMaterialWrap(el.getBoundingClientRect().width >= 160);
-    };
-    update();
-    const ro = new ResizeObserver(update);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
 
   const normalizedKeyword = keyword.trim().toLowerCase();
   const isSearching = leftTab === "materials" && normalizedKeyword.length > 0;
@@ -942,7 +929,6 @@ export function MaterialSidebar({
     <TooltipProvider delayDuration={120}>
     <aside
       ref={sidebarRef}
-      data-material-wrap={materialWrap ? "true" : "false"}
       className={[
         "rv-material-sidebar grid h-full min-h-0 w-full overflow-hidden border-r border-border/60 bg-muted/20 text-foreground",
         className ?? "",
@@ -961,7 +947,7 @@ export function MaterialSidebar({
             value={keyword}
             onChange={(e) => setKeyword(e.target.value)}
             placeholder={searchPlaceholder}
-            className="h-7 rounded-md border-border/60 bg-background/90 text-[12px] shadow-none"
+            className="rv-pill-search h-8 rounded-full border-border/50 bg-background/70 text-[12px] shadow-none"
             style={{ paddingLeft: 34, paddingRight: 10 }}
             aria-label={searchPlaceholder}
           />

@@ -7,6 +7,8 @@ import {
   TooltipTrigger,
 } from "@arronqzy/ui";
 
+import { TemplateDocHost, linkifyTemplateDocNode } from "./TemplateConceptText";
+
 export type ConfigHintIconProps = {
   label?: string;
   children: ReactNode;
@@ -55,9 +57,10 @@ export function ConfigHintIcon({
           side="top"
           className={`z-[10120] max-w-[360px] space-y-1.5 text-[11px] leading-5 ${contentClassName ?? ""}`}
         >
-          {children}
+          {linkifyTemplateDocNode(children)}
         </TooltipContent>
       </Tooltip>
+      <TemplateDocHost />
     </TooltipProvider>
   );
 }

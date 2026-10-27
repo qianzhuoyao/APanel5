@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="ABUILDER">
+  <rect width="64" height="64" fill="#0B0F14"/>
+  <!-- Geometric A: white legs + floating teal crossbar -->
+  <path
+    fill="#F4F6F8"
+    d="M32 11 L49.5 53 H41.6 L37.4 41.2 H26.6 L22.4 53 H14.5 Z M27.4 36.4 H36.6 L32 24.2 Z"
+  />
+  <rect x="23.5" y="30.8" width="17" height="2.6" rx="0.3" fill="#2DD4BF"/>
+</svg>
