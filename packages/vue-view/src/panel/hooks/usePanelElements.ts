@@ -33,10 +33,13 @@ import {
   isPanelElementNode,
 } from "../utils/panelElementNodes";
 import {
+  clearGridMembershipFields,
   computeSnapPatchForNewElementOnLayer,
+  elementParentInGridIdSet,
   getGridChildSpanRect,
   getGridSlotLayout,
   inferSpanBySize,
+  resolveConcreteParentGridId,
 } from "../utils/gridPlacement";
 import {
   canonicalMappingFamilyRootId,
@@ -48,6 +51,8 @@ import {
 import {
   applyGridLayoutPatchAcrossMappingFamily,
   applyMappingFamilySyncPatch,
+  patchHasGridMembership,
+  reflowMappingFamilyGridChildren,
 } from "../utils/updateElementDraft";
 import {
   materializePanelElements,
@@ -226,17 +231,19 @@ export function usePanelElements() {
       elementByIdSnapshot.set(p.id, p);
     }
     const mappingFamilyRootId = canonicalMappingFamilyRootId(elementByIdSnapshot, id);
-    const parentGrid =
-      currentElement.parentGridId
-        ? (current.root.children ?? [])
-            .filter((n) => isPanelElementNode(n) && n.props)
-            .map((n) => n.props as PanelElement)
-            .find((el) => el.id === currentElement.parentGridId && el.materialType === "grid")
-        : undefined;
+    const concreteParentId = resolveConcreteParentGridId(
+      currentElement,
+      elementByIdSnapshot
+    );
+    const parentGridRaw = concreteParentId
+      ? elementByIdSnapshot.get(concreteParentId)
+      : undefined;
+    const parentGridValid =
+      parentGridRaw?.materialType === "grid" ? parentGridRaw : undefined;
     const detachFromGrid = "parentGridId" in patch && patch.parentGridId === undefined;
     const hasResizePatch = "width" in patch || "height" in patch;
-    if (parentGrid && hasResizePatch && !detachFromGrid) {
-      const parentLayout = getGridSlotLayout(parentGrid);
+    if (parentGridValid && hasResizePatch && !detachFromGrid) {
+      const parentLayout = getGridSlotLayout(parentGridValid);
       const nextWidth =
         typeof patch.width === "number" ? patch.width : currentElement.width;
       const nextHeight =
@@ -286,7 +293,7 @@ export function usePanelElements() {
     const hasGridChildSlotPatch =
       "gridSlotIndex" in patch || "gridColSpan" in patch || "gridRowSpan" in patch;
     if (currentElement.parentGridId && hasGridChildSlotPatch && !detachFromGrid) {
-      if (parentGrid) {
+      if (parentGridValid) {
         const nextSlotIndex =
           patch.gridSlotIndex !== undefined
             ? patch.gridSlotIndex
@@ -295,7 +302,12 @@ export function usePanelElements() {
           patch.gridColSpan !== undefined ? patch.gridColSpan : currentElement.gridColSpan ?? 1;
         const nextRowSpan =
           patch.gridRowSpan !== undefined ? patch.gridRowSpan : currentElement.gridRowSpan ?? 1;
-        const spanRect = getGridChildSpanRect(parentGrid, nextSlotIndex, nextColSpan, nextRowSpan);
+        const spanRect = getGridChildSpanRect(
+          parentGridValid,
+          nextSlotIndex,
+          nextColSpan,
+          nextRowSpan
+        );
         patch = {
           ...patch,
           gridSlotIndex: spanRect.index,
@@ -326,6 +338,27 @@ export function usePanelElements() {
       "height" in patch ||
       "x" in patch ||
       "y" in patch;
+    const hasMembershipPatch = patchHasGridMembership(patch);
+
+    if (isGridNode && hasMembershipPatch) {
+      const syncPatch = { ...patch } as Partial<PanelElement>;
+      delete (syncPatch as Partial<PanelElement> & { id?: string }).id;
+      delete (syncPatch as Partial<PanelElement> & { layerId?: string }).layerId;
+      delete (syncPatch as Partial<PanelElement> & { mappingSourceNodeId?: string }).mappingSourceNodeId;
+      delete (syncPatch as Partial<PanelElement> & { mappingSourceLayerId?: string }).mappingSourceLayerId;
+      store.update(
+        (draft) => {
+          applyMappingFamilySyncPatch(draft, mappingFamilyRootId, syncPatch, patch);
+          reflowMappingFamilyGridChildren(draft, mappingFamilyRootId);
+        },
+        {
+          batchId: options?.batchId,
+          meta: { type: "node.update", id, ...(options?.meta ?? {}) },
+        }
+      );
+      return;
+    }
+
     if (isGridNode && hasGridLayoutPatch) {
       store.update(
         (draft) => {
@@ -389,11 +422,26 @@ export function usePanelElements() {
           deletedSourceIds.add(props.mappingSourceNodeId ?? props.id);
         }
         const familyIds = new Set<string>();
+        const byIdDraft = new Map<string, PanelElement>();
         (draft.root.children ?? []).forEach((n) => {
           if (!isPanelElementNode(n) || !n.props) return;
           const props = n.props as PanelElement;
+          byIdDraft.set(props.id, props);
           const sourceId = props.mappingSourceNodeId ?? props.id;
           if (deletedSourceIds.has(sourceId)) familyIds.add(props.id);
+        });
+        const deletingGridIds = new Set<string>();
+        for (const fid of familyIds) {
+          if (byIdDraft.get(fid)?.materialType === "grid") deletingGridIds.add(fid);
+        }
+        (draft.root.children ?? []).forEach((n) => {
+          if (!isPanelElementNode(n) || !n.props) return;
+          if (familyIds.has(n.id)) return;
+          const props = n.props as PanelElement;
+          if (elementParentInGridIdSet(props, deletingGridIds, byIdDraft)) {
+            clearGridMembershipFields(props);
+            n.props = props;
+          }
         });
         draft.root.children = (draft.root.children ?? []).filter(
           (n) => !(isPanelElementNode(n) && familyIds.has(n.id))
@@ -424,11 +472,26 @@ export function usePanelElements() {
           deletedSourceIds.add(props.mappingSourceNodeId ?? props.id);
         });
         familyIds.clear();
+        const byIdDraft = new Map<string, PanelElement>();
         (draft.root.children ?? []).forEach((n) => {
           if (!isPanelElementNode(n) || !n.props) return;
           const props = n.props as PanelElement;
+          byIdDraft.set(props.id, props);
           const sourceId = props.mappingSourceNodeId ?? props.id;
           if (deletedSourceIds.has(sourceId)) familyIds.add(props.id);
+        });
+        const deletingGridIds = new Set<string>();
+        for (const fid of familyIds) {
+          if (byIdDraft.get(fid)?.materialType === "grid") deletingGridIds.add(fid);
+        }
+        (draft.root.children ?? []).forEach((n) => {
+          if (!isPanelElementNode(n) || !n.props) return;
+          if (familyIds.has(n.id)) return;
+          const props = n.props as PanelElement;
+          if (elementParentInGridIdSet(props, deletingGridIds, byIdDraft)) {
+            clearGridMembershipFields(props);
+            n.props = props;
+          }
         });
         draft.root.children = (draft.root.children ?? []).filter(
           (n) => !(isPanelElementNode(n) && familyIds.has(n.id))

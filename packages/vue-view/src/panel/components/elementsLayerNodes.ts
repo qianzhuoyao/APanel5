@@ -25,6 +25,7 @@ import {
 } from "../utils/viewportPlacement";
 import TableNodeContent from "./table/TableNodeContent.vue";
 import Scene3dNodeContent from "@arronqzy/view-scene3d/vue";
+import { elementBelongsToGrid, getGridSlotLayout } from "../utils/gridPlacement";
 
 export { CHART_TYPES };
 
@@ -117,38 +118,32 @@ export const GridNodeContent = defineComponent({
   },
   setup(p) {
     const { t } = useI18n();
-    const rows = computed(() => Math.max(1, Math.floor(p.element.gridRows ?? 2)));
-    const cols = computed(() => Math.max(1, Math.floor(p.element.gridCols ?? 3)));
-    const gap = computed(() => Math.max(0, p.element.gridGap ?? 8));
-    const padding = computed(() => Math.max(0, p.element.gridPadding ?? 10));
+    const layout = computed(() => getGridSlotLayout(p.element));
     const occupied = computed(() => {
       const set = new Set<number>();
+      const byId = new Map(p.allElements.map((el) => [el.id, el]));
+      const { rows, cols } = layout.value;
       p.allElements.forEach((el) => {
-        if (el.parentGridId !== p.element.id || el.layerId !== p.element.layerId) return;
+        if (el.layerId !== p.element.layerId) return;
+        if (!elementBelongsToGrid(el, p.element.id, byId)) return;
         if (el.gridSlotIndex === undefined) return;
         const start = Math.max(0, Math.floor(el.gridSlotIndex));
-        const baseRow = Math.floor(start / cols.value);
-        const baseCol = start % cols.value;
-        const rowSpan = Math.max(1, Math.min(rows.value - baseRow, Math.floor(el.gridRowSpan ?? 1)));
-        const colSpan = Math.max(1, Math.min(cols.value - baseCol, Math.floor(el.gridColSpan ?? 1)));
+        const baseRow = Math.floor(start / cols);
+        const baseCol = start % cols;
+        const rowSpan = Math.max(1, Math.min(rows - baseRow, Math.floor(el.gridRowSpan ?? 1)));
+        const colSpan = Math.max(1, Math.min(cols - baseCol, Math.floor(el.gridColSpan ?? 1)));
         for (let r = baseRow; r < baseRow + rowSpan; r++) {
-          for (let c = baseCol; c < baseCol + colSpan; c++) set.add(r * cols.value + c);
+          for (let c = baseCol; c < baseCol + colSpan; c++) set.add(r * cols + c);
         }
       });
       return set;
     });
     return () => {
       if (p.previewMode) return h("div", { class: "relative h-full w-full" });
-      const total = rows.value * cols.value;
-      const emptyCount = total - occupied.value.size;
-      const gridStyle = {
-        display: "grid",
-        gridTemplateColumns: `repeat(${cols.value}, minmax(0, 1fr))`,
-        gridTemplateRows: `repeat(${rows.value}, minmax(0, 1fr))`,
-        gap: `${gap.value}px`,
-        padding: `${padding.value}px`,
-        boxSizing: "border-box" as const,
-      };
+      const { slots, border } = layout.value;
+      const emptyCount = slots.length - occupied.value.size;
+      const originX = p.element.x + border;
+      const originY = p.element.y + border;
       return h(
         "div",
         {
@@ -156,39 +151,37 @@ export const GridNodeContent = defineComponent({
           style:
             emptyCount > 0
               ? {
-                  border: "2px dashed rgba(14, 165, 233, 0.7)",
+                  outline: "2px dashed rgba(14, 165, 233, 0.7)",
+                  outlineOffset: "-2px",
                   background: "rgba(14, 165, 233, 0.08)",
                 }
               : undefined,
         },
         [
-          h(
-            "div",
-            { class: "h-full w-full", style: gridStyle },
-            Array.from({ length: total }).map((_, idx) => {
-              const filled = occupied.value.has(idx);
-              return h(
-                "div",
-                {
-                  key: idx,
-                  class: filled
-                    ? "pointer-events-none"
-                    : "pointer-events-auto flex flex-col items-center justify-center gap-0.5 rounded-md text-[11px] font-semibold",
-                  style: filled
-                    ? undefined
-                    : {
-                        border: "2px dashed rgba(2, 132, 199, 0.85)",
-                        background: "rgba(186, 230, 253, 0.72)",
-                        color: "rgba(3, 105, 161, 0.95)",
-                      },
-                  title: filled
-                    ? t("panel.config.slotOccupied", { n: idx + 1 })
-                    : t("panel.config.slotEmpty", { n: idx + 1 }),
+          ...slots.map((slot) => {
+            if (occupied.value.has(slot.index)) return null;
+            return h(
+              "div",
+              {
+                key: slot.index,
+                class:
+                  "pointer-events-auto absolute flex flex-col items-center justify-center gap-0.5 rounded-md text-[11px] font-semibold",
+                style: {
+                  left: `${slot.x - originX}px`,
+                  top: `${slot.y - originY}px`,
+                  width: `${slot.width}px`,
+                  height: `${slot.height}px`,
+                  outline: "2px dashed rgba(2, 132, 199, 0.85)",
+                  outlineOffset: "-2px",
+                  background: "rgba(186, 230, 253, 0.72)",
+                  color: "rgba(3, 105, 161, 0.95)",
+                  boxSizing: "border-box",
                 },
-                filled ? undefined : h("span", String(idx + 1))
-              );
-            })
-          ),
+                title: t("panel.config.slotEmpty", { n: slot.index + 1 }),
+              },
+              h("span", String(slot.index + 1))
+            );
+          }),
           occupied.value.size === 0
             ? h(
                 "div",

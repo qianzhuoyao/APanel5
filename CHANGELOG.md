@@ -4,6 +4,16 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)，版本号遵循 [SemVer](https://semver.org/lang/zh-CN/)。
 
+## [1.1.43] - 2026-10-27
+
+配套：`react-view@1.0.42` · `vue-view@0.1.28` · `abuilder-vue@0.1.27`
+
+### Fixed
+
+- 网格布局：吸附按 span 中心、占用/占位同源 remap、拖网格不再二次平移子节点；membership 与 layout 同步路径拆分（React / Vue）
+- 网格占位格改为与槽位几何一致的绝对定位，并扣除 border-box 边框；缩行列 reflow 钳位；删网格时清理子节点 membership
+- 多选拖动含父网格时跳过子节点写回，避免与 reflow 双写
+
 ## [1.1.42] - 2026-10-26
 
 配套：`react-view@1.0.41` · `vue-view@0.1.27` · `abuilder-vue@0.1.26`

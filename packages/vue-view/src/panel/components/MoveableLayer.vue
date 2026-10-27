@@ -12,6 +12,11 @@ import Moveable from "moveable";
 import type { PanelElement } from "../types";
 import { uniformViewportZoom } from "../viewportZoom";
 import { setCanvasInteractionBusy } from "../utils/canvas-interaction-busy";
+import {
+  computeSnapPatchForMovingElement,
+  elementBelongsToGrid,
+  resolveConcreteParentGridId,
+} from "../utils/gridPlacement";
 
 const { t, locale } = useI18n();
 
@@ -30,124 +35,6 @@ const props = defineProps<{
   refreshToken?: number | string;
   viewportSyncRef?: { current: (() => void) | null };
 }>();
-
-function getGridSlotLayout(grid: PanelElement) {
-  const rows = Math.max(1, Math.floor(grid.gridRows ?? 2));
-  const cols = Math.max(1, Math.floor(grid.gridCols ?? 3));
-  const gap = Math.max(0, grid.gridGap ?? 8);
-  const padding = Math.max(0, grid.gridPadding ?? 10);
-  const innerWidth = Math.max(1, grid.width - padding * 2);
-  const innerHeight = Math.max(1, grid.height - padding * 2);
-  const cellWidth = Math.max(1, (innerWidth - gap * (cols - 1)) / cols);
-  const cellHeight = Math.max(1, (innerHeight - gap * (rows - 1)) / rows);
-  const slots: Array<{
-    index: number;
-    row: number;
-    col: number;
-    centerX: number;
-    centerY: number;
-    x: number;
-    y: number;
-  }> = [];
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      const x = grid.x + padding + c * (cellWidth + gap);
-      const y = grid.y + padding + r * (cellHeight + gap);
-      slots.push({
-        index: r * cols + c,
-        row: r,
-        col: c,
-        x,
-        y,
-        centerX: x + cellWidth / 2,
-        centerY: y + cellHeight / 2,
-      });
-    }
-  }
-  return { slots, cellWidth, cellHeight, rows, cols, gap };
-}
-
-function inferSpanBySize(size: number, cellSize: number, gap: number, maxSpan: number) {
-  const safeMax = Math.max(1, Math.floor(maxSpan));
-  const unit = Math.max(1, cellSize + gap);
-  const ratio = (Math.max(1, size) + gap) / unit;
-  const whole = Math.floor(ratio);
-  const fraction = ratio - whole;
-  const promoted = fraction >= 0.72 ? whole + 1 : Math.max(1, whole);
-  return Math.max(1, Math.min(safeMax, promoted));
-}
-
-function getGridSpanCells(
-  rows: number,
-  cols: number,
-  slotIndex: number,
-  colSpan: number,
-  rowSpan: number
-) {
-  const total = rows * cols;
-  const safeIndex = Math.max(0, Math.min(total - 1, Math.floor(slotIndex || 0)));
-  const startRow = Math.floor(safeIndex / cols);
-  const startCol = safeIndex % cols;
-  const safeColSpan = Math.max(1, Math.min(cols - startCol, Math.floor(colSpan || 1)));
-  const safeRowSpan = Math.max(1, Math.min(rows - startRow, Math.floor(rowSpan || 1)));
-  const indices: number[] = [];
-  for (let r = startRow; r < startRow + safeRowSpan; r++) {
-    for (let c = startCol; c < startCol + safeColSpan; c++) {
-      indices.push(r * cols + c);
-    }
-  }
-  return {
-    safeIndex,
-    startRow,
-    startCol,
-    colSpan: safeColSpan,
-    rowSpan: safeRowSpan,
-    indices,
-  };
-}
-
-function getOccupiedSlotSet(
-  elementsById: Map<string, PanelElement>,
-  gridId: string,
-  selfId: string,
-  layerId?: string
-) {
-  const occupied = new Set<number>();
-  const grid = elementsById.get(gridId);
-  if (!grid || grid.materialType !== "grid") return occupied;
-  const { rows, cols } = getGridSlotLayout(grid);
-  for (const el of elementsById.values()) {
-    if (el.id === selfId) continue;
-    if (layerId && el.layerId !== layerId) continue;
-    if (el.parentGridId !== gridId) continue;
-    if (el.gridSlotIndex === undefined) continue;
-    const span = getGridSpanCells(
-      rows,
-      cols,
-      el.gridSlotIndex,
-      el.gridColSpan ?? 1,
-      el.gridRowSpan ?? 1
-    );
-    span.indices.forEach((idx) => occupied.add(idx));
-  }
-  return occupied;
-}
-
-function isDescendantGrid(
-  elementsById: Map<string, PanelElement>,
-  possibleDescendantGridId: string,
-  ancestorGridId: string
-) {
-  let current = elementsById.get(possibleDescendantGridId);
-  const visited = new Set<string>();
-  while (current?.parentGridId) {
-    if (visited.has(current.id)) return false;
-    visited.add(current.id);
-    if (current.parentGridId === ancestorGridId) return true;
-    current = elementsById.get(current.parentGridId);
-  }
-  return false;
-}
 
 function readLiveCanvasScale(canvasContainer: HTMLElement | null, fallback: number): number {
   if (!canvasContainer) return fallback;
@@ -264,15 +151,6 @@ function readTargetCanvasSize(
   return { width: Math.max(1, fallback.width), height: Math.max(1, fallback.height) };
 }
 
-function getGridDirectChildren(gridId: string) {
-  const result: PanelElement[] = [];
-  for (const el of props.elementsById.values()) {
-    if (el.parentGridId !== gridId) continue;
-    result.push(el);
-  }
-  return result;
-}
-
 function getSnapPatch(
   movingId: string,
   x: number,
@@ -280,96 +158,7 @@ function getSnapPatch(
   width: number,
   height: number
 ): Partial<PanelElement> {
-  const moving = props.elementsById.get(movingId);
-  if (!moving) return {};
-  const centerX = x + width / 2;
-  const centerY = y + height / 2;
-  let nearest: {
-    gridId: string;
-    slotIndex: number;
-    slotX: number;
-    slotY: number;
-    width: number;
-    height: number;
-    colSpan: number;
-    rowSpan: number;
-    distance: number;
-  } | null = null;
-
-  for (const [id, el] of props.elementsById.entries()) {
-    if (id === movingId || el.materialType !== "grid") continue;
-    if (el.layerId !== moving.layerId) continue;
-    if (moving.materialType === "grid" && isDescendantGrid(props.elementsById, id, movingId)) {
-      continue;
-    }
-    const { slots, cellWidth, cellHeight, rows, cols, gap } = getGridSlotLayout(el);
-    const occupiedSlots = getOccupiedSlotSet(
-      props.elementsById,
-      el.id,
-      movingId,
-      moving.layerId
-    );
-    const threshold = Math.max(8, el.gridSnapThreshold ?? 36);
-    const inferredColSpan = inferSpanBySize(width, cellWidth, gap, cols);
-    const inferredRowSpan = inferSpanBySize(height, cellHeight, gap, rows);
-    const movingColSpan = Math.max(1, inferredColSpan);
-    const movingRowSpan = Math.max(1, inferredRowSpan);
-    const insideGridBounds =
-      centerX >= el.x &&
-      centerX <= el.x + Math.max(1, el.width) &&
-      centerY >= el.y &&
-      centerY <= el.y + Math.max(1, el.height);
-
-    for (const slot of slots) {
-      const spanCells = getGridSpanCells(
-        rows,
-        cols,
-        slot.index,
-        movingColSpan,
-        movingRowSpan
-      );
-      if (spanCells.colSpan !== movingColSpan || spanCells.rowSpan !== movingRowSpan) {
-        continue;
-      }
-      const blocked = spanCells.indices.some((idx) => occupiedSlots.has(idx));
-      if (blocked) continue;
-      const distance = Math.hypot(slot.centerX - centerX, slot.centerY - centerY);
-      if (!insideGridBounds && distance > threshold) continue;
-      if (!nearest || distance < nearest.distance) {
-        const spanWidth = spanCells.colSpan * cellWidth + (spanCells.colSpan - 1) * gap;
-        const spanHeight = spanCells.rowSpan * cellHeight + (spanCells.rowSpan - 1) * gap;
-        nearest = {
-          gridId: el.id,
-          slotIndex: spanCells.safeIndex,
-          slotX: slot.x,
-          slotY: slot.y,
-          width: spanWidth,
-          height: spanHeight,
-          colSpan: spanCells.colSpan,
-          rowSpan: spanCells.rowSpan,
-          distance,
-        };
-      }
-    }
-  }
-
-  if (!nearest) {
-    if (moving.parentGridId || moving.gridSlotIndex !== undefined) {
-      return { parentGridId: undefined, gridSlotIndex: undefined };
-    }
-    return {};
-  }
-
-  return {
-    x: nearest.slotX,
-    y: nearest.slotY,
-    parentGridId: nearest.gridId,
-    gridSlotIndex: nearest.slotIndex,
-    gridColSpan: nearest.colSpan,
-    gridRowSpan: nearest.rowSpan,
-    width: nearest.width,
-    height: nearest.height,
-  };
+  return computeSnapPatchForMovingElement(props.elementsById, movingId, x, y, width, height);
 }
 
 function syncLockBadge() {
@@ -628,22 +417,8 @@ function createMoveable() {
         height: data.height,
       });
       const patch = getSnapPatch(id, nextX, nextY, size.width, size.height);
+      // 网格子节点由 layout reflow 按槽位重算，勿再 +dx 二次平移
       props.updateElement(id, { x: nextX, y: nextY, ...patch });
-      if (data.materialType === "grid") {
-        const dx = nextX - data.x;
-        const dy = nextY - data.y;
-        if (Math.abs(dx) > 0.001 || Math.abs(dy) > 0.001) {
-          const children = getGridDirectChildren(id);
-          const batchId = `move-grid-children-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-          children.forEach((child) => {
-            props.updateElement(
-              child.id,
-              { x: child.x + dx, y: child.y + dy },
-              { batchId, meta: { type: "node.group-drag" } }
-            );
-          });
-        }
-      }
       scheduleViewportSync();
     } finally {
       setCanvasInteractionBusy(false);
@@ -653,17 +428,36 @@ function createMoveable() {
   moveable.on("dragGroupEnd", (e: any) => {
     try {
       const batchId = `move-group-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-      const selectedSet = new Set(
-        e.events
-          .map((ev: any) => (ev.target ? getId(ev.target) : null))
-          .filter((id: string | null): id is string => !!id)
+      const selectedIdsInGroup: string[] = e.events
+        .map((ev: any) => (ev.target ? getId(ev.target) : null))
+        .filter((id: string | null): id is string => !!id);
+      const selectedGridIds = new Set<string>(
+        selectedIdsInGroup.filter(
+          (sid: string) => props.elementsById.get(sid)?.materialType === "grid"
+        )
       );
-      const gridDeltaMap = new Map<string, { dx: number; dy: number }>();
+      const isUnderSelectedGrid = (el: PanelElement) => {
+        if (selectedGridIds.size === 0) return false;
+        let current: PanelElement | undefined = el;
+        const seen = new Set<string>();
+        while (current?.parentGridId && !seen.has(current.id)) {
+          seen.add(current.id);
+          for (const gid of selectedGridIds) {
+            if (elementBelongsToGrid(current, gid, props.elementsById)) return true;
+          }
+          const concrete: string =
+            resolveConcreteParentGridId(current, props.elementsById) ?? current.parentGridId;
+          if (selectedGridIds.has(concrete)) return true;
+          current = props.elementsById.get(concrete);
+        }
+        return false;
+      };
       e.events.forEach((ev: any) => {
         const id = ev.target ? getId(ev.target) : null;
         if (!id) return;
         const data = props.elementsById.get(id);
         if (!data) return;
+        if (selectedGridIds.size > 0 && isUnderSelectedGrid(data)) return;
         const sx = ev.datas.__startX ?? data.x;
         const sy = ev.datas.__startY ?? data.y;
         const point = readClientPoint(ev) ?? readClientPoint(e);
@@ -689,25 +483,7 @@ function createMoveable() {
           { x: nextX, y: nextY, ...patch },
           { batchId, meta: { type: "node.group-drag" } }
         );
-        if (data.materialType === "grid") {
-          const dx = nextX - data.x;
-          const dy = nextY - data.y;
-          if (Math.abs(dx) > 0.001 || Math.abs(dy) > 0.001) {
-            gridDeltaMap.set(id, { dx, dy });
-          }
-        }
       });
-      for (const [gridId, delta] of gridDeltaMap.entries()) {
-        const children = getGridDirectChildren(gridId);
-        children.forEach((child) => {
-          if (selectedSet.has(child.id)) return;
-          props.updateElement(
-            child.id,
-            { x: child.x + delta.dx, y: child.y + delta.dy },
-            { batchId, meta: { type: "node.group-drag" } }
-          );
-        });
-      }
       scheduleViewportSync();
     } finally {
       setCanvasInteractionBusy(false);

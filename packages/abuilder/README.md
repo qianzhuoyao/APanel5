@@ -4,7 +4,7 @@ React 一站式编辑器。安装后渲染 `<App />`，就是完整的 Abuilder�
 
 ![安装后直接得到的编辑器](https://github.com/qianzhuoyao/APanel5/raw/v5/docs/guide-assets/live-zh/01-overview.png)
 
-当前版本见本包 `package.json`（设置菜单「关于」里显示的就是这个版本号）。本包 **1.1.42** 起修复物料侧栏 ≥160px 按 90px 列宽换行；**1.1.41** 起配套 Soft UI 面板打磨、缩放恒定选框线宽与接口集合弹窗体验；**1.1.40** 起补齐宿主侧完整 CRUD（put / 命令式打开 / 事件 nameSpace / Vue 预览截图）；**1.1.39** 起补齐本地数据接口（蓝图库、执行日志、接口集合的读取与清理，`clearAbuilderStorage` 一次清空，`workspace:delete` 事件）；**1.1.38** 起提供本地工作区清理接口（`listWorkspaceProjects` / `deleteWorkspaceProject` / `clearWorkspaceProjects`）；**1.1.37** 起配套 chroma.js 主题配色、全系统国际化修复与问号图标式字段说明；**1.1.36** 起配套蓝图 Soft UI 节点样式；**1.1.35** 起配套接口集合、`{system?...}` 模版、JSON 节点错误高亮。完整中文手册见仓库 `docs/Abuilder使用文档与功能说明.docx`（适用版本表写在文首）。
+当前版本见本包 `package.json`（设置菜单「关于」里显示的就是这个版本号）。本包 **1.1.43** 起修复网格布局吸附、占位格与 membership 同步；**1.1.42** 起修复物料侧栏 ≥160px 按 90px 列宽换行；**1.1.41** 起配套 Soft UI 面板打磨、缩放恒定选框线宽与接口集合弹窗体验；**1.1.40** 起补齐宿主侧完整 CRUD（put / 命令式打开 / 事件 nameSpace / Vue 预览截图）；**1.1.39** 起补齐本地数据接口（蓝图库、执行日志、接口集合的读取与清理，`clearAbuilderStorage` 一次清空，`workspace:delete` 事件）；**1.1.38** 起提供本地工作区清理接口（`listWorkspaceProjects` / `deleteWorkspaceProject` / `clearWorkspaceProjects`）；**1.1.37** 起配套 chroma.js 主题配色、全系统国际化修复与问号图标式字段说明；**1.1.36** 起配套蓝图 Soft UI 节点样式；**1.1.35** 起配套接口集合、`{system?...}` 模版、JSON 节点错误高亮。完整中文手册见仓库 `docs/Abuilder使用文档与功能说明.docx`（适用版本表写在文首）。
 
 ## 安装
 

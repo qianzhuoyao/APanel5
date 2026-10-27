@@ -5,7 +5,11 @@ import type { PanelElement } from "../types";
 import { buildChartOption, CHART_TYPES } from "../utils/chartOptionBuilder";
 import { PREVIEW_LAYOUT_EVENT } from "../utils/panelStateIO";
 import { TableNodeContent, type TableCellActionHandler } from "./table/TableNodeContent";
-import { comparePanelElementsPaintOrder } from "../utils/gridPlacement";
+import {
+  comparePanelElementsPaintOrder,
+  elementBelongsToGrid,
+  getGridSlotLayout,
+} from "../utils/gridPlacement";
 import {
   isViewportNode,
   normalizeViewportOverflow,
@@ -97,15 +101,14 @@ function GridNodeContent({
   previewMode?: boolean;
 }) {
   const { t } = useI18n();
-  const rows = Math.max(1, Math.floor(element.gridRows ?? 2));
-  const cols = Math.max(1, Math.floor(element.gridCols ?? 3));
-  const gap = Math.max(0, element.gridGap ?? 8);
-  const padding = Math.max(0, element.gridPadding ?? 10);
+  const layout = useMemo(() => getGridSlotLayout(element), [element]);
   const occupied = useMemo(() => {
     const set = new Set<number>();
+    const byId = new Map(allElements.map((el) => [el.id, el]));
+    const { rows, cols } = layout;
     allElements.forEach((el) => {
-      if (el.parentGridId !== element.id) return;
       if (el.layerId !== element.layerId) return;
+      if (!elementBelongsToGrid(el, element.id, byId)) return;
       if (el.gridSlotIndex === undefined) return;
       const start = Math.max(0, Math.floor(el.gridSlotIndex));
       const baseRow = Math.floor(start / cols);
@@ -119,65 +122,52 @@ function GridNodeContent({
       }
     });
     return set;
-  }, [allElements, cols, element.id, element.layerId, rows]);
+  }, [allElements, element.id, element.layerId, layout]);
   if (previewMode) {
     return <div className="relative h-full w-full" />;
   }
-  const total = rows * cols;
-  const emptyCount = total - occupied.size;
+  const { slots, border } = layout;
+  const emptyCount = slots.length - occupied.size;
+  // 内容区原点 = 画布 grid 原点 + border（border-box）
+  const originX = element.x + border;
+  const originY = element.y + border;
   return (
     <div
       className="pointer-events-none relative h-full w-full overflow-hidden rounded-md"
       style={
         emptyCount > 0
           ? {
-              border: "2px dashed rgba(14, 165, 233, 0.7)",
+              outline: "2px dashed rgba(14, 165, 233, 0.7)",
+              outlineOffset: "-2px",
               background: "rgba(14, 165, 233, 0.08)",
             }
           : undefined
       }
     >
-      <div
-        className="h-full w-full"
-        style={{
-          display: "grid",
-          gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
-          gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))`,
-          gap: `${gap}px`,
-          padding: `${padding}px`,
-          boxSizing: "border-box",
-        }}
-      >
-        {Array.from({ length: total }).map((_, idx) => {
-          const filled = occupied.has(idx);
-          return (
-            <div
-              key={idx}
-              className={
-                filled
-                  ? "pointer-events-none"
-                  : "pointer-events-auto flex flex-col items-center justify-center gap-0.5 rounded-md text-[11px] font-semibold"
-              }
-              style={
-                filled
-                  ? undefined
-                  : {
-                      border: "2px dashed rgba(2, 132, 199, 0.85)",
-                      background: "rgba(186, 230, 253, 0.72)",
-                      color: "rgba(3, 105, 161, 0.95)",
-                    }
-              }
-              title={
-                filled
-                  ? t("panel.config.slotOccupied", { n: idx + 1 })
-                  : t("panel.config.slotEmpty", { n: idx + 1 })
-              }
-            >
-              {filled ? null : <span>{idx + 1}</span>}
-            </div>
-          );
-        })}
-      </div>
+      {slots.map((slot) => {
+        const filled = occupied.has(slot.index);
+        if (filled) return null;
+        return (
+          <div
+            key={slot.index}
+            className="pointer-events-auto absolute flex flex-col items-center justify-center gap-0.5 rounded-md text-[11px] font-semibold"
+            style={{
+              left: slot.x - originX,
+              top: slot.y - originY,
+              width: slot.width,
+              height: slot.height,
+              outline: "2px dashed rgba(2, 132, 199, 0.85)",
+              outlineOffset: "-2px",
+              background: "rgba(186, 230, 253, 0.72)",
+              color: "rgba(3, 105, 161, 0.95)",
+              boxSizing: "border-box",
+            }}
+            title={t("panel.config.slotEmpty", { n: slot.index + 1 })}
+          >
+            <span>{slot.index + 1}</span>
+          </div>
+        );
+      })}
       {occupied.size === 0 ? (
         <div className="pointer-events-none absolute bottom-1.5 left-0 right-0 text-center text-[11px] font-medium text-sky-800/90">
           {t("panel.config.gridDropHint")}
