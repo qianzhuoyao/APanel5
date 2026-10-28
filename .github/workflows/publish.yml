@@ -64,7 +64,7 @@ jobs:
           pnpm -C packages/view-scene3d build
           pnpm -C packages/webllm-assistant build
           # React 栈
-          pnpm -C packages/ui run build:css
+          pnpm -C packages/ui build
           pnpm -C packages/react-blueprint run build:css
           pnpm -C packages/react-view run build:css
           pnpm -C packages/abuilder build

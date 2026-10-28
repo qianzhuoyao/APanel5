@@ -1,11 +1,18 @@
 {
   "name": "@arronqzy/ui",
-  "version": "1.0.11",
+  "version": "1.0.12",
+  "type": "module",
+  "sideEffects": ["*.css"],
+  "files": ["dist", "README.md"],
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
-    ".": "./index.ts",
-    "./counter": "./components/counter.ts",
-    "./header": "./components/header.ts",
-    "./setup-counter": "./utils/counter.ts",
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
     "./styles.css": "./dist/styles.css"
   },
   "license": "MIT",
@@ -14,7 +21,9 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "build:css": "arronqzy-tailwind -c tailwind.config.ts -i ./src/styles.css -o ./dist/styles.css",
     "dev:css": "arronqzy-tailwind -c tailwind.config.ts -i ./src/styles.css -o ./dist/styles.css --watch",
-    "build": "pnpm run lint && pnpm run typecheck && pnpm run build:css"
+    "build:js": "tsup",
+    "build": "pnpm run lint && pnpm run typecheck && pnpm run build:js && pnpm run build:css",
+    "prepublishOnly": "pnpm run build"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.1",
@@ -73,6 +82,7 @@
     "@arronqzy/typescript-config": "workspace:*",
     "@arronqzy/tailwind": "workspace:*",
     "eslint": "^8.57.0",
+    "tsup": "^8.4.0",
     "typescript": "^5.5.4"
   }
 }

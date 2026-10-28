@@ -4,6 +4,14 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)，版本号遵循 [SemVer](https://semver.org/lang/zh-CN/)。
 
+## [1.1.45] - 2026-10-28
+
+配套：`ui@1.0.12` · `react-view@1.0.44` · `react-blueprint@1.0.27`
+
+### Fixed
+
+- `@arronqzy/ui` 改为发布编译后的 JS。下游打包不再编译 `src/*.tsx`，避免 sourcemap 无法定位、整包组件报错
+
 ## [1.1.44] - 2026-10-27
 
 配套：`react-view@1.0.43` · `vue-view@0.1.29` · `abuilder-vue@0.1.28` · `react-blueprint@1.0.26` · `vue-blueprint@0.1.21` · `blueprint-dsl@1.0.18` · `webllm-assistant@0.1.17`
