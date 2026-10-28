@@ -4,6 +4,14 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)，版本号遵循 [SemVer](https://semver.org/lang/zh-CN/)。
 
+## [1.1.46] - 2026-10-28
+
+配套：`webllm-assistant@0.1.18` · `react-view@1.0.45`
+
+### Fixed
+
+- 未注册 `webllmAssistant()` 时，Vite 打包不再解析 `virtual:arronqzy-webllm-entry`
+
 ## [1.1.45] - 2026-10-28
 
 配套：`ui@1.0.12` · `react-view@1.0.44` · `react-blueprint@1.0.27`

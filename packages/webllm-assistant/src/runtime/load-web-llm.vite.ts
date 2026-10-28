@@ -1,8 +1,9 @@
 /**
- * Vite-only loader. Specifier must be a string literal (no `@vite-ignore`) so
- * Vite rewrites it through `webllmAssistant()` resolveId/load.
- * Must match `WEBLLM_VITE_ENTRY` in vite-plugin.ts.
+ * Vite loader. Imports a real module so Rollup can resolve it without
+ * `webllmAssistant()`. The plugin replaces that module with the WebLLM asset href.
  */
+import assetHref from "./web-llm-vite-entry";
+
 export function importWebLlm(): Promise<unknown> {
-  return import("virtual:arronqzy-webllm-entry");
+  return Promise.resolve(assetHref);
 }

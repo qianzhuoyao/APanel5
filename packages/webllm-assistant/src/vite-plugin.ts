@@ -40,12 +40,22 @@ interface WebllmVitePlugin {
     this: WebllmPluginThis,
     id: string
   ) => string | null | Promise<string | null>;
+  transform?: (
+    this: WebllmPluginThis,
+    code: string,
+    id: string
+  ) =>
+    | string
+    | null
+    | { code: string; map: null }
+    | Promise<string | null | { code: string; map: null }>;
   buildStart?: () => void | Promise<void>;
 }
 
-/** Import this from `load-web-llm.vite.ts` so consumer graphs never mention `@mlc-ai/web-llm`. */
+/** Kept for hosts that still import the old virtual id. Runtime uses `web-llm-vite-entry.ts`. */
 export const WEBLLM_VITE_ENTRY = "virtual:arronqzy-webllm-entry";
 const RESOLVED_WEBLLM_VITE_ENTRY = "\0" + WEBLLM_VITE_ENTRY;
+const VITE_ENTRY_FILE = "web-llm-vite-entry.ts";
 
 /** Dev-only raw ESM endpoint — bypasses Vite transform / ?url remapping. */
 const WEBLLM_RAW_DEV_PATH = "/@arronqzy-webllm/web-llm.js";
@@ -80,6 +90,23 @@ function withAssetQuery(resolvedId: string): string {
 export function webllmAssistant(): WebllmVitePlugin {
   let webLlmFile: string | null = null;
 
+  function isViteEntryModule(id: string): boolean {
+    const file = id.split("?")[0]?.replace(/\\/g, "/") ?? "";
+    return file.endsWith(`/${VITE_ENTRY_FILE}`);
+  }
+
+  async function webLlmAssetModule(
+    ctx: WebllmPluginThis,
+    importer?: string
+  ): Promise<string> {
+    const file = await resolveWebLlmFile(ctx, importer);
+    if (ctx.meta?.watchMode) {
+      return `export default ${JSON.stringify(WEBLLM_RAW_DEV_PATH)};\n`;
+    }
+    const assetId = withAssetQuery(file);
+    return `import __webllmAssetUrl from ${JSON.stringify(assetId)};\nexport default __webllmAssetUrl;\n`;
+  }
+
   async function resolveWebLlmFile(
     ctx: {
       resolve: (
@@ -87,12 +114,13 @@ export function webllmAssistant(): WebllmVitePlugin {
         importer?: string,
         opts?: { skipSelf?: boolean }
       ) => Promise<{ id: string } | null>;
-    }
+    },
+    importer?: string
   ): Promise<string> {
     if (webLlmFile) return webLlmFile;
     const resolved =
-      (await ctx.resolve(WEB_LLM_ID, undefined, { skipSelf: true })) ??
-      (await ctx.resolve(WEB_LLM_ENTRY, undefined, { skipSelf: true }));
+      (await ctx.resolve(WEB_LLM_ID, importer, { skipSelf: true })) ??
+      (await ctx.resolve(WEB_LLM_ENTRY, importer, { skipSelf: true }));
     if (!resolved) {
       throw new Error(
         `[arronqzy-webllm-assistant] Cannot resolve ${WEB_LLM_ID}. Alias it or install the package.`
@@ -173,17 +201,12 @@ export function webllmAssistant(): WebllmVitePlugin {
     },
     async load(this: WebllmPluginThis, id) {
       if (id !== RESOLVED_WEBLLM_VITE_ENTRY) return null;
-
-      const file = await resolveWebLlmFile(this);
-
-      // Dev server: raw middleware URL so dynamic import gets real ESM bytes.
-      if (this.meta.watchMode) {
-        return `export default ${JSON.stringify(WEBLLM_RAW_DEV_PATH)};\n`;
-      }
-
-      // Production build: Vite asset URL (no transform / stripLiteral).
-      const assetId = withAssetQuery(file);
-      return `import __webllmAssetUrl from ${JSON.stringify(assetId)};\nexport default __webllmAssetUrl;\n`;
+      return webLlmAssetModule(this);
+    },
+    async transform(this: WebllmPluginThis, _code, id) {
+      if (!isViteEntryModule(id)) return null;
+      const importer = id.split("?")[0];
+      return { code: await webLlmAssetModule(this, importer), map: null };
     },
   };
 }

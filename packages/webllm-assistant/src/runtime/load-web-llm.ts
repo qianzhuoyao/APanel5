@@ -120,7 +120,7 @@ async function loadViaWebpack(): Promise<WebLLMModule> {
 /**
  * Load the WebLLM runtime.
  *
- * Vite (webllmAssistant plugin sets __WEBLLM_VITE_LOADER__): virtual entry → asset copy.
+ * Vite (webllmAssistant plugin sets __WEBLLM_VITE_LOADER__): entry module → asset copy.
  * Webpack/Umi: bare `@mlc-ai/web-llm` async chunk with a safe filename.
  */
 export async function loadWebLlmModule(): Promise<WebLLMModule> {
