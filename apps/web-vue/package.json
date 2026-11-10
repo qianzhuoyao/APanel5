@@ -11,11 +11,9 @@
     "typecheck": "vue-tsc --noEmit"
   },
   "dependencies": {
-    "@arronqzy/abuilder": "workspace:*",
     "@arronqzy/abuilder-vue": "workspace:*",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "veaury": "^2.6.3",
     "vue": "^3.5.13"
   },
   "devDependencies": {

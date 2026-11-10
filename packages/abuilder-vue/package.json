@@ -1,15 +1,23 @@
 {
   "name": "@arronqzy/abuilder-vue",
-  "version": "0.1.29",
-  "description": "Abuilder Vue 3 入口：通过 Veaury 包装 React 版 @arronqzy/abuilder",
+  "version": "0.1.30",
+  "description": "Abuilder Vue 3 入口：内部用 Veaury 包装 React 版 @arronqzy/abuilder，宿主无需直接使用 Veaury",
   "license": "MIT",
   "type": "module",
   "files": [
     "src",
+    "vite.js",
+    "vite.d.ts",
     "dist"
   ],
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./styles.css": "./src/styles.css",
+    "./vite": {
+      "types": "./vite.d.ts",
+      "import": "./vite.js",
+      "default": "./vite.js"
+    }
   },
   "scripts": {
     "lint": "eslint \"src/**/*.{ts,vue}\"",
@@ -22,20 +30,33 @@
     "veaury": "^2.6.3"
   },
   "peerDependencies": {
+    "@vitejs/plugin-react": ">=3",
+    "@vitejs/plugin-vue": ">=4",
+    "@vitejs/plugin-vue-jsx": ">=3",
     "react": ">=18",
     "react-dom": ">=18",
+    "vite": ">=5",
     "vue": "^3.4.0"
+  },
+  "peerDependenciesMeta": {
+    "@vitejs/plugin-react": { "optional": true },
+    "@vitejs/plugin-vue": { "optional": true },
+    "@vitejs/plugin-vue-jsx": { "optional": true },
+    "vite": { "optional": true }
   },
   "devDependencies": {
     "@arronqzy/eslint-config": "workspace:*",
     "@arronqzy/typescript-config": "workspace:*",
     "@types/react": "^19.0.1",
     "@types/react-dom": "^19.0.2",
+    "@vitejs/plugin-react": "^3.1.0",
     "@vitejs/plugin-vue": "^5.2.1",
+    "@vitejs/plugin-vue-jsx": "^4.1.1",
     "eslint": "^8.57.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "typescript": "^5.5.4",
+    "vite": "^5.4.17",
     "vue": "^3.5.13",
     "vue-tsc": "^2.2.0"
   },

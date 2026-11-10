@@ -1,15 +1,7 @@
 import { createApp } from "vue";
-import { createRoot } from "react-dom/client";
-import { setVeauryOptions } from "veaury";
 
 import { App } from "@arronqzy/abuilder-vue";
-import "@arronqzy/abuilder/styles.css";
-
-setVeauryOptions({
-  react: {
-    createRoot,
-  },
-});
+import "@arronqzy/abuilder-vue/styles.css";
 
 createApp(App, {
   plugins: ["ai"],

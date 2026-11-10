@@ -1,18 +1,14 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { createRoot } from "react-dom/client";
-import { applyPureReactInVue, setVeauryOptions } from "veaury";
+import { applyPureReactInVue } from "veaury";
 import {
   App as ReactAbuilderApp,
   type AbuilderViewHandle,
 } from "@arronqzy/abuilder";
+import { ensureVeauryConfigured } from "./setupVeaury";
 import type { AbuilderVueAppProps } from "./types";
 
-setVeauryOptions({
-  react: {
-    createRoot,
-  },
-});
+ensureVeauryConfigured();
 
 const ReactApp = applyPureReactInVue(ReactAbuilderApp);
 

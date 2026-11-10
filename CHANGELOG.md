@@ -4,6 +4,14 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)，版本号遵循 [SemVer](https://semver.org/lang/zh-CN/)。
 
+## [1.1.48] - 2026-11-10
+
+配套：`abuilder-vue@0.1.30`
+
+### Changed
+
+- Vue 宿主用法与 React 对齐：只引 `@arronqzy/abuilder-vue` 的 `App` / `styles.css`，Vite 用 `abuilderVue()`；Veaury 收进包内，业务侧不再直接配置
+
 ## [1.1.47] - 2026-11-10
 
 配套：`abuilder-vue@0.1.29` · `vue-view@0.1.30`

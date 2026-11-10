@@ -4,8 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { defineConfig, type Plugin } from "vite";
-import veauryVitePlugins from "veaury/vite/index.js";
-import { webllmAssistant } from "@arronqzy/abuilder/vite";
+import { abuilderVue } from "@arronqzy/abuilder-vue/vite";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const monorepoRoot = path.resolve(__dirname, "../..");
@@ -102,6 +101,7 @@ function ensureWorkspaceCssPlugin(): Plugin {
 function resolveWorkspaceStylesPlugin(): Plugin {
   const styleImports = new Map<string, string>([
     ["@arronqzy/abuilder/styles.css", abuilderStylesCss],
+    ["@arronqzy/abuilder-vue/styles.css", abuilderStylesCss],
     ["@arronqzy/ui/styles.css", uiStylesCss],
     ["@arronqzy/react-view/styles.css", reactViewStylesCss],
   ]);
@@ -131,15 +131,8 @@ export default defineConfig({
   plugins: [
     ensureWorkspaceCssPlugin(),
     resolveWorkspaceStylesPlugin(),
-    // Vue 宿主 + React 源码：仅 .vue 脚本走 Vue JSX，其余 TSX 走 React JSX。
-    veauryVitePlugins({
-      type: "custom",
-      vueJsxInclude: [
-        /vue&type=script&lang\.[tj]sx$/i,
-        /vue&type=script&setup=true&lang\.[tj]sx$/i,
-      ],
-    }),
-    webllmAssistant(),
+    // 与 React 宿主对称：一站式插件（内含 Veaury + 可选 AI），宿主不再直接碰 veaury。
+    ...abuilderVue(),
   ],
   resolve: {
     dedupe: ["react", "react-dom", "three", "@arronqzy/i18n", "vue"],
@@ -169,6 +162,14 @@ export default defineConfig({
       {
         find: "@arronqzy/i18n",
         replacement: path.join(i18nSrc, "index.ts"),
+      },
+      {
+        find: "@arronqzy/abuilder-vue/styles.css",
+        replacement: abuilderStylesCss,
+      },
+      {
+        find: "@arronqzy/abuilder-vue/vite",
+        replacement: path.resolve(monorepoRoot, "packages/abuilder-vue/vite.js"),
       },
       {
         find: "@arronqzy/abuilder-vue",
