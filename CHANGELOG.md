@@ -4,6 +4,18 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)，版本号遵循 [SemVer](https://semver.org/lang/zh-CN/)。
 
+## [1.1.49] - 2026-11-10
+
+配套：`abuilder-vue@0.1.31`
+
+### Fixed
+
+- 修复发布流水线：`pnpm-lock.yaml` 变更也会触发 NPM publish（此前 lockfile 不同步导致 install 失败后，仅修 lockfile 无法重新触发）
+
+### Changed
+
+- Vue 宿主用法与 React 对齐：只引 `@arronqzy/abuilder-vue` 的 `App` / `styles.css`，Vite 用 `abuilderVue()`；Veaury 收进包内，业务侧不再直接配置（承接未成功发布的 1.1.48）
+
 ## [1.1.48] - 2026-11-10
 
 配套：`abuilder-vue@0.1.30`
@@ -11,6 +23,10 @@
 ### Changed
 
 - Vue 宿主用法与 React 对齐：只引 `@arronqzy/abuilder-vue` 的 `App` / `styles.css`，Vite 用 `abuilderVue()`；Veaury 收进包内，业务侧不再直接配置
+
+### Notes
+
+- 该版本因 CI `frozen-lockfile` 失败未发布到 npm，能力合入 1.1.49
 
 ## [1.1.47] - 2026-11-10
 

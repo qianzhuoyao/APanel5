@@ -1,6 +1,6 @@
 {
   "name": "@arronqzy/abuilder-vue",
-  "version": "0.1.30",
+  "version": "0.1.31",
   "description": "Abuilder Vue 3 入口：内部用 Veaury 包装 React 版 @arronqzy/abuilder，宿主无需直接使用 Veaury",
   "license": "MIT",
   "type": "module",

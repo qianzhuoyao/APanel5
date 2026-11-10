@@ -9,6 +9,7 @@ on:
       - master
     paths:
       - "packages/**"
+      - "pnpm-lock.yaml"
       - ".github/workflows/publish.yml"
       - ".github/scripts/**"
   release:
