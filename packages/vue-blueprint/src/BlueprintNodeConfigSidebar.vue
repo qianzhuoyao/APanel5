@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { useI18n } from "@arronqzy/i18n/vue";
 import { computed, watch } from "vue";
-import { Checkbox, Input, Select } from "ant-design-vue";
+import { Checkbox, Input, Select, Switch } from "ant-design-vue";
 import {
+  hasDuplicateLifecyclePhase,
   LIFECYCLE_NODE_TYPE,
   PAGE_LIFECYCLE_PHASES,
+  resolveLifecyclePhase,
   VIEW_EVENT_TYPES,
   type ExecutionTraceEntry,
   type PageLifecyclePhase,
@@ -68,6 +70,7 @@ export type BlueprintNodeConfigSidebarProps = {
         | "nestedBlueprintId"
         | "libraryBlueprintId"
         | "lifecyclePhase"
+        | "lifecycleEnabled"
         | "fetchConfig"
         | "jsonConfig"
         | "storageConfig"
@@ -91,6 +94,15 @@ const props = withDefaults(defineProps<BlueprintNodeConfigSidebarProps>(), {
 const configSource = computed(() => resolveBlueprintConfigSource(props.node));
 const linkedViewElementIds = computed(() => resolveViewElementIds(props.node));
 const selectedEventTypes = computed(() => resolveNodeEventConfig(props.node).eventTypes);
+const lifecyclePhase = computed(() => resolveLifecyclePhase(props.node));
+const showLifecycleExclusiveToggle = computed(() => {
+  if (configSource.value !== "lifecycle") return false;
+  return hasDuplicateLifecyclePhase(
+    props.graphNodes,
+    lifecyclePhase.value,
+    LIFECYCLE_NODE_TYPE
+  );
+});
 const existingViewElementIdSet = computed(
   () => new Set(props.viewElementOptions.map((opt) => opt.id))
 );
@@ -369,6 +381,38 @@ function toggleEventType(eventType: ViewEventType, checked: boolean) {
             </Select.Option>
           </Select>
         </label>
+        <div
+          v-if="showLifecycleExclusiveToggle"
+          class="space-y-1.5 rounded-md border border-border/60 bg-background/60 px-2.5 py-2"
+        >
+          <div class="flex items-center justify-between gap-2">
+            <div class="flex items-center gap-1.5">
+              <span class="text-sm text-foreground">{{
+                t("blueprint.config.lifecycleExclusiveEnable")
+              }}</span>
+              <ConfigHintIcon :label="t('blueprint.config.lifecycleExclusiveEnable')">
+                <p>{{ t("blueprint.config.lifecycleExclusiveHint") }}</p>
+              </ConfigHintIcon>
+            </div>
+            <Switch
+              size="small"
+              :checked="node.lifecycleEnabled !== false"
+              @update:checked="
+                (checked) =>
+                  onUpdateNode(node.id, {
+                    lifecycleEnabled: Boolean(checked),
+                  })
+              "
+            />
+          </div>
+          <p class="text-[11px] text-muted-foreground">
+            {{
+              node.lifecycleEnabled !== false
+                ? t("blueprint.config.lifecycleStatusEnabled")
+                : t("blueprint.config.lifecycleStatusDisabled")
+            }}
+          </p>
+        </div>
         <p v-if="node.parentId" class="text-[11px] text-muted-foreground">
           {{ t("blueprint.config.parentBlueprintNode", { id: node.parentId }) }}
         </p>

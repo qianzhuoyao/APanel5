@@ -36,7 +36,7 @@ export type BlueprintVueRootProps = {
 
 export type BlueprintDebugToolbarProps = {
   lifecyclePhase?: string;
-  lifecycleOptions?: { value: string; label: string }[];
+  lifecycleOptions?: { value: string; label: string; disabled?: boolean }[];
   onLifecyclePhaseChange?: (phase: string) => void;
 };
 
@@ -226,13 +226,25 @@ watch(blueprintWrapRef, (el) => {
             </Button>
           </Tooltip>
           <Select
-            v-if="blueprintDebug?.lifecycleOptions?.length"
+            v-if="blueprintDebug"
             size="small"
             class="min-w-[120px]"
-            :value="blueprintDebug.lifecyclePhase"
-            :options="blueprintDebug.lifecycleOptions"
+            allow-clear
+            :value="
+              blueprintDebug.lifecycleOptions?.some(
+                (opt) => opt.value === blueprintDebug.lifecyclePhase
+              )
+                ? blueprintDebug.lifecyclePhase
+                : undefined
+            "
+            :options="blueprintDebug.lifecycleOptions ?? []"
             :placeholder="t('panel.workspace.lifecycle')"
-            @change="(v) => v && blueprintDebug?.onLifecyclePhaseChange?.(String(v))"
+            @change="
+              (v) =>
+                blueprintDebug?.onLifecyclePhaseChange?.(
+                  v == null || v === '' ? '' : String(v)
+                )
+            "
           />
         </Space>
       </div>

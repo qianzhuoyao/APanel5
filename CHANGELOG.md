@@ -4,6 +4,23 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)，版本号遵循 [SemVer](https://semver.org/lang/zh-CN/)。
 
+## [1.1.51] - 2026-11-10
+
+配套：`abuilder-vue@0.1.33` · `blueprint-dsl@1.0.19` · `react-blueprint@1.0.28` · `react-view@1.0.46` · `vue-blueprint@0.1.22` · `vue-view@0.1.31` · `i18n@0.1.18`
+
+### Added
+
+- 蓝图分支节点：按 scope/system 表达式分流，双输出口（满足 / 不满足）并透传输入
+- `system.tools`：`str` / `int` / `sum` / `len` / `pick` / `replace` / `replaceAll` / `exclude`，支持嵌套与数组展开
+- 同图同阶段多个生命周期节点时可互斥启用；仅启用节点执行，节点与配置区显示启用/停用状态
+
+### Fixed
+
+- 修复配置项更新不生效（`materializePanelElements` 浅比较遗漏字段）
+- 修复执行日志长内容撑破侧栏布局
+- 修复生命周期全部停用时调试选中与画布同步互踢导致步进按钮闪烁
+- 更新 Soft UI 中文使用文档截图并修复 docx 命名空间损坏
+
 ## [1.1.50] - 2026-11-10
 
 配套：`abuilder-vue@0.1.32`

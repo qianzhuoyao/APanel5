@@ -217,12 +217,12 @@ function BlueprintExecutionLogPanelInner({
 
   return (
     <TooltipProvider delayDuration={200}>
-      <div className="flex h-full min-h-0 flex-col overflow-hidden bg-background text-foreground">
+      <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-background text-foreground">
         <div className="shrink-0 border-b border-border px-3 py-2">
           <div className="flex items-start justify-between gap-2">
-            <div className="min-w-0">
-              <div className="text-xs font-semibold">{t("blueprint.log.title")}</div>
-              <div className="mt-0.5 text-[11px] text-muted-foreground">
+            <div className="min-w-0 flex-1 overflow-hidden">
+              <div className="truncate text-xs font-semibold">{t("blueprint.log.title")}</div>
+              <div className="mt-0.5 break-words text-[11px] text-muted-foreground">
                 {phaseLabel ? t("blueprint.log.simulateSceneWithPhase", { phaseLabel }) : t("blueprint.log.selectLifecycleToDebug")}
               </div>
             </div>
@@ -257,10 +257,10 @@ function BlueprintExecutionLogPanelInner({
           </div>
         </div>
 
-        <div className="relative min-h-0 flex-1">
+        <div className="relative min-h-0 min-w-0 flex-1 overflow-hidden">
           <div
             ref={scrollRef}
-            className="h-full overflow-auto p-3"
+            className="h-full min-w-0 overflow-auto p-3"
             onScroll={handleScroll}
           >
             {entries.length === 0 ? (
@@ -268,16 +268,16 @@ function BlueprintExecutionLogPanelInner({
                 {t("blueprint.log.emptyHint")}
               </p>
             ) : (
-              <div className="space-y-0">
+              <div className="min-w-0 space-y-0">
                 {entries.map((entry, index) => (
-                  <div key={entry.id}>
-                    <div className="rounded-md border border-border/70 bg-muted/20 p-2.5">
-                      <div className="flex items-start justify-between gap-2">
-                        <div>
-                          <div className="text-xs font-medium text-foreground">
+                  <div key={entry.id} className="min-w-0">
+                    <div className="min-w-0 overflow-hidden rounded-md border border-border/70 bg-muted/20 p-2.5">
+                      <div className="flex min-w-0 items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1 overflow-hidden">
+                          <div className="truncate text-xs font-medium text-foreground">
                             {entry.nodeLabel ?? entry.nodeId}
                           </div>
-                          <div className="mt-0.5 font-mono text-[10px] text-muted-foreground">
+                          <div className="mt-0.5 truncate font-mono text-[10px] text-muted-foreground">
                             {entry.nodeType} · {entry.nodeId}
                           </div>
                         </div>
@@ -286,22 +286,22 @@ function BlueprintExecutionLogPanelInner({
                         </time>
                       </div>
 
-                      <div className="mt-2 grid gap-2">
-                        <div>
+                      <div className="mt-2 grid min-w-0 gap-2">
+                        <div className="min-w-0 overflow-hidden">
                           <div className="mb-1 text-[10px] font-medium text-muted-foreground">
                             {t("blueprint.log.input")}
                           </div>
-                          <pre className="max-h-32 overflow-auto rounded border border-border/60 bg-background p-2 font-mono text-[10px] leading-relaxed text-foreground">
+                          <pre className="max-h-32 max-w-full min-w-0 overflow-auto whitespace-pre-wrap break-words rounded border border-border/60 bg-background p-2 font-mono text-[10px] leading-relaxed text-foreground [overflow-wrap:anywhere]">
                             {formatJson(entry.inputs)}
                           </pre>
                         </div>
-                        <div>
+                        <div className="min-w-0 overflow-hidden">
                           <div className="mb-1 text-[10px] font-medium text-muted-foreground">
                             {t("blueprint.log.output")}
                           </div>
                           <pre
                             className={cn(
-                              "max-h-32 overflow-auto rounded border p-2 font-mono text-[10px] leading-relaxed",
+                              "max-h-32 max-w-full min-w-0 overflow-auto whitespace-pre-wrap break-words rounded border p-2 font-mono text-[10px] leading-relaxed [overflow-wrap:anywhere]",
                               entry.error
                                 ? "border-destructive/40 bg-destructive/5 text-destructive"
                                 : "border-border/60 bg-background text-foreground"

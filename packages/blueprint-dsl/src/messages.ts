@@ -54,6 +54,8 @@ const ZH_CN = {
   lifecycleSignalMissing: "生命周期信号缺失",
   blueprintCycle: "蓝图引用存在死循环：{path}",
   debugMustStartFromLifecycle: "调试会话只能从生命周期节点开始",
+  debugLifecycleDisabled:
+    "该生命周期节点已停用；同阶段请改用已启用的生命周期节点",
   nodeRemoved: "节点已从蓝图中移除",
   clockNeedsTrue: "时钟节点需要收到真信号后才会启动",
   blueprintNeedsTrue: "蓝图节点需要收到真信号后才会执行",
@@ -65,6 +67,8 @@ const ZH_CN = {
   jsonNeedsTrue: "JSON 节点需要收到真信号后才会解析",
   storageNeedsTrue: "存储节点需要收到真信号后才会读写缓存",
   andNeedsBothTrue: "并运算：两个输入须均为真信号",
+  branchNeedsTrue: "分支节点需要收到真信号后才会判断条件",
+  branchExpressionError: "分支条件表达式求值失败：{reason}",
 } as const;
 
 export type BlueprintDslMessageKey = keyof typeof ZH_CN;
@@ -123,6 +127,8 @@ const EN_US: Record<BlueprintDslMessageKey, string> = {
   lifecycleSignalMissing: "Lifecycle signal is missing",
   blueprintCycle: "Blueprint references form a cycle: {path}",
   debugMustStartFromLifecycle: "A debug session can only start from a lifecycle node",
+  debugLifecycleDisabled:
+    "This lifecycle node is disabled; use the enabled node of the same phase instead",
   nodeRemoved: "Node was removed from the blueprint",
   clockNeedsTrue: "Clock node starts only after receiving a true signal",
   blueprintNeedsTrue: "Blueprint node runs only after receiving a true signal",
@@ -134,6 +140,8 @@ const EN_US: Record<BlueprintDslMessageKey, string> = {
   jsonNeedsTrue: "JSON node parses only after receiving a true signal",
   storageNeedsTrue: "Storage node reads/writes only after receiving a true signal",
   andNeedsBothTrue: "AND: both inputs must be true signals",
+  branchNeedsTrue: "Branch node evaluates only after receiving a true signal",
+  branchExpressionError: "Branch condition evaluation failed: {reason}",
 };
 
 const CATALOGS: Record<BlueprintDslLocale, Record<BlueprintDslMessageKey, string>> = {

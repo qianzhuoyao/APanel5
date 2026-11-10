@@ -2,6 +2,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   BlueprintGraphRunner,
   detectBlueprintReferenceCycle,
+  findEmittableLifecycleNodeId,
+  LIFECYCLE_NODE_TYPE,
+  shouldEmitLifecycleNode,
   type ExecutionRunRecord,
   type ExecutionTraceEntry,
   type LibraryBlueprintResolver,
@@ -31,6 +34,10 @@ export type LifecycleNodeOption = {
   id: string;
   label: string;
   phase?: string;
+  /** 同阶段多个时：false 表示停用，不可作为调试起点 */
+  enabled: boolean;
+  /** 当前是否可发出信号（单独存在或已启用） */
+  canEmit: boolean;
 };
 
 export type UseBlueprintDebugSessionOptions = {
@@ -91,19 +98,49 @@ export function useBlueprintDebugSession({
   const [savedRuns, setSavedRuns] = useState<ExecutionRunRecord[]>([]);
   const [totalSavedRunCount, setTotalSavedRunCount] = useState(0);
 
-  const lifecycleNodes = useMemo<LifecycleNodeOption[]>(
-    () =>
-      graph.document.nodes
-        .filter((node) => node.role === "lifecycle")
-        .map((node) => ({
+  const lifecycleNodes = useMemo<LifecycleNodeOption[]>(() => {
+    const nodes = graph.document.nodes;
+    return nodes
+      .filter((node) => node.role === "lifecycle")
+      .map((node) => {
+        const canEmit = shouldEmitLifecycleNode(
+          node,
+          nodes,
+          LIFECYCLE_NODE_TYPE
+        );
+        return {
           id: node.id,
           label: node.label || node.id,
           phase: node.lifecyclePhase,
-        })),
-    [graph.document.nodes]
-  );
+          enabled: node.lifecycleEnabled !== false,
+          canEmit,
+        };
+      });
+  }, [graph.document.nodes]);
 
   const hasLifecycleNodes = lifecycleNodes.length > 0;
+
+  // 互斥切换后：若当前选中的已停用，自动切到同阶段可发出信号的节点；全部停用则清空选中（只纠正一次）
+  useEffect(() => {
+    if (!selectedLifecycleNodeId) return;
+    const selected = lifecycleNodes.find(
+      (node) => node.id === selectedLifecycleNodeId
+    );
+    if (selected?.canEmit) return;
+    const nextId = findEmittableLifecycleNodeId(
+      graph.document.nodes,
+      selectedLifecycleNodeId,
+      LIFECYCLE_NODE_TYPE
+    );
+    if (nextId === selectedLifecycleNodeId) return;
+    setSelectedLifecycleNodeId(nextId);
+    // 全部停用时 nextId 为 null：清掉调试高亮；用 bailout 避免无意义重渲染导致步进按钮闪烁
+    runnerRef.current?.clearDebugSession();
+    runnerRef.current = null;
+    runIdRef.current = null;
+    setEntries((prev) => (prev.length === 0 ? prev : []));
+    setChainComplete((prev) => (prev ? false : prev));
+  }, [graph.document.nodes, lifecycleNodes, selectedLifecycleNodeId]);
 
   const graphDebugSig = useMemo(
     () =>
@@ -242,15 +279,27 @@ export function useBlueprintDebugSession({
     [enforceSavedRunLimits, nameSpace, settings.autoSave]
   );
 
-  const beginRun = useCallback(() => {
+  const beginRun = useCallback((): {
+    runner: BlueprintGraphRunner;
+    lifecycleNodeId: string;
+  } | null => {
     if (!selectedLifecycleNodeId) return null;
+    const emitId = findEmittableLifecycleNodeId(
+      graph.document.nodes,
+      selectedLifecycleNodeId,
+      LIFECYCLE_NODE_TYPE
+    );
+    if (!emitId) return null;
+    if (emitId !== selectedLifecycleNodeId) {
+      setSelectedLifecycleNodeId(emitId);
+    }
     runIdRef.current = createRunId();
     runStartedAtRef.current = Date.now();
     const runner = ensureRunner();
-    runner.beginDebugSession(selectedLifecycleNodeId);
+    runner.beginDebugSession(emitId);
     setChainComplete(false);
-    return runner;
-  }, [ensureRunner, selectedLifecycleNodeId]);
+    return { runner, lifecycleNodeId: emitId };
+  }, [ensureRunner, graph.document.nodes, selectedLifecycleNodeId]);
 
   useEffect(() => {
     const runner = runnerRef.current;
@@ -285,10 +334,11 @@ export function useBlueprintDebugSession({
     setRunning(true);
     setLogPanelOpen(true);
     try {
-      const runner = beginRun();
-      if (!runner) return;
+      const started = beginRun();
+      if (!started) return;
+      const { runner, lifecycleNodeId } = started;
       runner.updateGraph(buildRunnableGraph());
-      runner.refreshDebugLifecycleScope(selectedLifecycleNodeId);
+      runner.refreshDebugLifecycleScope(lifecycleNodeId);
       const labels = buildNodeLabelMap(graph);
       const onProgress = (trace: ExecutionTraceEntry[]) => {
         setEntries([...trace]);
@@ -331,7 +381,7 @@ export function useBlueprintDebugSession({
         if (!(await validateBlueprintGraph())) return;
         const started = beginRun();
         if (!started) return;
-        runner = started;
+        runner = started.runner;
       } else {
         syncRunnerWithLatestGraph();
       }
@@ -399,18 +449,32 @@ export function useBlueprintDebugSession({
     if (!selectedLifecycleNodeId || entries.length === 0) return;
     const runner = runnerRef.current;
     if (!runner?.isDebugSessionActive()) return;
+    const emitId = findEmittableLifecycleNodeId(
+      graph.document.nodes,
+      selectedLifecycleNodeId,
+      LIFECYCLE_NODE_TYPE
+    );
+    if (!emitId) return;
+    if (emitId !== selectedLifecycleNodeId) {
+      setSelectedLifecycleNodeId(emitId);
+    }
 
     setRunning(true);
     setLogPanelOpen(true);
     try {
       syncRunnerWithLatestGraph();
-      runner.beginDebugSession(selectedLifecycleNodeId);
+      runner.beginDebugSession(emitId);
       setEntries([]);
       setChainComplete(false);
     } finally {
       setRunning(false);
     }
-  }, [entries.length, selectedLifecycleNodeId, syncRunnerWithLatestGraph]);
+  }, [
+    entries.length,
+    graph.document.nodes,
+    selectedLifecycleNodeId,
+    syncRunnerWithLatestGraph,
+  ]);
 
   const falseSignalHalt = shouldHaltDebugOnFalseSignal(
     entries,
@@ -461,8 +525,9 @@ export function useBlueprintDebugSession({
     runnerRef.current?.clearDebugSession();
     runnerRef.current = null;
     runIdRef.current = null;
-    setEntries([]);
-    setChainComplete(false);
+    // 避免 setEntries([]) 在已为空时仍触发重渲染（步进按钮会跟着闪）
+    setEntries((prev) => (prev.length === 0 ? prev : []));
+    setChainComplete((prev) => (prev ? false : prev));
   }, []);
 
   const abortClock = useCallback((nodeId: string) => {
@@ -473,10 +538,23 @@ export function useBlueprintDebugSession({
 
   const selectLifecycleNode = useCallback(
     (nodeId: string | null) => {
-      setSelectedLifecycleNodeId(nodeId);
+      if (!nodeId) {
+        if (selectedLifecycleNodeId === null) return;
+        setSelectedLifecycleNodeId(null);
+        resetSession();
+        return;
+      }
+      // 全部停用时 findEmittable 为 null：必须保持 null，不能回退到停用节点（否则与画布选中同步会死循环闪烁）
+      const emitId = findEmittableLifecycleNodeId(
+        graph.document.nodes,
+        nodeId,
+        LIFECYCLE_NODE_TYPE
+      );
+      if (selectedLifecycleNodeId === emitId) return;
+      setSelectedLifecycleNodeId(emitId);
       resetSession();
     },
-    [resetSession]
+    [graph.document.nodes, resetSession, selectedLifecycleNodeId]
   );
 
   const executionOverlay = useMemo(

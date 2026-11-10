@@ -43,7 +43,7 @@ const zh = (zhCN: string, enUS: string): DocText => ({
 const TEMPLATE_DOC_LINK_RE =
   /\{(?:scope|system)[^}]*\}|\b(?:scope|system)\?\.[\w$]+(?:\?\.[\w$]+)*/g;
 
-const SYSTEM_SECTIONS = new Set(["time", "math", "location"]);
+const SYSTEM_SECTIONS = new Set(["time", "math", "location", "tools"]);
 const SCOPE_FIELDS = new Set(["value", "id", "name", "type"]);
 
 export function docText(text: DocText, locale: string): string {
@@ -197,6 +197,64 @@ const LOCATION_MEMBERS: DocMember[] = [
   { name: "reload", summary: zh("刷新当前页。模板里一般不要调用。", "Reload the page. Avoid calling it from a template."), usage: "{system?.location?.reload()}" },
 ];
 
+const TOOLS_MEMBERS: DocMember[] = [
+  {
+    name: "str",
+    summary: zh("转成字符串。null/undefined 变成空串；对象尽量 JSON.stringify。", "Convert to string. null/undefined become ''. Objects prefer JSON.stringify."),
+    usage: "{system?.tools?.str(123)}",
+  },
+  {
+    name: "int",
+    summary: zh("转成数字（Number）。空值得到 NaN。", "Convert to a number (Number). Empty values become NaN."),
+    usage: "{system?.tools?.int('42')}",
+  },
+  {
+    name: "sum",
+    summary: zh(
+      "求和或拼接。可写 sum(1,2,3) 或 sum([...scope?.arr])；嵌套数组会展平。全是数字则数值相加；只要有一项是字符串，就按 JS 的 + 从左到右拼接成字符串。",
+      "Sum or concatenate. Use sum(1,2,3) or sum([...scope?.arr]); nested arrays are flattened. All numbers → numeric sum; any string → JS + left-to-right string concat."
+    ),
+    usage: "{system?.tools?.sum([...scope?.arr||[]])}",
+  },
+  {
+    name: "len",
+    summary: zh("字符串长度；数组返回 length；其它值先转成字符串再取长度。可嵌套，如 len(str(123)) → 3。", "String length; arrays return length; other values are stringified first. Nesting works, e.g. len(str(123)) → 3."),
+    usage: "{system?.tools?.len(system?.tools?.str(123))}",
+  },
+  {
+    name: "pick",
+    summary: zh(
+      "按 0 基下标取出若干项。数组返回新数组，字符串返回新字符串。后续下标可写多个，也可展开 scope 数组，如 pick(scope?.arr, [...scope?.idxs])。",
+      "Pick by 0-based indices. Arrays → new array; strings → new string. Extra indices can be listed or spread from scope, e.g. pick(scope?.arr, [...scope?.idxs])."
+    ),
+    usage: "{system?.tools?.pick(scope?.arr,1,2)}",
+  },
+  {
+    name: "replace",
+    summary: zh(
+      "只替换第一个匹配项。数组按元素值替换；字符串按子串替换。例如 replace([1,2,3,1],1,2) → [2,2,3,1]。",
+      "Replace the first match only. Arrays match by element value; strings match by substring. e.g. replace([1,2,3,1],1,2) → [2,2,3,1]."
+    ),
+    usage: "{system?.tools?.replace(scope?.arr,scope?.target,scope?.source)}",
+  },
+  {
+    name: "replaceAll",
+    summary: zh(
+      "替换全部匹配项，规则同 replace。",
+      "Replace every match. Same rules as replace."
+    ),
+    usage: "{system?.tools?.replaceAll(scope?.arr,scope?.target,scope?.source)}",
+  },
+  {
+    name: "exclude",
+    summary: zh(
+      "按 0 基下标删除若干项，返回新数组 / 新字符串。后续下标支持展开，如 exclude(scope?.arr, [...scope?.idxs])。",
+      "Drop 0-based indices and return a new array/string. Extra indices can be spread, e.g. exclude(scope?.arr, [...scope?.idxs])."
+    ),
+    usage: "{system?.tools?.exclude(scope?.arr,0,1)}",
+  },
+];
+
 export const TEMPLATE_DOC_BOOKS: Record<TemplateDocRoot, DocBook> = {
   system: {
     root: "system",
@@ -210,10 +268,15 @@ export const TEMPLATE_DOC_BOOKS: Record<TemplateDocRoot, DocBook> = {
         id: "overview",
         title: zh("是什么", "What it is"),
         body: zh(
-          "写在花括号里才会求值，例如 {system?.time}。三个入口：time 是当前时间（dayjs），math 是 JavaScript 的 Math，location 是当前页的地址。非浏览器环境里 location 是空的占位，不会抛错。",
-          "Values are computed only inside braces, for example {system?.time}. There are three entries: time is the current dayjs time, math is JavaScript Math, and location is the current page URL. Outside a browser, location is an empty stub and does not throw."
+          "写在花括号里才会求值，例如 {system?.time}。四个入口：time 是当前时间（dayjs），math 是 JavaScript 的 Math，location 是当前页的地址，tools 是常用转换工具（str / int / sum / len / pick / replace / replaceAll / exclude）。非浏览器环境里 location 是空的占位，不会抛错。函数可以互相嵌套，也可以和 scope 一起写。",
+          "Values are computed only inside braces, for example {system?.time}. There are four entries: time is the current dayjs time, math is JavaScript Math, location is the current page URL, and tools covers helpers (str / int / sum / len / pick / replace / replaceAll / exclude). Outside a browser, location is an empty stub and does not throw. Functions can nest and mix with scope."
         ),
-        examples: ["{system?.time}", "{system?.math?.PI}", "{system?.location?.origin}"],
+        examples: [
+          "{system?.time}",
+          "{system?.math?.PI}",
+          "{system?.location?.origin}",
+          "{system?.tools?.len(system?.tools?.str(123))}",
+        ],
       },
       {
         id: "syntax",
@@ -275,6 +338,27 @@ export const TEMPLATE_DOC_BOOKS: Record<TemplateDocRoot, DocBook> = {
           "https://api.example.com{system?.location?.pathname}",
         ],
         members: LOCATION_MEMBERS,
+      },
+      {
+        id: "tools",
+        title: zh("tools 常用工具", "tools"),
+        body: zh(
+          "system?.tools 提供转换、聚合、按位选取与替换。可嵌套调用。sum / pick / exclude 的后续参数都支持展开上游数组，如 {system?.tools?.pick(scope?.arr,[...scope?.idxs||[]])}。下标一律从 0 开始。replace 只换第一处，replaceAll 换全部。",
+          "system?.tools converts, aggregates, picks, and replaces. Nest freely. Trailing args of sum / pick / exclude can spread upstream arrays, e.g. {system?.tools?.pick(scope?.arr,[...scope?.idxs||[]])}. Indices are 0-based. replace changes the first match; replaceAll changes every match."
+        ),
+        examples: [
+          "{system?.tools?.str(123)}",
+          "{system?.tools?.int('42')}",
+          "{system?.tools?.sum(1,2,3)}",
+          "{system?.tools?.sum([...scope?.arr||[]])}",
+          "{system?.tools?.len(system?.tools?.str(123))}",
+          "{system?.tools?.pick(scope?.arr,1,2)}",
+          "{system?.tools?.pick(scope?.arr,[...scope?.idxs||[]])}",
+          "{system?.tools?.replace(scope?.arr,scope?.target,scope?.source)}",
+          "{system?.tools?.replaceAll(scope?.arr,scope?.target,scope?.source)}",
+          "{system?.tools?.exclude(scope?.arr,0,1)}",
+        ],
+        members: TOOLS_MEMBERS,
       },
     ],
   },

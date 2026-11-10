@@ -549,20 +549,29 @@ function BlueprintPanelToolbarInner({
             <>
               <ToolbarTooltip content={t("blueprint.toolbar.simulateSceneTooltip")}>
                 <select
-                  value={debug.selectedLifecycleNodeId ?? ""}
+                  value={
+                    debug.lifecycleNodes.some(
+                      (node) =>
+                        node.id === debug.selectedLifecycleNodeId && node.canEmit
+                    )
+                      ? (debug.selectedLifecycleNodeId ?? "")
+                      : ""
+                  }
                   onChange={(e) => debug.onSelectLifecycleNode(e.target.value || null)}
                   className="h-7 max-w-[180px] shrink-0 rounded-md border border-input bg-background px-2 text-[11px] text-foreground outline-none focus-visible:ring-1 focus-visible:ring-primary"
                   aria-label={t("blueprint.toolbar.simulateSceneAriaLabel")}
                 >
                   <option value="">{t("blueprint.toolbar.simulateScene")}</option>
-                  {debug.lifecycleNodes.map((node) => (
-                    <option key={node.id} value={node.id}>
-                      {node.label}
-                      {node.phase
-                        ? ` · ${getLifecyclePhaseLabel(t, node.phase as PageLifecyclePhase)}`
-                        : ""}
-                    </option>
-                  ))}
+                  {debug.lifecycleNodes
+                    .filter((node) => node.canEmit)
+                    .map((node) => (
+                      <option key={node.id} value={node.id}>
+                        {node.label}
+                        {node.phase
+                          ? ` · ${getLifecyclePhaseLabel(t, node.phase as PageLifecyclePhase)}`
+                          : ""}
+                      </option>
+                    ))}
                 </select>
               </ToolbarTooltip>
 

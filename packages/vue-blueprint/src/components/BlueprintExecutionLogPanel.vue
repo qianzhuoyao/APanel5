@@ -109,12 +109,12 @@ watch(
 </script>
 
 <template>
-  <div class="flex h-full min-h-0 flex-col overflow-hidden bg-background text-foreground">
+  <div class="flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-background text-foreground">
     <div class="shrink-0 border-b border-border px-3 py-2">
       <div class="flex items-start justify-between gap-2">
-        <div class="min-w-0">
-          <div class="text-xs font-semibold">{{ t("blueprint.log.title") }}</div>
-          <div class="mt-0.5 text-[11px] text-muted-foreground">
+        <div class="min-w-0 flex-1 overflow-hidden">
+          <div class="truncate text-xs font-semibold">{{ t("blueprint.log.title") }}</div>
+          <div class="mt-0.5 break-words text-[11px] text-muted-foreground">
             {{ phaseLabel ? t("blueprint.log.simulateSceneWithPhase", { phaseLabel }) : t("blueprint.log.selectLifecycleToDebug") }}
           </div>
         </div>
@@ -148,20 +148,20 @@ watch(
       </div>
     </div>
 
-    <div class="relative min-h-0 flex-1">
-      <div ref="scrollRef" class="h-full overflow-auto p-3" @scroll="handleScroll">
+    <div class="relative min-h-0 min-w-0 flex-1 overflow-hidden">
+      <div ref="scrollRef" class="h-full min-w-0 overflow-auto p-3" @scroll="handleScroll">
         <p v-if="entries.length === 0" class="text-[11px] text-muted-foreground">
           {{ t("blueprint.log.emptyHint") }}
         </p>
-        <div v-else class="space-y-0">
-          <div v-for="(entry, index) in entries" :key="entry.id">
-            <div class="rounded-md border border-border/70 bg-muted/20 p-2.5">
-              <div class="flex items-start justify-between gap-2">
-                <div>
-                  <div class="text-xs font-medium text-foreground">
+        <div v-else class="min-w-0 space-y-0">
+          <div v-for="(entry, index) in entries" :key="entry.id" class="min-w-0">
+            <div class="min-w-0 overflow-hidden rounded-md border border-border/70 bg-muted/20 p-2.5">
+              <div class="flex min-w-0 items-start justify-between gap-2">
+                <div class="min-w-0 flex-1 overflow-hidden">
+                  <div class="truncate text-xs font-medium text-foreground">
                     {{ entry.nodeLabel ?? entry.nodeId }}
                   </div>
-                  <div class="mt-0.5 font-mono text-[10px] text-muted-foreground">
+                  <div class="mt-0.5 truncate font-mono text-[10px] text-muted-foreground">
                     {{ entry.nodeType }} · {{ entry.nodeId }}
                   </div>
                 </div>
@@ -170,17 +170,17 @@ watch(
                 </time>
               </div>
 
-              <div class="mt-2 grid gap-2">
-                <div>
+              <div class="mt-2 grid min-w-0 gap-2">
+                <div class="min-w-0 overflow-hidden">
                   <div class="mb-1 text-[10px] font-medium text-muted-foreground">{{ t("blueprint.log.input") }}</div>
                   <pre
-                    class="max-h-32 overflow-auto rounded border border-border/60 bg-background p-2 font-mono text-[10px] leading-relaxed text-foreground"
+                    class="max-h-32 max-w-full min-w-0 overflow-auto whitespace-pre-wrap break-words rounded border border-border/60 bg-background p-2 font-mono text-[10px] leading-relaxed text-foreground [overflow-wrap:anywhere]"
                   >{{ formatJson(entry.inputs) }}</pre>
                 </div>
-                <div>
+                <div class="min-w-0 overflow-hidden">
                   <div class="mb-1 text-[10px] font-medium text-muted-foreground">{{ t("blueprint.log.output") }}</div>
                   <pre
-                    class="max-h-32 overflow-auto rounded border p-2 font-mono text-[10px] leading-relaxed"
+                    class="max-h-32 max-w-full min-w-0 overflow-auto whitespace-pre-wrap break-words rounded border p-2 font-mono text-[10px] leading-relaxed [overflow-wrap:anywhere]"
                     :class="
                       cn(
                         entry.error

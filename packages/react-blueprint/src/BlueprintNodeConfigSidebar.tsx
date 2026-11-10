@@ -7,10 +7,13 @@ import {
   SelectTrigger,
   SelectValue,
   Checkbox,
+  Switch,
 } from "@arronqzy/ui";
 import {
+  hasDuplicateLifecyclePhase,
   LIFECYCLE_NODE_TYPE,
   PAGE_LIFECYCLE_PHASES,
+  resolveLifecyclePhase,
   VIEW_EVENT_TYPES,
   type ExecutionTraceEntry,
   type PageLifecyclePhase,
@@ -23,6 +26,7 @@ import { ClockNodeConfigPanel } from "./components/ClockNodeConfigPanel";
 import { JsonNodeConfigPanel } from "./components/JsonNodeConfigPanel";
 import { StorageNodeConfigPanel } from "./components/StorageNodeConfigPanel";
 import { LogicNodeConfigPanel } from "./components/LogicNodeConfigPanel";
+import { BranchNodeConfigPanel } from "./components/BranchNodeConfigPanel";
 import { ViewElementMultiSelect } from "./components/ViewElementMultiSelect";
 import { ConfigFieldLabel, ConfigHintIcon, ConfigSectionTitle } from "./components/ConfigHintIcon";
 import {
@@ -73,10 +77,12 @@ export type BlueprintNodeConfigSidebarProps = {
         | "nestedBlueprintId"
         | "libraryBlueprintId"
         | "lifecyclePhase"
+        | "lifecycleEnabled"
         | "fetchConfig"
         | "jsonConfig"
         | "storageConfig"
         | "logicConfig"
+        | "branchConfig"
         | "clockConfig"
         | "eventConfig"
       >
@@ -88,6 +94,7 @@ const ROLE_LABEL_KEYS: Record<BlueprintNodeRole, string> = {
   blueprint: "blueprint.config.roleBlueprint",
   lifecycle: "blueprint.config.roleLifecycle",
   and: "blueprint.config.roleAnd",
+  branch: "blueprint.config.roleBranch",
   fetch: "blueprint.config.roleFetch",
   json: "blueprint.config.roleJson",
   storage: "blueprint.config.roleStorage",
@@ -123,6 +130,11 @@ function BlueprintNodeConfigSidebarInner({
     () => new Set(viewElementOptions.map((opt) => opt.id)),
     [viewElementOptions]
   );
+  const lifecyclePhase = resolveLifecyclePhase(node);
+  const showLifecycleExclusiveToggle = useMemo(() => {
+    if (configSource !== "lifecycle") return false;
+    return hasDuplicateLifecyclePhase(graphNodes, lifecyclePhase, LIFECYCLE_NODE_TYPE);
+  }, [configSource, graphNodes, lifecyclePhase]);
   const viewElementLabelById = new Map(
     viewElementOptions.map((opt) => [opt.id, opt.label])
   );
@@ -203,6 +215,7 @@ function BlueprintNodeConfigSidebarInner({
               <SelectItem value="blueprint">{t("blueprint.config.configBlueprint")}</SelectItem>
               <SelectItem value="logic">{t("blueprint.config.configLogic")}</SelectItem>
               <SelectItem value="and">{t("blueprint.config.configAnd")}</SelectItem>
+              <SelectItem value="branch">{t("blueprint.config.configBranch")}</SelectItem>
               <SelectItem value="lifecycle">{t("blueprint.config.configLifecycle")}</SelectItem>
               <SelectItem value="fetch">{t("blueprint.config.configFetch")}</SelectItem>
               <SelectItem value="json">{t("blueprint.config.configJson")}</SelectItem>
@@ -392,6 +405,33 @@ function BlueprintNodeConfigSidebarInner({
                 </SelectContent>
               </Select>
             </label>
+            {showLifecycleExclusiveToggle ? (
+              <div className="space-y-1.5 rounded-md border border-border/60 bg-background/60 px-2.5 py-2">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm text-foreground">
+                      {t("blueprint.config.lifecycleExclusiveEnable")}
+                    </span>
+                    <ConfigHintIcon label={t("blueprint.config.lifecycleExclusiveEnable")}>
+                      <p>{t("blueprint.config.lifecycleExclusiveHint")}</p>
+                    </ConfigHintIcon>
+                  </div>
+                  <Switch
+                    checked={node.lifecycleEnabled !== false}
+                    onCheckedChange={(checked) =>
+                      onUpdateNode(node.id, {
+                        lifecycleEnabled: checked,
+                      })
+                    }
+                  />
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  {node.lifecycleEnabled !== false
+                    ? t("blueprint.config.lifecycleStatusEnabled")
+                    : t("blueprint.config.lifecycleStatusDisabled")}
+                </p>
+              </div>
+            ) : null}
             {node.parentId ? (
               <p className="text-[11px] text-muted-foreground">
                 {t("blueprint.config.parentBlueprintNode", { id: node.parentId })}
@@ -443,6 +483,16 @@ function BlueprintNodeConfigSidebarInner({
           </div>
         ) : null}
 
+        {configSource === "branch" ? (
+          <BranchNodeConfigPanel
+            node={node}
+            graphNodes={graphNodes}
+            graphEdges={graphEdges}
+            traceEntries={traceEntries}
+            onUpdateNode={onUpdateNode}
+          />
+        ) : null}
+
         {configSource === "logic" ? (
           <>
             <LogicNodeConfigPanel node={node} onUpdateNode={onUpdateNode} />
@@ -454,7 +504,9 @@ function BlueprintNodeConfigSidebarInner({
           </>
         ) : null}
 
-        {configSource !== "blueprint" && configSource !== "and" ? (
+        {configSource !== "blueprint" &&
+        configSource !== "and" &&
+        configSource !== "branch" ? (
           <div className="space-y-2 rounded-md border border-border/70 bg-muted/20 p-2.5">
             <div className="font-medium text-foreground">{t("blueprint.config.taskChain")}</div>
             <label className="flex items-center gap-2">

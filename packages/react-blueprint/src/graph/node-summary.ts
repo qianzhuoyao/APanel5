@@ -5,6 +5,7 @@ import { resolveLocale, tForLocale } from "@arronqzy/i18n";
 import {
   getLifecyclePhaseLabel,
   resolveBlueprintConfigSource,
+  resolveNodeBranchConfig,
   resolveNodeClockConfig,
   resolveNodeFetchConfig,
   resolveNodeJsonConfig,
@@ -107,7 +108,15 @@ export function resolveBlueprintNodeSummary(
     }
     case "lifecycle": {
       const phase = data.lifecyclePhase ?? "mounted";
-      return getLifecyclePhaseLabel(t, phase);
+      const phaseLabel = getLifecyclePhaseLabel(t, phase);
+      if (data.lifecycleExclusive) {
+        const status =
+          data.lifecycleEnabled !== false
+            ? t("blueprint.config.lifecycleStatusEnabled")
+            : t("blueprint.config.lifecycleStatusDisabled");
+        return truncate(`${phaseLabel} · ${status}`, 44);
+      }
+      return phaseLabel;
     }
     case "view": {
       const ids = resolveViewElementIds(data);
@@ -140,6 +149,11 @@ export function resolveBlueprintNodeSummary(
     }
     case "and":
       return t("blueprint.node.summaryAnd");
+    case "branch": {
+      const expr = resolveNodeBranchConfig(data).expression.trim();
+      if (!expr) return t("blueprint.node.summaryBranchEmpty");
+      return truncate(expr, 44);
+    }
     default:
       return undefined;
   }

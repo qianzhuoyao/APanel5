@@ -1,4 +1,5 @@
 import type {
+  BranchNodeConfig,
   ClockNodeConfig,
   FetchRequestConfig,
   JsonNodeConfig,
@@ -10,8 +11,10 @@ import type {
 } from "@arronqzy/blueprint-dsl";
 import {
   BLUEPRINT_NODE_TYPE,
+  BRANCH_NODE_TYPE,
   CLOCK_NODE_TYPE,
   AND_NODE_TYPE,
+  DEFAULT_BRANCH_NODE_CONFIG,
   DEFAULT_CLOCK_NODE_CONFIG,
   DEFAULT_FETCH_REQUEST_CONFIG,
   DEFAULT_JSON_NODE_CONFIG,
@@ -23,6 +26,8 @@ import {
   FETCH_NODE_TYPE,
   JSON_NODE_TYPE,
   LIFECYCLE_NODE_TYPE,
+  reconcileLifecycleEnabled,
+  normalizeBranchConfig,
   normalizeClockConfig,
   normalizeStorageConfig,
   normalizeViewEventConfig,
@@ -33,17 +38,29 @@ import {
 export type { FetchRequestConfig as BlueprintFetchConfig } from "@arronqzy/blueprint-dsl";
 export type { JsonNodeConfig as BlueprintJsonConfig } from "@arronqzy/blueprint-dsl";
 export type { LogicNodeConfig as BlueprintLogicConfig } from "@arronqzy/blueprint-dsl";
+export type { BranchNodeConfig as BlueprintBranchConfig } from "@arronqzy/blueprint-dsl";
 export type { ClockNodeConfig as BlueprintClockConfig } from "@arronqzy/blueprint-dsl";
 export type { ViewEventNodeConfig as BlueprintEventConfig } from "@arronqzy/blueprint-dsl";
 export type { StorageNodeConfig as BlueprintStorageConfig } from "@arronqzy/blueprint-dsl";
 
-export type BlueprintNodeRole = "blueprint" | "logic" | "and" | "lifecycle" | "fetch" | "json" | "storage" | "clock" | "event";
+export type BlueprintNodeRole =
+  | "blueprint"
+  | "logic"
+  | "and"
+  | "branch"
+  | "lifecycle"
+  | "fetch"
+  | "json"
+  | "storage"
+  | "clock"
+  | "event";
 
 /** 决定右侧配置面板展示哪类配置 */
 export type BlueprintConfigSource =
   | "blueprint"
   | "logic"
   | "and"
+  | "branch"
   | "lifecycle"
   | "view"
   | "fetch"
@@ -73,6 +90,11 @@ export type BlueprintGraphNode = {
   libraryBlueprintId?: string;
   /** lifecycle 节点监听的生命周期阶段 */
   lifecyclePhase?: PageLifecyclePhase;
+  /**
+   * 同图同阶段出现多个生命周期节点时的启用开关。
+   * false = 停用；缺省 / true = 启用。仅一个同阶段节点时始终视为启用。
+   */
+  lifecycleEnabled?: boolean;
   /** 数据源获取节点的 fetch 配置 */
   fetchConfig?: FetchRequestConfig;
   /** JSON 节点的 JSON 字符串配置 */
@@ -81,6 +103,8 @@ export type BlueprintGraphNode = {
   storageConfig?: StorageNodeConfig;
   /** 逻辑节点的 JavaScript 脚本配置 */
   logicConfig?: LogicNodeConfig;
+  /** 分支节点的条件表达式配置 */
+  branchConfig?: BranchNodeConfig;
   /** 时钟节点的间隔与时间格式配置 */
   clockConfig?: ClockNodeConfig;
   /** 视图事件节点监听的事件类型 */
@@ -114,6 +138,7 @@ export function resolveBlueprintConfigSource(
   if (node.role === "event") return "event";
   if (node.role === "clock") return "clock";
   if (node.role === "and") return "and";
+  if (node.role === "branch") return "branch";
   if (node.role === "fetch") return "fetch";
   if (node.role === "json") return "json";
   if (node.role === "storage") return "storage";
@@ -193,6 +218,8 @@ export function resolveRunnableNodeType(
       return CLOCK_NODE_TYPE;
     case "and":
       return AND_NODE_TYPE;
+    case "branch":
+      return BRANCH_NODE_TYPE;
     case "fetch":
       return FETCH_NODE_TYPE;
     case "json":
@@ -217,6 +244,7 @@ export const BLUEPRINT_CONFIG_TYPE_LABEL_KEYS: Record<
   blueprint: "blueprint.node.typeBlueprint",
   logic: "blueprint.node.typeLogic",
   and: "blueprint.node.typeAnd",
+  branch: "blueprint.node.typeBranch",
   lifecycle: "blueprint.node.typeLifecycle",
   view: "blueprint.node.typeView",
   event: "blueprint.node.typeEvent",
@@ -350,6 +378,15 @@ export function resolveNodeLogicConfig(
   };
 }
 
+export function resolveNodeBranchConfig(
+  node: Pick<BlueprintGraphNode, "branchConfig">
+): BranchNodeConfig {
+  return normalizeBranchConfig({
+    ...DEFAULT_BRANCH_NODE_CONFIG,
+    ...node.branchConfig,
+  });
+}
+
 export function resolveNodeClockConfig(
   node: Pick<BlueprintGraphNode, "clockConfig">
 ): ClockNodeConfig {
@@ -446,18 +483,23 @@ export function sanitizeBlueprintDocument(
     if (next.role === "and") {
       return { ...next, configSource: "and" as const };
     }
+    if (next.role === "branch") {
+      return { ...next, configSource: "branch" as const };
+    }
     if (next.configSource === "lifecycle" || next.configSource === "clock" || next.configSource === "event") {
       return { ...next, configSource: undefined };
     }
     return next;
   });
 
+  const reconciledNodes = reconcileLifecycleEnabled(nodes);
+
   const edges = filterInvalidBlueprintEdges(
-    { ...document, nodes },
+    { ...document, nodes: reconciledNodes },
     document.edges
   );
 
-  return { ...document, nodes, edges };
+  return { ...document, nodes: reconciledNodes, edges };
 }
 
 export function filterInvalidBlueprintEdges(
@@ -494,6 +536,7 @@ export function patchNodeConfigSource(
       fetchConfig: undefined,
       jsonConfig: undefined,
       logicConfig: undefined,
+      branchConfig: undefined,
       clockConfig: undefined,
       eventConfig: undefined,
       storageConfig: undefined,
@@ -513,6 +556,7 @@ export function patchNodeConfigSource(
       fetchConfig: undefined,
       jsonConfig: undefined,
       logicConfig: undefined,
+      branchConfig: undefined,
       eventConfig: undefined,
       storageConfig: undefined,
     };
@@ -530,6 +574,7 @@ export function patchNodeConfigSource(
       fetchConfig: resolveNodeFetchConfig(node),
       jsonConfig: undefined,
       logicConfig: undefined,
+      branchConfig: undefined,
       clockConfig: undefined,
       eventConfig: undefined,
       storageConfig: undefined,
@@ -548,6 +593,7 @@ export function patchNodeConfigSource(
       fetchConfig: undefined,
       jsonConfig: resolveNodeJsonConfig(node),
       logicConfig: undefined,
+      branchConfig: undefined,
       clockConfig: undefined,
       eventConfig: undefined,
       storageConfig: undefined,
@@ -567,6 +613,7 @@ export function patchNodeConfigSource(
       fetchConfig: undefined,
       jsonConfig: undefined,
       logicConfig: undefined,
+      branchConfig: undefined,
       clockConfig: undefined,
       eventConfig: undefined,
     };
@@ -584,6 +631,7 @@ export function patchNodeConfigSource(
       fetchConfig: undefined,
       jsonConfig: undefined,
       logicConfig: undefined,
+      branchConfig: undefined,
       clockConfig: undefined,
       eventConfig: undefined,
       storageConfig: undefined,
@@ -602,6 +650,7 @@ export function patchNodeConfigSource(
       fetchConfig: undefined,
       jsonConfig: undefined,
       logicConfig: resolveNodeLogicConfig(node),
+      branchConfig: undefined,
       clockConfig: undefined,
       eventConfig: undefined,
       storageConfig: undefined,
@@ -613,6 +662,26 @@ export function patchNodeConfigSource(
       role: "and",
       nodeType: AND_NODE_TYPE,
       configSource: "and",
+      lifecyclePhase: undefined,
+      viewElementId: undefined,
+      viewElementIds: undefined,
+      libraryBlueprintId: undefined,
+      fetchConfig: undefined,
+      jsonConfig: undefined,
+      logicConfig: undefined,
+      branchConfig: undefined,
+      clockConfig: undefined,
+      eventConfig: undefined,
+      storageConfig: undefined,
+    };
+  }
+
+  if (configSource === "branch") {
+    return {
+      role: "branch",
+      nodeType: BRANCH_NODE_TYPE,
+      configSource: "branch",
+      branchConfig: resolveNodeBranchConfig(node),
       lifecyclePhase: undefined,
       viewElementId: undefined,
       viewElementIds: undefined,
@@ -637,6 +706,7 @@ export function patchNodeConfigSource(
       fetchConfig: undefined,
       jsonConfig: undefined,
       logicConfig: undefined,
+      branchConfig: undefined,
       clockConfig: undefined,
       storageConfig: undefined,
     };
@@ -651,6 +721,7 @@ export function patchNodeConfigSource(
     fetchConfig: undefined,
     jsonConfig: undefined,
     logicConfig: undefined,
+    branchConfig: undefined,
     clockConfig: undefined,
     eventConfig: undefined,
     storageConfig: undefined,

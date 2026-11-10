@@ -1,6 +1,6 @@
 # @arronqzy/abuilder-vue
 
-Vue 3 一站式编辑器入口，对应 React 的 `@arronqzy/abuilder`。内部用 Veaury 包装 React 实现，**宿主无需安装或配置 Veaury**。
+Vue 3 一站式编辑器入口，对应 React 的 `@arronqzy/abuilder`。
 
 ![安装后直接得到的编辑器](https://github.com/qianzhuoyao/APanel5/raw/v5/docs/guide-assets/live-zh/01-overview.png)
 
@@ -16,7 +16,7 @@ pnpm add @arronqzy/abuilder-vue vue react react-dom
 
 ### Vite
 
-不要单独加 `@vitejs/plugin-vue` / 也不要碰 `veaury`。用本包导出的一站式插件：
+不要单独加 `@vitejs/plugin-vue` 。用本包导出的一站式插件：
 
 ```bash
 pnpm add -D vite @vitejs/plugin-vue @vitejs/plugin-react @vitejs/plugin-vue-jsx

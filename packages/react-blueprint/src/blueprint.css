@@ -234,6 +234,48 @@
   background-color: #ffffff !important;
 }
 
+/* 分支节点：输出口旁的「满足 / 不满足」标记 */
+.bp-branch-port-label {
+  position: absolute;
+  right: 10px;
+  z-index: 2;
+  transform: translateY(-50%);
+  max-width: 3.5rem;
+  padding: 0 4px;
+  border-radius: 3px;
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  pointer-events: none;
+  user-select: none;
+}
+
+.bp-branch-port-label--true {
+  color: rgb(21 128 61);
+  background: rgb(220 252 231 / 0.92);
+}
+
+.bp-branch-port-label--false {
+  color: rgb(153 27 27);
+  background: rgb(254 226 226 / 0.92);
+}
+
+.bp-canvas .react-flow__handle.bp-flow-handle--branch-true,
+.bp-flow .react-flow__handle.bp-flow-handle--branch-true,
+[data-workspace-region="blueprint"] .react-flow__handle.bp-flow-handle--branch-true {
+  border-color: rgb(34 197 94) !important;
+  box-shadow: 0 0 0 1.5px rgb(34 197 94 / 0.35);
+}
+
+.bp-canvas .react-flow__handle.bp-flow-handle--branch-false,
+.bp-flow .react-flow__handle.bp-flow-handle--branch-false,
+[data-workspace-region="blueprint"] .react-flow__handle.bp-flow-handle--branch-false {
+  border-color: rgb(248 113 113) !important;
+  box-shadow: 0 0 0 1.5px rgb(248 113 113 / 0.35);
+}
+
 .bp-node--selected .bp-flow-handle {
   border-color: hsl(var(--primary) / 0.55) !important;
   box-shadow: 0 0 0 2px hsl(var(--primary) / 0.2);

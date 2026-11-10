@@ -767,8 +767,14 @@ const ReactViewPanelInner = forwardRef<AbuilderViewHandle, ReactViewPanelProps>(
     const node = blueprintGraph.getNode(selectedBlueprintNodeId);
     if (node?.role !== "lifecycle") return;
     if (debugLifecycleNodeId === selectedBlueprintNodeId) return;
+    const canEmit = blueprintDebugSession.lifecycleNodes.find(
+      (item) => item.id === selectedBlueprintNodeId
+    )?.canEmit;
+    // 停用（或同阶段全部停用）时不要强行写入调试选中，否则会与纠正逻辑互踢导致步进按钮闪烁
+    if (!canEmit) return;
     selectLifecycleNode(selectedBlueprintNodeId);
   }, [
+    blueprintDebugSession.lifecycleNodes,
     blueprintGraph,
     debugLifecycleNodeId,
     selectLifecycleNode,

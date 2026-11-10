@@ -17,6 +17,9 @@ export type BlueprintFlowNodeData = {
   libraryBlueprintId?: string;
   libraryBlueprintLabel?: string;
   lifecyclePhase?: BlueprintGraphNode["lifecyclePhase"];
+  lifecycleEnabled?: BlueprintGraphNode["lifecycleEnabled"];
+  /** 同图同阶段存在多个生命周期节点时为 true，用于节点角标 */
+  lifecycleExclusive?: boolean;
   fetchConfig?: BlueprintGraphNode["fetchConfig"];
   jsonConfig?: BlueprintGraphNode["jsonConfig"];
   storageConfig?: BlueprintGraphNode["storageConfig"];
@@ -57,51 +60,65 @@ export type VueFlowEdgeView = {
 };
 
 export function toVueFlowNodes(document: BlueprintDocument): VueFlowNodeView[] {
-  return document.nodes.map((n) => ({
-    id: n.id,
-    type:
-      n.role === "blueprint"
-        ? "blueprint"
-        : n.role === "lifecycle"
-          ? "lifecycle"
-          : n.role === "clock"
-            ? "clock"
-          : n.role === "and"
-            ? "and"
-        : n.role === "fetch"
-          ? "fetch"
-          : n.role === "json"
-            ? "json"
-            : n.role === "storage"
-              ? "storage"
-            : n.role === "event"
-              ? "event"
-            : "logic",
-    position: { ...n.position },
-    width: BP_FLOW_NODE_WIDTH,
-    height: BP_FLOW_NODE_HEIGHT,
-    zIndex: 0,
-    connectable: true,
-    dragHandle: ".bp-flow-drag-handle",
-    data: {
-      label: n.label,
-      role: n.role,
-      nodeType: n.nodeType,
-      configSource: n.configSource,
-      viewElementId: n.viewElementId,
-      viewElementIds: n.viewElementIds,
-      parentId: n.parentId,
-      nestedBlueprintId: n.nestedBlueprintId,
-      libraryBlueprintId: n.libraryBlueprintId,
-      lifecyclePhase: n.lifecyclePhase,
-      fetchConfig: n.fetchConfig,
-      jsonConfig: n.jsonConfig,
-      storageConfig: n.storageConfig,
-      clockConfig: n.clockConfig,
-      eventConfig: n.eventConfig,
-      logicConfig: n.logicConfig,
-    },
-  }));
+  const lifecyclePhaseCounts = new Map<string, number>();
+  for (const n of document.nodes) {
+    if (n.role !== "lifecycle") continue;
+    const phase = n.lifecyclePhase ?? "mounted";
+    lifecyclePhaseCounts.set(phase, (lifecyclePhaseCounts.get(phase) ?? 0) + 1);
+  }
+
+  return document.nodes.map((n) => {
+    const phase = n.lifecyclePhase ?? "mounted";
+    const lifecycleExclusive =
+      n.role === "lifecycle" && (lifecyclePhaseCounts.get(phase) ?? 0) > 1;
+    return {
+      id: n.id,
+      type:
+        n.role === "blueprint"
+          ? "blueprint"
+          : n.role === "lifecycle"
+            ? "lifecycle"
+            : n.role === "clock"
+              ? "clock"
+            : n.role === "and"
+              ? "and"
+          : n.role === "fetch"
+            ? "fetch"
+            : n.role === "json"
+              ? "json"
+              : n.role === "storage"
+                ? "storage"
+              : n.role === "event"
+                ? "event"
+              : "logic",
+      position: { ...n.position },
+      width: BP_FLOW_NODE_WIDTH,
+      height: BP_FLOW_NODE_HEIGHT,
+      zIndex: 0,
+      connectable: true,
+      dragHandle: ".bp-flow-drag-handle",
+      data: {
+        label: n.label,
+        role: n.role,
+        nodeType: n.nodeType,
+        configSource: n.configSource,
+        viewElementId: n.viewElementId,
+        viewElementIds: n.viewElementIds,
+        parentId: n.parentId,
+        nestedBlueprintId: n.nestedBlueprintId,
+        libraryBlueprintId: n.libraryBlueprintId,
+        lifecyclePhase: n.lifecyclePhase,
+        lifecycleEnabled: n.lifecycleEnabled,
+        lifecycleExclusive,
+        fetchConfig: n.fetchConfig,
+        jsonConfig: n.jsonConfig,
+        storageConfig: n.storageConfig,
+        clockConfig: n.clockConfig,
+        eventConfig: n.eventConfig,
+        logicConfig: n.logicConfig,
+      },
+    };
+  });
 }
 
 export function toVueFlowEdges(document: BlueprintDocument): VueFlowEdgeView[] {

@@ -23,6 +23,7 @@ import {
   FETCH_NODE_TYPE,
   JSON_NODE_TYPE,
   LIFECYCLE_NODE_TYPE,
+  reconcileLifecycleEnabled,
   normalizeClockConfig,
   normalizeStorageConfig,
   normalizeViewEventConfig,
@@ -73,6 +74,11 @@ export type BlueprintGraphNode = {
   libraryBlueprintId?: string;
   /** lifecycle 节点监听的生命周期阶段 */
   lifecyclePhase?: PageLifecyclePhase;
+  /**
+   * 同图同阶段出现多个生命周期节点时的启用开关。
+   * false = 停用；缺省 / true = 启用。仅一个同阶段节点时始终视为启用。
+   */
+  lifecycleEnabled?: boolean;
   /** 数据源获取节点的 fetch 配置 */
   fetchConfig?: FetchRequestConfig;
   /** JSON 节点的 JSON 字符串配置 */
@@ -452,12 +458,14 @@ export function sanitizeBlueprintDocument(
     return next;
   });
 
+  const reconciledNodes = reconcileLifecycleEnabled(nodes);
+
   const edges = filterInvalidBlueprintEdges(
-    { ...document, nodes },
+    { ...document, nodes: reconciledNodes },
     document.edges
   );
 
-  return { ...document, nodes, edges };
+  return { ...document, nodes: reconciledNodes, edges };
 }
 
 export function filterInvalidBlueprintEdges(

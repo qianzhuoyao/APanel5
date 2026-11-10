@@ -95,7 +95,14 @@ export function getTraceEntryOutputKind(
   port = "out"
 ): BlueprintNodeSignalKind | null {
   if (entry.error) return "false";
-  return readOutputSignalKind(entry.outputs[port]);
+  const direct = readOutputSignalKind(entry.outputs[port]);
+  if (direct) return direct;
+  // 多输出口节点（如分支）可能没有默认 "out"
+  for (const value of Object.values(entry.outputs ?? {})) {
+    const kind = readOutputSignalKind(value);
+    if (kind) return kind;
+  }
+  return null;
 }
 
 export function isTraceHaltedByFalseSignal(

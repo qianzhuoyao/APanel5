@@ -28,6 +28,7 @@ export function documentToRunnableGraph(
         label: node.label,
         role: node.role,
         lifecyclePhase: node.lifecyclePhase,
+        lifecycleEnabled: node.lifecycleEnabled,
         libraryBlueprintId: node.libraryBlueprintId,
         viewElementIds:
           viewElementIds.length > 0 ? viewElementIds : undefined,

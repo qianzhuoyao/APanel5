@@ -15,14 +15,17 @@ export function LifecycleFlowNode({ id, data }: NodeProps) {
   const nodeData = data as BlueprintFlowNodeData;
   const onSelect = useBlueprintNodeSelect();
   const executionTone = resolveBlueprintNodeExecutionTone(nodeData);
+  const showExclusiveStatus = Boolean(nodeData.lifecycleExclusive);
+  const isEnabled = nodeData.lifecycleEnabled !== false;
 
   return (
     <div
       className={cn(
-        "bp-node bp-node--lifecycle",
+        "bp-node bp-node--lifecycle relative",
         nodeData.isSelected && "bp-node--selected",
         executionTone === "success" && "bp-node--execution-true",
-        executionTone === "error" && "bp-node--execution-false"
+        executionTone === "error" && "bp-node--execution-false",
+        showExclusiveStatus && !isEnabled && "opacity-70"
       )}
     >
       <BlueprintNodeCard
@@ -35,6 +38,20 @@ export function LifecycleFlowNode({ id, data }: NodeProps) {
         hideLeadingDot
         onSelect={onSelect}
       />
+      {showExclusiveStatus ? (
+        <span
+          className={cn(
+            "pointer-events-none absolute right-1.5 top-1.5 rounded px-1 py-0.5 text-[10px] font-medium leading-none",
+            isEnabled
+              ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
+              : "bg-muted text-muted-foreground"
+          )}
+        >
+          {isEnabled
+            ? t("blueprint.config.lifecycleStatusEnabled")
+            : t("blueprint.config.lifecycleStatusDisabled")}
+        </span>
+      ) : null}
       <Handle
         type="source"
         position={Position.Right}

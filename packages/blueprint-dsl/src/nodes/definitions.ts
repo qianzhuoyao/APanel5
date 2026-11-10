@@ -8,6 +8,7 @@ export const JSON_NODE_TYPE = "JsonNode";
 export const STORAGE_NODE_TYPE = "StorageNode";
 export const CLOCK_NODE_TYPE = "Clock";
 export const AND_NODE_TYPE = "AndLogic";
+export const BRANCH_NODE_TYPE = "Branch";
 export const VIEW_NODE_TYPE = "ViewBind";
 export const EVENT_NODE_TYPE = "ViewEvent";
 
@@ -77,6 +78,17 @@ export const andLogicNodeDefinition: NodeDefinition = {
   behavior: { kind: "js", ref: "and-run" },
 };
 
+/** 分支：单输入；条件满足走 outTrue，否则走 outFalse；两侧均透传输入数据 */
+export const branchNodeDefinition: NodeDefinition = {
+  type: BRANCH_NODE_TYPE,
+  inputs: [{ name: "in", kind: "data" }],
+  outputs: [
+    { name: "outTrue", kind: "data" },
+    { name: "outFalse", kind: "data" },
+  ],
+  behavior: { kind: "js", ref: "branch-run" },
+};
+
 /** 视图绑定节点：收到信号后为关联视图元素写入 scope，并向下游透传 */
 export const viewBindNodeDefinition: NodeDefinition = {
   type: VIEW_NODE_TYPE,
@@ -102,6 +114,7 @@ export const nodeDefinitionRegistry: Record<string, NodeDefinition> = {
   [STORAGE_NODE_TYPE]: storageNodeDefinition,
   [CLOCK_NODE_TYPE]: clockNodeDefinition,
   [AND_NODE_TYPE]: andLogicNodeDefinition,
+  [BRANCH_NODE_TYPE]: branchNodeDefinition,
   [VIEW_NODE_TYPE]: viewBindNodeDefinition,
   [EVENT_NODE_TYPE]: viewEventNodeDefinition,
 };

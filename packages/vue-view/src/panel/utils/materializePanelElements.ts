@@ -3,6 +3,30 @@ import { isPanelElementNode } from "./panelElementNodes";
 import type { Node } from "@arronqzy/rx-store";
 
 /**
+ * Shallow-compare all own keys. A fixed field allowlist previously omitted
+ * text/audio/geometry fields and caused config edits to keep the old element
+ * reference (form rebound / canvas ignored the change).
+ */
+function isSameMaterializedElement(
+  prev: PanelElement,
+  next: PanelElement
+): boolean {
+  if (prev === next) return true;
+  const prevKeys = Object.keys(prev);
+  const nextKeys = Object.keys(next);
+  if (prevKeys.length !== nextKeys.length) return false;
+  for (const key of nextKeys) {
+    if (
+      (prev as Record<string, unknown>)[key] !==
+      (next as Record<string, unknown>)[key]
+    ) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/**
  * Preserve Immer structural sharing: unchanged nodes keep the same props
  * object reference so React.memo / Vue can skip re-rendering them.
  */
@@ -23,47 +47,7 @@ export function materializePanelElements(
       typeof props.zIndex === "number" ? props : { ...props, zIndex: 1 };
 
     const prev = prevById?.get(normalized.id);
-    if (prev && prev === normalized) {
-      next.push(prev);
-      continue;
-    }
-    if (
-      prev &&
-      prev.id === normalized.id &&
-      prev.x === normalized.x &&
-      prev.y === normalized.y &&
-      prev.width === normalized.width &&
-      prev.height === normalized.height &&
-      prev.rotate === normalized.rotate &&
-      prev.zIndex === normalized.zIndex &&
-      prev.layerId === normalized.layerId &&
-      prev.locked === normalized.locked &&
-      prev.materialType === normalized.materialType &&
-      prev.name === normalized.name &&
-      prev.chart === normalized.chart &&
-      prev.table === normalized.table &&
-      prev.style === normalized.style &&
-      prev.textHtml === normalized.textHtml &&
-      prev.textAllowInput === normalized.textAllowInput &&
-      prev.gridRows === normalized.gridRows &&
-      prev.gridCols === normalized.gridCols &&
-      prev.gridGap === normalized.gridGap &&
-      prev.gridPadding === normalized.gridPadding &&
-      prev.parentGridId === normalized.parentGridId &&
-      prev.gridSlotIndex === normalized.gridSlotIndex &&
-      prev.gridColSpan === normalized.gridColSpan &&
-      prev.gridRowSpan === normalized.gridRowSpan &&
-      prev.viewportOverflow === normalized.viewportOverflow &&
-      prev.scene3d === normalized.scene3d &&
-      prev.refLayerId === normalized.refLayerId &&
-      prev.refCopyMode === normalized.refCopyMode &&
-      prev.refSnapshot === normalized.refSnapshot &&
-      prev.audioSrc === normalized.audioSrc &&
-      prev.videoSrc === normalized.videoSrc &&
-      prev.geometryShape === normalized.geometryShape &&
-      prev.geometryColor === normalized.geometryColor &&
-      prev.geometrySketchDataUrl === normalized.geometrySketchDataUrl
-    ) {
+    if (prev && isSameMaterializedElement(prev, normalized)) {
       next.push(prev);
       continue;
     }

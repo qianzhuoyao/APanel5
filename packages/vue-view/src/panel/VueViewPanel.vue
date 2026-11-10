@@ -460,11 +460,14 @@ const blueprintDebugSession = useBlueprintDebugSession({
 
 const blueprintDebugToolbar = computed(() => ({
   lifecyclePhase: blueprintDebugSession.selectedLifecycleNodeId.value ?? undefined,
-  lifecycleOptions: blueprintDebugSession.lifecycleNodes.value.map((node) => ({
-    value: node.id,
-    label: node.label,
-  })),
-  onLifecyclePhaseChange: (id: string) => blueprintDebugSession.selectLifecycleNode(id),
+  lifecycleOptions: blueprintDebugSession.lifecycleNodes.value
+    .filter((node) => node.canEmit)
+    .map((node) => ({
+      value: node.id,
+      label: node.label,
+    })),
+  onLifecyclePhaseChange: (id: string) =>
+    blueprintDebugSession.selectLifecycleNode(id || null),
 }));
 
 function handleAbortClock(nodeId: string) {

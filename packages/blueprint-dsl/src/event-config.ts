@@ -135,7 +135,9 @@ export function collectArmedViewEventNodeIds(
   nodes: Array<{
     id: string;
     nodeType?: string;
+    role?: string;
     lifecyclePhase?: string;
+    lifecycleEnabled?: boolean;
   }>,
   edges: Array<{ source: string; target: string }>,
   eventNodeType: string,
@@ -151,7 +153,14 @@ export function collectArmedViewEventNodeIds(
       const source = byId.get(edge.source);
       if (!source || source.nodeType !== lifecycleNodeType) return false;
       const phase = source.lifecyclePhase || "mounted";
-      return firedPhases.has(phase);
+      if (!firedPhases.has(phase)) return false;
+      const peers = nodes.filter(
+        (candidate) =>
+          candidate.nodeType === lifecycleNodeType &&
+          (candidate.lifecyclePhase || "mounted") === phase
+      );
+      if (peers.length > 1 && source.lifecycleEnabled === false) return false;
+      return true;
     });
     if (registered) armed.add(node.id);
   }
@@ -163,7 +172,9 @@ export function collectArmedViewEventBindings(
   nodes: Array<{
     id: string;
     nodeType?: string;
+    role?: string;
     lifecyclePhase?: string;
+    lifecycleEnabled?: boolean;
     viewElementIds?: string[];
     eventConfig?: Partial<ViewEventNodeConfig> | null;
   }>,

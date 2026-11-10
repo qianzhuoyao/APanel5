@@ -17,6 +17,7 @@ export * from "./json-config.js";
 export * from "./storage-config.js";
 export * from "./app-namespace.js";
 export * from "./logic-config.js";
+export * from "./branch-config.js";
 export * from "./clock-config.js";
 export * from "./event-config.js";
 export * from "./swagger.js";

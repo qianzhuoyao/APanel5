@@ -15,6 +15,7 @@ const NODE_ROLES = new Set<BlueprintNodeRole>([
   "blueprint",
   "logic",
   "and",
+  "branch",
   "lifecycle",
   "fetch",
   "json",

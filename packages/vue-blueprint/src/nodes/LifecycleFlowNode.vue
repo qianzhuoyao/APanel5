@@ -15,16 +15,19 @@ const props = defineProps<NodeProps<BlueprintFlowNodeData>>();
 const onSelect = useBlueprintNodeSelect();
 const nodeData = props.data;
 const executionTone = resolveBlueprintNodeExecutionTone(nodeData);
+const showExclusiveStatus = Boolean(nodeData.lifecycleExclusive);
+const isEnabled = nodeData.lifecycleEnabled !== false;
 </script>
 
 <template>
   <div
     :class="
       cn(
-        'bp-node bp-node--lifecycle',
+        'bp-node bp-node--lifecycle relative',
         nodeData.isSelected && 'bp-node--selected',
         executionTone === 'success' && 'bp-node--execution-true',
-        executionTone === 'error' && 'bp-node--execution-false'
+        executionTone === 'error' && 'bp-node--execution-false',
+        showExclusiveStatus && !isEnabled && 'opacity-70'
       )
     "
   >
@@ -38,6 +41,23 @@ const executionTone = resolveBlueprintNodeExecutionTone(nodeData);
       hide-leading-dot
       @select="onSelect"
     />
+    <span
+      v-if="showExclusiveStatus"
+      :class="
+        cn(
+          'pointer-events-none absolute right-1.5 top-1.5 rounded px-1 py-0.5 text-[10px] font-medium leading-none',
+          isEnabled
+            ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
+            : 'bg-muted text-muted-foreground'
+        )
+      "
+    >
+      {{
+        isEnabled
+          ? t("blueprint.config.lifecycleStatusEnabled")
+          : t("blueprint.config.lifecycleStatusDisabled")
+      }}
+    </span>
     <Handle
       type="source"
       :position="Position.Right"

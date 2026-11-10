@@ -100,7 +100,9 @@ function collectArmedIds(
     graph.document.nodes.map((node) => ({
       id: node.id,
       nodeType: resolveRunnableNodeType(node),
+      role: node.role,
       lifecyclePhase: node.lifecyclePhase,
+      lifecycleEnabled: node.lifecycleEnabled,
     })),
     graph.document.edges,
     EVENT_NODE_TYPE,

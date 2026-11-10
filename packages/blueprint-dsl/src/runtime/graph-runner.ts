@@ -26,6 +26,12 @@ import {
   DEFAULT_LOGIC_NODE_CONFIG,
   executeLogicConfig,
 } from "../logic-config.js";
+import type { BranchNodeConfig } from "../branch-config.js";
+import {
+  DEFAULT_BRANCH_NODE_CONFIG,
+  evaluateBranchCondition,
+  normalizeBranchConfig,
+} from "../branch-config.js";
 import type { ClockNodeConfig } from "../clock-config.js";
 import {
   buildClockSignalValue,
@@ -59,6 +65,8 @@ import { BehaviorRegistry } from "../core/behavior-registry.js";
 import { Executor } from "../core/executor.js";
 import {
   createLifecycleSignal,
+  resolveLifecyclePhase,
+  shouldEmitLifecycleNode,
   type LifecycleSignal,
   type PageLifecyclePhase,
 } from "../lifecycle.js";
@@ -98,6 +106,8 @@ export type RunnableGraphNode = {
   label?: string;
   role?: string;
   lifecyclePhase?: PageLifecyclePhase;
+  /** 同图同阶段多个生命周期时：false 停用；缺省/true 启用 */
+  lifecycleEnabled?: boolean;
   /** 蓝图库记录 id，Blueprint 节点引用嵌套蓝图时使用 */
   libraryBlueprintId?: string;
   blueprintName?: string;
@@ -107,6 +117,7 @@ export type RunnableGraphNode = {
   jsonConfig?: JsonNodeConfig;
   storageConfig?: StorageNodeConfig;
   logicConfig?: LogicNodeConfig;
+  branchConfig?: BranchNodeConfig;
   clockConfig?: ClockNodeConfig;
   eventConfig?: ViewEventNodeConfig;
 };
@@ -214,6 +225,7 @@ export class BlueprintGraphRunner {
     this.registerLogicBehavior();
     this.registerClockBehavior();
     this.registerAndBehavior();
+    this.registerBranchBehavior();
     this.registerViewBindBehavior();
   }
 
@@ -298,7 +310,9 @@ export class BlueprintGraphRunner {
     const signal = createLifecycleSignal(phase);
     const targets = this.graph.nodes.filter(
       (node) =>
-        node.nodeType === LIFECYCLE_NODE_TYPE && node.lifecyclePhase === phase
+        node.nodeType === LIFECYCLE_NODE_TYPE &&
+        resolveLifecyclePhase(node) === phase &&
+        shouldEmitLifecycleNode(node, this.graph.nodes, LIFECYCLE_NODE_TYPE)
     );
 
     for (const node of targets) {
@@ -318,7 +332,8 @@ export class BlueprintGraphRunner {
     const targets = this.graph.nodes.filter(
       (node) =>
         node.nodeType === LIFECYCLE_NODE_TYPE &&
-        node.lifecyclePhase === "blueprintActivated"
+        resolveLifecyclePhase(node) === "blueprintActivated" &&
+        shouldEmitLifecycleNode(node, this.graph.nodes, LIFECYCLE_NODE_TYPE)
     );
 
     for (const node of targets) {
@@ -572,6 +587,9 @@ export class BlueprintGraphRunner {
     const node = this.requireNode(lifecycleNodeId);
     if (node.nodeType !== LIFECYCLE_NODE_TYPE) {
       throw new Error(dslMessage("debugMustStartFromLifecycle"));
+    }
+    if (!shouldEmitLifecycleNode(node, this.graph.nodes, LIFECYCLE_NODE_TYPE)) {
+      throw new Error(dslMessage("debugLifecycleDisabled"));
     }
 
     this.outputs.clear();
@@ -980,8 +998,12 @@ export class BlueprintGraphRunner {
   }
 
   private isFalseOutputNode(nodeId: string): boolean {
-    const out = this.getNodeOutput(nodeId, "out");
-    return out !== undefined && isFalseSignal(out);
+    const ports = this.outputs.get(nodeId);
+    if (!ports || ports.size === 0) return false;
+    for (const value of ports.values()) {
+      if (isFalseSignal(value)) return true;
+    }
+    return false;
   }
 
   private haltDebugQueueOnFalseOutput(nodeId: string): void {
@@ -1337,6 +1359,63 @@ export class BlueprintGraphRunner {
         );
       }
       io.emitFlow("out");
+    });
+  }
+
+  private registerBranchBehavior() {
+    const runner = this;
+    this.behaviors.registerJS("branch-run", async ({ token, io }) => {
+      const node = runner.requireNode(token.nodeId);
+
+      try {
+        const input = await io.getInput("in");
+        if (isFalseSignal(input)) {
+          // 上游失败：只走「不满足」口，并透传假信号
+          io.setOutput("outFalse", input);
+          io.emitFlow("outFalse");
+          return;
+        }
+        if (!isTrueSignal(input)) {
+          io.setOutput(
+            "outFalse",
+            createFalseSignal(dslMessage("branchNeedsTrue"))
+          );
+          io.emitFlow("outFalse");
+          return;
+        }
+
+        const incomingScope = runner.buildFetchIncomingScope(
+          token.nodeId,
+          "in",
+          input
+        );
+        const config = normalizeBranchConfig({
+          ...DEFAULT_BRANCH_NODE_CONFIG,
+          ...node.branchConfig,
+        });
+        const matched = evaluateBranchCondition(
+          config.expression,
+          incomingScope
+        );
+        const passThrough = createTrueSignal(input.value);
+        if (matched) {
+          io.setOutput("outTrue", passThrough);
+          io.emitFlow("outTrue");
+        } else {
+          io.setOutput("outFalse", passThrough);
+          io.emitFlow("outFalse");
+        }
+      } catch (error) {
+        io.setOutput(
+          "outFalse",
+          createFalseSignal(
+            dslMessage("branchExpressionError", {
+              reason: error instanceof Error ? error.message : String(error),
+            })
+          )
+        );
+        io.emitFlow("outFalse");
+      }
     });
   }
 

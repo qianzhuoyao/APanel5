@@ -11,7 +11,7 @@ export type BlueprintNodeCardProps = {
   subtitle?: string;
   /** 调试执行进度（如时钟 2/3） */
   progressLabel?: string;
-  variant?: "blueprint" | "view" | "logic" | "and" | "lifecycle" | "event" | "fetch" | "json" | "storage" | "clock";
+  variant?: "blueprint" | "view" | "logic" | "and" | "branch" | "lifecycle" | "event" | "fetch" | "json" | "storage" | "clock";
   selected?: boolean;
   hideLeadingDot?: boolean;
   onSelect?: (nodeId: string) => void;
@@ -55,6 +55,15 @@ function VariantIcon({
           <path d="M8 6v12" />
           <path d="M8 12h8" />
           <path d="M16 6v12" />
+        </IconSvg>
+      );
+    case "branch":
+      return (
+        <IconSvg>
+          <path d="M7 5v14" />
+          <path d="M7 12h5" />
+          <path d="m12 12 5-5" />
+          <path d="m12 12 5 5" />
         </IconSvg>
       );
     case "lifecycle":

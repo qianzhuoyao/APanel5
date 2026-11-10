@@ -22,7 +22,12 @@ import {
   DEFAULT_LOGIC_NODE_TYPE,
   LIFECYCLE_NODE_TYPE,
 } from "./node-types";
-import type { PageLifecyclePhase } from "@arronqzy/blueprint-dsl";
+import {
+  defaultLifecycleEnabledForNewNode,
+  reconcileLifecycleEnabled,
+  resolveLifecyclePhase,
+  type PageLifecyclePhase,
+} from "@arronqzy/blueprint-dsl";
 
 export class BlueprintGraph {
   readonly document: BlueprintDocument;
@@ -94,6 +99,14 @@ export class BlueprintGraph {
       throw new Error(`Parent blueprint node not found: ${parentBlueprintId}`);
     }
 
+    const lifecycleEnabled = defaultLifecycleEnabledForNewNode(
+      this.document.nodes,
+      lifecyclePhase,
+      LIFECYCLE_NODE_TYPE
+    )
+      ? true
+      : false;
+
     const node: BlueprintGraphNode = {
       id: createNodeId("lifecycle"),
       role: "lifecycle",
@@ -102,12 +115,18 @@ export class BlueprintGraph {
       position: { ...position },
       parentId: parentBlueprintId,
       lifecyclePhase,
+      lifecycleEnabled,
       configSource: "lifecycle",
     };
 
     return this.withDocument({
       ...this.document,
-      nodes: [...this.document.nodes, node],
+      nodes: reconcileLifecycleEnabled(
+        [...this.document.nodes, node],
+        node.id,
+        lifecycleEnabled,
+        LIFECYCLE_NODE_TYPE
+      ),
     });
   }
 
@@ -197,6 +216,7 @@ export class BlueprintGraph {
         | "nestedBlueprintId"
         | "libraryBlueprintId"
         | "lifecyclePhase"
+        | "lifecycleEnabled"
         | "fetchConfig"
         | "jsonConfig"
         | "storageConfig"
@@ -214,9 +234,7 @@ export class BlueprintGraph {
         ? patchNodeConfigSource(exists, patch.configSource)
         : {};
 
-    return this.withDocument({
-      ...this.document,
-      nodes: this.document.nodes.map((n) => {
+    const mapped = this.document.nodes.map((n) => {
         if (n.id !== nodeId) return n;
         const nextNode = { ...n, ...configPatch, ...patch };
         if (
@@ -284,11 +302,53 @@ export class BlueprintGraph {
             ...patch.eventConfig,
           };
         }
+        // 切到 lifecycle / 改阶段且未显式设启用：若已有同阶段同伴，新节点默认停用
+        if (
+          patch.lifecycleEnabled === undefined &&
+          (patch.configSource === "lifecycle" ||
+            patch.lifecyclePhase !== undefined) &&
+          (nextNode.role === "lifecycle" ||
+            nextNode.nodeType === LIFECYCLE_NODE_TYPE)
+        ) {
+          const phase = resolveLifecyclePhase(nextNode);
+          const peerCount = this.document.nodes.filter(
+            (peer) =>
+              peer.id !== nodeId &&
+              (peer.role === "lifecycle" ||
+                peer.nodeType === LIFECYCLE_NODE_TYPE) &&
+              resolveLifecyclePhase(peer) === phase
+          ).length;
+          if (peerCount > 0) {
+            nextNode.lifecycleEnabled = false;
+          }
+        }
         return {
           ...nextNode,
           nodeType: resolveRunnableNodeType(nextNode),
         };
-      }),
+      });
+
+    const lifecycleTouched =
+      patch.lifecycleEnabled !== undefined ||
+      patch.lifecyclePhase !== undefined ||
+      patch.configSource === "lifecycle" ||
+      Boolean(
+        (configPatch as Partial<BlueprintGraphNode>).lifecyclePhase !==
+          undefined
+      );
+
+    const nodes = lifecycleTouched
+      ? reconcileLifecycleEnabled(
+          mapped,
+          nodeId,
+          patch.lifecycleEnabled,
+          LIFECYCLE_NODE_TYPE
+        )
+      : mapped;
+
+    return this.withDocument({
+      ...this.document,
+      nodes,
     });
   }
 

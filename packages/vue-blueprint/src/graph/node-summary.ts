@@ -107,7 +107,15 @@ export function resolveBlueprintNodeSummary(
     }
     case "lifecycle": {
       const phase = data.lifecyclePhase ?? "mounted";
-      return getLifecyclePhaseLabel(t, phase);
+      const phaseLabel = getLifecyclePhaseLabel(t, phase);
+      if (data.lifecycleExclusive) {
+        const status =
+          data.lifecycleEnabled !== false
+            ? t("blueprint.config.lifecycleStatusEnabled")
+            : t("blueprint.config.lifecycleStatusDisabled");
+        return truncate(`${phaseLabel} · ${status}`, 44);
+      }
+      return phaseLabel;
     }
     case "view": {
       const ids = resolveViewElementIds(data);

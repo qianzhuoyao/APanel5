@@ -28,6 +28,7 @@ export function documentToRunnableGraph(
         label: node.label,
         role: node.role,
         lifecyclePhase: node.lifecyclePhase,
+        lifecycleEnabled: node.lifecycleEnabled,
         libraryBlueprintId: node.libraryBlueprintId,
         viewElementIds:
           viewElementIds.length > 0 ? viewElementIds : undefined,
@@ -41,6 +42,7 @@ export function documentToRunnableGraph(
             ? resolveNodeStorageConfig(node)
             : node.storageConfig,
         logicConfig: node.logicConfig,
+        branchConfig: node.branchConfig,
         clockConfig: node.clockConfig,
         eventConfig: node.eventConfig,
         blueprintName: node.libraryBlueprintId
