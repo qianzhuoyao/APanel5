@@ -596,15 +596,10 @@ onUnmounted(() => {
   <div
     ref="viewerHost"
     :class="[
-      'relative h-full w-full overflow-hidden bg-background [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden',
+      'rv-viewport relative h-full w-full overflow-hidden bg-background [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden',
       isPanning ? 'cursor-grabbing select-none' : '',
       props.class ?? '',
     ]"
-    :style="{
-      backgroundImage:
-        'linear-gradient(to right, hsl(var(--border) / 0.45) 1px, transparent 1px), linear-gradient(to bottom, hsl(var(--border) / 0.45) 1px, transparent 1px)',
-      backgroundSize: '20px 20px',
-    }"
   >
     <div ref="viewport">
       <div :style="worldStyle">

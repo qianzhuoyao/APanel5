@@ -1,18 +1,20 @@
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
-import { ConfigProvider, theme } from "ant-design-vue";
-import zhCN from "ant-design-vue/es/locale/zh_CN";
-import enUS from "ant-design-vue/es/locale/en_US";
+import { computed, ref } from "vue";
+import { createRoot } from "react-dom/client";
+import { applyPureReactInVue, setVeauryOptions } from "veaury";
 import {
-  VueViewPanel,
-  VueViewOnlinePreview,
-  parseOnlinePreviewSearchParams,
+  App as ReactAbuilderApp,
   type AbuilderViewHandle,
-} from "@arronqzy/vue-view";
-import { provideI18n } from "@arronqzy/i18n/vue";
-import { isLocale, LOCALE_STORAGE_KEY } from "@arronqzy/i18n";
+} from "@arronqzy/abuilder";
 import type { AbuilderVueAppProps } from "./types";
-import { ABUILDER_VUE_PACKAGE_NAME, ABUILDER_VUE_VERSION } from "./version";
+
+setVeauryOptions({
+  react: {
+    createRoot,
+  },
+});
+
+const ReactApp = applyPureReactInVue(ReactAbuilderApp);
 
 const props = withDefaults(defineProps<AbuilderVueAppProps>(), {
   initialZoom: 1,
@@ -21,9 +23,13 @@ const props = withDefaults(defineProps<AbuilderVueAppProps>(), {
   nameSpace: null,
   workspaceId: null,
   preview: false,
+  plugins: () => [],
+  pIcon: null,
+  pTitle: null,
 });
 
 const panelRef = ref<AbuilderViewHandle | null>(null);
+
 defineExpose({
   getNameSpace: () => panelRef.value?.getNameSpace() ?? props.nameSpace ?? null,
   getCurrentWorkspace: () => panelRef.value?.getCurrentWorkspace() ?? null,
@@ -41,65 +47,22 @@ defineExpose({
     Promise.reject(new Error("Abuilder panel is not mounted")),
 } satisfies AbuilderViewHandle);
 
-const localeStorageKey = (() => {
-  const ns = (props.nameSpace ?? "").trim();
-  return ns ? `${LOCALE_STORAGE_KEY}__${ns.slice(0, 120)}` : LOCALE_STORAGE_KEY;
-})();
-
-const i18n = provideI18n({
+const reactProps = computed(() => ({
+  className: props.class,
+  initialZoom: props.initialZoom,
+  defaultTheme: props.defaultTheme,
   locale: props.locale,
-  storageKey: localeStorageKey,
-});
-
-watch(
-  () => props.locale,
-  (next) => {
-    if (isLocale(next)) i18n.setLocale(next);
-  }
-);
-
-const search =
-  props.previewSearch ??
-  (typeof window !== "undefined" ? window.location.search : "");
-
-const previewParams = computed(() => parseOnlinePreviewSearchParams(search));
-
-const isDark = computed(() => props.defaultTheme === "dark");
-
-const antdLocale = computed(() =>
-  i18n.locale.value === "en-US" ? enUS : zhCN
-);
+  previewSearch: props.previewSearch,
+  preview: props.preview,
+  initialWorkspace: props.initialWorkspace,
+  workspaceId: props.workspaceId,
+  nameSpace: props.nameSpace,
+  plugins: props.plugins,
+  pIcon: props.pIcon,
+  pTitle: props.pTitle,
+}));
 </script>
 
 <template>
-  <ConfigProvider
-    :locale="antdLocale"
-    :theme="{
-      algorithm: isDark ? theme.darkAlgorithm : theme.defaultAlgorithm,
-    }"
-  >
-    <VueViewOnlinePreview
-      v-if="props.preview"
-      :workspace="props.initialWorkspace"
-      :project-id="props.initialWorkspace?.id"
-      :name-space="props.nameSpace"
-    />
-    <VueViewOnlinePreview
-      v-else-if="previewParams"
-      :project-id="previewParams.projectId"
-      :preview-instance-id="previewParams.previewInstanceId"
-      :name-space="previewParams.nameSpace ?? props.nameSpace"
-    />
-    <VueViewPanel
-      v-else
-      ref="panelRef"
-      :class="props.class"
-      :initial-zoom="props.initialZoom"
-      :name-space="props.nameSpace"
-      :initial-workspace="props.initialWorkspace"
-      :workspace-id="props.workspaceId"
-      :package-name="ABUILDER_VUE_PACKAGE_NAME"
-      :package-version="ABUILDER_VUE_VERSION"
-    />
-  </ConfigProvider>
+  <ReactApp v-bind="reactProps" :react-ref="panelRef" />
 </template>

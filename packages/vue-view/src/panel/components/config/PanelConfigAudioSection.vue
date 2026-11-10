@@ -160,7 +160,7 @@ function onPosterFileChange(e: Event) {
         />      </label>
       <div class="flex items-center gap-2">
         <label
-          class="inline-flex cursor-pointer items-center rounded border border-gray-200 px-2 py-1 text-[11px] hover:bg-gray-50"
+          class="inline-flex cursor-pointer items-center rounded border border-border px-2 py-1 text-[11px] hover:bg-accent"
           :class="{ 'pointer-events-none opacity-50': !isEditable }"
         >
           {{ t("panel.config.uploadAudio") }}
@@ -168,7 +168,7 @@ function onPosterFileChange(e: Event) {
         </label>
         <button
           type="button"
-          class="rounded border border-gray-200 px-2 py-1 text-[11px] hover:bg-gray-50 disabled:opacity-50"
+          class="rounded border border-border px-2 py-1 text-[11px] hover:bg-accent disabled:opacity-50"
           :disabled="!isEditable"
           @click="isRecordingAudio ? stopRecordingAudio() : startRecordingAudio()"
         >
@@ -177,7 +177,7 @@ function onPosterFileChange(e: Event) {
       </div>
       <div
         v-if="audioStatus"
-        class="rounded border border-gray-200/60 bg-white px-2 py-1.5 text-[11px] text-gray-500"
+        class="rounded border border-border/60 bg-background px-2 py-1.5 text-[11px] text-muted-foreground"
       >
         {{ audioStatus }}
       </div>
@@ -249,7 +249,7 @@ function onPosterFileChange(e: Event) {
       </label>
       <div class="flex items-center gap-2">
         <label
-          class="inline-flex cursor-pointer items-center rounded border border-gray-200 px-2 py-1 text-[11px] hover:bg-gray-50"
+          class="inline-flex cursor-pointer items-center rounded border border-border px-2 py-1 text-[11px] hover:bg-accent"
           :class="{ 'pointer-events-none opacity-50': !isEditable }"
         >
           {{ t("panel.config.uploadPoster") }}
@@ -257,7 +257,7 @@ function onPosterFileChange(e: Event) {
         </label>
         <button
           type="button"
-          class="rounded border border-gray-200 px-2 py-1 text-[11px] hover:bg-gray-50 disabled:opacity-50"
+          class="rounded border border-border px-2 py-1 text-[11px] hover:bg-accent disabled:opacity-50"
           :disabled="!isEditable"
           @click="patch({ audioPosterImage: undefined })"
         >
@@ -268,10 +268,10 @@ function onPosterFileChange(e: Event) {
         v-if="element.audioPosterImage"
         :src="element.audioPosterImage"
         :alt="t('panel.config.audioPosterAlt')"
-        class="h-20 w-full rounded border border-gray-200/60 object-cover"
+        class="h-20 w-full rounded border border-border/60 object-cover"
       />
       <div class="flex items-center gap-1">
-        <div class="text-[11px] text-gray-500">{{ t("panel.config.audioPoster") }}</div>
+        <div class="text-[11px] text-muted-foreground">{{ t("panel.config.audioPoster") }}</div>
         <ConfigHintIcon :label="t('panel.config.audioPoster')">
           {{ t("panel.config.audioPosterHint") }}
         </ConfigHintIcon>

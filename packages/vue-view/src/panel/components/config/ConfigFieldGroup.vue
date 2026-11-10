@@ -56,12 +56,12 @@ function toggle() {
       <button
         v-if="collapsible"
         type="button"
-        class="flex h-5 w-5 items-center justify-center rounded text-[11px] hover:bg-gray-100"
+        class="flex h-5 w-5 items-center justify-center rounded text-[11px] hover:bg-accent"
         @click="toggle"
       >
         {{ isOpen ? "▾" : "▸" }}
       </button>
-      <div class="text-[11px] font-semibold text-gray-500">{{ title }}</div>
+      <div class="text-[11px] font-semibold text-muted-foreground">{{ title }}</div>
       <ConfigHintIcon v-if="$slots.hint" :label="title">
         <slot name="hint" />
       </ConfigHintIcon>

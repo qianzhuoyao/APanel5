@@ -502,8 +502,8 @@ function patchProgressRuleWhen(ruleIndex: number, when: Condition) {
           @update:value="(v: unknown) => updateTable({ rowsText: asSelectString(v) })"
         />
       </label>
-      <details class="rounded-md border border-gray-200 bg-gray-50/60 px-2 py-1.5">
-        <summary class="cursor-pointer text-[11px] font-medium text-gray-600">
+      <details class="rounded-md border border-border bg-muted/40/60 px-2 py-1.5">
+        <summary class="cursor-pointer text-[11px] font-medium text-muted-foreground">
           <span class="inline-flex items-center gap-1 align-middle">
             {{ t("panel.config.tableAdvancedData") }}
             <span class="inline-flex" @click.prevent>
@@ -513,7 +513,7 @@ function patchProgressRuleWhen(ruleIndex: number, when: Condition) {
             </span>
           </span>
         </summary>
-        <div class="mt-2 space-y-2 border-t border-gray-100 pt-2">
+        <div class="mt-2 space-y-2 border-t border-border/50 pt-2">
           <div class="grid grid-cols-2 gap-2">
             <label class="block space-y-1.5">
               <div class="flex items-center gap-1">
@@ -575,7 +575,7 @@ function patchProgressRuleWhen(ruleIndex: number, when: Condition) {
           {{ t("panel.config.tableAddColumn") }}
         </Button>
       </div>
-      <div v-if="!columns.length" class="text-[11px] text-gray-500">
+      <div v-if="!columns.length" class="text-[11px] text-muted-foreground">
         {{ t("panel.config.tableNoColumns") }}
       </div>
       <div class="space-y-1.5">
@@ -586,7 +586,7 @@ function patchProgressRuleWhen(ruleIndex: number, when: Condition) {
           :class="
             selectedColumn?.index === index
               ? 'border-blue-400 bg-blue-50 ring-1 ring-blue-200'
-              : 'border-gray-200 hover:bg-gray-50'
+              : 'border-border hover:bg-accent'
           "
           role="button"
           tabindex="0"
@@ -619,11 +619,11 @@ function patchProgressRuleWhen(ruleIndex: number, when: Condition) {
             <div class="truncate text-[11px] font-medium">
               {{ col.title || col.field || t('panel.config.tableColumnUntitled', { n: index + 1 }) }}
             </div>
-            <div class="truncate text-[10px] text-gray-500">
+            <div class="truncate text-[10px] text-muted-foreground">
               {{ col.field }} · {{ t(`panel.config.tableWidget.${col.widget ?? 'text'}`) }}
             </div>
           </div>
-          <label class="flex shrink-0 items-center gap-1 text-[10px] text-gray-500" @click.stop>
+          <label class="flex shrink-0 items-center gap-1 text-[10px] text-muted-foreground" @click.stop>
             <span class="whitespace-nowrap">{{ t("panel.config.tableColumnWidth") }}</span>
             <InputNumber
               size="small"
@@ -649,8 +649,8 @@ function patchProgressRuleWhen(ruleIndex: number, when: Condition) {
         </div>
       </div>
 
-      <div v-if="selectedColumn" class="space-y-2 rounded border border-gray-200/70 bg-white p-2">
-        <div class="text-[11px] font-medium text-gray-600">
+      <div v-if="selectedColumn" class="space-y-2 rounded border border-border/70 bg-background p-2">
+        <div class="text-[11px] font-medium text-muted-foreground">
           {{
             t("panel.config.groupTableColumnDetail", {
               name: selectedColumn.column.title || selectedColumn.column.field,
@@ -718,9 +718,9 @@ function patchProgressRuleWhen(ruleIndex: number, when: Condition) {
           </label>
         </div>
 
-        <div class="space-y-2 rounded-md border border-gray-200 bg-gray-50/70 p-2">
+        <div class="space-y-2 rounded-md border border-border bg-muted/40/70 p-2">
           <div class="flex items-center justify-between gap-2">
-            <div class="inline-flex items-center gap-1 text-[11px] font-medium text-gray-600">
+            <div class="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
               <span>{{ t("panel.config.tableTooltipEnabled") }}</span>
               <ConfigHintIcon :label="t('panel.config.tableTooltipEnabled')">
                 <div>{{ t("panel.config.tableTooltipEnabledHint") }}</div>
@@ -782,8 +782,8 @@ function patchProgressRuleWhen(ruleIndex: number, when: Condition) {
           </template>
         </div>
 
-        <div class="space-y-2 rounded-md border border-gray-200 bg-gray-50/70 p-2">
-          <div class="inline-flex items-center gap-1 text-[11px] font-medium text-gray-600">
+        <div class="space-y-2 rounded-md border border-border bg-muted/40/70 p-2">
+          <div class="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
             {{ t("panel.config.tableWidgetProps") }}
             <ConfigHintIcon :label="t('panel.config.tableWidgetProps')">
               <div>{{ t("panel.config.tableWidgetPropsHint") }}</div>
@@ -1038,7 +1038,7 @@ function patchProgressRuleWhen(ruleIndex: number, when: Condition) {
               <div class="flex flex-wrap items-center gap-2">
                 <label class="inline-flex cursor-pointer items-center">
                   <span
-                    class="rounded border border-gray-300 bg-white px-2 py-0.5 text-[11px]"
+                    class="rounded border border-border bg-background px-2 py-0.5 text-[11px]"
                     :class="!isEditable ? 'opacity-50' : ''"
                   >
                     {{ t("panel.config.tableImageUpload") }}
@@ -1051,7 +1051,7 @@ function patchProgressRuleWhen(ruleIndex: number, when: Condition) {
                     @change="onImageFileChange(selectedColumn!.index, $event)"
                   />
                 </label>
-                <span v-if="imageUploadHint" class="text-[11px] text-gray-500">{{ imageUploadHint }}</span>
+                <span v-if="imageUploadHint" class="text-[11px] text-muted-foreground">{{ imageUploadHint }}</span>
               </div>
             </div>
 
@@ -1189,7 +1189,7 @@ function patchProgressRuleWhen(ruleIndex: number, when: Condition) {
             </label>
             <div class="space-y-1.5">
               <div class="flex items-center justify-between gap-2">
-                <span class="inline-flex items-center gap-1 text-[11px] text-gray-600">
+                <span class="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
                   {{ t("panel.config.tableHrefRules") }}
                   <ConfigHintIcon :label="t('panel.config.tableHrefRules')">
                     <div>{{ t("panel.config.tableHrefRulesHint") }}</div>
@@ -1214,10 +1214,10 @@ function patchProgressRuleWhen(ruleIndex: number, when: Condition) {
               <div
                 v-for="(rule, ruleIndex) in selectedColumn.column.widgetProps?.hrefRules ?? []"
                 :key="ruleIndex"
-                class="space-y-1.5 rounded-md border border-gray-200 bg-gray-50/70 p-2"
+                class="space-y-1.5 rounded-md border border-border bg-muted/40/70 p-2"
               >
                 <div class="flex items-center justify-between">
-                  <span class="text-[11px] text-gray-500">
+                  <span class="text-[11px] text-muted-foreground">
                     {{ t("panel.config.tableHrefRuleItem", { n: ruleIndex + 1 }) }}
                   </span>
                   <Button
@@ -1357,7 +1357,7 @@ function patchProgressRuleWhen(ruleIndex: number, when: Condition) {
               class="space-y-1.5"
             >
               <div class="flex items-center justify-between gap-2">
-                <span class="text-[11px] text-gray-600">{{ t("panel.config.tableProgressRules") }}</span>
+                <span class="text-[11px] text-muted-foreground">{{ t("panel.config.tableProgressRules") }}</span>
                 <Button
                   size="small"
                   type="link"
@@ -1377,10 +1377,10 @@ function patchProgressRuleWhen(ruleIndex: number, when: Condition) {
               <div
                 v-for="(rule, ruleIndex) in selectedColumn.column.widgetProps?.progressRules ?? []"
                 :key="ruleIndex"
-                class="space-y-1.5 rounded-md border border-gray-200 bg-gray-50/70 p-2"
+                class="space-y-1.5 rounded-md border border-border bg-muted/40/70 p-2"
               >
                 <div class="flex items-center justify-between">
-                  <span class="text-[11px] text-gray-500">
+                  <span class="text-[11px] text-muted-foreground">
                     {{ t("panel.config.tableProgressRuleItem", { n: ruleIndex + 1 }) }}
                   </span>
                   <Button
@@ -1514,7 +1514,7 @@ function patchProgressRuleWhen(ruleIndex: number, when: Condition) {
             />
             <div class="space-y-1.5">
               <div class="flex items-center justify-between gap-2">
-                <span class="inline-flex items-center gap-1 text-[11px] text-gray-600">
+                <span class="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
                   {{ t("panel.config.tableColorMap") }}
                   <ConfigHintIcon :label="t('panel.config.tableColorMap')">
                     <div>{{ t("panel.config.tableColorMapHint") }}</div>
@@ -1539,7 +1539,7 @@ function patchProgressRuleWhen(ruleIndex: number, when: Condition) {
               <div
                 v-for="(entry, entryIndex) in selectedColumn.column.widgetProps?.colorMapEntries ?? []"
                 :key="entryIndex"
-                class="grid grid-cols-[1fr_1fr_auto] items-end gap-1.5 rounded-md border border-gray-200 bg-gray-50/70 p-2"
+                class="grid grid-cols-[1fr_1fr_auto] items-end gap-1.5 rounded-md border border-border bg-muted/40/70 p-2"
               >
                 <label class="block space-y-1">
                   <div class="text-[11px]">{{ t("panel.config.tableColorMapValue") }}</div>
@@ -1671,9 +1671,9 @@ function patchProgressRuleWhen(ruleIndex: number, when: Condition) {
           </template>
         </div>
 
-        <div class="space-y-1.5 border-t border-gray-100 pt-2">
+        <div class="space-y-1.5 border-t border-border/50 pt-2">
           <div class="flex items-center justify-between">
-            <span class="inline-flex items-center gap-1 font-medium text-gray-600">
+            <span class="inline-flex items-center gap-1 font-medium text-muted-foreground">
               {{ t("panel.config.tableValueMap") }}
               <ConfigHintIcon :label="t('panel.config.tableValueMap')">
                 <div>
@@ -1704,10 +1704,10 @@ function patchProgressRuleWhen(ruleIndex: number, when: Condition) {
           <div
             v-for="(rule, ruleIndex) in selectedColumn.column.valueMap ?? []"
             :key="ruleIndex"
-            class="space-y-2 rounded-md border border-gray-200 bg-gray-50/70 p-2"
+            class="space-y-2 rounded-md border border-border bg-muted/40/70 p-2"
           >
             <div class="flex items-center justify-between gap-2">
-              <div class="text-[11px] font-medium text-gray-500">
+              <div class="text-[11px] font-medium text-muted-foreground">
                 {{ t("panel.config.tableMapItem", { n: ruleIndex + 1 }) }}
               </div>
               <Button
@@ -1775,9 +1775,9 @@ function patchProgressRuleWhen(ruleIndex: number, when: Condition) {
           </label>
         </div>
 
-        <div class="space-y-1.5 border-t border-gray-100 pt-2">
+        <div class="space-y-1.5 border-t border-border/50 pt-2">
           <div class="flex items-center justify-between">
-            <span class="inline-flex items-center gap-1 font-medium text-gray-600">
+            <span class="inline-flex items-center gap-1 font-medium text-muted-foreground">
               {{ t("panel.config.tableCellStyleRules") }}
               <ConfigHintIcon :label="t('panel.config.tableCellStyleRules')">
                 <div>{{ t("panel.config.tableCellStyleRulesHint") }}</div>
@@ -1790,10 +1790,10 @@ function patchProgressRuleWhen(ruleIndex: number, when: Condition) {
           <div
             v-for="(rule, ruleIndex) in selectedColumn.column.cellStyleRules ?? []"
             :key="ruleIndex"
-            class="space-y-2 rounded-md border border-gray-200 bg-gray-50/70 p-2"
+            class="space-y-2 rounded-md border border-border bg-muted/40/70 p-2"
           >
             <div class="flex items-center justify-between gap-2">
-              <div class="text-[11px] font-medium text-gray-500">
+              <div class="text-[11px] font-medium text-muted-foreground">
                 {{ t("panel.config.tableStyleRuleItem", { n: ruleIndex + 1 }) }}
               </div>
               <Button
@@ -1931,16 +1931,16 @@ function patchProgressRuleWhen(ruleIndex: number, when: Condition) {
           {{ t("panel.config.tableAddRowStyleRule") }}
         </Button>
       </div>
-      <div v-if="!(table.rowStyleRules ?? []).length" class="text-[11px] text-gray-500">
+      <div v-if="!(table.rowStyleRules ?? []).length" class="text-[11px] text-muted-foreground">
         {{ t("panel.config.tableNoRowStyleRules") }}
       </div>
       <div
         v-for="(rule, ruleIndex) in table.rowStyleRules ?? []"
         :key="ruleIndex"
-        class="space-y-2 rounded-md border border-gray-200 bg-gray-50/70 p-2"
+        class="space-y-2 rounded-md border border-border bg-muted/40/70 p-2"
       >
         <div class="flex items-center justify-between gap-2">
-          <div class="text-[11px] font-medium text-gray-500">
+          <div class="text-[11px] font-medium text-muted-foreground">
             {{ t("panel.config.tableStyleRuleItem", { n: ruleIndex + 1 }) }}
           </div>
           <Button size="small" danger type="text" :disabled="!isEditable" @click="removeRowStyleRule(ruleIndex)">
@@ -1983,7 +1983,7 @@ function patchProgressRuleWhen(ruleIndex: number, when: Condition) {
     }"
     @ok="saveRowsEditor"
   >
-    <div class="mb-1.5 shrink-0 text-xs leading-4 text-gray-500">
+    <div class="mb-1.5 shrink-0 text-xs leading-4 text-muted-foreground">
       {{ t("panel.config.tableRowsEditDesc") }}
     </div>
     <div class="relative min-h-0 flex-1 overflow-hidden">
@@ -2001,7 +2001,7 @@ function patchProgressRuleWhen(ruleIndex: number, when: Condition) {
     width="560px"
     @ok="applyMockRows"
   >
-    <div class="mb-3 text-xs text-gray-500">{{ t("panel.config.tableRowsMockDesc") }}</div>
+    <div class="mb-3 text-xs text-muted-foreground">{{ t("panel.config.tableRowsMockDesc") }}</div>
     <div class="grid grid-cols-2 gap-2">
       <label class="block space-y-1">
         <div class="text-[11px]">{{ t("panel.config.tableMockRowCount") }}</div>

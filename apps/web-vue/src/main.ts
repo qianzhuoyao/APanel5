@@ -1,7 +1,18 @@
 import { createApp } from "vue";
-import Antd from "ant-design-vue";
-import "ant-design-vue/dist/reset.css";
+import { createRoot } from "react-dom/client";
+import { setVeauryOptions } from "veaury";
 
 import { App } from "@arronqzy/abuilder-vue";
+import "@arronqzy/abuilder/styles.css";
 
-createApp(App).use(Antd).mount("#app");
+setVeauryOptions({
+  react: {
+    createRoot,
+  },
+});
+
+createApp(App, {
+  plugins: ["ai"],
+  pTitle: "ABUILDER",
+  pIcon: "/favicon.svg",
+}).mount("#app");

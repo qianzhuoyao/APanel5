@@ -216,27 +216,39 @@ export const ChartNodeContent = defineComponent({
       chartRef.value?.resize();
     }
 
+    function syncChart() {
+      const host = hostRef.value;
+      if (!host) return;
+      // host 可能刚挂上时 client 尺寸仍为 0（尤其配合 content-visibility）
+      if (host.clientWidth <= 0 || host.clientHeight <= 0) {
+        requestAnimationFrame(() => syncChart());
+        return;
+      }
+      if (!chartRef.value || rendererRef.value !== renderer.value) {
+        chartRef.value?.dispose();
+        chartRef.value = echarts.init(host, undefined, { renderer: renderer.value });
+        rendererRef.value = renderer.value;
+      }
+      chartRef.value.setOption(option.value as echarts.EChartsOption, true);
+      resizeChart();
+    }
+
+    // 勿用 immediate：此时 hostRef 尚未挂到 DOM，会直接跳过初始化导致空白
     watch(
       [() => p.element.width, () => p.element.height, option, () => p.previewLayoutKey, renderer],
-      () => {
-        const host = hostRef.value;
-        if (!host) return;
-        if (!chartRef.value || rendererRef.value !== renderer.value) {
-          chartRef.value?.dispose();
-          chartRef.value = echarts.init(host, undefined, { renderer: renderer.value });
-          rendererRef.value = renderer.value;
-        }
-        chartRef.value.setOption(option.value as echarts.EChartsOption, true);
-        resizeChart();
-      },
-      { immediate: true, deep: true }
+      () => syncChart(),
+      { deep: true, flush: "post" }
     );
 
     let cleanup: (() => void) | null = null;
     onMounted(() => {
       const host = hostRef.value;
       if (!host) return;
-      const onLayout = () => resizeChart();
+      syncChart();
+      const onLayout = () => {
+        if (!chartRef.value) syncChart();
+        else resizeChart();
+      };
       window.addEventListener(PREVIEW_LAYOUT_EVENT, onLayout);
       const obs = new ResizeObserver(onLayout);
       obs.observe(host);

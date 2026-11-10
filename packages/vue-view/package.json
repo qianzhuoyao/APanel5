@@ -1,6 +1,6 @@
 {
   "name": "@arronqzy/vue-view",
-  "version": "0.1.29",
+  "version": "0.1.30",
   "description": "Vue 3 visual view editor for Abuilder (Ant Design Vue)",
   "license": "MIT",
   "type": "module",
@@ -9,12 +9,15 @@
     "dist"
   ],
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./styles.css": "./dist/styles.css"
   },
   "scripts": {
     "lint": "eslint \"src/**/*.{ts,vue}\"",
     "typecheck": "vue-tsc -p tsconfig.json --noEmit",
-    "build": "pnpm run typecheck"
+    "build:css": "node ../tailwind/bin/arronqzy-tailwind.mjs -c tailwind.config.ts -i ./src/tailwind.css -o ./dist/styles.css",
+    "dev:css": "node ../tailwind/bin/arronqzy-tailwind.mjs -c tailwind.config.ts -i ./src/tailwind.css -o ./dist/styles.css --watch",
+    "build": "pnpm run typecheck && pnpm run build:css"
   },
   "dependencies": {
     "@arronqzy/blueprint-dsl": "workspace:*",
@@ -41,6 +44,7 @@
   },
   "devDependencies": {
     "@arronqzy/eslint-config": "workspace:*",
+    "@arronqzy/tailwind": "workspace:*",
     "@arronqzy/typescript-config": "workspace:*",
     "@vitejs/plugin-vue": "^5.2.1",
     "eslint": "^8.57.0",

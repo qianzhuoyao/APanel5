@@ -1,7 +1,7 @@
 {
   "name": "@arronqzy/abuilder-vue",
-  "version": "0.1.28",
-  "description": "Abuilder Vue 3 可视化编辑器入口包",
+  "version": "0.1.29",
+  "description": "Abuilder Vue 3 入口：通过 Veaury 包装 React 版 @arronqzy/abuilder",
   "license": "MIT",
   "type": "module",
   "files": [
@@ -17,20 +17,26 @@
     "build": "pnpm run typecheck"
   },
   "dependencies": {
+    "@arronqzy/abuilder": "workspace:*",
     "@arronqzy/i18n": "workspace:*",
-    "@arronqzy/vue-view": "workspace:*",
-    "ant-design-vue": "^4.2.6",
-    "vue": "^3.5.13"
+    "veaury": "^2.6.3"
   },
   "peerDependencies": {
+    "react": ">=18",
+    "react-dom": ">=18",
     "vue": "^3.4.0"
   },
   "devDependencies": {
     "@arronqzy/eslint-config": "workspace:*",
     "@arronqzy/typescript-config": "workspace:*",
+    "@types/react": "^19.0.1",
+    "@types/react-dom": "^19.0.2",
     "@vitejs/plugin-vue": "^5.2.1",
     "eslint": "^8.57.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
     "typescript": "^5.5.4",
+    "vue": "^3.5.13",
     "vue-tsc": "^2.2.0"
   },
   "publishConfig": {

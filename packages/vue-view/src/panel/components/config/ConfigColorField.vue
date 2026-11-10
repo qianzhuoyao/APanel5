@@ -48,12 +48,12 @@ function onTransparentChange(v: unknown) {
 
 <template>
   <label class="block space-y-1.5">
-    <div class="text-[11px] text-gray-500">{{ label }}</div>
+    <div class="text-[11px] text-muted-foreground">{{ label }}</div>
     <div v-if="allowTransparent" class="flex items-center gap-2">
       <Switch size="small" :checked="transparent" :disabled="disabled" @update:checked="onTransparentChange" />
-      <span class="text-[11px] text-gray-600">{{ t("panel.config.tableBgTransparent") }}</span>
+      <span class="text-[11px] text-muted-foreground">{{ t("panel.config.tableBgTransparent") }}</span>
     </div>
-    <div v-if="transparent" class="text-[10px] text-gray-500">
+    <div v-if="transparent" class="text-[10px] text-muted-foreground">
       {{ t("panel.config.tableBgTransparentHint") }}
     </div>
     <div v-else class="flex items-center gap-2">
@@ -66,7 +66,7 @@ function onTransparentChange(v: unknown) {
       />
       <input
         type="color"
-        class="h-7 w-10 shrink-0 cursor-pointer rounded border border-gray-200 p-0.5"
+        class="h-7 w-10 shrink-0 cursor-pointer rounded border border-border p-0.5"
         :value="pickerValue"
         :disabled="disabled"
         :aria-label="t('common.colorPickerAria', { label })"

@@ -223,7 +223,7 @@ watch(
       >
         <span class="font-medium text-foreground">{{ key }}</span>
         <span class="font-mono text-[10px] text-muted-foreground">{{
-          `{${buildScopeExpression(dropdown.state.path, key)}}`
+          "{" + buildScopeExpression(dropdown.state.path, key) + "}"
         }}</span>
       </button>
     </div>

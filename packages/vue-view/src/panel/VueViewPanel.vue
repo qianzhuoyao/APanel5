@@ -42,16 +42,10 @@ import {
 import { collectArmedViewEventBindings, EVENT_NODE_TYPE, LIFECYCLE_NODE_TYPE, buildApiCollectionSyncPatches, toApiCollectionSyncResult, type LibraryBlueprintResolver } from "@arronqzy/blueprint-dsl";
 import {
   Button,
-  Checkbox,
   Dropdown,
   Input,
   Layout,
   Menu,
-  Modal,
-  Slider,
-  Space,
-  Tabs,
-  Tag,
   Tooltip,
   message,
 } from "ant-design-vue";
@@ -73,6 +67,21 @@ import WorkspaceStageSplit from "./components/WorkspaceStageSplit.vue";
 import WorkspaceProjectNav from "./components/WorkspaceProjectNav.vue";
 import WorkspaceConfigSidebar from "./components/WorkspaceConfigSidebar.vue";
 import type { WorkspaceConfigFocus } from "./components/WorkspaceConfigSidebar.vue";
+import PanelLayerDock from "./components/PanelLayerDock.vue";
+import {
+  IconBackward,
+  IconBlueprint,
+  IconBringFront,
+  IconClose,
+  IconForward,
+  IconImage,
+  IconLayers,
+  IconMoon,
+  IconRedo,
+  IconSendBack,
+  IconSun,
+  IconUndo,
+} from "./icons";
 import {
   clearViewElementScopes,
   getViewElementScope,
@@ -86,8 +95,14 @@ import { useI18n } from "@arronqzy/i18n/vue";
 import { relocalizeMessage } from "@arronqzy/i18n";
 import { getPanelMessages } from "./constants/messages";
 import BusyOverlay from "./components/BusyOverlay.vue";
+import PanelRulers from "./components/PanelRulers.vue";
 import { assertFileSize, parseJsonText, runBusyTask } from "./utils/async-work";
-import "../tailwind.css";
+import {
+  getSelectedTargetsFromIds,
+  shouldClearSelectionOnBlank,
+} from "./utils/panelSelection";
+import "./stage.css";
+import "../../dist/styles.css";
 
 const { t, locale, setLocale } = useI18n();
 useBlueprintDslLocaleSync();
@@ -108,6 +123,8 @@ const props = withDefaults(
     packageName?: string | null;
     /** 顶栏「设置 → 关于」展示的包版本号 */
     packageVersion?: string | null;
+    /** 顶栏品牌标记（图片 URL 或内联 SVG） */
+    projectIcon?: string | null;
   }>(),
   {
     initialZoom: 1,
@@ -116,6 +133,7 @@ const props = withDefaults(
     workspaceId: null,
     packageName: null,
     packageVersion: null,
+    projectIcon: null,
   }
 );
 
@@ -132,11 +150,14 @@ const {
   layers,
   activeLayerId,
   updateElement,
+  deleteElement,
   deleteElements,
   bringElementsToFront,
   sendElementsToBack,
   bringElementsForward,
   sendElementsBackward,
+  duplicateElement,
+  openElementsInNewLayer,
   addElementFromMaterial,
   setActiveLayer,
   addLayer,
@@ -157,6 +178,17 @@ const {
 } = usePanelElements();
 
 const selectedIds = ref<string[]>([]);
+const contextMenuNodeId = ref<string | null>(null);
+const dropdownOpen = ref(false);
+const dropdownEpoch = ref(0);
+const dropdownPoint = ref({ x: 0, y: 0 });
+const copiedNodeId = ref<string | null>(null);
+const rightPointer = ref({
+  active: false,
+  moved: false,
+  startX: 0,
+  startY: 0,
+});
 const zoom = ref<ViewportZoom>({ x: props.initialZoom, y: props.initialZoom });
 const blueprintGraph = ref(BlueprintGraph.empty());
 const blueprintMeta = ref<BlueprintMetaDraft>({ name: t("panel.defaults.unnamedBlueprint"), remark: "" });
@@ -184,22 +216,73 @@ const displayBlueprintName = computed(() => {
   );
 });
 const titleIconDataUrl = ref("");
+const titleIconInputRef = ref<HTMLInputElement | null>(null);
 const editingLayerId = ref<string | null>(null);
 const editingLayerName = ref("");
 const isMergingLayers = ref(false);
 const mergeLayerName = ref("");
+const isLayerPanelExpanded = ref(false);
 const leftWidth = ref(220);
 const rightWidth = ref(280);
 const importInputRef = ref<HTMLInputElement | null>(null);
 const blueprintImportInputRef = ref<HTMLInputElement | null>(null);
 const apiCollectionManagerOpen = ref(false);
+const panelFontSize = ref<"sm" | "md" | "lg">("md");
+const panelFontPx = computed(() =>
+  panelFontSize.value === "sm" ? 12 : panelFontSize.value === "lg" ? 15 : 13
+);
+const isDark = ref(
+  typeof document !== "undefined"
+    ? document.documentElement.classList.contains("dark")
+    : true
+);
+const themedScrollbarClass =
+  "scrollbar-thin [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-muted/40 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border/80 [&::-webkit-scrollbar-thumb]:hover:bg-border";
+const projectMarkMarkup = computed(() => {
+  const value = (props.projectIcon ?? "").trim();
+  if (!value) return null;
+  return {
+    isSvg: value.startsWith("<svg") || value.startsWith("<?xml"),
+    value,
+  };
+});
+
+function applyTheme(dark: boolean) {
+  isDark.value = dark;
+  if (typeof document !== "undefined") {
+    document.documentElement.classList.toggle("dark", dark);
+  }
+}
+
+function adjustUniformZoom(updater: (value: number) => number) {
+  setUniformZoom(updater(uniformZoom.value));
+}
+
+async function onTitleIconFileChange(e: Event) {
+  const input = e.target as HTMLInputElement;
+  const file = input.files?.[0];
+  input.value = "";
+  if (!file) return;
+  try {
+    assertFileSize(file, "image");
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result ?? ""));
+      reader.onerror = () => reject(reader.error ?? new Error("read failed"));
+      reader.readAsDataURL(file);
+    });
+    titleIconDataUrl.value = dataUrl;
+  } catch (err) {
+    message.warning(err instanceof Error ? err.message : panelMessages().iconReadFailed);
+  }
+}
 
 const viewportEl = ref<HTMLDivElement | null>(null);
 const canvasEl = ref<HTMLDivElement | null>(null);
 const viewportSyncRef = ref<{ current: (() => void) | null }>({ current: null });
 const selectedTargets = ref<HTMLElement[]>([]);
 
-const { onScrollChange: onViewportScrollChange } = useRafThrottledScroll();
+const { scroll, onScrollChange: onViewportScrollChange } = useRafThrottledScroll();
 
 const activeLayer = computed(() => layers.value.find((l) => l.id === activeLayerId.value));
 const mergeSelectedCount = computed(
@@ -285,16 +368,6 @@ function syncCanvasRef(el: HTMLDivElement | null) {
   canvasEl.value = el;
 }
 
-function getSelectedTargetsFromIds(container: HTMLElement | null, ids: string[]) {
-  if (!container) return [];
-  const targets: HTMLElement[] = [];
-  for (const id of ids) {
-    const el = container.querySelector<HTMLElement>(`[data-element-id="${id}"]`);
-    if (el) targets.push(el);
-  }
-  return targets;
-}
-
 watch([selectedIds, elements, historyCursor], () => {
   selectedTargets.value = getSelectedTargetsFromIds(canvasEl.value, selectedIds.value);
 }, { deep: true });
@@ -336,8 +409,8 @@ function onDropMaterial(payload: { materialId: string; x: number; y: number }) {
 function onCanvasMouseDownCapture(e: MouseEvent) {
   if (e.button !== 0) return;
   const target = e.target as HTMLElement | null;
-  if (target?.closest(".rv-selectable")) return;
   if (target?.closest("[data-workspace-region='blueprint'], [data-blueprint-toggle]")) return;
+  if (!shouldClearSelectionOnBlank(target)) return;
   selectedIds.value = [];
   configFocus.value = "view";
   requestSelectBlueprintNode(null);
@@ -857,8 +930,21 @@ onUnmounted(() => window.removeEventListener("keydown", onKeyDown));
 </script>
 
 <template>
-  <Layout class="vue-view-panel h-screen overflow-hidden" :class="props.class" :key="locale">
-    <Layout.Header class="flex h-10 flex-wrap items-center gap-2 border-b border-border/70 !bg-background/80 px-3 py-0 leading-none backdrop-blur-md">
+  <Layout
+    class="abuilder-stage vue-view-panel relative flex h-full min-h-0 w-full flex-col overflow-hidden bg-background text-foreground"
+    :class="props.class"
+    :key="locale"
+    :style="{ '--panel-font-px': panelFontPx + 'px' }"
+  >
+    <Layout.Header class="rv-topbar panel-font-root relative z-30 flex h-11 shrink-0 items-center gap-2 px-3 text-foreground">
+      <span v-if="projectMarkMarkup" class="rv-mark" aria-hidden="true">
+        <span
+          v-if="projectMarkMarkup.isSvg"
+          class="block h-full w-full [&_svg]:h-full [&_svg]:w-full"
+          v-html="projectMarkMarkup.value"
+        />
+        <img v-else :src="projectMarkMarkup.value" alt="" />
+      </span>
       <Dropdown :trigger="['click']">
         <Button type="text" class="!text-foreground">{{ t("panel.menubar.file") }}</Button>
         <template #overlay>
@@ -911,6 +997,29 @@ onUnmounted(() => window.removeEventListener("keydown", onKeyDown));
         <Button type="text" class="!text-foreground">{{ t("panel.menubar.settings") }}</Button>
         <template #overlay>
           <Menu>
+            <Menu.Item
+              :class="{ 'ant-menu-item-selected': panelFontSize === 'sm' }"
+              @click="panelFontSize = 'sm'"
+            >
+              {{ t("panel.menubar.fontSmall") }}
+            </Menu.Item>
+            <Menu.Item
+              :class="{ 'ant-menu-item-selected': panelFontSize === 'md' }"
+              @click="panelFontSize = 'md'"
+            >
+              {{ t("panel.menubar.fontMedium") }}
+            </Menu.Item>
+            <Menu.Item
+              :class="{ 'ant-menu-item-selected': panelFontSize === 'lg' }"
+              @click="panelFontSize = 'lg'"
+            >
+              {{ t("panel.menubar.fontLarge") }}
+            </Menu.Item>
+            <Menu.Divider />
+            <Menu.Item @click="applyTheme(!isDark)">
+              {{ isDark ? t("panel.menubar.switchToLight") : t("panel.menubar.switchToDark") }}
+            </Menu.Item>
+            <Menu.Divider />
             <Menu.ItemGroup :title="t('panel.theme.language')">
               <Menu.Item :class="{ 'ant-menu-item-selected': locale === 'zh-CN' }" @click="setLocale('zh-CN')">{{ t("panel.theme.zhCN") }}</Menu.Item>
               <Menu.Item :class="{ 'ant-menu-item-selected': locale === 'en-US' }" @click="setLocale('en-US')">{{ t("panel.theme.enUS") }}</Menu.Item>
@@ -929,308 +1038,319 @@ onUnmounted(() => window.removeEventListener("keydown", onKeyDown));
           </Menu>
         </template>
       </Dropdown>
-      <Dropdown :trigger="['click']">
-        <Button type="text" class="!text-foreground">{{ t("panel.theme.language") }}</Button>
-        <template #overlay>
-          <Menu>
-            <Menu.Item :class="{ 'ant-menu-item-selected': locale === 'zh-CN' }" @click="setLocale('zh-CN')">{{ t("panel.theme.zhCN") }}</Menu.Item>
-            <Menu.Item :class="{ 'ant-menu-item-selected': locale === 'en-US' }" @click="setLocale('en-US')">{{ t("panel.theme.enUS") }}</Menu.Item>
-          </Menu>
-        </template>
-      </Dropdown>
       <div class="flex-1" />
-      <Space>
-        <Button size="small" :disabled="!canUndo" @click="undo">{{ t("panel.menubar.undo") }}</Button>
-        <Button size="small" :disabled="!canRedo" @click="redo">{{ t("panel.menubar.redo") }}</Button>
-        <Button
-          size="small"
-          type="primary"
-          :disabled="!workspaceProjects.activeProjectId.value"
-          @click="workspaceProjects.activeProjectId.value && openOnlinePreviewForProject(workspaceProjects.activeProjectId.value, { syncFirst: workspaceProjects.dirty.value })"
-        >
-          {{ t("common.preview") }}
-        </Button>
-      </Space>
     </Layout.Header>
 
     <Layout class="min-h-0 flex-1">
-      <Layout.Sider :width="leftWidth" theme="light" class="min-h-0 overflow-hidden">
-        <MaterialSidebar
-          :layers="layers"
-          :all-elements="allElements"
-          :selected-ids="selectedIds"
-          :on-select-node="(nodeId, layerId) => { if (activeLayerId !== layerId) setActiveLayer(layerId); selectIds([nodeId]); }"
-        />
+      <Layout.Sider :width="leftWidth" theme="light" class="rv-material-sider min-h-0 overflow-hidden !bg-transparent">
+        <div class="panel-font-root h-full min-w-0">
+          <MaterialSidebar
+            :layers="layers"
+            :all-elements="allElements"
+            :selected-ids="selectedIds"
+            :on-select-node="(nodeId, layerId) => { if (activeLayerId !== layerId) setActiveLayer(layerId); selectIds([nodeId]); }"
+          />
+        </div>
       </Layout.Sider>
 
-      <Layout.Content class="relative min-h-0 min-w-0">
-        <div class="flex h-full min-h-0 flex-col">
-          <div class="flex flex-wrap items-center gap-2 border-b border-border/60 bg-muted/15 px-3 py-1.5">
-            <Input
-              :value="displayProductName"
-              size="small"
-              @update:value="(value: string) => (productName = value)"
-              class="w-[180px]"
-              :placeholder="t('panel.menubar.productName')"
-            />
-            <span class="text-xs text-gray-500">{{ t("panel.menubar.zoom") }}</span>
-            <Slider
-              :min="0.25"
-              :max="4"
-              :step="0.05"
-              :value="uniformZoom"
-              style="width: 140px"
-              @change="(v: number | [number, number]) => setUniformZoom(Array.isArray(v) ? v[0] : v)"
-            />
-            <Tag v-if="activeLayer">{{ activeLayer.name }}</Tag>
-            <Tag color="blue">{{ t("panel.menubar.selectedCount", { count: selectedIds.length }) }}</Tag>
-            <Tooltip :title="t('panel.menubar.showBlueprintPanel')">
-              <button
-                type="button"
-                data-blueprint-toggle
-                class="ml-auto inline-flex h-7 w-7 items-center justify-center rounded-md border transition-colors"
-                :class="
-                  blueprintOpen
-                    ? 'border-primary/50 bg-primary/15 text-primary'
-                    : 'border-border/70 bg-background/80 text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-                "
-                :aria-pressed="blueprintOpen"
-                :aria-label="t('panel.menubar.showBlueprintPanel')"
-                @click="blueprintOpen = !blueprintOpen"
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  class="h-3.5 w-3.5"
-                  fill="none"
-                  stroke="currentColor"
-                  :stroke-width="blueprintOpen ? 2.2 : 2"
-                >
-                  <rect x="3" y="4" width="18" height="16" rx="2" />
-                  <circle cx="8" cy="10" r="1.5" :fill="blueprintOpen ? 'currentColor' : 'none'" />
-                  <circle cx="16" cy="10" r="1.5" :fill="blueprintOpen ? 'currentColor' : 'none'" />
-                  <circle cx="12" cy="16" r="1.5" :fill="blueprintOpen ? 'currentColor' : 'none'" />
-                  <path d="M9.2 10.8 10.8 14.2M14.8 10.8 13.2 14.2" />
-                </svg>
-              </button>
-            </Tooltip>
-          </div>
-
-          <WorkspaceStageSplit
-            :blueprint-open="blueprintOpen"
-            :blueprint-props="blueprintCanvasProps"
-            :blueprint-library-items="blueprintLibraryItems"
-            :active-blueprint-library-id="activeBlueprintLibraryId"
-            :current-blueprint-label="displayBlueprintName"
-            :can-sync-blueprint="blueprintLibraryDirty"
-            :blueprint-debug="blueprintDebugToolbar"
-            :on-select-blueprint-library-item="(id) => void handleSelectBlueprintLibraryItem(id)"
-            :on-save-blueprint="() => void saveBlueprintToLibrary(blueprintMeta)"
-            :on-sync-blueprint="() => void syncBlueprintToLibrary()"
-            @graph-change="(g) => (blueprintGraph = g)"
-          >
-            <PanelCanvas
-              class="h-full w-full"
-              :zoom="zoom"
-              :scroll-ref="syncScrollRef"
-              :canvas-ref="syncCanvasRef"
-              :viewport-sync-ref="viewportSyncRef"
-              :on-drop-material="onDropMaterial"
-              :on-canvas-mouse-down-capture="onCanvasMouseDownCapture"
-              @zoom-change="(z) => (zoom = z)"
-              @scroll-change="onViewportScrollChange"
-            >
-              <ElementsLayer
-                :elements="scopedCanvasElements"
-                :all-elements="allElements"
-                :selected-ids="selectedIds"
-                :update-element="updateElement"
-                :layer-locked="Boolean(activeLayer?.locked)"
-                :on-table-cell-action="
-                  (payload) => {
-                    void triggerBlueprintNode(payload.blueprintNodeId, payload);
-                  }
-                "
-                :bound-view-event-types="boundViewEventTypes"
-                :on-view-ui-event="
-                  (payload) => {
-                    void emitViewEvent(payload);
-                  }
-                "
-                @select-ids="selectIds"
-              />
-              <SelectLayer
-                :container="canvasEl"
-                :drag-container="viewportEl"
-                :root-container="viewportEl"
-                :selected-ids="selectedIds"
-                @selected-ids-change="selectIds"
-              />
-              <template #viewport-overlay>
-                <MoveableLayer
-                  :zoom-x="zoom.x"
-                  :zoom-y="zoom.y"
-                  :canvas-container="canvasEl"
-                  :drag-container="viewportEl"
-                  :selected-targets="selectedTargets"
-                  :elements-by-id="byId"
-                  :update-element="updateElement"
-                  :refresh-token="historyCursor"
-                  :viewport-sync-ref="viewportSyncRef"
-                />
-              </template>
-            </PanelCanvas>
-          </WorkspaceStageSplit>
-
-          <div class="border-t border-border/50 bg-muted/5 px-1.5 py-0.5">
-            <div class="flex min-w-0 flex-wrap items-center gap-1">
-              <Tooltip :title="t('panel.layers.title')">
-                <span class="inline-flex h-6 items-center px-1 text-[11px] font-semibold text-muted-foreground">
-                  {{ t("panel.layers.title") }}
-                </span>
-              </Tooltip>
-              <Tooltip :title="t('panel.layers.add')">
-                <Button size="small" class="!h-6 !px-2 !text-[11px]" @click="addLayer()">
-                  {{ t("panel.layers.addShort") }}
-                </Button>
-              </Tooltip>
-              <Tooltip :title="canMergeLayers ? t('panel.layers.merge') : t('panel.layers.mergeNeedTwo')">
-                <Button
-                  size="small"
-                  class="!h-6 !px-2 !text-[11px]"
-                  :disabled="!canMergeLayers"
-                  @click="isMergingLayers = true"
-                >
-                  {{ t("panel.layers.mergeShort") }}
-                </Button>
-              </Tooltip>
-              <Tabs
+      <Layout.Content class="rv-stage relative flex h-full flex-col overflow-hidden bg-background">
+        <div class="panel-font-root min-w-0 h-full">
+          <div class="flex h-full min-h-0 flex-col">
+            <div class="rv-canvas-toolbar relative flex items-center gap-2 px-3 py-1.5 text-foreground">
+              <Input
+                :value="displayProductName"
                 size="small"
-                class="min-w-0 flex-1"
-                :active-key="activeLayerId"
-                type="card"
-                @update:active-key="(k: string | number) => setActiveLayer(String(k))"
+                class="h-7 w-[200px] rounded-md border-border/70 bg-background/80 text-xs"
+                :placeholder="t('panel.menubar.productNamePlaceholder')"
+                :aria-label="t('panel.menubar.productName')"
+                @update:value="(value: string) => (productName = value)"
+              />
+              <Tooltip :title="t('panel.menubar.uploadTitleIcon')">
+                <button
+                  type="button"
+                  class="rounded border border-border p-1 hover:bg-accent"
+                  :aria-label="t('panel.menubar.uploadTitleIcon')"
+                  @click="titleIconInputRef?.click()"
+                >
+                  <IconImage />
+                </button>
+              </Tooltip>
+              <Tooltip v-if="titleIconDataUrl" :title="t('panel.menubar.clearTitleIcon')">
+                <button
+                  type="button"
+                  class="rounded border border-border p-1 hover:bg-accent"
+                  :aria-label="t('panel.menubar.clearTitleIcon')"
+                  @click="titleIconDataUrl = ''"
+                >
+                  <IconClose />
+                </button>
+              </Tooltip>
+              <span
+                v-if="titleIconDataUrl"
+                class="h-7 shrink-0 flex min-w-[92px] items-center gap-1.5 rounded border border-border bg-muted/30 px-2 py-1"
               >
-                <Tabs.TabPane v-for="layer in layers" :key="layer.id">
-                  <template #tab>
-                    <span class="inline-flex max-w-[110px] items-center gap-1 text-[11px] font-medium">
-                      <span class="truncate">{{ layer.name }}</span>
-                      <Tag v-if="layer.isPrimary" color="green" class="!m-0 !px-1 !text-[10px]">
-                        {{ t("panel.layers.primary") }}
-                      </Tag>
-                    </span>
-                  </template>
-                </Tabs.TabPane>
-              </Tabs>
+                <img
+                  :src="titleIconDataUrl"
+                  :alt="t('panel.menubar.titleIconThumbAlt')"
+                  class="h-5 w-5 shrink-0 rounded border border-border/60 object-cover"
+                />
+                <span class="text-[10px] text-muted-foreground">Title Icon</span>
+              </span>
+              <Tooltip :title="t('panel.menubar.undo')">
+                <button
+                  type="button"
+                  class="rounded border border-border p-1 hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40"
+                  :disabled="!canUndo"
+                  :aria-label="t('panel.menubar.undo')"
+                  @click="undo"
+                >
+                  <IconUndo />
+                </button>
+              </Tooltip>
+              <Tooltip :title="t('panel.menubar.redo')">
+                <button
+                  type="button"
+                  class="rounded border border-border p-1 hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40"
+                  :disabled="!canRedo"
+                  :aria-label="t('panel.menubar.redo')"
+                  @click="redo"
+                >
+                  <IconRedo />
+                </button>
+              </Tooltip>
+              <Dropdown :trigger="['click']" :disabled="!hasUnlockedSelection">
+                <button
+                  type="button"
+                  class="rounded border border-border p-1 hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40"
+                  :disabled="!hasUnlockedSelection"
+                  :aria-label="t('panel.menubar.nodeZOrderAria')"
+                >
+                  <IconLayers />
+                </button>
+                <template #overlay>
+                  <Menu>
+                    <Menu.Item :disabled="!hasUnlockedSelection" @click="bringElementsForward(selectedIds)">
+                      <span class="mr-2 inline-flex"><IconForward /></span>
+                      {{ t("panel.menubar.bringForward") }}
+                    </Menu.Item>
+                    <Menu.Item :disabled="!hasUnlockedSelection" @click="sendElementsBackward(selectedIds)">
+                      <span class="mr-2 inline-flex"><IconBackward /></span>
+                      {{ t("panel.menubar.sendBackward") }}
+                    </Menu.Item>
+                    <Menu.Item :disabled="!hasUnlockedSelection" @click="bringElementsToFront(selectedIds)">
+                      <span class="mr-2 inline-flex"><IconBringFront /></span>
+                      {{ t("panel.menubar.bringToFront") }}
+                    </Menu.Item>
+                    <Menu.Item :disabled="!hasUnlockedSelection" @click="sendElementsToBack(selectedIds)">
+                      <span class="mr-2 inline-flex"><IconSendBack /></span>
+                      {{ t("panel.menubar.sendToBack") }}
+                    </Menu.Item>
+                  </Menu>
+                </template>
+              </Dropdown>
+              <div class="flex-1" />
+              <div class="inline-flex items-center gap-1">
+                <Tooltip :title="t('panel.menubar.showBlueprintPanel')">
+                  <button
+                    type="button"
+                    data-blueprint-toggle
+                    class="inline-flex h-7 w-7 items-center justify-center rounded-md border transition-colors"
+                    :class="
+                      blueprintOpen
+                        ? 'border-primary/50 bg-primary/15 text-primary'
+                        : 'border-border/70 bg-background/80 text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                    "
+                    :aria-pressed="blueprintOpen"
+                    :aria-label="t('panel.menubar.showBlueprintPanel')"
+                    @click="blueprintOpen = !blueprintOpen"
+                  >
+                    <IconBlueprint :active="blueprintOpen" />
+                  </button>
+                </Tooltip>
+                <Tooltip :title="t('panel.menubar.toggleTheme')">
+                  <button
+                    type="button"
+                    class="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border/70 bg-background/80 text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+                    :aria-label="t('panel.menubar.toggleTheme')"
+                    :aria-pressed="isDark"
+                    @click="applyTheme(!isDark)"
+                  >
+                    <IconMoon v-if="isDark" />
+                    <IconSun v-else />
+                  </button>
+                </Tooltip>
+              </div>
+              <Tooltip :title="t('panel.menubar.zoomOutCanvas')">
+                <button
+                  type="button"
+                  class="rounded-md border border-border bg-secondary px-2 py-1 text-xs text-secondary-foreground hover:bg-secondary/80"
+                  @click="adjustUniformZoom((z) => z - 0.1)"
+                >
+                  -
+                </button>
+              </Tooltip>
+              <span class="w-20 text-center text-xs">
+                {{
+                  zoom.x === zoom.y
+                    ? `${(zoom.x * 100).toFixed(0)}%`
+                    : `${(zoom.x * 100).toFixed(0)}%×${(zoom.y * 100).toFixed(0)}%`
+                }}
+              </span>
+              <Tooltip :title="t('panel.menubar.zoomInCanvas')">
+                <button
+                  type="button"
+                  class="rounded-md border border-border bg-secondary px-2 py-1 text-xs text-secondary-foreground hover:bg-secondary/80"
+                  @click="adjustUniformZoom((z) => z + 0.1)"
+                >
+                  +
+                </button>
+              </Tooltip>
             </div>
 
-            <div
-              v-if="activeLayer"
-              class="mt-1 flex flex-wrap items-center gap-1 rounded-md border border-border/50 bg-card/80 px-1.5 py-0.5 text-[11px]"
+            <WorkspaceStageSplit
+              :blueprint-open="blueprintOpen"
+              :blueprint-props="blueprintCanvasProps"
+              :blueprint-library-items="blueprintLibraryItems"
+              :active-blueprint-library-id="activeBlueprintLibraryId"
+              :current-blueprint-label="displayBlueprintName"
+              :can-sync-blueprint="blueprintLibraryDirty"
+              :blueprint-debug="blueprintDebugToolbar"
+              :on-select-blueprint-library-item="(id) => void handleSelectBlueprintLibraryItem(id)"
+              :on-save-blueprint="() => void saveBlueprintToLibrary(blueprintMeta)"
+              :on-sync-blueprint="() => void syncBlueprintToLibrary()"
+              @graph-change="(g) => (blueprintGraph = g)"
             >
-              <template v-if="editingLayerId === activeLayer.id">
-                <Input
-                  v-model:value="editingLayerName"
-                  size="small"
-                  class="!h-6 w-28"
-                  @press-enter="commitRenameLayer"
+              <div class="relative min-h-0 flex-1">
+                <PanelRulers
+                  :zoom-x="zoom.x"
+                  :zoom-y="zoom.y"
+                  :scroll-left="scroll.left"
+                  :scroll-top="scroll.top"
                 />
-                <Tooltip :title="t('common.ok')">
-                  <Button size="small" type="primary" class="!h-6 !px-2" @click="commitRenameLayer">
-                    {{ t("common.ok") }}
-                  </Button>
-                </Tooltip>
-              </template>
-              <template v-else>
-                <span class="max-w-[100px] truncate font-semibold">{{ activeLayer.name }}</span>
-                <Tooltip :title="t('panel.layers.rename')">
-                  <Button
-                    size="small"
-                    type="link"
-                    class="!h-6 !px-1 !text-[11px]"
-                    @click="startRenameLayer(activeLayer.id, activeLayer.name)"
-                  >
-                    {{ t("panel.layers.renameShort") }}
-                  </Button>
-                </Tooltip>
-              </template>
-              <Tooltip :title="activeLayer.locked ? t('panel.layers.unlock') : t('panel.layers.lock')">
-                <Button size="small" class="!h-6 !px-2 !text-[11px]" @click="toggleLayerLock(activeLayer.id)">
-                  {{ activeLayer.locked ? t("panel.layers.unlockShort") : t("panel.layers.lockShort") }}
-                </Button>
-              </Tooltip>
-              <Tooltip :title="t('panel.layers.joinMerge')">
-                <Checkbox
-                  :checked="Boolean(activeLayer.mergeSelected)"
-                  @change="() => toggleLayerMergeSelected(activeLayer!.id)"
+                <PanelCanvas
+                  class="h-full w-full"
+                  :zoom="zoom"
+                  :scroll-ref="syncScrollRef"
+                  :canvas-ref="syncCanvasRef"
+                  :viewport-sync-ref="viewportSyncRef"
+                  :on-drop-material="onDropMaterial"
+                  :on-canvas-mouse-down-capture="onCanvasMouseDownCapture"
+                  @zoom-change="(z) => (zoom = z)"
+                  @scroll-change="onViewportScrollChange"
                 >
-                  <span class="text-[11px]">{{ t("panel.layers.joinMerge") }}</span>
-                </Checkbox>
-              </Tooltip>
-              <Tooltip :title="t('panel.layers.setPrimaryHint')">
-                <Button
-                  size="small"
-                  class="!h-6 !px-2 !text-[11px]"
-                  :disabled="activeLayer.isPrimary"
-                  @click="setPrimaryLayer(activeLayer.id)"
-                >
-                  {{ t("panel.layers.setPrimary") }}
-                </Button>
-              </Tooltip>
-              <Tooltip :title="t('panel.layers.delete')">
-                <Button
-                  size="small"
-                  danger
-                  class="!h-6 !px-2 !text-[11px]"
-                  :disabled="!activeLayer.editable"
-                  @click="deleteLayer(activeLayer.id)"
-                >
-                  {{ t("panel.layers.delete") }}
-                </Button>
-              </Tooltip>
+                  <ElementsLayer
+                    :elements="scopedCanvasElements"
+                    :all-elements="allElements"
+                    :selected-ids="selectedIds"
+                    :update-element="updateElement"
+                    :layer-locked="Boolean(activeLayer?.locked)"
+                    :on-table-cell-action="
+                      (payload) => {
+                        void triggerBlueprintNode(payload.blueprintNodeId, payload);
+                      }
+                    "
+                    :bound-view-event-types="boundViewEventTypes"
+                    :on-view-ui-event="
+                      (payload) => {
+                        void emitViewEvent(payload);
+                      }
+                    "
+                    @select-ids="selectIds"
+                  />
+                  <SelectLayer
+                    :container="canvasEl"
+                    :drag-container="viewportEl"
+                    :root-container="viewportEl"
+                    :selected-ids="selectedIds"
+                    @selected-ids-change="selectIds"
+                  />
+                  <template #viewport-overlay>
+                    <MoveableLayer
+                      :zoom-x="zoom.x"
+                      :zoom-y="zoom.y"
+                      :canvas-container="canvasEl"
+                      :drag-container="viewportEl"
+                      :selected-targets="selectedTargets"
+                      :elements-by-id="byId"
+                      :update-element="updateElement"
+                      :refresh-token="historyCursor"
+                      :viewport-sync-ref="viewportSyncRef"
+                    />
+                  </template>
+                </PanelCanvas>
+              </div>
+            </WorkspaceStageSplit>
+
+            <div class="rv-layer-dock">
+              <PanelLayerDock
+                :t="t"
+                :is-layer-panel-expanded="isLayerPanelExpanded"
+                :set-is-layer-panel-expanded="(v) => (isLayerPanelExpanded = v)"
+                :add-layer="addLayer"
+                :can-merge-layers="canMergeLayers"
+                :set-is-merging-layers="(v) => (isMergingLayers = v)"
+                :is-merging-layers="isMergingLayers"
+                :layers="layers"
+                :active-layer-id="activeLayerId"
+                :set-active-layer="setActiveLayer"
+                :themed-scrollbar-class="themedScrollbarClass"
+                :active-layer="activeLayer ?? null"
+                :editing-layer-id="editingLayerId"
+                :set-editing-layer-id="(id) => (editingLayerId = id)"
+                :editing-layer-name="editingLayerName"
+                :set-editing-layer-name="(name) => (editingLayerName = name)"
+                :rename-layer="renameLayer"
+                :set-primary-layer="setPrimaryLayer"
+                :toggle-layer-lock="toggleLayerLock"
+                :on-delete-layer="deleteLayer"
+                :toggle-layer-merge-selected="toggleLayerMergeSelected"
+                :merge-layer-name="mergeLayerName"
+                :set-merge-layer-name="(name) => (mergeLayerName = name)"
+                :merge-selected-layers="mergeSelectedLayers"
+              />
             </div>
           </div>
         </div>
       </Layout.Content>
 
-      <Layout.Sider :width="rightWidth" theme="light" class="min-h-0 overflow-hidden border-l">
-        <WorkspaceConfigSidebar
-          :config-focus="configFocus"
-          :selected-element="selectedElement"
-          :selected-elements="selectedElements"
-          :layers="layers"
-          :update-element="updateElement"
-          :view-element-scope="viewElementScope"
-          :set-reference-copy-mode="setReferenceCopyMode"
-          :node-z-order-label="selectedNodeZOrderLabel"
-          :on-exclude-selected-node="excludeSelectedNode"
-          :on-adjust-node-z-order="adjustNodeZOrder"
-          :selected-blueprint-node="selectedBlueprintNode"
-          :blueprint-graph-nodes="blueprintGraph.document.nodes"
-          :blueprint-graph-edges="blueprintGraph.document.edges"
-          :blueprint-trace-entries="blueprintDebugSession.entries.value"
-          :allow-false-signal-propagation="blueprintGraph.document.allowFalseSignalPropagation"
-          :blueprint-library-options="blueprintLibraryOptions"
-          :blueprint-node-options="blueprintNodeOptions"
-          :all-view-elements="allElements"
-          :on-update-blueprint-node="handleUpdateBlueprintNode"
-          :on-update-allow-false-signal-propagation="handleUpdateAllowFalseSignalPropagation"
-        />
+      <Layout.Sider :width="rightWidth" theme="light" class="rv-config-sider min-h-0 overflow-hidden !bg-transparent">
+        <div class="panel-font-root h-full min-w-0">
+          <WorkspaceConfigSidebar
+            :config-focus="configFocus"
+            :selected-element="selectedElement"
+            :selected-elements="selectedElements"
+            :layers="layers"
+            :update-element="updateElement"
+            :view-element-scope="viewElementScope"
+            :set-reference-copy-mode="setReferenceCopyMode"
+            :node-z-order-label="selectedNodeZOrderLabel"
+            :on-exclude-selected-node="excludeSelectedNode"
+            :on-adjust-node-z-order="adjustNodeZOrder"
+            :selected-blueprint-node="selectedBlueprintNode"
+            :blueprint-graph-nodes="blueprintGraph.document.nodes"
+            :blueprint-graph-edges="blueprintGraph.document.edges"
+            :blueprint-trace-entries="blueprintDebugSession.entries.value"
+            :allow-false-signal-propagation="blueprintGraph.document.allowFalseSignalPropagation"
+            :blueprint-library-options="blueprintLibraryOptions"
+            :blueprint-node-options="blueprintNodeOptions"
+            :all-view-elements="allElements"
+            :on-update-blueprint-node="handleUpdateBlueprintNode"
+            :on-update-allow-false-signal-propagation="handleUpdateAllowFalseSignalPropagation"
+          />
+        </div>
       </Layout.Sider>
     </Layout>
 
     <BusyOverlay />
     <input ref="importInputRef" type="file" accept="application/json" class="hidden" @change="async (e) => { const f = (e.target as HTMLInputElement).files?.[0]; (e.target as HTMLInputElement).value = ''; if (f) await handleImportFile(f); }" />
     <input ref="blueprintImportInputRef" type="file" accept="application/json" class="hidden" @change="async (e) => { const f = (e.target as HTMLInputElement).files?.[0]; (e.target as HTMLInputElement).value = ''; if (f) await handleBlueprintImportFile(f); }" />
-
-    <Modal
-      v-model:open="isMergingLayers"
-      :title="t('panel.layers.mergeDialogTitle')"
-      :ok-text="t('panel.layers.mergeOk')"
-      @ok="handleMergeLayers"
-    >
-      <Input v-model:value="mergeLayerName" :placeholder="t('panel.layers.mergedNamePlaceholderOptional')" />
-      <div class="mt-2 text-xs text-gray-500">{{ t("panel.layers.mergeSelectedCount", { count: mergeSelectedCount }) }}</div>
-    </Modal>
+    <input
+      ref="titleIconInputRef"
+      type="file"
+      accept="image/*"
+      class="hidden"
+      @change="onTitleIconFileChange"
+    />
 
     <ApiCollectionManagerDialog
       :open="apiCollectionManagerOpen"
@@ -1241,6 +1361,72 @@ onUnmounted(() => window.removeEventListener("keydown", onKeyDown));
     />
   </Layout>
 </template>
+
+<style>
+/* 功能说明视觉层次：主标签醒目、辅助说明更轻（类苹果） */
+.panel-font-root {
+  font-size: var(--panel-font-px);
+  font-weight: 400;
+  letter-spacing: -0.011em;
+}
+.panel-font-root [data-typo="title"] {
+  font-size: calc(var(--panel-font-px) * 1.08) !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.022em;
+}
+.panel-font-root [data-typo="label"] {
+  font-size: var(--panel-font-px) !important;
+  font-weight: 510 !important;
+  letter-spacing: -0.015em;
+}
+.panel-font-root [data-typo="caption"] {
+  font-size: calc(var(--panel-font-px) * 0.85) !important;
+  font-weight: 400 !important;
+  letter-spacing: -0.008em;
+}
+.panel-font-root [data-typo="micro"] {
+  font-size: calc(var(--panel-font-px) * 0.77) !important;
+  font-weight: 400 !important;
+}
+/* 画布节点、富文本内容使用各自的字号，不被编辑器 UI 字号强制覆盖 */
+.panel-font-root [data-workspace-region="view"] :is(span, label, p, strong, button, input, textarea, select, option, a, li),
+.panel-font-root [data-panel-user-text] :is(span, label, p, strong, button, input, textarea, select, option, a, li) {
+  font-size: inherit !important;
+  font-weight: inherit !important;
+  letter-spacing: inherit !important;
+}
+.panel-font-root :is(input, textarea):focus,
+.panel-font-root :is(input, textarea):focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+.panel-font-root button[role="combobox"] {
+  border-width: 1px !important;
+  border-color: hsl(var(--foreground) / 0.35) !important;
+  background: hsl(var(--background)) !important;
+  box-shadow: 0 0 0 1px hsl(var(--foreground) / 0.12) inset !important;
+}
+.panel-font-root button[role="combobox"]:focus,
+.panel-font-root button[role="combobox"]:focus-visible,
+.panel-font-root button[role="combobox"][data-state="open"] {
+  outline: none !important;
+  box-shadow: 0 0 0 1px hsl(var(--foreground) / 0.12) inset !important;
+  border-color: hsl(var(--foreground) / 0.35) !important;
+}
+.panel-font-root button[role="checkbox"] {
+  border-width: 2px !important;
+  border-color: hsl(var(--foreground) / 0.8) !important;
+  background: hsl(var(--background)) !important;
+  color: hsl(var(--background)) !important;
+  box-shadow: 0 0 0 1px hsl(var(--foreground) / 0.4) inset !important;
+}
+.panel-font-root button[role="checkbox"][data-state="checked"] {
+  border-color: hsl(var(--primary)) !important;
+  background: hsl(var(--primary)) !important;
+  color: hsl(var(--primary-foreground)) !important;
+  box-shadow: 0 0 0 1px hsl(var(--primary) / 0.45) inset !important;
+}
+</style>
 
 <style scoped>
 .vue-view-panel :deep(.ant-layout-sider-children) {

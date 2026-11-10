@@ -64,7 +64,7 @@ watch(() => [props.element.id, props.element.textHtml], syncEditorHtml);
       <div class="flex items-center gap-1">
         <button
           type="button"
-          class="rounded border border-gray-200 px-2 py-1 text-[11px] hover:bg-gray-50 disabled:opacity-50"
+          class="rounded border border-border px-2 py-1 text-[11px] hover:bg-accent disabled:opacity-50"
           :disabled="!isEditable"
           @click="execTextCommand('bold')"
         >
@@ -72,7 +72,7 @@ watch(() => [props.element.id, props.element.textHtml], syncEditorHtml);
         </button>
         <button
           type="button"
-          class="rounded border border-gray-200 px-2 py-1 text-[11px] italic hover:bg-gray-50 disabled:opacity-50"
+          class="rounded border border-border px-2 py-1 text-[11px] italic hover:bg-accent disabled:opacity-50"
           :disabled="!isEditable"
           @click="execTextCommand('italic')"
         >
@@ -80,7 +80,7 @@ watch(() => [props.element.id, props.element.textHtml], syncEditorHtml);
         </button>
         <button
           type="button"
-          class="rounded border border-gray-200 px-2 py-1 text-[11px] underline hover:bg-gray-50 disabled:opacity-50"
+          class="rounded border border-border px-2 py-1 text-[11px] underline hover:bg-accent disabled:opacity-50"
           :disabled="!isEditable"
           @click="execTextCommand('underline')"
         >
@@ -91,7 +91,7 @@ watch(() => [props.element.id, props.element.textHtml], syncEditorHtml);
         ref="textEditorRef"
         data-config-field="textHtml"
         data-panel-user-text=""
-        class="min-h-[120px] rounded border border-gray-200 bg-white px-2 py-1.5 leading-6 outline-none"
+        class="min-h-[120px] rounded border border-border bg-background px-2 py-1.5 leading-6 outline-none"
         :contenteditable="isEditable"
         :style="{
           fontFamily: element.textFontFamily || undefined,
@@ -115,7 +115,7 @@ watch(() => [props.element.id, props.element.textHtml], syncEditorHtml);
         </div>
         <textarea
           data-config-field="textHtml"
-          class="w-full rounded border border-gray-200 bg-white px-2 py-1.5 font-mono text-[11px] leading-relaxed outline-none"
+          class="w-full rounded border border-border bg-background px-2 py-1.5 font-mono text-[11px] leading-relaxed outline-none"
           rows="4"
           spellcheck="false"
           :value="element.textHtml ?? ''"

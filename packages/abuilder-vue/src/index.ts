@@ -1,11 +1,11 @@
 export { default as App } from "./App.vue";
-export type { AbuilderVueAppProps, WorkspaceProjectRecord } from "./types";
+export type { AbuilderVueAppProps, AbuilderPlugin, WorkspaceProjectRecord } from "./types";
 export { ABUILDER_VUE_PACKAGE_NAME, ABUILDER_VUE_VERSION } from "./version";
 export type { Locale } from "@arronqzy/i18n";
 
 export {
-  VueViewPanel,
-  VueViewOnlinePreview,
+  ReactViewPanel,
+  ReactViewOnlinePreview,
   parseOnlinePreviewSearchParams,
   parseViewData,
   validateViewData,
@@ -49,20 +49,9 @@ export {
   getPreviewSnapshot,
   addEventSubscription,
   AbuilderEvents,
-} from "@arronqzy/vue-view";
+} from "@arronqzy/abuilder";
 export type {
-  ParseCheckResult,
-  WorkspaceParseCheckResult,
-  WorkspaceProjectListItem,
-  PutWorkspaceProjectOptions,
-  AbuilderStorageClearResult,
-  BlueprintLibraryListItem,
-  BlueprintLibraryRecord,
-  ExecutionRunRecord,
-  ExecutionLogSettings,
-  ApiCollectionRecord,
-  UpsertApiCollectionInput,
-  UpsertApiCollectionResult,
+  ReactViewPanelProps,
   AbuilderViewHandle,
   AbuilderEventName,
   AbuilderEventPayloadMap,
@@ -75,5 +64,17 @@ export type {
   ApiCollectionUploadSuccessEventPayload,
   ApiCollectionChangedEventPayload,
   WorkspaceData,
+  WorkspaceProjectListItem,
+  PutWorkspaceProjectOptions,
+  AbuilderStorageClearResult,
+  BlueprintLibraryListItem,
+  BlueprintLibraryRecord,
+  ExecutionRunRecord,
+  ExecutionLogSettings,
+  ApiCollectionRecord,
+  UpsertApiCollectionInput,
+  UpsertApiCollectionResult,
   GetPreviewSnapshotOptions,
-} from "@arronqzy/vue-view";
+  ParseCheckResult,
+  WorkspaceParseCheckResult,
+} from "@arronqzy/abuilder";

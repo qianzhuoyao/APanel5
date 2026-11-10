@@ -173,7 +173,7 @@ watch(blueprintWrapRef, (el) => {
     @pointercancel="onPointerUp"
   >
     <div
-      class="min-h-0 overflow-hidden"
+      class="flex min-h-0 flex-col overflow-hidden"
       :style="{ flex: `${viewRatio} 1 0%` }"
     >
       <slot />
@@ -181,7 +181,7 @@ watch(blueprintWrapRef, (el) => {
 
     <div
       v-show="blueprintOpen"
-      class="group relative z-10 flex h-2 shrink-0 cursor-row-resize items-center justify-center border-y border-border bg-muted/30"
+      class="group relative z-10 flex h-px shrink-0 cursor-row-resize items-center justify-center border-y border-border bg-muted/30"
       @pointerdown="onPointerDownHandle"
     >
       <div
@@ -191,11 +191,11 @@ watch(blueprintWrapRef, (el) => {
 
     <div
       v-show="blueprintOpen"
-      class="flex min-h-0 flex-col overflow-hidden bg-background"
+      class="rv-blueprint flex h-full min-h-0 flex-col overflow-hidden"
       :style="{ flex: `${1 - viewRatio} 1 0%` }"
     >
       <div
-        class="flex shrink-0 flex-wrap items-center gap-2 border-b border-border bg-background/90 px-2 py-1"
+        class="rv-blueprint-toolbar flex shrink-0 items-center gap-2 px-2 py-1"
       >
         <Space size="small" wrap>
           <Select

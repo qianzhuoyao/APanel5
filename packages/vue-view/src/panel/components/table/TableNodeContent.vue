@@ -528,7 +528,7 @@ const TableRowView = defineComponent({
     <div ref="parentRef" class="min-h-0 flex-1 overflow-auto" style="background: transparent">
       <div
         v-if="model.rows.length === 0"
-        class="flex h-full flex-col items-center justify-center gap-2 px-3 text-center text-xs text-gray-400"
+        class="flex h-full flex-col items-center justify-center gap-2 px-3 text-center text-xs text-muted-foreground"
       >
         <svg
           viewBox="0 0 48 48"

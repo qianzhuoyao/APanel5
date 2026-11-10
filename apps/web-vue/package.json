@@ -4,20 +4,27 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview",
+    "build:deps": "pnpm -C ../../packages/ui run build:css && pnpm -C ../../packages/react-blueprint run build:css && pnpm -C ../../packages/react-view run build:css && pnpm -C ../../packages/abuilder run build:css",
+    "dev": "pnpm run build:deps && ./node_modules/vite/bin/vite.js",
+    "build": "pnpm run build:deps && ./node_modules/vite/bin/vite.js build",
+    "preview": "./node_modules/vite/bin/vite.js preview",
     "typecheck": "vue-tsc --noEmit"
   },
   "dependencies": {
+    "@arronqzy/abuilder": "workspace:*",
     "@arronqzy/abuilder-vue": "workspace:*",
-    "@arronqzy/vue-view": "workspace:*",
-    "ant-design-vue": "^4.2.6",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "veaury": "^2.6.3",
     "vue": "^3.5.13"
   },
   "devDependencies": {
     "@arronqzy/typescript-config": "workspace:*",
+    "@types/react": "^19.0.1",
+    "@types/react-dom": "^19.0.2",
+    "@vitejs/plugin-react": "^3.1.0",
     "@vitejs/plugin-vue": "^5.2.1",
+    "@vitejs/plugin-vue-jsx": "^4.1.1",
     "typescript": "^5.5.4",
     "vite": "^5.4.17",
     "vue-tsc": "^2.2.0"

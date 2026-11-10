@@ -169,7 +169,7 @@ function clearSketch() {
           <input
             v-model="geometryDrawPenColor"
             type="color"
-            class="h-7 w-10 cursor-pointer rounded border border-gray-200 p-0.5"
+            class="h-7 w-10 cursor-pointer rounded border border-border p-0.5"
             :disabled="!isEditable"
           />
         </label>
@@ -186,12 +186,12 @@ function clearSketch() {
           />
         </label>
       </div>
-      <div class="rounded border border-gray-200/60 bg-white p-2">
+      <div class="rounded border border-border/60 bg-background p-2">
         <canvas
           ref="geometryDrawCanvasRef"
           width="320"
           height="180"
-          class="h-[180px] w-full cursor-crosshair rounded border border-gray-200/60"
+          class="h-[180px] w-full cursor-crosshair rounded border border-border/60"
           @pointerdown="onPointerDown"
           @pointermove="onPointerMove"
           @pointerup="endDrawing"
@@ -201,7 +201,7 @@ function clearSketch() {
       <div class="flex items-center gap-2">
         <button
           type="button"
-          class="rounded border border-gray-200 px-2 py-1 text-[11px] hover:bg-gray-50 disabled:opacity-50"
+          class="rounded border border-border px-2 py-1 text-[11px] hover:bg-accent disabled:opacity-50"
           :disabled="!isEditable"
           @click="applySketch"
         >
@@ -209,7 +209,7 @@ function clearSketch() {
         </button>
         <button
           type="button"
-          class="rounded border border-gray-200 px-2 py-1 text-[11px] hover:bg-gray-50 disabled:opacity-50"
+          class="rounded border border-border px-2 py-1 text-[11px] hover:bg-accent disabled:opacity-50"
           :disabled="!isEditable"
           @click="clearSketch"
         >

@@ -4,6 +4,19 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)，版本号遵循 [SemVer](https://semver.org/lang/zh-CN/)。
 
+## [1.1.47] - 2026-11-10
+
+配套：`abuilder-vue@0.1.29` · `vue-view@0.1.30`
+
+### Changed
+
+- `@arronqzy/abuilder-vue` 改为通过 Veaury 包装 React 版 `@arronqzy/abuilder`，Vue 宿主与 React 编辑器行为对齐（拖拽、右键菜单、配置区等）
+- `web-vue` 接入 Veaury / React 构建链路，并同步 `plugins`、`pIcon`、`pTitle` 等入口 props
+
+### Notes
+
+- Vue 消费方需安装 `react`、`react-dom`、`veaury`，Vite 需配置 `veauryVitePlugins`
+
 ## [1.1.46] - 2026-10-28
 
 配套：`webllm-assistant@0.1.18` · `react-view@1.0.45`

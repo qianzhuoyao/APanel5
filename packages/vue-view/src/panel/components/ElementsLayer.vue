@@ -152,6 +152,10 @@ const sortedElements = computed(() => {
 function onSelect(id: string, event: MouseEvent) {
   if (props.previewMode) return;
   if (event.button !== 0) return;
+  const target = event.target as HTMLElement | null;
+  if (target?.closest("[data-scene3d-orbit-active='true']")) {
+    return;
+  }
   const isSelected = props.selectedIds.includes(id);
   if (event.shiftKey) {
     emit(

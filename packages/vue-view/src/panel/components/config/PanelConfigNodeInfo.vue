@@ -118,12 +118,12 @@ function patch(patch: Partial<PanelElement>) {
       </label>
     </div>
     <div class="space-y-1.5">
-      <div class="text-[11px] text-gray-500">{{ t("panel.config.nodeZOrder") }}</div>
-      <div class="text-[11px] text-gray-400">{{ t("panel.config.currentZIndex", { value: nodeZOrderLabel ?? "-" }) }}</div>
+      <div class="text-[11px] text-muted-foreground">{{ t("panel.config.nodeZOrder") }}</div>
+      <div class="text-[11px] text-muted-foreground">{{ t("panel.config.currentZIndex", { value: nodeZOrderLabel ?? "-" }) }}</div>
       <div v-if="onAdjustNodeZOrder" class="grid grid-cols-2 gap-2">
         <button
           type="button"
-          class="rounded border border-gray-200 bg-white px-2 py-1 text-[11px] hover:bg-gray-50 disabled:opacity-50"
+          class="rounded border border-border bg-background px-2 py-1 text-[11px] hover:bg-accent disabled:opacity-50"
           :disabled="!isEditable"
           @click="onAdjustNodeZOrder(element.id, 'bringForward')"
         >
@@ -131,7 +131,7 @@ function patch(patch: Partial<PanelElement>) {
         </button>
         <button
           type="button"
-          class="rounded border border-gray-200 bg-white px-2 py-1 text-[11px] hover:bg-gray-50 disabled:opacity-50"
+          class="rounded border border-border bg-background px-2 py-1 text-[11px] hover:bg-accent disabled:opacity-50"
           :disabled="!isEditable"
           @click="onAdjustNodeZOrder(element.id, 'sendBackward')"
         >
@@ -139,7 +139,7 @@ function patch(patch: Partial<PanelElement>) {
         </button>
         <button
           type="button"
-          class="rounded border border-gray-200 bg-white px-2 py-1 text-[11px] hover:bg-gray-50 disabled:opacity-50"
+          class="rounded border border-border bg-background px-2 py-1 text-[11px] hover:bg-accent disabled:opacity-50"
           :disabled="!isEditable"
           @click="onAdjustNodeZOrder(element.id, 'bringToFront')"
         >
@@ -147,7 +147,7 @@ function patch(patch: Partial<PanelElement>) {
         </button>
         <button
           type="button"
-          class="rounded border border-gray-200 bg-white px-2 py-1 text-[11px] hover:bg-gray-50 disabled:opacity-50"
+          class="rounded border border-border bg-background px-2 py-1 text-[11px] hover:bg-accent disabled:opacity-50"
           :disabled="!isEditable"
           @click="onAdjustNodeZOrder(element.id, 'sendToBack')"
         >
@@ -155,10 +155,10 @@ function patch(patch: Partial<PanelElement>) {
         </button>
       </div>
     </div>
-    <div class="truncate text-gray-400">ID: {{ element.id }}</div>
-    <div class="text-gray-400">{{ t("panel.config.type") }}: {{ element.materialType ?? element.id }}</div>
+    <div class="truncate text-muted-foreground">ID: {{ element.id }}</div>
+    <div class="text-muted-foreground">{{ t("panel.config.type") }}: {{ element.materialType ?? element.id }}</div>
     </ConfigFieldGroup>
-    <div class="rounded-lg border border-gray-200/60 bg-white/80 px-2.5 py-2">
+    <div class="rounded-lg border border-border/60 bg-background/80 px-2.5 py-2">
       <label class="flex items-center gap-2">
         <Checkbox
           :checked="element.locked === true"

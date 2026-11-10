@@ -89,13 +89,13 @@ function onFileChange(e: Event) {
       </label>
       <div class="flex items-center gap-2">
         <label
-          class="inline-flex cursor-pointer items-center rounded border border-gray-200 px-2 py-1 text-[11px] hover:bg-gray-50"
+          class="inline-flex cursor-pointer items-center rounded border border-border px-2 py-1 text-[11px] hover:bg-accent"
           :class="{ 'pointer-events-none opacity-50': !isEditable }"
         >
           {{ t("panel.config.uploadImage") }}
           <input type="file" accept="image/*" class="hidden" :disabled="!isEditable" @change="onFileChange" />
         </label>
-        <span v-if="uploadStatus" class="text-[11px] text-gray-500">{{ uploadStatus }}</span>
+        <span v-if="uploadStatus" class="text-[11px] text-muted-foreground">{{ uploadStatus }}</span>
       </div>
     </ConfigFieldGroup>
     <ConfigFieldGroup

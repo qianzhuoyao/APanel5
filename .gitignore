@@ -14,3 +14,5 @@ public/dist
 
 # local junk from permission recovery
 **/node_modules.root-bak/
+**/node_modules.root-owned.bak/
+.vendor/

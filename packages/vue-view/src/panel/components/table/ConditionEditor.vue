@@ -93,7 +93,7 @@ function patchLeaf(index: number, patch: Partial<ConditionLeaf>) {
   <div class="space-y-2">
     <div class="flex items-center justify-between gap-2">
       <label class="min-w-0 flex-1 space-y-1">
-        <div class="flex items-center gap-1 text-[11px] text-gray-500">
+        <div class="flex items-center gap-1 text-[11px] text-muted-foreground">
           {{ t("panel.config.tableConditionLogic") }}
           <ConfigHintIcon :label="t('panel.config.tableConditionLogic')">
             {{ t("panel.config.tableConditionLogicHint") }}
@@ -123,10 +123,10 @@ function patchLeaf(index: number, patch: Partial<ConditionLeaf>) {
     <div
       v-for="(item, index) in items"
       :key="index"
-      class="space-y-1.5 rounded-md border border-gray-200 bg-white/70 p-2"
+      class="space-y-1.5 rounded-md border border-border bg-background/70 p-2"
     >
       <div class="flex items-center justify-between gap-2">
-        <div class="text-[10px] font-medium text-gray-500">
+        <div class="text-[10px] font-medium text-muted-foreground">
           {{ t("panel.config.tableConditionItem", { n: index + 1 }) }}
         </div>
         <Button
@@ -144,7 +144,7 @@ function patchLeaf(index: number, patch: Partial<ConditionLeaf>) {
         :class="showField ? 'sm:grid-cols-3' : 'sm:grid-cols-2'"
       >
         <label class="block space-y-1">
-          <div class="text-[11px] text-gray-500">{{ t("panel.config.tableConditionOp") }}</div>
+          <div class="text-[11px] text-muted-foreground">{{ t("panel.config.tableConditionOp") }}</div>
           <Select
             size="small"
             class="w-full"
@@ -158,7 +158,7 @@ function patchLeaf(index: number, patch: Partial<ConditionLeaf>) {
           </Select>
         </label>
         <label v-if="showField" class="block space-y-1">
-          <div class="text-[11px] text-gray-500">{{ t("panel.config.tableConditionField") }}</div>
+          <div class="text-[11px] text-muted-foreground">{{ t("panel.config.tableConditionField") }}</div>
           <Input
             size="small"
             :value="leafOf(item).field ?? ''"
@@ -171,7 +171,7 @@ function patchLeaf(index: number, patch: Partial<ConditionLeaf>) {
           v-if="!['empty', 'notEmpty', 'truthy', 'falsy'].includes(leafOf(item).op)"
           class="block space-y-1"
         >
-          <div class="text-[11px] text-gray-500">{{ t("panel.config.tableConditionValue") }}</div>
+          <div class="text-[11px] text-muted-foreground">{{ t("panel.config.tableConditionValue") }}</div>
           <Input
             size="small"
             :value="leafValueText(leafOf(item).value)"

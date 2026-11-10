@@ -89,7 +89,7 @@ const projectMenu = computed(() =>
                     {
                       type: "button",
                       class: [
-                        "min-w-0 flex-1 rounded px-2 py-1.5 text-left text-xs hover:bg-gray-100",
+                        "min-w-0 flex-1 rounded px-2 py-1.5 text-left text-xs hover:bg-accent",
                         isCurrent
                           ? "bg-blue-50 font-medium text-blue-700 ring-1 ring-inset ring-blue-300"
                           : "",
@@ -168,7 +168,7 @@ const projectMenu = computed(() =>
 </script>
 
 <template>
-  <div class="flex items-center gap-1.5 border-l border-border pl-2">
+  <div class="flex items-center gap-1.5 border-l border-border/60 pl-2.5">
     <Tooltip
       :title="t('panel.workspace.createHint')"
       :overlay-style="{ zIndex: 10100 }"

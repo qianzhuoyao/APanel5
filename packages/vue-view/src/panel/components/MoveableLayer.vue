@@ -300,6 +300,11 @@ function createMoveable() {
   });
 
   moveable.on("dragStart", (e: any) => {
+    const inputTarget = (e.inputEvent?.target as HTMLElement | null) ?? null;
+    if (inputTarget?.closest("[data-scene3d-orbit-active='true']")) {
+      e.stop?.();
+      return;
+    }
     const id = resolveSingleEventId(e.target as HTMLElement | null);
     if (!id) return;
     const data = props.elementsById.get(id);
@@ -342,6 +347,11 @@ function createMoveable() {
   });
 
   moveable.on("dragGroupStart", (e: any) => {
+    const inputTarget = (e.inputEvent?.target as HTMLElement | null) ?? null;
+    if (inputTarget?.closest("[data-scene3d-orbit-active='true']")) {
+      e.stop?.();
+      return;
+    }
     e.events.forEach((ev: any) => {
       const id = ev.target ? getId(ev.target) : null;
       if (!id) return;
@@ -704,12 +714,8 @@ function createMoveable() {
 }
 
 watch(
-  () => [
-    props.canvasContainer,
-    movableIds.value.join(","),
-    props.refreshToken,
-    moveableControlZoom.value,
-  ] as const,
+  () =>
+    [props.canvasContainer, movableIds.value.join(","), props.refreshToken] as const,
   () => {
     createMoveable();
     syncLockBadge();

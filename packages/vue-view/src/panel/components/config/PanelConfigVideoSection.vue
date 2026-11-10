@@ -87,7 +87,7 @@ function onVideoFileChange(e: Event) {
         />      </label>
       <div class="flex items-center gap-2">
         <label
-          class="inline-flex cursor-pointer items-center rounded border border-gray-200 px-2 py-1 text-[11px] hover:bg-gray-50"
+          class="inline-flex cursor-pointer items-center rounded border border-border px-2 py-1 text-[11px] hover:bg-accent"
           :class="{ 'pointer-events-none opacity-50': !isEditable }"
         >
           {{ t("panel.config.uploadVideo") }}
@@ -96,13 +96,13 @@ function onVideoFileChange(e: Event) {
       </div>
       <div
         v-if="videoStatus"
-        class="rounded border border-gray-200/60 bg-white px-2 py-1.5 text-[11px] text-gray-500"
+        class="rounded border border-border/60 bg-background px-2 py-1.5 text-[11px] text-muted-foreground"
       >
         {{ videoStatus }}
       </div>
       <video
         controls
-        class="h-36 w-full rounded border border-gray-200/60 bg-black/80 object-contain"
+        class="h-36 w-full rounded border border-border/60 bg-black/80 object-contain"
         :src="element.videoSrc || element.videoRemoteUrl || ''"
       />
       <label class="flex items-center gap-2">

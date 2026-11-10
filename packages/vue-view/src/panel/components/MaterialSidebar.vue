@@ -295,13 +295,13 @@ const treeSearchEmpty = computed(
     ]"
     style="grid-template-rows: auto 1fr"
   >
-    <div class="border-b border-border/50 bg-background/70 px-2 py-1.5 backdrop-blur-sm">
+    <div class="border-b border-border/50 bg-background/70 px-2.5 py-1.5 backdrop-blur-sm">
       <Input
         v-model:value="keyword"
         size="small"
         :placeholder="searchPlaceholder"
         :aria-label="searchPlaceholder"
-        class="text-[12px]"
+        class="rv-pill-search h-8 rounded-full border-border/50 bg-background/70 text-[12px] shadow-none"
       />
     </div>
 

@@ -374,7 +374,7 @@ function onTagHtmlInput(modelId: string, objectName: string, event: Event) {
         />
       </div>
       <label class="block space-y-1" data-config-field="scene3d.modelUrl">
-        <div class="flex items-center gap-1 text-[10px] text-gray-500">
+        <div class="flex items-center gap-1 text-[10px] text-muted-foreground">
           {{ t("panel.config.scene3dModelUrl") }}
           <ConfigHintIcon :label="t('panel.config.scene3dModelUrl')">
             {{ t("panel.config.urlScopeHint") }}
@@ -398,10 +398,10 @@ function onTagHtmlInput(modelId: string, objectName: string, event: Event) {
           </Button>
         </div>
       </label>
-      <div v-if="config.models.length === 0" class="text-[11px] text-gray-500">
+      <div v-if="config.models.length === 0" class="text-[11px] text-muted-foreground">
         {{ t("panel.config.scene3dNoModels") }}
       </div>
-      <div v-for="model in config.models" :key="model.id" class="space-y-1 rounded border border-gray-200 p-2">
+      <div v-for="model in config.models" :key="model.id" class="space-y-1 rounded border border-border p-2">
         <Input
           size="small"
           :disabled="!isEditable"
@@ -419,7 +419,7 @@ function onTagHtmlInput(modelId: string, objectName: string, event: Event) {
         />
         <div v-if="model.objectNames?.length" class="space-y-1">
           <details :open="model.objectNames.length <= 12">
-            <summary class="cursor-pointer text-[10px] text-gray-500">
+            <summary class="cursor-pointer text-[10px] text-muted-foreground">
               {{ t("panel.config.scene3dObjectNames") }} · {{ t("panel.config.scene3dObjectCount", { n: model.objectNames.length }) }}
             </summary>
             <Input
@@ -430,11 +430,11 @@ function onTagHtmlInput(modelId: string, objectName: string, event: Event) {
               :value="nameQuery[model.id] ?? ''"
               @update:value="(v) => setNameQuery(model.id, String(v ?? ''))"
             />
-            <div class="mt-1 max-h-44 overflow-auto rounded border border-gray-200">
+            <div class="mt-1 max-h-44 overflow-auto rounded border border-border">
               <div
                 v-for="name in filteredObjectNames(model.id, model.objectNames)"
                 :key="model.id + name"
-                class="border-b border-gray-100 last:border-b-0"
+                class="border-b border-border/50 last:border-b-0"
                 :class="{
                   'bg-sky-50': isSelected(model.id, name),
                   'opacity-50': isHidden(model.id, name) && !isSolo(model.id, name),
@@ -462,7 +462,7 @@ function onTagHtmlInput(modelId: string, objectName: string, event: Event) {
                     @update:value="(v) => updateTagAnchor(model.id, name, String(v))"
                   />
                   <textarea
-                    class="min-h-[64px] w-full rounded border border-gray-200 p-1 text-[10px]"
+                    class="min-h-[64px] w-full rounded border border-border p-1 text-[10px]"
                     :disabled="!isEditable"
                     :placeholder="t('panel.config.scene3dObjectTagPlaceholder')"
                     :value="objectTag(model.id, name)?.html ?? ''"
@@ -473,7 +473,7 @@ function onTagHtmlInput(modelId: string, objectName: string, event: Event) {
             </div>
           </details>
         </div>
-        <div v-else class="text-[10px] text-gray-500">{{ t("panel.config.scene3dNoObjectNames") }}</div>
+        <div v-else class="text-[10px] text-muted-foreground">{{ t("panel.config.scene3dNoObjectNames") }}</div>
         <Button size="small" type="text" :disabled="!isEditable" @click="patch({ models: config.models.filter((m) => m.id !== model.id) })">
           {{ t("common.remove") }}
         </Button>
@@ -511,7 +511,7 @@ function onTagHtmlInput(modelId: string, objectName: string, event: Event) {
 
     <ConfigFieldGroup :title="t('panel.config.groupScene3dModelAnim')">
       <Button size="small" :disabled="!isEditable" @click="addModelAnimation">{{ t("common.add") }}</Button>
-      <div v-for="rule in config.modelAnimations" :key="rule.id" class="mt-2 space-y-1 rounded border border-gray-200 p-2">
+      <div v-for="rule in config.modelAnimations" :key="rule.id" class="mt-2 space-y-1 rounded border border-border p-2">
         <Select
           size="small"
           class="w-full"
@@ -547,7 +547,7 @@ function onTagHtmlInput(modelId: string, objectName: string, event: Event) {
         <Button size="small" :disabled="!isEditable" @click="addCameraAnimationPreset('truckLeft')">{{ t("panel.config.scene3dCameraAnimTruckLeft") }}</Button>
         <Button size="small" :disabled="!isEditable" @click="addCameraAnimationPreset('craneUp')">{{ t("panel.config.scene3dCameraAnimCraneUp") }}</Button>
       </div>
-      <div v-for="rule in config.cameraAnimations" :key="rule.id" class="mt-2 text-[10px] text-gray-600">
+      <div v-for="rule in config.cameraAnimations" :key="rule.id" class="mt-2 text-[10px] text-muted-foreground">
         <div>{{ rule.label ?? rule.id }} · {{ t("panel.config.scene3dCameraAnimDuration", { sec: rule.durationSec }) }}</div>
         <div v-if="rule.mode === 'orbit'" class="mt-1 grid grid-cols-1 gap-1">
           <Input

@@ -18,8 +18,29 @@ const emit = defineEmits<{
 }>();
 
 const selectoRef = shallowRef<Selecto | null>(null);
+const portalElRef = shallowRef<HTMLElement | null>(null);
+/** Keep a live Set so Selecto handlers see latest selection without recreating the instance. */
+const selectedIdSetRef = shallowRef(new Set(props.selectedIds));
 
-function handleSelect(e: { selected?: Array<HTMLElement | SVGElement>; inputEvent?: MouseEvent }) {
+function ensurePortalEl(): HTMLElement | null {
+  if (typeof document === "undefined") return null;
+  if (portalElRef.value?.isConnected) return portalElRef.value;
+  const el = document.createElement("div");
+  el.setAttribute("data-abuilder-selecto-portal", "");
+  document.body.appendChild(el);
+  portalElRef.value = el;
+  return el;
+}
+
+function destroyPortalEl() {
+  portalElRef.value?.remove();
+  portalElRef.value = null;
+}
+
+function handleSelect(e: {
+  selected?: Array<HTMLElement | SVGElement>;
+  inputEvent?: MouseEvent;
+}) {
   const input = e?.inputEvent;
   if (input && input.button !== 0) return;
   const selected = e?.selected ?? [];
@@ -35,19 +56,21 @@ function handleSelect(e: { selected?: Array<HTMLElement | SVGElement>; inputEven
 function destroySelecto() {
   selectoRef.value?.destroy();
   selectoRef.value = null;
+  destroyPortalEl();
 }
 
 function createSelecto() {
   destroySelecto();
   const dragRoot = props.dragContainer ?? props.rootContainer ?? null;
-  if (!props.container || !dragRoot) return;
+  const portalContainer = ensurePortalEl();
+  if (!props.container || !dragRoot || !portalContainer) return;
 
-  const selectedIdSet = new Set(props.selectedIds);
   const selecto = new Selecto({
     // 框选层挂在未 scale 的视口上，避免选区宽高被画布 transform 放大、线宽视觉变粗
     container: dragRoot,
     rootContainer: dragRoot,
-    portalContainer: document.body,
+    // Selecto 会把 selecto-selection（含 display:none）写到 portal 节点上，不能直接用 body
+    portalContainer,
     dragContainer: dragRoot,
     selectableTargets: props.selectableTargets,
     selectByClick: false,
@@ -62,13 +85,16 @@ function createSelecto() {
       const input = e?.inputEvent;
       if (input && input.button !== 0) return false;
       const target = (input?.target as HTMLElement | null) ?? null;
+      if (target?.closest("[data-scene3d-orbit-active='true']")) return false;
       const isShift = !!input?.shiftKey;
       if (isShift) return true;
 
+      const selectedIdSet = selectedIdSetRef.value;
       if (selectedIdSet.size > 0) {
         if (
           target?.closest(".moveable-control-box") ||
           target?.closest(".moveable-group") ||
+          target?.closest(".moveable-area") ||
           target?.closest(".moveable-line") ||
           target?.closest(".moveable-control") ||
           target?.closest(".moveable-direction")
@@ -90,10 +116,14 @@ function createSelecto() {
       return;
     }
     const target = e.inputEvent.target as HTMLElement | null;
+    if (target?.closest("[data-scene3d-orbit-active='true']")) {
+      e.stop();
+      return;
+    }
     const selectable = target?.closest(".rv-selectable") as HTMLElement | null;
     const id = selectable?.dataset.elementId;
     const isShift = e.inputEvent?.shiftKey ?? false;
-    if (id && selectedIdSet.has(id) && !isShift) e.stop();
+    if (id && selectedIdSetRef.value.has(id) && !isShift) e.stop();
   });
 
   selecto.on("select", handleSelect);
@@ -101,7 +131,16 @@ function createSelecto() {
 }
 
 watch(
-  () => [props.container, props.dragContainer, props.rootContainer, props.selectedIds] as const,
+  () => props.selectedIds,
+  (ids) => {
+    selectedIdSetRef.value = new Set(ids);
+  },
+  { deep: true }
+);
+
+watch(
+  () =>
+    [props.container, props.dragContainer, props.rootContainer, props.selectableTargets] as const,
   () => createSelecto(),
   { deep: true }
 );

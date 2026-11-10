@@ -285,9 +285,9 @@ function onOptionJsonChange(v: string) {
           </Select>
         </label>
         <div class="col-span-2 space-y-1">
-          <div class="text-[11px] text-gray-500">{{ t("panel.config.gradientPreview") }}</div>
+          <div class="text-[11px] text-muted-foreground">{{ t("panel.config.gradientPreview") }}</div>
           <div
-            class="h-6 rounded border border-gray-200/60"
+            class="h-6 rounded border border-border/60"
             :style="{
               backgroundImage: gradientCss(
                 element.chart?.gradientDirection,

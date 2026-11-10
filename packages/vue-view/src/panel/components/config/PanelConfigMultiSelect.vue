@@ -68,14 +68,14 @@ function setNodeCardExpanded(id: string, open: boolean) {
       <div class="grid grid-cols-2 gap-2 text-xs">
         <button
           type="button"
-          class="rounded border border-gray-200 bg-white px-2 py-1 hover:bg-gray-50"
+          class="rounded border border-border bg-background px-2 py-1 hover:bg-accent"
           @click="elements.forEach((el) => updateElement(el.id, { locked: true }))"
         >
           {{ t("panel.config.lockAll") }}
         </button>
         <button
           type="button"
-          class="rounded border border-gray-200 bg-white px-2 py-1 hover:bg-gray-50"
+          class="rounded border border-border bg-background px-2 py-1 hover:bg-accent"
           @click="elements.forEach((el) => updateElement(el.id, { locked: false }))"
         >
           {{ t("panel.config.unlockAll") }}
@@ -83,7 +83,7 @@ function setNodeCardExpanded(id: string, open: boolean) {
         <button
           v-if="onAdjustNodeZOrder"
           type="button"
-          class="rounded border border-gray-200 bg-white px-2 py-1 hover:bg-gray-50"
+          class="rounded border border-border bg-background px-2 py-1 hover:bg-accent"
           @click="elements.forEach((el) => onAdjustNodeZOrder?.(el.id, 'bringForward'))"
         >
           {{ t("panel.config.bringAllForward") }}
@@ -91,21 +91,21 @@ function setNodeCardExpanded(id: string, open: boolean) {
         <button
           v-if="onAdjustNodeZOrder"
           type="button"
-          class="rounded border border-gray-200 bg-white px-2 py-1 hover:bg-gray-50"
+          class="rounded border border-border bg-background px-2 py-1 hover:bg-accent"
           @click="elements.forEach((el) => onAdjustNodeZOrder?.(el.id, 'sendBackward'))"
         >
           {{ t("panel.config.sendAllBackward") }}
         </button>
         <button
           type="button"
-          class="rounded border border-gray-200 bg-white px-2 py-1 hover:bg-gray-50"
+          class="rounded border border-border bg-background px-2 py-1 hover:bg-accent"
           @click="elements.forEach((el) => updateElement(el.id, { zIndex: 1 }))"
         >
           {{ t("panel.config.setAllZIndex1") }}
         </button>
         <button
           type="button"
-          class="rounded border border-gray-200 bg-white px-2 py-1 hover:bg-gray-50"
+          class="rounded border border-border bg-background px-2 py-1 hover:bg-accent"
           @click="
             elements.forEach((el) =>
               updateElement(el.id, {
@@ -129,7 +129,7 @@ function setNodeCardExpanded(id: string, open: boolean) {
         <div class="flex items-center gap-2">
           <button
             type="button"
-            class="inline-flex h-6 w-6 items-center justify-center rounded border border-gray-200 text-[11px] hover:bg-gray-50"
+            class="inline-flex h-6 w-6 items-center justify-center rounded border border-border text-[11px] hover:bg-accent"
             @click="setNodeCardExpanded(el.id, !isNodeCardExpanded(el.id))"
           >
             {{ isNodeCardExpanded(el.id) ? "▾" : "▸" }}
@@ -140,7 +140,7 @@ function setNodeCardExpanded(id: string, open: boolean) {
           <button
             v-if="onExcludeSelectedNode"
             type="button"
-            class="inline-flex h-6 items-center rounded border border-gray-200 px-2 text-[11px] text-gray-500 hover:bg-gray-50"
+            class="inline-flex h-6 items-center rounded border border-border px-2 text-[11px] text-muted-foreground hover:bg-accent"
             @click="onExcludeSelectedNode(el.id)"
           >
             {{ t("panel.config.removeFromSelection") }}
@@ -336,7 +336,7 @@ function setNodeCardExpanded(id: string, open: boolean) {
             </template>
 
             <template v-if="el.materialType === 'grid'">
-              <div class="grid grid-cols-2 gap-2 rounded-lg border border-gray-200/60 bg-gray-50/50 p-3">
+              <div class="grid grid-cols-2 gap-2 rounded-lg border border-border/60 bg-muted/50 p-3">
                 <label class="block space-y-1">
                   <div>{{ t("panel.config.rowsShort") }}</div>
                   <InputNumber size="small" class="w-full" :min="1" :value="el.gridRows ?? 2" @update:value="(v) => updateElement(el.id, { gridRows: Math.max(1, Number(v) || 2) })" />
@@ -349,7 +349,7 @@ function setNodeCardExpanded(id: string, open: boolean) {
             </template>
 
             <template v-if="el.materialType === 'geometry'">
-              <div class="grid grid-cols-2 gap-2 rounded-lg border border-gray-200/60 bg-gray-50/50 p-3">
+              <div class="grid grid-cols-2 gap-2 rounded-lg border border-border/60 bg-muted/50 p-3">
                 <label class="block space-y-1">
                   <div>{{ t("panel.config.shape") }}</div>
                   <Select
@@ -475,7 +475,7 @@ function setNodeCardExpanded(id: string, open: boolean) {
 
     <div
       v-if="noSearchMatch"
-      class="rounded border border-gray-200/60 bg-white px-2 py-1.5 text-[11px] text-gray-500"
+      class="rounded border border-border/60 bg-background px-2 py-1.5 text-[11px] text-muted-foreground"
     >
       {{ t("panel.config.noEditableMatch") }}
     </div>

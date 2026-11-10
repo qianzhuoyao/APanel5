@@ -94,7 +94,7 @@ watch(
 <template>
   <div :class="rootClass">
     <div class="mb-1.5 flex shrink-0 items-center justify-between gap-2">
-      <div class="text-[11px] text-gray-500">{{ t("panel.config.tableRowsEditEditorHint") }}</div>
+      <div class="text-[11px] text-muted-foreground">{{ t("panel.config.tableRowsEditEditorHint") }}</div>
       <Button size="small" @click="formatJson">{{ t("panel.config.tableRowsEditFormat") }}</Button>
     </div>
     <div class="min-h-0 flex-1 overflow-hidden rounded-lg border border-zinc-700/80 bg-[#0f1419] shadow-inner">

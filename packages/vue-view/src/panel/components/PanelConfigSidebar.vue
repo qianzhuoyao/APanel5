@@ -26,6 +26,7 @@ import PanelConfigViewportSection from "./config/PanelConfigViewportSection.vue"
 import PanelConfigGridChildSpan from "./config/PanelConfigGridChildSpan.vue";
 import PanelConfigReferenceSection from "./config/PanelConfigReferenceSection.vue";
 import PanelConfigTableSection from "./table/PanelConfigTableSection.vue";
+import { themedScrollbarClass } from "./materialSidebarData";
 
 const { t, locale } = useI18n();
 const msgs = () => getPanelMessages(t);
@@ -274,7 +275,7 @@ const visibleSectionCount = computed(() => {
           size="small"
           :placeholder="t('panel.config.searchPlaceholder')"
           :aria-label="t('panel.config.searchPlaceholder')"
-          class="text-[12px]"
+          class="rv-pill-search h-8 rounded-full border-border/50 bg-background/70 text-[12px] shadow-none"
           data-scope-autocomplete="off"
         />
         <div v-if="hasSearch" class="mt-1 px-0.5 text-[11px] text-muted-foreground">
@@ -283,7 +284,7 @@ const visibleSectionCount = computed(() => {
       </div>
       <div
         ref="sidebarScrollRef"
-        class="min-h-0 overflow-auto px-2 py-1.5 text-foreground"
+        :class="`min-h-0 overflow-auto px-2 py-1.5 text-foreground ${themedScrollbarClass}`"
       >
       <div v-if="showScopePanel || scopeWarnings.length > 0" class="mb-2 space-y-1.5">
         <ViewElementScopePanel v-if="showScopePanel" :scope="viewElementScope!" />
@@ -304,7 +305,7 @@ const visibleSectionCount = computed(() => {
 
       <Empty
         v-else-if="!selectedElement"
-        class="py-7"
+        class="rv-empty py-8"
         :description="t('panel.config.emptyNoNodeDesc')"
       />
 
@@ -471,14 +472,14 @@ const visibleSectionCount = computed(() => {
 
             <div
               v-if="!isChartElement && materialType && !['text', 'table', 'audio', 'video', 'image', 'geometry', 'grid', 'viewport', 'reference'].includes(materialType)"
-              class="text-xs leading-6 text-gray-500"
+              class="text-xs leading-6 text-muted-foreground"
             >
               {{ t("panel.config.notChartType") }}
             </div>
 
             <div
               v-if="hasSearch && visibleSectionCount === 0"
-              class="rounded border border-gray-200/60 bg-white px-2 py-1.5 text-[11px] text-gray-500"
+              class="rounded border border-border/60 bg-background px-2 py-1.5 text-[11px] text-muted-foreground"
             >
               {{ t("panel.config.noMatch") }}
             </div>

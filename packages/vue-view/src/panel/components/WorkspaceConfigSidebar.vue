@@ -113,7 +113,7 @@ const viewElementOptions = computed(() =>
 </script>
 
 <template>
-  <div class="flex h-full flex-col overflow-hidden bg-white">
+  <div class="flex h-full flex-col overflow-hidden bg-background text-foreground">
     <PanelConfigSidebar
       v-if="configFocus === 'view'"
       :selected-element="selectedElement"
