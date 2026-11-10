@@ -2,11 +2,23 @@
   "extends": "../typescript-config/vue-library.json",
   "compilerOptions": {
     "rootDir": "src",
-    "outDir": "dist"
+    "outDir": "dist",
+    "skipLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "@arronqzy/abuilder": ["./src/shims/abuilder.d.ts"]
+    }
   },
   "include": [
     "src/**/*.ts",
     "src/**/*.vue",
     "src/env.d.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "../view-scene3d",
+    "../react-view",
+    "../abuilder/src"
   ]
 }

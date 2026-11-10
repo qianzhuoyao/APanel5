@@ -4,6 +4,14 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)，版本号遵循 [SemVer](https://semver.org/lang/zh-CN/)。
 
+## [1.1.50] - 2026-11-10
+
+配套：`abuilder-vue@0.1.32`
+
+### Fixed
+
+- `@arronqzy/abuilder-vue` typecheck 不再沿依赖进入 `view-scene3d` React/R3F 源码（修复发布流水线 `vue-tsc` 失败）
+
 ## [1.1.49] - 2026-11-10
 
 配套：`abuilder-vue@0.1.31`
@@ -15,6 +23,10 @@
 ### Changed
 
 - Vue 宿主用法与 React 对齐：只引 `@arronqzy/abuilder-vue` 的 `App` / `styles.css`，Vite 用 `abuilderVue()`；Veaury 收进包内，业务侧不再直接配置（承接未成功发布的 1.1.48）
+
+### Notes
+
+- 该版本因 `abuilder-vue` typecheck 失败未发布到 npm，修复合入 1.1.50
 
 ## [1.1.48] - 2026-11-10
 

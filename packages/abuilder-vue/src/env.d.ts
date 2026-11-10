@@ -6,6 +6,16 @@ declare module "*.vue" {
   export default component;
 }
 
+declare module "react-dom/client" {
+  export function createRoot(
+    container: Element | DocumentFragment,
+    options?: unknown
+  ): {
+    render: (children: unknown) => void;
+    unmount: () => void;
+  };
+}
+
 declare module "veaury" {
   import type { Component } from "vue";
   import type { ComponentType } from "react";
