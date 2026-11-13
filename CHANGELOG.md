@@ -4,6 +4,14 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)，版本号遵循 [SemVer](https://semver.org/lang/zh-CN/)。
 
+## [1.1.52] - 2026-11-13
+
+配套：`abuilder-vue@0.1.34`
+
+### Changed
+
+- `@arronqzy/abuilder-vue` 包描述与 React 主入口对齐，统一为可视化编辑器安装即用说明
+
 ## [1.1.51] - 2026-11-10
 
 配套：`abuilder-vue@0.1.33` · `blueprint-dsl@1.0.19` · `react-blueprint@1.0.28` · `react-view@1.0.46` · `vue-blueprint@0.1.22` · `vue-view@0.1.31` · `i18n@0.1.18`
