@@ -6,6 +6,7 @@ import {
   type BlueprintMetaDraft,
 } from "@arronqzy/vue-blueprint";
 import type { State } from "@arronqzy/rx-store";
+import { matchMessageInAnyLocale } from "@arronqzy/i18n";
 import { useI18nOptional } from "@arronqzy/i18n/vue";
 import {
   createWorkspaceProjectId,
@@ -126,6 +127,23 @@ export function useWorkspaceProjects(options: UseWorkspaceProjectsOptions) {
     return (typeof name === "string" ? name : "").trim() || t("panel.defaults.unnamedProduct");
   }
 
+  /** 产物标题优先 productName；为空或仍是默认「未命名产物」时回退到工作区 name */
+  function resolveRecordProductName(
+    record: Pick<WorkspaceProjectRecord, "name" | "productName">,
+    unnamedProduct: string
+  ): string {
+    const product =
+      typeof record.productName === "string" ? record.productName.trim() : "";
+    const name = typeof record.name === "string" ? record.name.trim() : "";
+    const productIsDefaultUnnamed =
+      !product ||
+      product === unnamedProduct ||
+      matchMessageInAnyLocale(product, "panel.defaults.unnamedProduct") !== null;
+    if (!productIsDefaultUnnamed) return product;
+    if (name) return name;
+    return product || unnamedProduct;
+  }
+
   function buildCurrentSnapshot(): WorkspaceSnapshot {
     return {
       blueprintDocument: toValue(options.blueprintDocument),
@@ -209,10 +227,21 @@ export function useWorkspaceProjects(options: UseWorkspaceProjectsOptions) {
         return;
       }
       const now = Date.now();
+      const unnamedProduct = t("panel.defaults.unnamedProduct");
       const name =
         (typeof record.name === "string" && record.name.trim()) ||
         (typeof record.productName === "string" && record.productName.trim()) ||
-        t("panel.defaults.unnamedProduct");
+        unnamedProduct;
+      const productName = resolveRecordProductName(
+        {
+          name,
+          productName:
+            typeof record.productName === "string" && record.productName.trim()
+              ? record.productName
+              : existing?.productName,
+        },
+        unnamedProduct
+      );
       const toStore: WorkspaceProjectRecord = {
         ...record,
         id,
@@ -235,10 +264,7 @@ export function useWorkspaceProjects(options: UseWorkspaceProjectsOptions) {
           remark:
             record.blueprintMeta?.remark ?? existing?.blueprintMeta?.remark ?? "",
         },
-        productName:
-          typeof record.productName === "string" && record.productName.trim()
-            ? record.productName
-            : existing?.productName ?? t("panel.defaults.unnamedProduct"),
+        productName,
         titleIconDataUrl: record.titleIconDataUrl ?? existing?.titleIconDataUrl,
       };
       await putWorkspaceProject(toStore, nameSpace());
@@ -261,11 +287,13 @@ export function useWorkspaceProjects(options: UseWorkspaceProjectsOptions) {
     };
     const panelState =
       normalizeImportedPanelState(record.panelState) ?? createEmptyPanelState();
-    const productName =
-      typeof record.productName === "string" && record.productName.trim()
-        ? record.productName
-        : t("panel.defaults.unnamedProduct");
+    const productName = resolveRecordProductName(
+      record,
+      t("panel.defaults.unnamedProduct")
+    );
     const titleIconDataUrl = record.titleIconDataUrl ?? "";
+    const workspaceName =
+      (typeof record.name === "string" && record.name.trim()) || productName;
 
     options.importPanelData(panelState);
     options.setBlueprintGraph(BlueprintGraph.fromDocument(blueprintDocument));
@@ -273,7 +301,7 @@ export function useWorkspaceProjects(options: UseWorkspaceProjectsOptions) {
     options.setProductName(productName);
     options.setTitleIconDataUrl(titleIconDataUrl);
     activeProjectId.value = record.id || null;
-    activeProjectName.value = record.name ?? null;
+    activeProjectName.value = workspaceName;
     activeCreatedAt =
       typeof record.createdAt === "number" && Number.isFinite(record.createdAt)
         ? record.createdAt
@@ -289,7 +317,7 @@ export function useWorkspaceProjects(options: UseWorkspaceProjectsOptions) {
     const normalized: WorkspaceProjectRecord = {
       ...record,
       id: record.id,
-      name: record.name ?? productName,
+      name: workspaceName,
       createdAt: activeCreatedAt,
       updatedAt: record.updatedAt ?? Date.now(),
       blueprintDocument,

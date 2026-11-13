@@ -4,6 +4,21 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)，版本号遵循 [SemVer](https://semver.org/lang/zh-CN/)。
 
+## [1.1.53] - 2026-11-13
+
+配套：`abuilder-vue@0.1.35` · `react-view@1.0.47` · `vue-view@0.1.32` · `ui@1.0.13`
+
+### Fixed
+
+- 修复 `defaultTheme` 被面板强制暗色 / 全局 theme 覆盖，启动时正确尊重实例默认主题
+- 修复工作区已有名称时产物标题仍显示「未命名产物」
+- 修复 `getPreviewSnapshot` 缩略图未按在线预览铺满视口规则截取
+
+### Changed
+
+- 画布操作区 z-index 与顶栏 / 图层面板对齐，避免盖住侧栏
+- 右上角 Toast 更小、默认约 2 秒消失
+
 ## [1.1.52] - 2026-11-13
 
 配套：`abuilder-vue@0.1.34`

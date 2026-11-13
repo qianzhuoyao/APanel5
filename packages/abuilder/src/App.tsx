@@ -1,4 +1,5 @@
 import { forwardRef, useEffect, useMemo, useState, type ReactNode } from "react";
+import { appStorageKey } from "@arronqzy/blueprint-dsl";
 import { ThemeProvider } from "@arronqzy/ui";
 import type { Locale } from "@arronqzy/i18n";
 import {
@@ -203,11 +204,16 @@ export const App = forwardRef<AbuilderViewHandle, AbuilderAppProps>(function App
   }
 
   return (
-    <ThemeProvider defaultTheme={defaultTheme} enableSystem={false}>
+    <ThemeProvider
+      defaultTheme={defaultTheme}
+      enableSystem={false}
+      storageKey={appStorageKey("panel:theme", nameSpace)}
+    >
       <ReactViewPanel
         ref={ref}
         className={className}
         initialZoom={initialZoom}
+        defaultTheme={defaultTheme}
         initialWorkspace={initialWorkspace}
         workspaceId={workspaceId}
         locale={effectiveLocale}

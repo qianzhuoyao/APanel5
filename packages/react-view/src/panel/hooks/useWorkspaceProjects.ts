@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { matchMessageInAnyLocale } from "@arronqzy/i18n";
 import { useI18nOptional } from "@arronqzy/i18n/react";
 import { BlueprintGraph } from "@arronqzy/react-blueprint";
 import type { BlueprintDocument, BlueprintMetaDraft } from "@arronqzy/react-blueprint";
@@ -92,6 +93,23 @@ function hasWorkspacePayload(
 
 function workspaceApplyKey(record: WorkspaceProjectRecord): string {
   return `${record.id ?? "anon"}:${record.updatedAt ?? 0}`;
+}
+
+/** 产物标题优先 productName；为空或仍是默认「未命名产物」时回退到工作区 name */
+function resolveRecordProductName(
+  record: Pick<WorkspaceProjectRecord, "name" | "productName">,
+  unnamedProduct: string
+): string {
+  const product =
+    typeof record.productName === "string" ? record.productName.trim() : "";
+  const name = typeof record.name === "string" ? record.name.trim() : "";
+  const productIsDefaultUnnamed =
+    !product ||
+    product === unnamedProduct ||
+    matchMessageInAnyLocale(product, "panel.defaults.unnamedProduct") !== null;
+  if (!productIsDefaultUnnamed) return product;
+  if (name) return name;
+  return product || unnamedProduct;
 }
 
 export function useWorkspaceProjects({
@@ -221,10 +239,21 @@ export function useWorkspaceProjects({
           return;
         }
         const now = Date.now();
+        const unnamedProduct = t("panel.defaults.unnamedProduct");
         const name =
           (typeof record.name === "string" && record.name.trim()) ||
           (typeof record.productName === "string" && record.productName.trim()) ||
-          t("panel.defaults.unnamedProduct");
+          unnamedProduct;
+        const productName = resolveRecordProductName(
+          {
+            name,
+            productName:
+              typeof record.productName === "string" && record.productName.trim()
+                ? record.productName
+                : existing?.productName,
+          },
+          unnamedProduct
+        );
         const toStore: WorkspaceProjectRecord = {
           ...record,
           id,
@@ -247,10 +276,7 @@ export function useWorkspaceProjects({
             remark:
               record.blueprintMeta?.remark ?? existing?.blueprintMeta?.remark ?? "",
           },
-          productName:
-            typeof record.productName === "string" && record.productName.trim()
-              ? record.productName
-              : existing?.productName ?? t("panel.defaults.unnamedProduct"),
+          productName,
           titleIconDataUrl:
             record.titleIconDataUrl ?? existing?.titleIconDataUrl,
         };
@@ -277,11 +303,13 @@ export function useWorkspaceProjects({
       };
       const panelState =
         normalizeImportedPanelState(record.panelState) ?? createEmptyPanelState();
-      const productName =
-        typeof record.productName === "string" && record.productName.trim()
-          ? record.productName
-          : t("panel.defaults.unnamedProduct");
+      const productName = resolveRecordProductName(
+        record,
+        t("panel.defaults.unnamedProduct")
+      );
       const titleIconDataUrl = record.titleIconDataUrl ?? "";
+      const workspaceName =
+        (typeof record.name === "string" && record.name.trim()) || productName;
 
       importPanelData(panelState);
       setBlueprintGraph(BlueprintGraph.fromDocument(blueprintDocument));
@@ -289,7 +317,7 @@ export function useWorkspaceProjects({
       setProductName(productName);
       setTitleIconDataUrl(titleIconDataUrl);
       setActiveProjectId(record.id || null);
-      setActiveProjectName(record.name ?? null);
+      setActiveProjectName(workspaceName);
       activeCreatedAtRef.current =
         typeof record.createdAt === "number" && Number.isFinite(record.createdAt)
           ? record.createdAt
@@ -305,7 +333,7 @@ export function useWorkspaceProjects({
       const normalized: WorkspaceProjectRecord = {
         ...record,
         id: record.id,
-        name: record.name ?? productName,
+        name: workspaceName,
         createdAt: activeCreatedAtRef.current,
         updatedAt: record.updatedAt ?? Date.now(),
         blueprintDocument,

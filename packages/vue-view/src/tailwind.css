@@ -183,3 +183,11 @@ html[data-rv-interacting="1"] [data-panel-canvas] .rv-selectable {
   background: var(--moveable-color) !important;
   z-index: 10 !important;
 }
+
+/* Compact top-right Ant messages */
+.ant-message .ant-message-notice-content {
+  padding: 6px 12px;
+  font-size: 12px;
+  line-height: 1.35;
+  border-radius: 6px;
+}

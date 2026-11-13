@@ -798,3 +798,24 @@ export async function scaleDataUrl(
   ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
   return canvasToDataUrl(canvas, mimeType, quality) ?? dataUrl;
 }
+
+/** 强制拉到目标宽高（可放大），用于对齐预览视口填充效果 */
+export async function stretchDataUrl(
+  dataUrl: string,
+  targetWidth: number,
+  targetHeight: number,
+  mimeType: "image/png" | "image/jpeg" = "image/png",
+  quality = 0.92
+): Promise<string> {
+  const tw = Math.max(1, Math.round(targetWidth));
+  const th = Math.max(1, Math.round(targetHeight));
+  const img = await loadImage(dataUrl);
+  if (img.width === tw && img.height === th) return dataUrl;
+  const canvas = document.createElement("canvas");
+  canvas.width = tw;
+  canvas.height = th;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return dataUrl;
+  ctx.drawImage(img, 0, 0, tw, th);
+  return canvasToDataUrl(canvas, mimeType, quality) ?? dataUrl;
+}

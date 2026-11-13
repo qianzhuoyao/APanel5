@@ -41,7 +41,10 @@ import {
   resolvePreviewLayerElements,
 } from "./utils/panelStateIO";
 import { applyPreviewSceneFill, readOutputScale } from "./utils/outputScale";
-import { capturePreviewSceneElement } from "./library/capture-preview-snapshot";
+import {
+  capturePreviewSceneElement,
+  stretchDataUrl,
+} from "./library/capture-preview-snapshot";
 import { registerPreviewSnapshotProvider } from "./library/preview-snapshot";
 import { I18nRoot } from "./I18nRoot";
 
@@ -332,13 +335,17 @@ function ReactViewOnlinePreviewInner({
     registerPreviewSnapshotProvider(async () => {
       const scene = sceneRef.current;
       if (!scene) return null;
-      const width = outputScale
-        ? sceneBounds.width
-        : sceneBounds.width * fillScale.scaleX;
-      const height = outputScale
-        ? sceneBounds.height
-        : sceneBounds.height * fillScale.scaleY;
-      return capturePreviewSceneElement(scene, width, height);
+      const visualWidth = sceneBounds.width * fillScale.scaleX;
+      const visualHeight = sceneBounds.height * fillScale.scaleY;
+      if (outputScale) {
+        const logical = await capturePreviewSceneElement(
+          scene,
+          sceneBounds.width,
+          sceneBounds.height
+        );
+        return stretchDataUrl(logical, visualWidth, visualHeight);
+      }
+      return capturePreviewSceneElement(scene, visualWidth, visualHeight);
     });
     return () => registerPreviewSnapshotProvider(null);
   }, [

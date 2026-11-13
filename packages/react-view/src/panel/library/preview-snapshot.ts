@@ -1,5 +1,6 @@
 import type { PanelElement, PanelLayer } from "../types";
 import { CHART_TYPES, buildChartOption } from "../utils/chartOptionBuilder";
+import { getPreviewFillScale } from "../utils/outputScale";
 import {
   computePanelSceneBounds,
   resolvePreviewLayerElements,
@@ -8,6 +9,7 @@ import {
   capturePreviewLayerSnapshot,
   capturePreviewSceneElement,
   scaleDataUrl,
+  stretchDataUrl,
   type CapturePreviewSceneOptions,
 } from "./capture-preview-snapshot";
 
@@ -240,13 +242,56 @@ export async function captureEditorPreviewSnapshot(
     return captureEditorPreviewSnapshot({ ...options, retryCount: retryCount + 1 });
   }
 
-  return capturePreviewLayerSnapshot({
-    canvasRoot: options.canvasRoot,
-    elements: layerElements,
-    backgroundColor: options.backgroundColor,
-    maxWidth: options.maxWidth,
-    maxHeight: options.maxHeight,
-    mimeType: options.mimeType,
-    quality: options.quality,
-  });
+  const sceneBounds = computePanelSceneBounds(layerElements);
+  const fill = getPreviewFillScale(sceneBounds.width, sceneBounds.height);
+  const outputScale = options.outputScale;
+  const mimeType = options.mimeType ?? "image/png";
+  const quality = options.quality ?? 0.92;
+
+  // 与在线预览一致：场景原点归零后再按 outputScale 规则铺满视口
+  const originElements = layerElements.map((el) => ({
+    ...el,
+    x: el.x - sceneBounds.minX,
+    y: el.y - sceneBounds.minY,
+  }));
+
+  let dataUrl: string | null;
+  if (outputScale) {
+    dataUrl = await capturePreviewLayerSnapshot({
+      canvasRoot: options.canvasRoot,
+      elements: originElements,
+      backgroundColor: options.backgroundColor,
+      mimeType,
+      quality,
+    });
+    if (!dataUrl) return null;
+    dataUrl = await stretchDataUrl(
+      dataUrl,
+      sceneBounds.width * fill.scaleX,
+      sceneBounds.height * fill.scaleY,
+      mimeType,
+      quality
+    );
+  } else {
+    const previewElements = originElements.map((el) => ({
+      ...el,
+      x: el.x * fill.scaleX,
+      y: el.y * fill.scaleY,
+      width: el.width * fill.scaleX,
+      height: el.height * fill.scaleY,
+    }));
+    dataUrl = await capturePreviewLayerSnapshot({
+      canvasRoot: options.canvasRoot,
+      elements: previewElements,
+      backgroundColor: options.backgroundColor,
+      mimeType,
+      quality,
+    });
+  }
+
+  if (!dataUrl) return null;
+  if (options.maxWidth || options.maxHeight) {
+    return scaleDataUrl(dataUrl, options.maxWidth, options.maxHeight, mimeType, quality);
+  }
+  return dataUrl;
 }

@@ -154,6 +154,8 @@ import {
 export type ReactViewPanelProps = {
   initialZoom?: number;
   className?: string;
+  /** 无本地主题偏好时使用的默认主题；有 localStorage 记录时以用户选择为准 */
+  defaultTheme?: "dark" | "light";
   /** 外部传入的完整工作区数据，挂载后按这份数据完整渲染；空则显示空白，不自动打开 IndexedDB 记录 */
   initialWorkspace?: WorkspaceProjectRecord | null;
   /**
@@ -207,6 +209,7 @@ const ReactViewPanelInner = forwardRef<AbuilderViewHandle, ReactViewPanelProps>(
   {
   initialZoom = 1,
   className,
+  defaultTheme = "dark",
   initialWorkspace = null,
   workspaceId = null,
   nameSpace = null,
@@ -406,25 +409,25 @@ const ReactViewPanelInner = forwardRef<AbuilderViewHandle, ReactViewPanelProps>(
 
   useEffect(() => {
     const root = document.documentElement;
+    const fallbackDark = defaultTheme !== "light";
     try {
-      const storedTheme =
-        localStorage.getItem(THEME_STORAGE_KEY) ?? localStorage.getItem("theme");
+      // 只认本实例命名空间下的主题键；不要回落全局 `theme`，
+      // 否则 next-themes / 其他应用写入的 dark 会盖掉宿主 defaultTheme
+      const storedTheme = localStorage.getItem(THEME_STORAGE_KEY);
       if (storedTheme === "dark" || storedTheme === "light") {
         applyTheme(storedTheme === "dark");
       } else {
-        // 默认黑色主题，并持久化
-        applyTheme(true);
+        applyTheme(fallbackDark);
       }
     } catch {
-      // 读取失败时也回落到默认黑色
-      applyTheme(true);
+      applyTheme(fallbackDark);
     }
     const update = () => setIsDark(root.classList.contains("dark"));
     update();
     const observer = new MutationObserver(update);
     observer.observe(root, { attributes: true, attributeFilter: ["class"] });
     return () => observer.disconnect();
-  }, [THEME_STORAGE_KEY, applyTheme]);
+  }, [THEME_STORAGE_KEY, applyTheme, defaultTheme]);
 
   useEffect(() => {
     try {

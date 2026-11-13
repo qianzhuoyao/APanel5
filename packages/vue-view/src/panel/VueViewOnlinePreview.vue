@@ -41,7 +41,10 @@ import {
 } from "./utils/panelStateIO";
 import { applyPreviewSceneFill, readOutputScale } from "./utils/outputScale";
 import { registerPreviewSnapshotProvider } from "./library/preview-snapshot";
-import { capturePreviewSceneElement } from "./library/capture-preview-snapshot";
+import {
+  capturePreviewSceneElement,
+  stretchDataUrl,
+} from "./library/capture-preview-snapshot";
 
 const { t, locale } = useI18n();
 useBlueprintDslLocaleSync();
@@ -304,13 +307,17 @@ watch(
     registerPreviewSnapshotProvider(async () => {
       const scene = sceneRef.value;
       if (!scene) return null;
-      const width = outputScale.value
-        ? sceneBounds.value.width
-        : sceneBounds.value.width * fillScale.value.scaleX;
-      const height = outputScale.value
-        ? sceneBounds.value.height
-        : sceneBounds.value.height * fillScale.value.scaleY;
-      return capturePreviewSceneElement(scene, width, height);
+      const visualWidth = sceneBounds.value.width * fillScale.value.scaleX;
+      const visualHeight = sceneBounds.value.height * fillScale.value.scaleY;
+      if (outputScale.value) {
+        const logical = await capturePreviewSceneElement(
+          scene,
+          sceneBounds.value.width,
+          sceneBounds.value.height
+        );
+        return stretchDataUrl(logical, visualWidth, visualHeight);
+      }
+      return capturePreviewSceneElement(scene, visualWidth, visualHeight);
     });
   },
   { immediate: true }

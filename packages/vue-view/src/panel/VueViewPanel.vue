@@ -513,6 +513,7 @@ watch(
 );
 
 onMounted(() => {
+  message.config({ duration: 1.5, maxCount: 3, top: "12px" });
   void refreshBlueprintLibrary();
 });
 
