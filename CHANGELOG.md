@@ -4,6 +4,14 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)，版本号遵循 [SemVer](https://semver.org/lang/zh-CN/)。
 
+## [1.1.54] - 2026-11-13
+
+配套：`abuilder-vue@0.1.36`
+
+### Fixed
+
+- 修复 Vue 包 typecheck（`blueprintDebug` 可选链、`productName` 回退类型），确保发布流水线可完整发布
+
 ## [1.1.53] - 2026-11-13
 
 配套：`abuilder-vue@0.1.35` · `react-view@1.0.47` · `vue-view@0.1.32` · `ui@1.0.13`
