@@ -238,7 +238,7 @@ export function useWorkspaceProjects(options: UseWorkspaceProjectsOptions) {
           productName:
             typeof record.productName === "string" && record.productName.trim()
               ? record.productName
-              : existing?.productName,
+              : existing?.productName ?? "",
         },
         unnamedProduct
       );

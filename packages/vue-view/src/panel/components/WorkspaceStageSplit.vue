@@ -232,9 +232,9 @@ watch(blueprintWrapRef, (el) => {
             allow-clear
             :value="
               blueprintDebug.lifecycleOptions?.some(
-                (opt) => opt.value === blueprintDebug.lifecyclePhase
+                (opt) => opt.value === blueprintDebug?.lifecyclePhase
               )
-                ? blueprintDebug.lifecyclePhase
+                ? blueprintDebug?.lifecyclePhase
                 : undefined
             "
             :options="blueprintDebug.lifecycleOptions ?? []"
