@@ -178,27 +178,6 @@ function toCanvasDeltaY(value: number) {
   return value / Math.max(0.0001, canvasScale.value);
 }
 
-function readClientPoint(eventLike: {
-  clientX?: number;
-  clientY?: number;
-  inputEvent?: { clientX?: number; clientY?: number };
-}) {
-  const x =
-    typeof eventLike?.clientX === "number"
-      ? eventLike.clientX
-      : typeof eventLike?.inputEvent?.clientX === "number"
-        ? eventLike.inputEvent.clientX
-        : null;
-  const y =
-    typeof eventLike?.clientY === "number"
-      ? eventLike.clientY
-      : typeof eventLike?.inputEvent?.clientY === "number"
-        ? eventLike.inputEvent.clientY
-        : null;
-  if (x === null || y === null) return null;
-  return { x, y };
-}
-
 function resolveSingleEventId(target: HTMLElement | undefined | null) {
   const id = target ? getId(target) : null;
   if (id) return id;
@@ -294,8 +273,9 @@ function createMoveable() {
     resizable: true,
     rotatable: true,
     origin: false,
-    throttleDrag: 1,
-    throttleResize: 1,
+    // 0：与控制框同帧跟手；勿用 client 坐标另算位移，否则边框会滞后
+    throttleDrag: 0,
+    throttleResize: 0,
     throttleRotate: 0,
   });
 
@@ -313,9 +293,8 @@ function createMoveable() {
     e.datas.__startX = data.x;
     e.datas.__startY = data.y;
     e.datas.__rotate = data.rotate ?? 0;
-    const point = readClientPoint(e);
-    e.datas.__startClientX = point?.x ?? null;
-    e.datas.__startClientY = point?.y ?? null;
+    e.datas.__liveTx = 0;
+    e.datas.__liveTy = 0;
     e.datas.__gridChildren =
       data.materialType === "grid"
         ? collectGridDescendantDragStarts(props.canvasContainer, props.elementsById, id)
@@ -331,17 +310,10 @@ function createMoveable() {
   moveable.on("drag", (e: any) => {
     if (!e?.target?.style) return;
     if (e.datas.__startX === undefined || e.datas.__startY === undefined) return;
-    const point = readClientPoint(e);
-    const hasClient =
-      typeof e.datas.__startClientX === "number" &&
-      typeof e.datas.__startClientY === "number" &&
-      !!point;
-    const tx = hasClient
-      ? toCanvasDeltaX(point.x - e.datas.__startClientX)
-      : toCanvasDeltaX(e.beforeTranslate?.[0] ?? 0);
-    const ty = hasClient
-      ? toCanvasDeltaY(point.y - e.datas.__startClientY)
-      : toCanvasDeltaY(e.beforeTranslate?.[1] ?? 0);
+    const tx = toCanvasDeltaX(e.beforeTranslate?.[0] ?? 0);
+    const ty = toCanvasDeltaY(e.beforeTranslate?.[1] ?? 0);
+    e.datas.__liveTx = tx;
+    e.datas.__liveTy = ty;
     applyLiveTranslate(e.target, tx, ty, e.datas.__rotate ?? 0);
     applyLiveTranslateToGridChildren(e.datas.__gridChildren, tx, ty);
   });
@@ -361,9 +333,8 @@ function createMoveable() {
       ev.datas.__startX = data.x;
       ev.datas.__startY = data.y;
       ev.datas.__rotate = data.rotate ?? 0;
-      const point = readClientPoint(ev) ?? readClientPoint(e);
-      ev.datas.__startClientX = point?.x ?? null;
-      ev.datas.__startClientY = point?.y ?? null;
+      ev.datas.__liveTx = 0;
+      ev.datas.__liveTy = 0;
       ev.datas.__gridChildren =
         data.materialType === "grid"
           ? collectGridDescendantDragStarts(props.canvasContainer, props.elementsById, id)
@@ -380,17 +351,10 @@ function createMoveable() {
   moveable.on("dragGroup", (e: any) => {
     e.events.forEach((ev: any) => {
       if (!ev?.target?.style) return;
-      const point = readClientPoint(ev) ?? readClientPoint(e);
-      const hasClient =
-        typeof ev.datas.__startClientX === "number" &&
-        typeof ev.datas.__startClientY === "number" &&
-        !!point;
-      const tx = hasClient
-        ? toCanvasDeltaX(point.x - ev.datas.__startClientX)
-        : toCanvasDeltaX(ev.beforeTranslate?.[0] ?? 0);
-      const ty = hasClient
-        ? toCanvasDeltaY(point.y - ev.datas.__startClientY)
-        : toCanvasDeltaY(ev.beforeTranslate?.[1] ?? 0);
+      const tx = toCanvasDeltaX(ev.beforeTranslate?.[0] ?? 0);
+      const ty = toCanvasDeltaY(ev.beforeTranslate?.[1] ?? 0);
+      ev.datas.__liveTx = tx;
+      ev.datas.__liveTy = ty;
       applyLiveTranslate(ev.target, tx, ty, ev.datas.__rotate ?? 0);
       applyLiveTranslateToGridChildren(ev.datas.__gridChildren, tx, ty);
     });
@@ -406,8 +370,6 @@ function createMoveable() {
     e.datas.__startX = data.x;
     e.datas.__startY = data.y;
     e.datas.__rotate = data.rotate ?? 0;
-    e.datas.__startClientX = e.inputEvent?.clientX ?? null;
-    e.datas.__startClientY = e.inputEvent?.clientY ?? null;
     if (e.target?.style) {
       e.target.style.left = `${data.x}px`;
       e.target.style.top = `${data.y}px`;
@@ -437,9 +399,6 @@ function createMoveable() {
       ev.datas.__startX = data.x;
       ev.datas.__startY = data.y;
       ev.datas.__rotate = data.rotate ?? 0;
-      const input = ev.inputEvent ?? e.inputEvent;
-      ev.datas.__startClientX = input?.clientX ?? null;
-      ev.datas.__startClientY = input?.clientY ?? null;
       if (ev.target?.style) {
         ev.target.style.left = `${data.x}px`;
         ev.target.style.top = `${data.y}px`;
@@ -504,17 +463,14 @@ function createMoveable() {
       const sx = e.datas.__startX ?? data.x;
       const sy = e.datas.__startY ?? data.y;
       const rotate = e.datas.__rotate ?? data.rotate ?? 0;
-      const point = readClientPoint(e);
-      const hasClient =
-        typeof e.datas.__startClientX === "number" &&
-        typeof e.datas.__startClientY === "number" &&
-        !!point;
-      const tx = hasClient
-        ? toCanvasDeltaX(point.x - e.datas.__startClientX)
-        : toCanvasDeltaX(e.lastEvent?.beforeTranslate?.[0] ?? 0);
-      const ty = hasClient
-        ? toCanvasDeltaY(point.y - e.datas.__startClientY)
-        : toCanvasDeltaY(e.lastEvent?.beforeTranslate?.[1] ?? 0);
+      const tx =
+        typeof e.datas.__liveTx === "number"
+          ? e.datas.__liveTx
+          : toCanvasDeltaX(e.lastEvent?.beforeTranslate?.[0] ?? 0);
+      const ty =
+        typeof e.datas.__liveTy === "number"
+          ? e.datas.__liveTy
+          : toCanvasDeltaY(e.lastEvent?.beforeTranslate?.[1] ?? 0);
       const nextX = sx + tx;
       const nextY = sy + ty;
       if (e.target) commitLivePosition(e.target, nextX, nextY, rotate);
@@ -573,17 +529,14 @@ function createMoveable() {
         const sx = ev.datas.__startX ?? data.x;
         const sy = ev.datas.__startY ?? data.y;
         const rotate = ev.datas.__rotate ?? data.rotate ?? 0;
-        const point = readClientPoint(ev) ?? readClientPoint(e);
-        const hasClient =
-          typeof ev.datas.__startClientX === "number" &&
-          typeof ev.datas.__startClientY === "number" &&
-          !!point;
-        const tx = hasClient
-          ? toCanvasDeltaX(point.x - ev.datas.__startClientX)
-          : toCanvasDeltaX(ev.lastEvent?.beforeTranslate?.[0] ?? 0);
-        const ty = hasClient
-          ? toCanvasDeltaY(point.y - ev.datas.__startClientY)
-          : toCanvasDeltaY(ev.lastEvent?.beforeTranslate?.[1] ?? 0);
+        const tx =
+          typeof ev.datas.__liveTx === "number"
+            ? ev.datas.__liveTx
+            : toCanvasDeltaX(ev.lastEvent?.beforeTranslate?.[0] ?? 0);
+        const ty =
+          typeof ev.datas.__liveTy === "number"
+            ? ev.datas.__liveTy
+            : toCanvasDeltaY(ev.lastEvent?.beforeTranslate?.[1] ?? 0);
         const nextX = sx + tx;
         const nextY = sy + ty;
         if (ev.target) commitLivePosition(ev.target, nextX, nextY, rotate);

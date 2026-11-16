@@ -4,6 +4,14 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)，版本号遵循 [SemVer](https://semver.org/lang/zh-CN/)。
 
+## [1.1.55] - 2026-11-16
+
+配套：`abuilder-vue@0.1.37` · `react-view@1.0.48` · `vue-view@0.1.33`
+
+### Fixed
+
+- 修复快速拖动节点时 Moveable 边框/锚点滞后：跟手统一使用 `beforeTranslate`，并取消 drag/resize 节流
+
 ## [1.1.54] - 2026-11-13
 
 配套：`abuilder-vue@0.1.36`
