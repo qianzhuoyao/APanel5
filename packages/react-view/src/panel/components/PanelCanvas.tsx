@@ -526,6 +526,15 @@ export const PanelCanvas = React.forwardRef<HTMLDivElement, PanelCanvasProps>(
     applyCanvasTransform(scale);
   }, [applyCanvasTransform, zoom.x, zoom.y]);
 
+  // 工具栏/绝对缩放只先改 React zoom；若等到子组件 layout 之后再写 DOM，
+  // 拖拽层会短暂读到旧 dataset.canvasScale。渲染期同步一次，保证同帧一致。
+  if (!syncingZoomRef.current && canvasElRef.current) {
+    const current = Number(canvasElRef.current.dataset.canvasScale);
+    if (!Number.isFinite(current) || Math.abs(current - canvasScale) > 0.0001) {
+      applyCanvasTransform(canvasScale);
+    }
+  }
+
   useLayoutEffect(() => {
     reconcileCanvasTransform();
   }, [canvasScale, reconcileCanvasTransform]);

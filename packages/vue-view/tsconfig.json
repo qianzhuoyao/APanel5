@@ -1,8 +1,22 @@
 {
   "extends": "@arronqzy/typescript-config/vue-library.json",
   "compilerOptions": {
-    "rootDir": "src",
-    "outDir": "dist"
+    "outDir": "dist",
+    "baseUrl": ".",
+    "paths": {
+      "@arronqzy/blueprint-dsl": ["../blueprint-dsl/src/index.ts"],
+      "@arronqzy/vue-blueprint": ["../vue-blueprint/src/index.ts"],
+      "@arronqzy/rx-store": ["../rx-store/src/index.ts"],
+      "@arronqzy/vue-rx-store": ["../vue-rx-store/src/index.ts"],
+      "@arronqzy/i18n": ["../i18n/src/index.ts"],
+      "@arronqzy/i18n/vue": ["../i18n/src/vue/index.ts"],
+      "@arronqzy/view-table": ["../view-table/src/index.ts"],
+      "@arronqzy/view-scene3d": ["../view-scene3d/src/index.ts"],
+      "@arronqzy/view-scene3d/vue": ["../view-scene3d/src/vue/Scene3dNodeContent.vue"],
+      "@arronqzy/webllm-assistant": ["../webllm-assistant/src/index.ts"],
+      "@mlc-ai/web-llm": ["../webllm-assistant/vendor/bundled/web-llm"]
+    }
   },
-  "include": ["src/**/*.ts", "src/**/*.vue"]
+  "include": ["src/**/*.ts", "src/**/*.vue"],
+  "exclude": ["node_modules", "dist"]
 }

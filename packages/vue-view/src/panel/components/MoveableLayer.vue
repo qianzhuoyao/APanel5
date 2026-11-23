@@ -36,12 +36,26 @@ const props = defineProps<{
   viewportSyncRef?: { current: (() => void) | null };
 }>();
 
-function readLiveCanvasScale(canvasContainer: HTMLElement | null, fallback: number): number {
-  if (!canvasContainer) return fallback;
-  const raw = canvasContainer.dataset.canvasScale;
-  if (!raw) return fallback;
-  const parsed = Number(raw);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+function resolveDragCanvasScale(propScale: number): number {
+  return Number.isFinite(propScale) && propScale > 0 ? propScale : 1;
+}
+
+/** Moveable beforeTranslate 已是画布本地坐标，不能再 / zoom。屏幕像素才需要换算。 */
+function readClientPoint(eventLike: any): { x: number; y: number } | null {
+  const x =
+    typeof eventLike?.clientX === "number"
+      ? eventLike.clientX
+      : typeof eventLike?.inputEvent?.clientX === "number"
+        ? eventLike.inputEvent.clientX
+        : null;
+  const y =
+    typeof eventLike?.clientY === "number"
+      ? eventLike.clientY
+      : typeof eventLike?.inputEvent?.clientY === "number"
+        ? eventLike.inputEvent.clientY
+        : null;
+  if (x === null || y === null) return null;
+  return { x, y };
 }
 
 type GridChildDragStart = { el: HTMLElement; x: number; y: number; rotate: number };
@@ -162,20 +176,54 @@ const propCanvasScale = computed(() =>
   uniformViewportZoom({ x: props.zoomX, y: props.zoomY })
 );
 
-const canvasScale = computed(() =>
-  readLiveCanvasScale(props.canvasContainer, propCanvasScale.value)
-);
+const canvasScale = computed(() => resolveDragCanvasScale(propCanvasScale.value));
 
 const moveableControlZoom = computed(() => 1 / Math.max(0.0001, canvasScale.value));
 
 const pointerRoot = computed(() => props.dragContainer ?? props.canvasContainer);
 
-function toCanvasDeltaX(value: number) {
-  return value / Math.max(0.0001, canvasScale.value);
+function readLiveScale() {
+  const canvas = props.canvasContainer;
+  if (canvas) {
+    const rect = canvas.getBoundingClientRect();
+    const base = canvas.offsetWidth;
+    if (base > 0 && rect.width > 0) {
+      const visual = rect.width / base;
+      if (Number.isFinite(visual) && visual > 0) return visual;
+    }
+    const raw = Number(canvas.dataset.canvasScale);
+    if (Number.isFinite(raw) && raw > 0) return raw;
+  }
+  return Math.max(0.0001, canvasScale.value);
 }
 
-function toCanvasDeltaY(value: number) {
-  return value / Math.max(0.0001, canvasScale.value);
+function screenToCanvasX(value: number) {
+  return value / readLiveScale();
+}
+
+function screenToCanvasY(value: number) {
+  return value / readLiveScale();
+}
+
+function localDeltaX(value: number) {
+  return value;
+}
+
+function localDeltaY(value: number) {
+  return value;
+}
+
+function readPointerCanvasDelta(
+  eventLike: any,
+  startClientX: number,
+  startClientY: number
+) {
+  const point = readClientPoint(eventLike);
+  if (!point) return null;
+  return {
+    tx: screenToCanvasX(point.x - startClientX),
+    ty: screenToCanvasY(point.y - startClientY),
+  };
 }
 
 function resolveSingleEventId(target: HTMLElement | undefined | null) {
@@ -192,8 +240,8 @@ function readTargetCanvasSize(
   const rect = target?.getBoundingClientRect?.();
   if (rect && rect.width > 0 && rect.height > 0) {
     return {
-      width: Math.max(1, toCanvasDeltaX(rect.width)),
-      height: Math.max(1, toCanvasDeltaY(rect.height)),
+      width: Math.max(1, screenToCanvasX(rect.width)),
+      height: Math.max(1, screenToCanvasY(rect.height)),
     };
   }
   return { width: Math.max(1, fallback.width), height: Math.max(1, fallback.height) };
@@ -234,7 +282,7 @@ function syncLockBadge() {
 function applyLiveMoveableZoom() {
   const moveable = moveableRef.value;
   if (!moveable) return;
-  const liveScale = readLiveCanvasScale(props.canvasContainer, propCanvasScale.value);
+  const liveScale = resolveDragCanvasScale(propCanvasScale.value);
   moveable.zoom = 1 / Math.max(0.0001, liveScale);
 }
 
@@ -295,6 +343,9 @@ function createMoveable() {
     e.datas.__rotate = data.rotate ?? 0;
     e.datas.__liveTx = 0;
     e.datas.__liveTy = 0;
+    const point = readClientPoint(e);
+    e.datas.__startClientX = point?.x ?? null;
+    e.datas.__startClientY = point?.y ?? null;
     e.datas.__gridChildren =
       data.materialType === "grid"
         ? collectGridDescendantDragStarts(props.canvasContainer, props.elementsById, id)
@@ -310,8 +361,13 @@ function createMoveable() {
   moveable.on("drag", (e: any) => {
     if (!e?.target?.style) return;
     if (e.datas.__startX === undefined || e.datas.__startY === undefined) return;
-    const tx = toCanvasDeltaX(e.beforeTranslate?.[0] ?? 0);
-    const ty = toCanvasDeltaY(e.beforeTranslate?.[1] ?? 0);
+    const fromPointer =
+      typeof e.datas.__startClientX === "number" &&
+      typeof e.datas.__startClientY === "number"
+        ? readPointerCanvasDelta(e, e.datas.__startClientX, e.datas.__startClientY)
+        : null;
+    const tx = fromPointer?.tx ?? localDeltaX(e.beforeTranslate?.[0] ?? 0);
+    const ty = fromPointer?.ty ?? localDeltaY(e.beforeTranslate?.[1] ?? 0);
     e.datas.__liveTx = tx;
     e.datas.__liveTy = ty;
     applyLiveTranslate(e.target, tx, ty, e.datas.__rotate ?? 0);
@@ -335,6 +391,9 @@ function createMoveable() {
       ev.datas.__rotate = data.rotate ?? 0;
       ev.datas.__liveTx = 0;
       ev.datas.__liveTy = 0;
+      const point = readClientPoint(ev) ?? readClientPoint(e);
+      ev.datas.__startClientX = point?.x ?? null;
+      ev.datas.__startClientY = point?.y ?? null;
       ev.datas.__gridChildren =
         data.materialType === "grid"
           ? collectGridDescendantDragStarts(props.canvasContainer, props.elementsById, id)
@@ -351,8 +410,22 @@ function createMoveable() {
   moveable.on("dragGroup", (e: any) => {
     e.events.forEach((ev: any) => {
       if (!ev?.target?.style) return;
-      const tx = toCanvasDeltaX(ev.beforeTranslate?.[0] ?? 0);
-      const ty = toCanvasDeltaY(ev.beforeTranslate?.[1] ?? 0);
+      const fromPointer =
+        typeof ev.datas.__startClientX === "number" &&
+        typeof ev.datas.__startClientY === "number"
+          ? readPointerCanvasDelta(
+              ev,
+              ev.datas.__startClientX,
+              ev.datas.__startClientY
+            ) ??
+            readPointerCanvasDelta(
+              e,
+              ev.datas.__startClientX,
+              ev.datas.__startClientY
+            )
+          : null;
+      const tx = fromPointer?.tx ?? localDeltaX(ev.beforeTranslate?.[0] ?? 0);
+      const ty = fromPointer?.ty ?? localDeltaY(ev.beforeTranslate?.[1] ?? 0);
       ev.datas.__liveTx = tx;
       ev.datas.__liveTy = ty;
       applyLiveTranslate(ev.target, tx, ty, ev.datas.__rotate ?? 0);
@@ -383,8 +456,8 @@ function createMoveable() {
     if (e.datas.__startX === undefined || e.datas.__startY === undefined) return;
     e.target.style.width = `${e.width}px`;
     e.target.style.height = `${e.height}px`;
-    const tx = toCanvasDeltaX(e.drag.beforeTranslate?.[0] ?? 0);
-    const ty = toCanvasDeltaY(e.drag.beforeTranslate?.[1] ?? 0);
+    const tx = localDeltaX(e.drag.beforeTranslate?.[0] ?? 0);
+    const ty = localDeltaY(e.drag.beforeTranslate?.[1] ?? 0);
     applyLiveTranslate(e.target, tx, ty, e.datas.__rotate ?? 0);
   });
 
@@ -413,8 +486,8 @@ function createMoveable() {
       if (!ev?.target?.style) return;
       ev.target.style.width = `${ev.width}px`;
       ev.target.style.height = `${ev.height}px`;
-      const tx = toCanvasDeltaX(ev.drag.beforeTranslate?.[0] ?? 0);
-      const ty = toCanvasDeltaY(ev.drag.beforeTranslate?.[1] ?? 0);
+      const tx = localDeltaX(ev.drag.beforeTranslate?.[0] ?? 0);
+      const ty = localDeltaY(ev.drag.beforeTranslate?.[1] ?? 0);
       applyLiveTranslate(ev.target, tx, ty, ev.datas.__rotate ?? 0);
     });
   });
@@ -466,11 +539,11 @@ function createMoveable() {
       const tx =
         typeof e.datas.__liveTx === "number"
           ? e.datas.__liveTx
-          : toCanvasDeltaX(e.lastEvent?.beforeTranslate?.[0] ?? 0);
+          : localDeltaX(e.lastEvent?.beforeTranslate?.[0] ?? 0);
       const ty =
         typeof e.datas.__liveTy === "number"
           ? e.datas.__liveTy
-          : toCanvasDeltaY(e.lastEvent?.beforeTranslate?.[1] ?? 0);
+          : localDeltaY(e.lastEvent?.beforeTranslate?.[1] ?? 0);
       const nextX = sx + tx;
       const nextY = sy + ty;
       if (e.target) commitLivePosition(e.target, nextX, nextY, rotate);
@@ -532,11 +605,11 @@ function createMoveable() {
         const tx =
           typeof ev.datas.__liveTx === "number"
             ? ev.datas.__liveTx
-            : toCanvasDeltaX(ev.lastEvent?.beforeTranslate?.[0] ?? 0);
+            : localDeltaX(ev.lastEvent?.beforeTranslate?.[0] ?? 0);
         const ty =
           typeof ev.datas.__liveTy === "number"
             ? ev.datas.__liveTy
-            : toCanvasDeltaY(ev.lastEvent?.beforeTranslate?.[1] ?? 0);
+            : localDeltaY(ev.lastEvent?.beforeTranslate?.[1] ?? 0);
         const nextX = sx + tx;
         const nextY = sy + ty;
         if (ev.target) commitLivePosition(ev.target, nextX, nextY, rotate);
@@ -566,8 +639,8 @@ function createMoveable() {
       if (!data) return;
       const width = e.lastEvent?.width ?? data.width;
       const height = e.lastEvent?.height ?? data.height;
-      const tx = toCanvasDeltaX(e.lastEvent?.drag?.beforeTranslate?.[0] ?? 0);
-      const ty = toCanvasDeltaY(e.lastEvent?.drag?.beforeTranslate?.[1] ?? 0);
+      const tx = localDeltaX(e.lastEvent?.drag?.beforeTranslate?.[0] ?? 0);
+      const ty = localDeltaY(e.lastEvent?.drag?.beforeTranslate?.[1] ?? 0);
       const sx = e.datas.__startX ?? data.x;
       const sy = e.datas.__startY ?? data.y;
       const rotate = e.datas.__rotate ?? data.rotate ?? 0;
@@ -597,8 +670,8 @@ function createMoveable() {
         if (!data) return;
         const width = ev.lastEvent?.width ?? data.width;
         const height = ev.lastEvent?.height ?? data.height;
-        const tx = toCanvasDeltaX(ev.lastEvent?.drag?.beforeTranslate?.[0] ?? 0);
-        const ty = toCanvasDeltaY(ev.lastEvent?.drag?.beforeTranslate?.[1] ?? 0);
+        const tx = localDeltaX(ev.lastEvent?.drag?.beforeTranslate?.[0] ?? 0);
+        const ty = localDeltaY(ev.lastEvent?.drag?.beforeTranslate?.[1] ?? 0);
         const sx = ev.datas.__startX ?? data.x;
         const sy = ev.datas.__startY ?? data.y;
         const rotate = ev.datas.__rotate ?? data.rotate ?? 0;

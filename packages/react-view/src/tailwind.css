@@ -127,16 +127,29 @@ html[data-rv-interacting="1"] [data-panel-canvas] .rv-selectable {
   z-index: 2 !important;
 }
 
-.rv-moveable-layer .moveable-around-control {
-  background: transparent !important;
-}
-
-/* 锚点尺寸交给 Moveable 的 scale(zoom) 补偿，勿写死 px 覆盖，否则放大后会偏粗 */
+/*
+ * 锚点略小：基座 8px；外层有画布 scale(S) × Moveable zoom(1/S)，
+ * 屏幕上仍约 8px，不随缩放变粗。
+ */
 .rv-moveable-layer .moveable-control {
+  width: 8px !important;
+  height: 8px !important;
+  margin-top: -4px !important;
+  margin-left: -4px !important;
+  border-width: 1.5px !important;
   border-radius: 50% !important;
   box-sizing: border-box !important;
   border-color: hsl(var(--background)) !important;
   background: #1990ff !important;
   background: var(--moveable-color) !important;
   z-index: 10 !important;
+}
+
+.rv-moveable-layer .moveable-around-control {
+  width: 10px !important;
+  height: 10px !important;
+  margin-top: -5px !important;
+  margin-left: -5px !important;
+  border-width: 1.5px !important;
+  background: transparent !important;
 }

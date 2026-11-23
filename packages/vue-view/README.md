@@ -13,6 +13,7 @@ Vue 3 视图编辑器，功能对齐 `@arronqzy/react-view`，组件用 Ant Desi
 - IndexedDB 多项目、导入导出、跨标签同步
 - 分屏蓝图（`@arronqzy/vue-blueprint`）和调试时的 Scope 回写
 - `VueViewOnlinePreview` 只读预览
+- `enableAi` / `defaultTheme` / `projectIcon` 等与 React 对齐的 App 级 props；离线 AI 助手（WebLLM）
 
 打开蓝图后的分屏和 React 版一样：上面视图，下面节点：
 

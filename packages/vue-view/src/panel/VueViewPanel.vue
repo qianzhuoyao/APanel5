@@ -39,7 +39,15 @@ import {
   resolveRunnableNodeType,
   resolveViewElementIds,
 } from "@arronqzy/vue-blueprint";
-import { collectArmedViewEventBindings, EVENT_NODE_TYPE, LIFECYCLE_NODE_TYPE, buildApiCollectionSyncPatches, toApiCollectionSyncResult, type LibraryBlueprintResolver } from "@arronqzy/blueprint-dsl";
+import {
+  appStorageKey,
+  collectArmedViewEventBindings,
+  EVENT_NODE_TYPE,
+  LIFECYCLE_NODE_TYPE,
+  buildApiCollectionSyncPatches,
+  toApiCollectionSyncResult,
+  type LibraryBlueprintResolver,
+} from "@arronqzy/blueprint-dsl";
 import {
   Button,
   Dropdown,
@@ -101,6 +109,14 @@ import {
   getSelectedTargetsFromIds,
   shouldClearSelectionOnBlank,
 } from "./utils/panelSelection";
+import {
+  listPanelElementsFromStore,
+  listLayersFromStore,
+  getActiveLayerIdFromStore,
+  type ApplyAssistantDeps,
+} from "./ai/applyAssistantAction";
+import { revealPanelConfigFromPatch } from "./ai/revealConfigField";
+import AssistantChatPanel from "./ai/AssistantChatPanel.vue";
 import "./stage.css";
 import "../../dist/styles.css";
 
@@ -112,6 +128,8 @@ const props = withDefaults(
   defineProps<{
     class?: string;
     initialZoom?: number;
+    /** 编辑器默认主题；仅在无本实例主题缓存时生效 */
+    defaultTheme?: "dark" | "light";
     nameSpace?: string | null;
     initialWorkspace?: WorkspaceProjectRecord | null;
     /**
@@ -125,15 +143,19 @@ const props = withDefaults(
     packageVersion?: string | null;
     /** 顶栏品牌标记（图片 URL 或内联 SVG） */
     projectIcon?: string | null;
+    /** 启用离线 AI 助手（与 React `enableAi` 对齐） */
+    enableAi?: boolean;
   }>(),
   {
     initialZoom: 1,
+    defaultTheme: "dark",
     nameSpace: null,
     initialWorkspace: null,
     workspaceId: null,
     packageName: null,
     packageVersion: null,
     projectIcon: null,
+    enableAi: false,
   }
 );
 
@@ -231,11 +253,11 @@ const panelFontSize = ref<"sm" | "md" | "lg">("md");
 const panelFontPx = computed(() =>
   panelFontSize.value === "sm" ? 12 : panelFontSize.value === "lg" ? 15 : 13
 );
-const isDark = ref(
-  typeof document !== "undefined"
-    ? document.documentElement.classList.contains("dark")
-    : true
+const THEME_STORAGE_KEY = computed(() =>
+  appStorageKey("panel:theme", props.nameSpace)
 );
+const isDark = ref(props.defaultTheme !== "light");
+const assistantOpen = ref(false);
 const themedScrollbarClass =
   "scrollbar-thin [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-muted/40 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border/80 [&::-webkit-scrollbar-thumb]:hover:bg-border";
 const projectMarkMarkup = computed(() => {
@@ -249,9 +271,31 @@ const projectMarkMarkup = computed(() => {
 
 function applyTheme(dark: boolean) {
   isDark.value = dark;
-  if (typeof document !== "undefined") {
-    document.documentElement.classList.toggle("dark", dark);
+  if (typeof document === "undefined") return;
+  const root = document.documentElement;
+  root.classList.toggle("dark", dark);
+  root.classList.toggle("light", !dark);
+  root.dataset.theme = dark ? "dark" : "light";
+  try {
+    localStorage.setItem(THEME_STORAGE_KEY.value, dark ? "dark" : "light");
+    localStorage.setItem("theme", dark ? "dark" : "light");
+  } catch {
+    // ignore storage errors
   }
+}
+
+function initThemeFromStorage() {
+  const fallbackDark = props.defaultTheme !== "light";
+  try {
+    const storedTheme = localStorage.getItem(THEME_STORAGE_KEY.value);
+    if (storedTheme === "dark" || storedTheme === "light") {
+      applyTheme(storedTheme === "dark");
+      return;
+    }
+  } catch {
+    // ignore
+  }
+  applyTheme(fallbackDark);
 }
 
 function adjustUniformZoom(updater: (value: number) => number) {
@@ -514,8 +558,16 @@ watch(
 
 onMounted(() => {
   message.config({ duration: 1.5, maxCount: 3, top: "12px" });
+  initThemeFromStorage();
   void refreshBlueprintLibrary();
 });
+
+watch(
+  () => [props.nameSpace, props.defaultTheme] as const,
+  () => {
+    initThemeFromStorage();
+  }
+);
 
 watch(
   () => props.nameSpace,
@@ -577,6 +629,113 @@ const viewHandle: AbuilderViewHandle = {
 
 defineExpose(viewHandle);
 onUnmounted(registerAbuilderViewHandle(viewHandle));
+
+const assistantDeps = computed<ApplyAssistantDeps>(() => ({
+  addElementFromMaterial,
+  updateElement,
+  deleteElement,
+  duplicateElement,
+  setSelectedIds: (ids) => {
+    selectIds(ids);
+    requestAnimationFrame(() => {
+      selectedTargets.value = getSelectedTargetsFromIds(canvasEl.value, selectedIds.value);
+    });
+  },
+  getSelectedIds: () => selectedIds.value,
+  revealConfigFromPatch: (patch) => {
+    window.setTimeout(() => {
+      revealPanelConfigFromPatch(patch);
+    }, 60);
+  },
+  focusWorkspace: (area) => {
+    if (area === "blueprint") {
+      configFocus.value = "blueprint";
+      blueprintOpen.value = true;
+    } else {
+      configFocus.value = "view";
+    }
+  },
+  getElementIds: () => new Set(listPanelElementsFromStore().map((el) => el.id)),
+  getElement: (id) => listPanelElementsFromStore().find((el) => el.id === id),
+  listElements: () => listPanelElementsFromStore(),
+  getLayers: () => listLayersFromStore(),
+  getActiveLayerId: () => getActiveLayerIdFromStore(),
+  setActiveLayer,
+  addLayer,
+  renameLayer,
+  setLayerLocked: (id, locked) => {
+    const layer = listLayersFromStore().find((l) => l.id === id);
+    if (!layer) return;
+    if (!!layer.locked !== locked) toggleLayerLock(id);
+  },
+  deleteLayer: (id) => {
+    const result = deleteLayer(id, { mode: "remove" });
+    return result.ok ? { ok: true } : { ok: false, reason: result.reason };
+  },
+  bringElementsToFront,
+  sendElementsToBack,
+  bringElementsForward,
+  sendElementsBackward,
+  getZoom: () => zoom.value.x,
+  setZoomAbsolute: (value) => {
+    const next = Math.min(4, Math.max(0.25, value));
+    const rounded = Number(next.toFixed(4));
+    zoom.value = { x: rounded, y: rounded };
+  },
+  adjustZoomDelta: (delta) => {
+    const next = Math.min(4, Math.max(0.25, zoom.value.x + delta));
+    const rounded = Number(next.toFixed(4));
+    zoom.value = { x: rounded, y: rounded };
+  },
+  fitViewport: () => {
+    zoom.value = { x: 1, y: 1 };
+  },
+  undo,
+  redo,
+  setBlueprintGraph: (updater) => {
+    blueprintGraph.value = updater(blueprintGraph.value);
+  },
+  getBlueprintGraph: () => blueprintGraph.value,
+  setBlueprintOpen: (open) => {
+    blueprintOpen.value = open;
+  },
+  getBlueprintOpen: () => blueprintOpen.value,
+  runBlueprintAll: () => blueprintDebugSession.runAll(),
+  getWorkspace: () => ({
+    activeProjectId: workspaceProjects.activeProjectId.value,
+    activeProjectName: workspaceProjects.activeProjectName.value,
+    dirty: workspaceProjects.dirty.value,
+    projectCount: workspaceProjects.projects.value.length,
+  }),
+  workspaceSave: () => workspaceProjects.handleSaveProject(),
+  workspaceSync: () => workspaceProjects.handleSyncProject(),
+  workspaceCreate: async (name) => {
+    if (name?.trim()) productName.value = name.trim();
+    return workspaceProjects.handleCreateProject();
+  },
+  workspaceOpen: (id) => workspaceProjects.handleOpenProject(id),
+  workspacePreview: async (id) => {
+    const target = id ?? workspaceProjects.activeProjectId.value ?? undefined;
+    if (!target) {
+      const created = await workspaceProjects.handleCreateProject();
+      await openOnlinePreviewForProject(created.id, { syncFirst: false });
+      return;
+    }
+    await openOnlinePreviewForProject(target, { syncFirst: true });
+  },
+  exportPanelJson: () => JSON.stringify(exportPanelData(), null, 2),
+  importPanelJson: (json) => {
+    const parsed = JSON.parse(json) as State;
+    const ok = importPanelData(parsed);
+    if (ok) selectIds([]);
+    return ok;
+  },
+  setTheme: (theme) => applyTheme(theme === "dark"),
+  setLocale,
+  setPanelFontSize: (size) => {
+    panelFontSize.value = size;
+  },
+}));
 
 watch(
   [canvasEl, allElements, layers, activeLayerId, () => props.nameSpace],
@@ -1043,6 +1202,16 @@ onUnmounted(() => window.removeEventListener("keydown", onKeyDown));
         </template>
       </Dropdown>
       <div class="flex-1" />
+      <Button
+        v-if="enableAi"
+        size="small"
+        class="!h-7 !shrink-0 !rounded-full !border-foreground/10 !bg-background/40 !px-3 !text-xs"
+        :type="assistantOpen ? 'primary' : 'default'"
+        ghost
+        @click="assistantOpen = !assistantOpen"
+      >
+        {{ assistantOpen ? t("panel.ai.hide") : t("panel.ai.open") }}
+      </Button>
     </Layout.Header>
 
     <Layout class="min-h-0 flex-1">
@@ -1362,6 +1531,13 @@ onUnmounted(() => window.removeEventListener("keydown", onKeyDown));
       :on-upload-start="handleApiCollectionUploadStart"
       :on-upload-success="handleApiCollectionUploadSuccess"
       :on-sync-collection="handleApiCollectionSync"
+    />
+
+    <AssistantChatPanel
+      v-if="enableAi"
+      :deps="assistantDeps"
+      :open="assistantOpen"
+      @update:open="(open) => (assistantOpen = open)"
     />
   </Layout>
 </template>

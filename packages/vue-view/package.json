@@ -1,6 +1,6 @@
 {
   "name": "@arronqzy/vue-view",
-  "version": "0.1.33",
+  "version": "0.1.35",
   "description": "Vue 3 visual view editor for Abuilder (Ant Design Vue)",
   "license": "MIT",
   "type": "module",
@@ -27,6 +27,7 @@
     "@arronqzy/view-table": "workspace:*",
     "@arronqzy/vue-blueprint": "workspace:*",
     "@arronqzy/vue-rx-store": "workspace:*",
+    "@arronqzy/webllm-assistant": "workspace:*",
     "@tanstack/vue-virtual": "^3.13.2",
     "ant-design-vue": "^4.2.6",
     "dayjs": "^1.11.13",

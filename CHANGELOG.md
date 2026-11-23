@@ -4,6 +4,17 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)，版本号遵循 [SemVer](https://semver.org/lang/zh-CN/)。
 
+## [1.1.56] - 2026-11-23
+
+配套：`abuilder-vue@0.1.38` · `react-view@1.0.49` · `vue-view@0.1.35`
+
+### Changed
+
+- `@arronqzy/abuilder-vue` 恢复为 Veaury 包装 React `@arronqzy/abuilder`（`applyPureReactInVue`），与 1.1.48–1.1.55 一致
+- 修复画布缩放后拖节点不跟鼠标：跟手改用指针屏幕位移 ÷ 当前视觉缩放；`beforeTranslate` 不再二次除 zoom（它已是画布本地坐标）
+- Moveable 操作锚点缩小为约 8px，降低遮挡
+- `vue-view` 接入助手面板相关能力（`webllm-assistant`）
+
 ## [1.1.55] - 2026-11-16
 
 配套：`abuilder-vue@0.1.37` · `react-view@1.0.48` · `vue-view@0.1.33`
