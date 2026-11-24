@@ -940,6 +940,9 @@ importers:
       '@arronqzy/vue-rx-store':
         specifier: workspace:*
         version: link:../vue-rx-store
+      '@arronqzy/webllm-assistant':
+        specifier: workspace:*
+        version: link:../webllm-assistant
       '@tanstack/vue-virtual':
         specifier: ^3.13.2
         version: 3.13.35(vue@3.5.39)
